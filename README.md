@@ -8,11 +8,29 @@ This repository is a plain single repo (no workspaces, no task runner, no shared
 
 ```
 RAW/
-├── backend/   # Laravel (PHP) API — independent
-├── web/       # Vite + React web app — independent
-├── mobile/    # Expo / React Native mobile app — independent
-└── plans/     # Implementation plans and documentation
+├── backend/           # Laravel (PHP) API — independent
+├── web/               # Vite + React web app — independent
+├── mobile/            # Expo / React Native mobile app — independent
+├── docs/              # Cross-cutting documentation (testing, deployment)
+├── plans/             # Implementation plans and documentation
+└── .github/workflows/ # CI workflows (one job per app)
 ```
+
+## Per-app commands at a glance
+
+| App     | Install        | Run / dev          | Lint                  | Test / validate            | Build                  |
+| ------- | -------------- | ------------------ | --------------------- | -------------------------- | ---------------------- |
+| backend | `composer install` | `php artisan serve` | `vendor/bin/pint --test` | `php artisan test`     | (no build step)        |
+| web     | `npm ci`       | `npm run dev`      | `npm run lint`        | `npm run build` (smoke)    | `npm run build`        |
+| mobile  | `npm ci`       | `npm run start`    | `npm run lint`        | `npx tsc --noEmit`         | EAS Build (see docs)   |
+
+All commands are run from the respective app directory.
+
+## Testing, CI, and Deployment
+
+- **Testing & quality gates:** see [`docs/TESTING.md`](./docs/TESTING.md).
+- **Deployment basics (separate pipelines per app):** see [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md).
+- **CI workflow:** [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) runs three independent jobs (`backend`, `web`, `mobile`) in parallel on every push and PR. There is no shared workspace tooling.
 
 ### Apps
 
