@@ -74,6 +74,62 @@ php artisan test
 - `backend/.env` is ignored by `backend/.gitignore` and must never be committed.
 - Application keys, database credentials, and any third-party secrets belong in `backend/.env` only.
 
-### Web & Mobile
+### Web (Vite + React)
 
-The `web/` and `mobile/` apps will be bootstrapped in later phases; setup instructions will be added here once they exist.
+The React web app lives in `web/` and is fully self-contained. All commands below are run from the `web/` directory.
+
+**Requirements**
+
+- Node.js 20.19+ (or 22.12+) — recommended LTS
+- npm 10+ (bundled with Node, or use pnpm/yarn if preferred)
+
+**First-time setup**
+
+```bash
+cd web
+npm install
+cp .env.example .env
+```
+
+**Run the development server**
+
+```bash
+cd web
+npm run dev
+```
+
+Vite will print the local URL (default `http://localhost:5173`).
+
+**Build for production**
+
+```bash
+cd web
+npm run build
+```
+
+The build output is written to `web/dist/`.
+
+**Preview the production build**
+
+```bash
+cd web
+npm run preview
+```
+
+**Lint**
+
+```bash
+cd web
+npm run lint
+```
+
+**Environment & secrets**
+
+- `web/.env.example` is tracked and serves as the template.
+- `web/.env` (and other local `.env.*` variants) are ignored and must never be committed.
+- Only variables prefixed with `VITE_` are exposed to the client bundle (Vite convention). Never put server-only secrets in `web/.env`.
+- The web app's environment is fully separate from `backend/.env` and `mobile/`.
+
+### Mobile
+
+The `mobile/` app will be bootstrapped in a later phase; setup instructions will be added here once it exists.
