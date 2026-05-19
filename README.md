@@ -130,6 +130,75 @@ npm run lint
 - Only variables prefixed with `VITE_` are exposed to the client bundle (Vite convention). Never put server-only secrets in `web/.env`.
 - The web app's environment is fully separate from `backend/.env` and `mobile/`.
 
-### Mobile
+### Mobile (Expo + React Native)
 
-The `mobile/` app will be bootstrapped in a later phase; setup instructions will be added here once it exists.
+The Expo / React Native mobile app lives in `mobile/` and is fully self-contained. All commands below are run from the `mobile/` directory.
+
+**Requirements**
+
+- Node.js 20.19+ (or 22.12+) — recommended LTS
+- npm 10+ (bundled with Node, or use pnpm/yarn if preferred)
+- Expo CLI is invoked via `npx expo` — no global install required
+- For native builds: Android Studio (Android) and/or Xcode on macOS (iOS)
+- Optional: the Expo Go app on a physical device for quick previews
+
+**First-time setup**
+
+```bash
+cd mobile
+npm install
+cp .env.example .env
+```
+
+**Run the development server**
+
+```bash
+cd mobile
+npm run start
+```
+
+Expo will open the dev tools and print a QR code you can scan with Expo Go, plus shortcuts to launch a simulator/emulator.
+
+**Run on a specific platform**
+
+```bash
+cd mobile
+npm run android   # Android emulator or connected device
+npm run ios       # iOS simulator (macOS only)
+npm run web       # Run the app in a browser via react-native-web
+```
+
+**Lint**
+
+```bash
+cd mobile
+npm run lint
+```
+
+**Production builds (EAS)**
+
+Production builds use [EAS Build](https://docs.expo.dev/build/introduction/). EAS is not configured by default in this repo; to enable it:
+
+```bash
+cd mobile
+npx eas-cli@latest login
+npx eas-cli@latest build:configure
+npx eas-cli@latest build --platform android
+npx eas-cli@latest build --platform ios
+```
+
+To submit to the stores after a successful build:
+
+```bash
+cd mobile
+npx eas-cli@latest submit --platform android
+npx eas-cli@latest submit --platform ios
+```
+
+**Environment & secrets**
+
+- `mobile/.env.example` is tracked and serves as the template.
+- `.env*.local` files are ignored by `mobile/.gitignore` and must never be committed.
+- Expo only exposes variables prefixed with `EXPO_PUBLIC_` to client code (accessible via `process.env.EXPO_PUBLIC_*`). Anything with that prefix is shipped to the device in plain text — **do not put secrets there**.
+- Build-time and EAS secrets should be configured via [EAS environment variables and secrets](https://docs.expo.dev/build-reference/variables/), not via `mobile/.env`.
+- The mobile app's environment is fully separate from `backend/.env` and `web/.env`.
