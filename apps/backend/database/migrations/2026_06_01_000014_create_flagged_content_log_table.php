@@ -11,13 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('flagged_content_log', function (Blueprint $table) {
+        Schema::create('content_flags', function (Blueprint $table) {
             $table->id();
             $table->foreignId('issue_id')->nullable()->constrained('issues')->nullOnDelete();
             $table->foreignId('comment_id')->nullable()->constrained('issue_comments')->nullOnDelete();
             $table->foreignId('message_id')->nullable()->constrained('issue_messages')->nullOnDelete();
+            $table->foreignId('flagged_by_officer_id')->nullable()->constrained('officers')->nullOnDelete();
             $table->foreignId('reviewed_by_manager_id')->nullable()->constrained('managers')->nullOnDelete();
-            $table->string('matched_keyword', 100);
+            $table->string('flag_source', 20);
+            $table->string('matched_keyword', 100)->nullable();
+            $table->string('flag_reason', 255)->nullable();
+            $table->boolean('counts_toward_review')->default(true);
             $table->string('action_taken', 50)->nullable();
             $table->dateTime('flagged_at')->useCurrent();
         });
@@ -28,6 +32,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('flagged_content_log');
+        Schema::dropIfExists('content_flags');
     }
 };

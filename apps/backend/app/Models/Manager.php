@@ -43,7 +43,7 @@ class Manager extends Authenticatable
 
     public function flagReviews(): HasMany
     {
-        return $this->hasMany(FlaggedContentLog::class, 'reviewed_by_manager_id');
+        return $this->hasMany(ContentFlag::class, 'reviewed_by_manager_id');
     }
 
     public function reportSnapshots(): HasMany

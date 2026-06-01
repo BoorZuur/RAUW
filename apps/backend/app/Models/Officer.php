@@ -58,4 +58,9 @@ class Officer extends Authenticatable
     {
         return $this->hasMany(Issue::class, 'chat_closed_by_officer_id');
     }
+
+    public function flaggedContent(): HasMany
+    {
+        return $this->hasMany(ContentFlag::class, 'flagged_by_officer_id');
+    }
 }

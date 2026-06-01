@@ -130,8 +130,8 @@ class Issue extends Model
         return $this->hasMany(Notification::class);
     }
 
-    public function flagLogs(): HasMany
+    public function contentFlags(): HasMany
     {
-        return $this->hasMany(FlaggedContentLog::class);
+        return $this->hasMany(ContentFlag::class);
     }
 }

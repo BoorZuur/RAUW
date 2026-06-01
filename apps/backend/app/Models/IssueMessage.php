@@ -50,8 +50,8 @@ class IssueMessage extends Model
         return $this->belongsTo(Officer::class);
     }
 
-    public function flagLogs(): HasMany
+    public function contentFlags(): HasMany
     {
-        return $this->hasMany(FlaggedContentLog::class, 'message_id');
+        return $this->hasMany(ContentFlag::class, 'message_id');
     }
 }

@@ -45,8 +45,8 @@ class IssueComment extends Model
         return $this->belongsTo(Officer::class);
     }
 
-    public function flagLogs(): HasMany
+    public function contentFlags(): HasMany
     {
-        return $this->hasMany(FlaggedContentLog::class, 'comment_id');
+        return $this->hasMany(ContentFlag::class, 'comment_id');
     }
 }

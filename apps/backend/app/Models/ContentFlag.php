@@ -10,13 +10,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'issue_id',
     'comment_id',
     'message_id',
+    'flagged_by_officer_id',
     'reviewed_by_manager_id',
+    'flag_source',
     'matched_keyword',
+    'flag_reason',
+    'counts_toward_review',
     'action_taken',
 ])]
-class FlaggedContentLog extends Model
+class ContentFlag extends Model
 {
-    protected $table = 'flagged_content_log';
+    protected $table = 'content_flags';
 
     public $timestamps = false;
 
@@ -28,6 +32,7 @@ class FlaggedContentLog extends Model
     protected function casts(): array
     {
         return [
+            'counts_toward_review' => 'boolean',
             'flagged_at' => 'datetime',
         ];
     }
@@ -45,6 +50,11 @@ class FlaggedContentLog extends Model
     public function message(): BelongsTo
     {
         return $this->belongsTo(IssueMessage::class, 'message_id');
+    }
+
+    public function flaggedByOfficer(): BelongsTo
+    {
+        return $this->belongsTo(Officer::class, 'flagged_by_officer_id');
     }
 
     public function reviewedByManager(): BelongsTo
