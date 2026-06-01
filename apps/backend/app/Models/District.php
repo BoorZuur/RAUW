@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['name', 'postal_prefix', 'center_lat', 'center_lng', 'radius_meters', 'is_active'])]
 class District extends Model
 {
+    public const UPDATED_AT = null;
+
     /**
      * Get the attributes that should be cast.
      *

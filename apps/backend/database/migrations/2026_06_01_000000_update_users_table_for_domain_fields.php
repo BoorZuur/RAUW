@@ -14,6 +14,8 @@ return new class extends Migration
         Schema::table('users', function (Blueprint $table) {
             $table->string('username')->unique()->after('name');
             $table->boolean('is_active')->default(true)->after('remember_token');
+            $table->unsignedInteger('flag_count')->default(0)->after('is_active');
+            $table->boolean('is_under_review')->default(false)->after('flag_count');
             $table->softDeletes();
         });
     }
@@ -25,6 +27,8 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->dropSoftDeletes();
+            $table->dropColumn('is_under_review');
+            $table->dropColumn('flag_count');
             $table->dropColumn('is_active');
             $table->dropUnique(['username']);
             $table->dropColumn('username');

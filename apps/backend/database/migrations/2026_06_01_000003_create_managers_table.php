@@ -20,7 +20,7 @@ return new class extends Migration
             $table->foreignId('district_id')->nullable()->constrained('districts')->nullOnDelete();
             $table->boolean('is_active')->default(true);
             $table->softDeletes();
-            $table->timestamps();
+            $table->timestamp('created_at')->nullable();
         });
     }
 
