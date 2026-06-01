@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\Department;
 use App\Models\Manager;
 use App\Models\Officer;
 use App\Models\User;
@@ -115,7 +116,7 @@ class AuthSchemaTest extends TestCase
             'username' => 'deleted-manager',
             'email' => 'deleted.manager@example.com',
             'password' => 'password',
-            'department' => 'beide',
+            'department' => Department::Both,
         ]);
 
         $deletedManager->delete();
@@ -124,14 +125,14 @@ class AuthSchemaTest extends TestCase
             'username' => 'new-manager-email',
             'email' => 'deleted.manager@example.com',
             'password' => 'password',
-            'department' => 'beide',
+            'department' => Department::Both,
         ]));
 
         $this->assertUniqueConstraintStillApplies(fn () => Manager::create([
             'username' => 'deleted-manager',
             'email' => 'new.manager@example.com',
             'password' => 'password',
-            'department' => 'beide',
+            'department' => Department::Both,
         ]));
     }
 
@@ -141,7 +142,7 @@ class AuthSchemaTest extends TestCase
             'username' => 'timestamp-manager',
             'email' => 'timestamp.manager@example.com',
             'password' => 'password',
-            'department' => 'beide',
+            'department' => Department::Both,
         ]);
 
         $this->assertNotNull($manager->created_at);

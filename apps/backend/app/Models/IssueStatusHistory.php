@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\IssueStatus;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -28,6 +29,8 @@ class IssueStatusHistory extends Model
     protected function casts(): array
     {
         return [
+            'old_status' => IssueStatus::class,
+            'new_status' => IssueStatus::class,
             'officer_lat' => 'decimal:8',
             'officer_lng' => 'decimal:8',
             'changed_at' => 'datetime',

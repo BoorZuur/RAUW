@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ReportPeriod;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -34,6 +35,7 @@ class ReportSnapshot extends Model
     protected function casts(): array
     {
         return [
+            'period' => ReportPeriod::class,
             'period_start' => 'date',
             'period_end' => 'date',
             'generated_at' => 'datetime',

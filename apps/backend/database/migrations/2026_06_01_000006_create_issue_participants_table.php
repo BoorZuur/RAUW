@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\JoinedVia;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -15,7 +16,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('issue_id')->constrained('issues')->cascadeOnDelete();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-            $table->string('joined_via', 10)->default('manual');
+            $table->enum('joined_via', JoinedVia::values())->default(JoinedVia::Manual->value);
             $table->foreignId('via_issue_id')->nullable()->constrained('issues')->nullOnDelete();
             $table->dateTime('joined_at')->useCurrent();
 

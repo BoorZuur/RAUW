@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Department;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -25,6 +26,7 @@ class Manager extends Authenticatable
     {
         return [
             'password' => 'hashed',
+            'department' => Department::class,
             'is_active' => 'boolean',
         ];
     }

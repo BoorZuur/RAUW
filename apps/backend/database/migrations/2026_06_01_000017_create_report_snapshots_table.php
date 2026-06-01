@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\ReportPeriod;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -14,7 +15,7 @@ return new class extends Migration
         Schema::create('report_snapshots', function (Blueprint $table) {
             $table->id();
             $table->foreignId('generated_by_manager_id')->nullable()->constrained('managers')->nullOnDelete();
-            $table->string('period', 15);
+            $table->enum('period', ReportPeriod::values());
             $table->date('period_start');
             $table->date('period_end');
             $table->integer('total_issues')->default(0);

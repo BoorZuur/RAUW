@@ -1,5 +1,10 @@
 <?php
 
+use App\Enums\ChatStatus;
+use App\Enums\Department;
+use App\Enums\IssueStatus;
+use App\Enums\Priority;
+use App\Enums\Visibility;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -26,15 +31,15 @@ return new class extends Migration
             $table->string('address')->nullable();
             $table->decimal('latitude', 10, 8)->nullable();
             $table->decimal('longitude', 11, 8)->nullable();
-            $table->string('status', 20)->default('open');
-            $table->string('chat_status', 10)->default('closed');
-            $table->string('priority', 10)->default('laag');
-            $table->string('department', 20);
+            $table->enum('status', IssueStatus::values())->default(IssueStatus::Open->value);
+            $table->enum('chat_status', ChatStatus::values())->default(ChatStatus::Closed->value);
+            $table->enum('priority', Priority::values())->default(Priority::Low->value);
+            $table->enum('department', Department::values());
             $table->integer('duplicate_count')->default(0);
             $table->integer('participant_count')->default(0);
             $table->integer('vote_count')->default(0);
             $table->boolean('is_flagged')->default(false);
-            $table->string('visibility', 20)->default('visible');
+            $table->enum('visibility', Visibility::values())->default(Visibility::Visible->value);
             $table->boolean('is_anonymous')->default(false);
             $table->string('anonymous_alias', 20)->nullable();
             $table->dateTime('resolved_at')->nullable();

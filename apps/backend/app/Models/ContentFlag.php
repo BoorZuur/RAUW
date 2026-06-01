@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\FlagAction;
+use App\Enums\FlagReason;
+use App\Enums\FlagSource;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -30,7 +33,10 @@ class ContentFlag extends Model
     protected function casts(): array
     {
         return [
+            'flag_source' => FlagSource::class,
+            'flag_reason' => FlagReason::class,
             'counts_toward_review' => 'boolean',
+            'action_taken' => FlagAction::class,
             'flagged_at' => 'datetime',
         ];
     }

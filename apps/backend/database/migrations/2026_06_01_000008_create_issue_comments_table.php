@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\ActorType;
+use App\Enums\Visibility;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -14,12 +16,12 @@ return new class extends Migration
         Schema::create('issue_comments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('issue_id')->constrained('issues')->cascadeOnDelete();
-            $table->string('author_type', 10);
+            $table->enum('author_type', ActorType::issueParticipantValues());
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('officer_id')->nullable()->constrained('officers')->nullOnDelete();
             $table->text('content');
             $table->boolean('is_flagged')->default(false);
-            $table->string('visibility', 20)->default('visible');
+            $table->enum('visibility', Visibility::values())->default(Visibility::Visible->value);
             $table->timestamps();
         });
     }

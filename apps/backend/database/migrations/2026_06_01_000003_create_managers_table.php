@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\Department;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -17,7 +18,7 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->string('password');
             $table->rememberToken();
-            $table->string('department', 15)->default('beide');
+            $table->enum('department', Department::values())->default(Department::Both->value);
             $table->foreignId('district_id')->nullable()->constrained('districts')->nullOnDelete();
             $table->boolean('is_active')->default(true);
             $table->softDeletes();

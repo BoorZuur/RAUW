@@ -2,6 +2,11 @@
 
 namespace App\Models;
 
+use App\Enums\ChatStatus;
+use App\Enums\Department;
+use App\Enums\IssueStatus;
+use App\Enums\Priority;
+use App\Enums\Visibility;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -44,12 +49,17 @@ class Issue extends Model
     protected function casts(): array
     {
         return [
+            'status' => IssueStatus::class,
+            'chat_status' => ChatStatus::class,
+            'priority' => Priority::class,
+            'department' => Department::class,
             'latitude' => 'decimal:8',
             'longitude' => 'decimal:8',
             'duplicate_count' => 'integer',
             'participant_count' => 'integer',
             'vote_count' => 'integer',
             'is_flagged' => 'boolean',
+            'visibility' => Visibility::class,
             'is_anonymous' => 'boolean',
             'resolved_at' => 'datetime',
         ];

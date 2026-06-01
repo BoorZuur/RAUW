@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\IssueStatus;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -15,8 +16,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('issue_id')->constrained('issues')->cascadeOnDelete();
             $table->foreignId('changed_by_officer_id')->nullable()->constrained('officers')->nullOnDelete();
-            $table->string('old_status', 20)->nullable();
-            $table->string('new_status', 20);
+            $table->enum('old_status', IssueStatus::values())->nullable();
+            $table->enum('new_status', IssueStatus::values());
             $table->decimal('officer_lat', 10, 8)->nullable();
             $table->decimal('officer_lng', 11, 8)->nullable();
             $table->text('note')->nullable();

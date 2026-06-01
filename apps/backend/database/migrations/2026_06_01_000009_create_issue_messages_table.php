@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\ActorType;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -14,7 +15,7 @@ return new class extends Migration
         Schema::create('issue_messages', function (Blueprint $table) {
             $table->id();
             $table->foreignId('issue_id')->constrained('issues')->cascadeOnDelete();
-            $table->string('sender_type', 10);
+            $table->enum('sender_type', ActorType::issueParticipantValues());
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('officer_id')->nullable()->constrained('officers')->nullOnDelete();
             $table->text('content');
