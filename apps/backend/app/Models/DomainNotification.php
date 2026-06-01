@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'body',
     'is_read',
 ])]
-class Notification extends Model
+class DomainNotification extends Model
 {
     public $timestamps = false;
 

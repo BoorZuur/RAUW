@@ -18,8 +18,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class IssueStatusHistory extends Model
 {
-    protected $table = 'issue_status_history';
-
     public $timestamps = false;
 
     /**

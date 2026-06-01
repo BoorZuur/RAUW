@@ -125,9 +125,9 @@ class Issue extends Model
         return $this->hasMany(IssueResolution::class);
     }
 
-    public function notifications(): HasMany
+    public function domainNotifications(): HasMany
     {
-        return $this->hasMany(Notification::class);
+        return $this->hasMany(DomainNotification::class);
     }
 
     public function contentFlags(): HasMany

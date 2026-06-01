@@ -20,8 +20,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class ContentFlag extends Model
 {
-    protected $table = 'content_flags';
-
     public $timestamps = false;
 
     /**
