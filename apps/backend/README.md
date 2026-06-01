@@ -7,6 +7,42 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## RAUW Backend API
+
+This Laravel application exposes the backend API for RAUW. Local API development is documented in the repository-level [local development guide](../../docs/local-development.md).
+
+## Backend Authentication
+
+The backend uses bearer token authentication for API consumers. One shared login endpoint accepts only `email` and `password`, resolves the authenticated actor, and returns a Sanctum bearer token plus a safe profile payload.
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `POST` | `/api/auth/login` | None | Authenticate a user, officer, or manager. |
+| `GET` | `/api/auth/me` | `Authorization: Bearer <token>` | Return the current actor type and profile. |
+| `POST` | `/api/auth/logout` | `Authorization: Bearer <token>` | Revoke the current bearer token. |
+
+Successful login responses include:
+
+```json
+{
+  "token_type": "Bearer",
+  "access_token": "<token>",
+  "actor_type": "user",
+  "profile": {
+    "actor_type": "user",
+    "id": 1,
+    "email": "demo.user@example.com"
+  }
+}
+```
+
+Supported `actor_type` values are `user`, `officer`, and `manager`.
+
+For manual API testing, import the Postman collection and local environment from [`../../docs/postman`](../../docs/postman/README.md):
+
+- [`rauw-backend.postman_collection.json`](../../docs/postman/rauw-backend.postman_collection.json)
+- [`rauw-local.postman_environment.json`](../../docs/postman/rauw-local.postman_environment.json)
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
