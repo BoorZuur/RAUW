@@ -50,4 +50,9 @@ class Manager extends Authenticatable
     {
         return $this->hasMany(ReportSnapshot::class, 'generated_by_manager_id');
     }
+
+    public function userReviews(): HasMany
+    {
+        return $this->hasMany(UserReview::class, 'reviewed_by_manager_id');
+    }
 }
