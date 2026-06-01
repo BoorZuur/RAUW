@@ -24,6 +24,12 @@ return new class extends Migration
             $table->text('body')->nullable();
             $table->boolean('is_read')->default(false);
             $table->dateTime('created_at')->useCurrent();
+
+            $table->index(['user_id', 'recipient_type', 'is_read', 'created_at'], 'domain_notifications_user_recipient_read_created_idx');
+            $table->index(['officer_id', 'recipient_type', 'is_read', 'created_at'], 'domain_notifications_officer_recipient_read_created_idx');
+            $table->index(['manager_id', 'recipient_type', 'is_read', 'created_at'], 'domain_notifications_manager_recipient_read_created_idx');
+            $table->index(['issue_id', 'created_at'], 'domain_notifications_issue_created_at_idx');
+            $table->index(['type', 'created_at'], 'domain_notifications_type_created_at_idx');
         });
     }
 

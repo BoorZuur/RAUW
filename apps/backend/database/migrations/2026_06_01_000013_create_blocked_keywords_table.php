@@ -13,9 +13,13 @@ return new class extends Migration
     {
         Schema::create('blocked_keywords', function (Blueprint $table) {
             $table->id();
-            $table->string('keyword', 100)->unique();
+            $table->string('keyword', 100);
+            $table->string('keyword_normalized', 100)->unique('blocked_keywords_keyword_normalized_unique');
             $table->foreignId('added_by_manager_id')->nullable()->constrained('managers')->nullOnDelete();
             $table->dateTime('created_at')->useCurrent();
+
+            $table->index('added_by_manager_id', 'blocked_keywords_added_by_manager_id_idx');
+            $table->index('created_at', 'blocked_keywords_created_at_idx');
         });
     }
 

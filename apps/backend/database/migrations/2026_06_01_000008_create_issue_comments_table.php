@@ -23,6 +23,12 @@ return new class extends Migration
             $table->boolean('is_flagged')->default(false);
             $table->enum('visibility', Visibility::values())->default(Visibility::Visible->value);
             $table->timestamps();
+
+            $table->index(['issue_id', 'created_at'], 'issue_comments_issue_created_at_idx');
+            $table->index(['visibility', 'created_at'], 'issue_comments_visibility_created_at_idx');
+            $table->index(['is_flagged', 'created_at'], 'issue_comments_flagged_created_at_idx');
+            $table->index(['user_id', 'created_at'], 'issue_comments_user_created_at_idx');
+            $table->index(['officer_id', 'created_at'], 'issue_comments_officer_created_at_idx');
         });
     }
 

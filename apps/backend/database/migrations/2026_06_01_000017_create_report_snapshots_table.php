@@ -31,6 +31,9 @@ return new class extends Migration
             $table->dateTime('generated_at')->useCurrent();
 
             $table->unique(['period', 'period_start']);
+            $table->index('generated_by_manager_id', 'report_snapshots_generated_by_manager_id_idx');
+            $table->index('generated_at', 'report_snapshots_generated_at_idx');
+            $table->index(['period', 'generated_at'], 'report_snapshots_period_generated_at_idx');
         });
     }
 

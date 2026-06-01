@@ -27,6 +27,15 @@ return new class extends Migration
             $table->boolean('counts_toward_review')->default(false);
             $table->enum('action_taken', FlagAction::values())->nullable();
             $table->dateTime('flagged_at')->useCurrent();
+
+            $table->index(['action_taken', 'flagged_at'], 'content_flags_action_flagged_at_idx');
+            $table->index(['flag_source', 'flagged_at'], 'content_flags_source_flagged_at_idx');
+            $table->index(['counts_toward_review', 'flagged_at'], 'content_flags_review_flagged_at_idx');
+            $table->index(['reviewed_by_manager_id', 'flagged_at'], 'content_flags_reviewer_flagged_at_idx');
+            $table->index(['issue_id', 'flagged_at'], 'content_flags_issue_flagged_at_idx');
+            $table->index('comment_id', 'content_flags_comment_id_idx');
+            $table->index('message_id', 'content_flags_message_id_idx');
+            $table->index('flagged_by_officer_id', 'content_flags_flagged_by_officer_id_idx');
         });
     }
 

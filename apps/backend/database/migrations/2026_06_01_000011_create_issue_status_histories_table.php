@@ -22,6 +22,10 @@ return new class extends Migration
             $table->decimal('officer_lng', 11, 8)->nullable();
             $table->text('note')->nullable();
             $table->dateTime('changed_at')->useCurrent();
+
+            $table->index(['issue_id', 'changed_at'], 'issue_status_histories_issue_changed_at_idx');
+            $table->index(['changed_by_officer_id', 'changed_at'], 'issue_status_histories_officer_changed_at_idx');
+            $table->index(['new_status', 'changed_at'], 'issue_status_histories_new_status_changed_at_idx');
         });
     }
 

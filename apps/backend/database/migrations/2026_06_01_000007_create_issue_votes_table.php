@@ -18,6 +18,8 @@ return new class extends Migration
             $table->dateTime('voted_at')->useCurrent();
 
             $table->unique(['issue_id', 'user_id']);
+            $table->index(['user_id', 'issue_id'], 'issue_votes_user_issue_idx');
+            $table->index(['user_id', 'voted_at'], 'issue_votes_user_voted_at_idx');
         });
     }
 

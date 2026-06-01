@@ -21,6 +21,9 @@ return new class extends Migration
             $table->dateTime('joined_at')->useCurrent();
 
             $table->unique(['issue_id', 'user_id']);
+            $table->index(['user_id', 'issue_id'], 'issue_participants_user_issue_idx');
+            $table->index('via_issue_id', 'issue_participants_via_issue_id_idx');
+            $table->index(['joined_at', 'issue_id'], 'issue_participants_joined_at_issue_idx');
         });
     }
 

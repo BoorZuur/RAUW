@@ -44,6 +44,22 @@ return new class extends Migration
             $table->string('anonymous_alias', 20)->nullable();
             $table->dateTime('resolved_at')->nullable();
             $table->timestamps();
+
+            $table->index('status', 'issues_status_idx');
+            $table->index('priority', 'issues_priority_idx');
+            $table->index('department', 'issues_department_idx');
+            $table->index('visibility', 'issues_visibility_idx');
+            $table->index('user_id', 'issues_user_id_idx');
+            $table->index('district_id', 'issues_district_id_idx');
+            $table->index('category_id', 'issues_category_id_idx');
+            $table->index('assigned_officer_id', 'issues_assigned_officer_id_idx');
+            $table->index('duplicate_of_id', 'issues_duplicate_of_id_idx');
+            $table->index('chat_closed_by_officer_id', 'issues_chat_closed_by_officer_id_idx');
+            $table->index('created_at', 'issues_created_at_idx');
+            $table->index('resolved_at', 'issues_resolved_at_idx');
+            $table->index(['status', 'district_id', 'created_at'], 'issues_status_district_created_at_idx');
+            $table->index(['status', 'assigned_officer_id', 'created_at'], 'issues_status_assigned_officer_created_at_idx');
+            $table->index(['visibility', 'created_at'], 'issues_visibility_created_at_idx');
         });
     }
 
