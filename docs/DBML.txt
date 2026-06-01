@@ -1,0 +1,242 @@
+Table users {
+  id               int          [pk, increment]
+  username         varchar(50)  [not null, unique]
+  email            varchar(255) [not null, unique]
+  password_hash    varchar(255) [not null]
+  is_active        tinyint(1)   [not null, default: 1]
+  deleted_at       datetime     [note: 'Soft delete: gevuld = geanonimiseerd']
+  created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table districts {
+  id               int          [pk, increment]
+  name             varchar(100) [not null, unique]
+  postal_prefix    varchar(10)  [note: 'Bv. 3241 voor Middelharnis']
+  center_lat       decimal(10,8)
+  center_lng       decimal(11,8)
+  radius_meters    int          [note: 'Straal voor automatische toewijzing']
+  is_active        tinyint(1)   [not null, default: 1]
+  created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table officers {
+  id               int          [pk, increment]
+  username         varchar(50)  [not null, unique]
+  email            varchar(255) [not null, unique]
+  password_hash    varchar(255) [not null]
+  badge_number     varchar(20)  [not null, unique]
+  district_id      int          [ref: > districts.id]
+  is_active        tinyint(1)   [not null, default: 1]
+  deleted_at       datetime
+  created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table managers {
+  id               int          [pk, increment]
+  username         varchar(50)  [not null, unique]
+  email            varchar(255) [not null, unique]
+  password_hash    varchar(255) [not null]
+  department       varchar(15)  [not null, default: 'beide', note: 'wijkbeheer | boa_jeugd | beide']
+  district_id      int          [ref: > districts.id]
+  is_active        tinyint(1)   [not null, default: 1]
+  deleted_at       datetime
+  created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table officer_sessions {
+  id               int          [pk, increment]
+  officer_id       int          [not null, ref: > officers.id]
+  shift_start      datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  shift_end        datetime
+  start_lat        decimal(10,8)
+  start_lng        decimal(11,8)
+  last_lat         decimal(10,8)
+  last_lng         decimal(11,8)
+  last_seen_at     datetime
+  is_active        tinyint(1)   [not null, default: 1]
+}
+
+Table categories {
+  id               int          [pk, increment]
+  name             varchar(100) [not null]
+  department       varchar(20)  [not null, note: 'wijkbeheer | boa_jeugd']
+  weight           tinyint      [note: '1=Laag 2=Midden 3=Zwaar, NULL voor hoofdcategorie']
+  parent_id        int          [ref: > categories.id]
+  is_active        tinyint(1)   [not null, default: 1]
+}
+
+Table issues {
+  id                   int          [pk, increment]
+  user_id              int          [ref: > users.id, note: 'NULL na soft delete user']
+  category_id          int          [not null, ref: > categories.id]
+  assigned_officer_id  int          [ref: > officers.id]
+  district_id          int          [ref: > districts.id]
+  duplicate_of_id      int          [ref: > issues.id]
+  title                varchar(255) [not null]
+  content              text         [not null]
+  neighborhood         varchar(100)
+  postal_code          varchar(10)
+  address              varchar(255)
+  latitude             decimal(10,8)
+  longitude            decimal(11,8)
+  status               varchar(20)  [not null, default: 'open', note: 'open | in_behandeling | afgerond | afgewezen | gedupliceerd']
+  priority             varchar(10)  [not null, default: 'laag', note: 'laag | midden | zwaar']
+  department           varchar(20)  [not null, note: 'wijkbeheer | boa_jeugd']
+  duplicate_count      int          [not null, default: 0]
+  participant_count    int          [not null, default: 0, note: 'Direct opgehoogd, nachtelijks gereconcilieerd']
+  vote_count           int          [not null, default: 0, note: 'Direct opgehoogd, nachtelijks gereconcilieerd']
+  is_flagged           tinyint(1)   [not null, default: 0]
+  visibility           varchar(20)  [not null, default: 'visible', note: 'visible | hidden_pending | hidden_removed | visible_approved']
+  is_anonymous         tinyint(1)   [not null, default: 0, note: 'Publiek + BOA zien alleen alias']
+  anonymous_alias      varchar(20)  [note: 'Bv. Melder #A7F3, getoond i.p.v. username']
+  resolved_at          datetime
+  created_at           datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at           datetime     [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table issue_participants {
+  id               int          [pk, increment]
+  issue_id         int          [not null, ref: > issues.id]
+  user_id          int          [not null, ref: > users.id]
+  joined_via       varchar(10)  [not null, default: 'manual', note: 'creator | manual | duplicate']
+  via_issue_id     int          [ref: > issues.id]
+  joined_at        datetime     [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (issue_id, user_id) [unique]
+  }
+}
+
+Table issue_votes {
+  id               int          [pk, increment]
+  issue_id         int          [not null, ref: > issues.id]
+  user_id          int          [not null, ref: > users.id]
+  voted_at         datetime     [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (issue_id, user_id) [unique]
+  }
+}
+
+Table issue_comments {
+  id               int          [pk, increment]
+  issue_id         int          [not null, ref: > issues.id]
+  author_type      varchar(10)  [not null, note: 'user | officer']
+  user_id          int          [ref: > users.id]
+  officer_id       int          [ref: > officers.id]
+  content          text         [not null]
+  is_flagged       tinyint(1)   [not null, default: 0]
+  visibility       varchar(20)  [not null, default: 'visible', note: 'visible | hidden_pending | hidden_removed | visible_approved']
+  created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table issue_messages {
+  id               int          [pk, increment]
+  issue_id         int          [not null, ref: > issues.id]
+  sender_type      varchar(10)  [not null, note: 'user | officer']
+  user_id          int          [ref: > users.id]
+  officer_id       int          [ref: > officers.id]
+  content          text         [not null]
+  is_flagged       tinyint(1)   [not null, default: 0]
+  is_read          tinyint(1)   [not null, default: 0]
+  created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table issue_attachments {
+  id               int          [pk, increment]
+  issue_id         int          [not null, ref: > issues.id]
+  file_url         varchar(500) [not null]
+  file_type        varchar(50)
+  uploaded_at      datetime     [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table issue_status_history {
+  id                      int          [pk, increment]
+  issue_id                int          [not null, ref: > issues.id]
+  changed_by_officer_id   int          [ref: > officers.id]
+  old_status              varchar(20)
+  new_status              varchar(20)  [not null]
+  officer_lat             decimal(10,8)
+  officer_lng             decimal(11,8)
+  note                    text
+  changed_at              datetime     [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table issue_resolutions {
+  id               int          [pk, increment]
+  issue_id         int          [not null, unique, ref: > issues.id]
+  user_id          int          [ref: > users.id]
+  is_satisfied     tinyint(1)   [not null, note: 'Indiener: ja/nee naar tevredenheid opgelost']
+  comment          text         [note: 'Optionele toelichting, intern voor managers']
+  answered_at      datetime     [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table blocked_keywords {
+  id                    int          [pk, increment]
+  keyword               varchar(100) [not null, unique]
+  added_by_manager_id   int          [ref: > managers.id]
+  created_at            datetime     [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table flagged_content_log {
+  id                        int          [pk, increment]
+  issue_id                  int          [ref: > issues.id]
+  comment_id                int          [ref: > issue_comments.id]
+  message_id                int          [ref: > issue_messages.id]
+  reviewed_by_manager_id    int          [ref: > managers.id]
+  matched_keyword           varchar(100) [not null]
+  action_taken              varchar(50)
+  flagged_at                datetime     [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table notifications {
+  id               int          [pk, increment]
+  recipient_type   varchar(10)  [not null, note: 'user | officer | manager']
+  user_id          int          [ref: > users.id]
+  officer_id       int          [ref: > officers.id]
+  manager_id       int          [ref: > managers.id]
+  issue_id         int          [ref: > issues.id]
+  type             varchar(50)  [not null, note: 'status_change | new_issue | priority_raised | new_message']
+  title            varchar(255) [not null]
+  body             text
+  is_read          tinyint(1)   [not null, default: 0]
+  created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table audit_log {
+  id               int          [pk, increment]
+  actor_type       varchar(10)  [not null, note: 'user | officer | manager | system']
+  actor_id         int
+  action           varchar(100) [not null, note: 'Bv. keyword_added, issue_removed, officer_deactivated']
+  target_table     varchar(64)
+  target_id        int
+  details          text
+  ip_address       varchar(45)
+  created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table report_snapshots {
+  id                        int          [pk, increment]
+  generated_by_manager_id   int          [ref: > managers.id]
+  period                    varchar(15)  [not null, note: 'wekelijks | maandelijks | kwartaal | jaarlijks | decennium']
+  period_start              date         [not null]
+  period_end                date         [not null]
+  total_issues              int          [not null, default: 0]
+  open_issues               int          [not null, default: 0]
+  resolved_issues           int          [not null, default: 0]
+  avg_resolution_days       decimal(5,2)
+  count_laag                int          [not null, default: 0]
+  count_midden              int          [not null, default: 0]
+  count_zwaar               int          [not null, default: 0]
+  count_wijkbeheer          int          [not null, default: 0]
+  count_boa_jeugd           int          [not null, default: 0]
+  satisfaction_rate         decimal(5,2) [note: 'Percentage tevreden indieners']
+  generated_at              datetime     [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (period, period_start) [unique]
+  }
+}
