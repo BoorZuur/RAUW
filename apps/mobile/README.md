@@ -25,6 +25,27 @@ In the output, you'll find options to open the app in a
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
+## HTTP requests (axios)
+
+This app uses [axios](https://axios-http.com/) for HTTP requests.
+
+```js
+import axios from 'axios';
+
+const { data } = await axios.get('https://example.com/api/items');
+```
+
+For repeated use, create a configured instance:
+
+```js
+// src/lib/api.js
+import axios from 'axios';
+
+export const api = axios.create({
+  baseURL: process.env.EXPO_PUBLIC_API_URL,
+});
+```
+
 ## Get a fresh project
 
 When you're ready, run:

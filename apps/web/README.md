@@ -14,6 +14,27 @@ npm run build
 npm run lint
 ```
 
+## HTTP requests (axios)
+
+This app uses [axios](https://axios-http.com/) for HTTP requests.
+
+```js
+import axios from 'axios';
+
+const { data } = await axios.get('/api/example');
+```
+
+For repeated use, create a configured instance:
+
+```js
+// src/lib/api.js
+import axios from 'axios';
+
+export const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL,
+});
+```
+
 ## Tailwind CSS
 
 This app uses Tailwind CSS v4 through the `@tailwindcss/vite` plugin in `vite.config.js`:
