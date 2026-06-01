@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'assigned_officer_id',
     'district_id',
     'duplicate_of_id',
+    'chat_closed_by_officer_id',
     'title',
     'content',
     'neighborhood',
@@ -21,6 +22,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'latitude',
     'longitude',
     'status',
+    'chat_status',
     'priority',
     'department',
     'duplicate_count',
@@ -76,6 +78,11 @@ class Issue extends Model
     public function duplicateOf(): BelongsTo
     {
         return $this->belongsTo(Issue::class, 'duplicate_of_id');
+    }
+
+    public function chatClosedByOfficer(): BelongsTo
+    {
+        return $this->belongsTo(Officer::class, 'chat_closed_by_officer_id');
     }
 
     public function duplicates(): HasMany

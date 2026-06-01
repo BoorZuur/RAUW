@@ -18,6 +18,7 @@ return new class extends Migration
             $table->foreignId('assigned_officer_id')->nullable()->constrained('officers')->nullOnDelete();
             $table->foreignId('district_id')->nullable()->constrained('districts')->nullOnDelete();
             $table->foreignId('duplicate_of_id')->nullable()->constrained('issues')->nullOnDelete();
+            $table->foreignId('chat_closed_by_officer_id')->nullable()->constrained('officers')->nullOnDelete();
             $table->string('title');
             $table->text('content');
             $table->string('neighborhood', 100)->nullable();
@@ -26,6 +27,7 @@ return new class extends Migration
             $table->decimal('latitude', 10, 8)->nullable();
             $table->decimal('longitude', 11, 8)->nullable();
             $table->string('status', 20)->default('open');
+            $table->string('chat_status', 10)->default('closed');
             $table->string('priority', 10)->default('laag');
             $table->string('department', 20);
             $table->integer('duplicate_count')->default(0);
