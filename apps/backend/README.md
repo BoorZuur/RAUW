@@ -21,6 +21,34 @@ The backend uses bearer token authentication for API consumers. One shared login
 | `GET` | `/api/auth/me` | `Authorization: Bearer <token>` | Return the current actor type and profile. |
 | `POST` | `/api/auth/logout` | `Authorization: Bearer <token>` | Revoke the current bearer token. |
 
+### Manual Token Flow
+
+1. Send a JSON login request with `email` and `password` only:
+
+   ```bash
+   curl -X POST http://127.0.0.1:8001/api/auth/login \
+     -H "Accept: application/json" \
+     -H "Content-Type: application/json" \
+     -d '{"email":"demo.user@example.com","password":"password"}'
+   ```
+
+2. Copy the `access_token` from the successful response.
+3. Send protected requests with `Authorization: Bearer <access_token>`:
+
+   ```bash
+   curl http://127.0.0.1:8001/api/auth/me \
+     -H "Accept: application/json" \
+     -H "Authorization: Bearer <access_token>"
+   ```
+
+4. Revoke the current token when finished:
+
+   ```bash
+   curl -X POST http://127.0.0.1:8001/api/auth/logout \
+     -H "Accept: application/json" \
+     -H "Authorization: Bearer <access_token>"
+   ```
+
 Successful login responses include:
 
 ```json
@@ -37,6 +65,12 @@ Successful login responses include:
 ```
 
 Supported `actor_type` values are `user`, `officer`, and `manager`.
+
+Common auth status codes are:
+
+- `200 OK` for successful login, profile, and logout requests.
+- `401 Unauthorized` for invalid credentials, inactive or ambiguous accounts, missing tokens, invalid tokens, and revoked tokens.
+- `422 Unprocessable Entity` when login validation fails because `email` or `password` is missing or invalid.
 
 For manual API testing, import the Postman collection and local environment from [`../../docs/postman`](../../docs/postman/README.md):
 

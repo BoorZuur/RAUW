@@ -124,6 +124,10 @@ Successful response shape:
 }
 ```
 
+Common error response:
+
+- `401 Unauthorized` when the bearer token is missing, invalid, or revoked.
+
 ### Logout
 
 `POST {{base_url}}/api/auth/logout`
@@ -139,3 +143,7 @@ Successful response shape:
 ```
 
 Logout revokes only the bearer token used for the current request. Other issued tokens for the same actor remain valid.
+
+Common error response:
+
+- `401 Unauthorized` when the bearer token is missing, invalid, or revoked.
