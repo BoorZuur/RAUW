@@ -15,15 +15,21 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'user_id',
     'officer_id',
     'content',
-    'is_flagged',
     'is_read',
-    'created_at',
 ])]
 class IssueMessage extends Model
 {
     use HasFactory;
 
-    public $timestamps = false;
+    /**
+     * The model's default values for attributes.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'is_flagged' => false,
+        'is_read' => false,
+    ];
 
     /**
      * Get the attributes that should be cast.
@@ -36,7 +42,6 @@ class IssueMessage extends Model
             'sender_type' => ActorType::class,
             'is_flagged' => 'boolean',
             'is_read' => 'boolean',
-            'created_at' => 'datetime',
         ];
     }
 

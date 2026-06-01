@@ -22,6 +22,7 @@ return new class extends Migration
             $table->decimal('last_lng', 11, 8)->nullable();
             $table->dateTime('last_seen_at')->nullable();
             $table->boolean('is_active')->default(true);
+            $table->timestamps();
         });
     }
 

@@ -19,6 +19,7 @@ return new class extends Migration
             $table->unsignedTinyInteger('weight')->nullable();
             $table->foreignId('parent_id')->nullable()->constrained('categories')->nullOnDelete();
             $table->boolean('is_active')->default(true);
+            $table->timestamps();
         });
     }
 

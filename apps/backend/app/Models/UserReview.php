@@ -19,7 +19,14 @@ class UserReview extends Model
 {
     use HasFactory;
 
-    public const UPDATED_AT = null;
+    /**
+     * The model's default values for attributes.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'outcome' => 'pending',
+    ];
 
     /**
      * Get the attributes that should be cast.
@@ -29,7 +36,6 @@ class UserReview extends Model
     protected function casts(): array
     {
         return [
-            'created_at' => 'datetime',
             'resolved_at' => 'datetime',
         ];
     }

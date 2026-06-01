@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
-#[Fillable(['keyword', 'keyword_normalized', 'added_by_manager_id'])]
+#[Fillable(['keyword', 'added_by_manager_id'])]
 class BlockedKeyword extends Model
 {
     /** @use HasFactory<BlockedKeywordFactory> */

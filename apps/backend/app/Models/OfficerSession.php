@@ -16,13 +16,19 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'last_lat',
     'last_lng',
     'last_seen_at',
-    'is_active',
 ])]
 class OfficerSession extends Model
 {
     use HasFactory;
 
-    public $timestamps = false;
+    /**
+     * The model's default values for attributes.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'is_active' => true,
+    ];
 
     /**
      * Get the attributes that should be cast.

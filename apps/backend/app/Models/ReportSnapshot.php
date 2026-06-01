@@ -13,9 +13,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'period',
     'period_start',
     'period_end',
-    'total_issues',
-    'open_issues',
-    'resolved_issues',
     'avg_resolution_days',
     'metrics',
     'satisfaction_rate',
@@ -37,12 +34,26 @@ class ReportSnapshot extends Model
             'period' => ReportPeriod::class,
             'period_start' => 'date',
             'period_end' => 'date',
+            'total_issues' => 'integer',
+            'open_issues' => 'integer',
+            'resolved_issues' => 'integer',
             'generated_at' => 'datetime',
             'avg_resolution_days' => 'decimal:2',
             'metrics' => 'array',
             'satisfaction_rate' => 'decimal:2',
         ];
     }
+
+    /**
+     * The model's default values for attributes.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'total_issues' => 0,
+        'open_issues' => 0,
+        'resolved_issues' => 0,
+    ];
 
     public function generatedByManager(): BelongsTo
     {

@@ -31,18 +31,30 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'chat_status',
     'priority',
     'department',
-    'duplicate_count',
-    'participant_count',
-    'vote_count',
-    'is_flagged',
     'visibility',
     'is_anonymous',
     'anonymous_alias',
-    'resolved_at',
 ])]
 class Issue extends Model
 {
     use HasFactory;
+
+    /**
+     * The model's default values for attributes.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'status' => IssueStatus::Open->value,
+        'chat_status' => ChatStatus::Closed->value,
+        'priority' => Priority::Low->value,
+        'duplicate_count' => 0,
+        'participant_count' => 0,
+        'vote_count' => 0,
+        'is_flagged' => false,
+        'visibility' => Visibility::Visible->value,
+        'is_anonymous' => false,
+    ];
 
     /**
      * Get the attributes that should be cast.

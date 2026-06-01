@@ -19,14 +19,20 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'flag_source',
     'matched_keyword',
     'flag_reason',
-    'counts_toward_review',
     'action_taken',
 ])]
 class ContentFlag extends Model
 {
     use HasFactory;
 
-    public $timestamps = false;
+    /**
+     * The model's default values for attributes.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'counts_toward_review' => false,
+    ];
 
     /**
      * Get the attributes that should be cast.

@@ -18,8 +18,8 @@ return new class extends Migration
             $table->string('reason', 100);
             $table->string('outcome', 15)->default('pending');
             $table->text('note')->nullable();
-            $table->dateTime('created_at')->useCurrent();
             $table->dateTime('resolved_at')->nullable();
+            $table->timestamps();
         });
     }
 

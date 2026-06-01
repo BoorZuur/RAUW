@@ -23,7 +23,7 @@ return new class extends Migration
             $table->string('title', 255);
             $table->text('body')->nullable();
             $table->boolean('is_read')->default(false);
-            $table->dateTime('created_at')->useCurrent();
+            $table->timestamps();
 
             $table->index(['user_id', 'recipient_type', 'is_read', 'created_at'], 'domain_notifications_user_recipient_read_created_idx');
             $table->index(['officer_id', 'recipient_type', 'is_read', 'created_at'], 'domain_notifications_officer_recipient_read_created_idx');

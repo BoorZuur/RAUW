@@ -21,7 +21,7 @@ return new class extends Migration
             $table->text('content');
             $table->boolean('is_flagged')->default(false);
             $table->boolean('is_read')->default(false);
-            $table->dateTime('created_at')->useCurrent();
+            $table->timestamps();
 
             $table->index(['issue_id', 'created_at'], 'issue_messages_issue_created_at_idx');
             $table->index(['issue_id', 'is_read', 'created_at'], 'issue_messages_issue_read_created_at_idx');

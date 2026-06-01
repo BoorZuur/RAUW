@@ -27,6 +27,7 @@ return new class extends Migration
             $table->boolean('counts_toward_review')->default(false);
             $table->enum('action_taken', FlagAction::values())->nullable();
             $table->dateTime('flagged_at')->useCurrent();
+            $table->timestamps();
 
             $table->index(['action_taken', 'flagged_at'], 'content_flags_action_flagged_at_idx');
             $table->index(['flag_source', 'flagged_at'], 'content_flags_source_flagged_at_idx');

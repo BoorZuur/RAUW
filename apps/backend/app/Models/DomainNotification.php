@@ -23,7 +23,14 @@ class DomainNotification extends Model
 {
     use HasFactory;
 
-    public $timestamps = false;
+    /**
+     * The model's default values for attributes.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'is_read' => false,
+    ];
 
     /**
      * Get the attributes that should be cast.
@@ -35,7 +42,6 @@ class DomainNotification extends Model
         return [
             'recipient_type' => ActorType::class,
             'is_read' => 'boolean',
-            'created_at' => 'datetime',
         ];
     }
 

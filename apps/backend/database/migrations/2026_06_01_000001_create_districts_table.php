@@ -19,7 +19,7 @@ return new class extends Migration
             $table->decimal('center_lng', 11, 8)->nullable();
             $table->integer('radius_meters')->nullable();
             $table->boolean('is_active')->default(true);
-            $table->timestamp('created_at')->nullable();
+            $table->timestamps();
         });
     }
 
