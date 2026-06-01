@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'user_id',
@@ -92,5 +91,40 @@ class Issue extends Model
     public function votes(): HasMany
     {
         return $this->hasMany(IssueVote::class);
+    }
+
+    public function comments(): HasMany
+    {
+        return $this->hasMany(IssueComment::class);
+    }
+
+    public function messages(): HasMany
+    {
+        return $this->hasMany(IssueMessage::class);
+    }
+
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(IssueAttachment::class);
+    }
+
+    public function statusHistory(): HasMany
+    {
+        return $this->hasMany(IssueStatusHistory::class);
+    }
+
+    public function resolutions(): HasMany
+    {
+        return $this->hasMany(IssueResolution::class);
+    }
+
+    public function notifications(): HasMany
+    {
+        return $this->hasMany(Notification::class);
+    }
+
+    public function flagLogs(): HasMany
+    {
+        return $this->hasMany(FlaggedContentLog::class);
     }
 }

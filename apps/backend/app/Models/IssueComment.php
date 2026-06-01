@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'issue_id',
@@ -42,5 +43,10 @@ class IssueComment extends Model
     public function officer(): BelongsTo
     {
         return $this->belongsTo(Officer::class);
+    }
+
+    public function flagLogs(): HasMany
+    {
+        return $this->hasMany(FlaggedContentLog::class, 'comment_id');
     }
 }

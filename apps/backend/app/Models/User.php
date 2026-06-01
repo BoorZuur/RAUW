@@ -7,6 +7,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -30,5 +31,35 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_active' => 'boolean',
         ];
+    }
+
+    public function issues(): HasMany
+    {
+        return $this->hasMany(Issue::class);
+    }
+
+    public function participations(): HasMany
+    {
+        return $this->hasMany(IssueParticipant::class);
+    }
+
+    public function votes(): HasMany
+    {
+        return $this->hasMany(IssueVote::class);
+    }
+
+    public function comments(): HasMany
+    {
+        return $this->hasMany(IssueComment::class);
+    }
+
+    public function messages(): HasMany
+    {
+        return $this->hasMany(IssueMessage::class);
+    }
+
+    public function resolutions(): HasMany
+    {
+        return $this->hasMany(IssueResolution::class);
     }
 }

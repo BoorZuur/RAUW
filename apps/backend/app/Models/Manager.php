@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -31,5 +32,20 @@ class Manager extends Authenticatable
     public function district(): BelongsTo
     {
         return $this->belongsTo(District::class);
+    }
+
+    public function blockedKeywords(): HasMany
+    {
+        return $this->hasMany(BlockedKeyword::class, 'added_by_manager_id');
+    }
+
+    public function flagReviews(): HasMany
+    {
+        return $this->hasMany(FlaggedContentLog::class, 'reviewed_by_manager_id');
+    }
+
+    public function reportSnapshots(): HasMany
+    {
+        return $this->hasMany(ReportSnapshot::class, 'generated_by_manager_id');
     }
 }

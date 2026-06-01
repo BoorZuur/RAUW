@@ -33,4 +33,9 @@ class District extends Model
     {
         return $this->hasMany(Manager::class);
     }
+
+    public function issues(): HasMany
+    {
+        return $this->hasMany(Issue::class);
+    }
 }
