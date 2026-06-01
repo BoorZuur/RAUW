@@ -1,0 +1,168 @@
+# Local Setup and Development
+
+This repository is split into separate apps:
+
+- `apps/backend` — Laravel backend
+- `apps/web` — Vite React web app
+- `apps/mobile` — Expo React Native mobile app
+
+There is no workspace runner at the repository root. Install dependencies and run commands from each app folder.
+
+## Prerequisites
+
+- PHP 8.3+
+- Composer
+- Node.js and npm
+- Expo tooling for mobile development, usually through `npx expo ...`
+
+## First-Time Setup
+
+Start from the repository root:
+
+```bash
+cd C:\Users\henk-\Development\RAUW
+```
+
+### Backend
+
+Use Composer for PHP/Laravel dependencies. Use npm only for the backend's Vite frontend assets.
+
+```bash
+cd apps/backend
+composer i
+```
+
+If this is a fresh local Laravel setup, create your environment file and generate an app key:
+
+```bash
+copy .env.example .env
+php artisan key:generate
+```
+
+Install backend Node dependencies when you need to build or run Vite assets for the Laravel app:
+
+```bash
+npm i
+```
+
+### Web App
+
+```bash
+cd C:\Users\henk-\Development\RAUW\apps\web
+npm i
+```
+
+### Mobile App
+
+```bash
+cd C:\Users\henk-\Development\RAUW\apps\mobile
+npm i
+```
+
+## Running Locally
+
+Open a separate terminal for each app you want to run.
+
+### Backend API
+
+```bash
+cd C:\Users\henk-\Development\RAUW\apps\backend
+php -S 127.0.0.1:8001 -t public
+```
+
+This serves the Laravel backend from the `public` directory at:
+
+```text
+http://127.0.0.1:8001
+```
+
+If you are working on Laravel Vite assets, run Vite in another backend terminal:
+
+```bash
+cd C:\Users\henk-\Development\RAUW\apps\backend
+npm run dev
+```
+
+### Web App
+
+```bash
+cd C:\Users\henk-\Development\RAUW\apps\web
+npm run dev
+```
+
+### Mobile App
+
+```bash
+cd C:\Users\henk-\Development\RAUW\apps\mobile
+npm run start
+```
+
+Common mobile targets:
+
+```bash
+npm run android
+npm run ios
+npm run web
+```
+
+## When to Use `composer i` vs `npm i`
+
+Use `composer i` in `apps/backend` when:
+
+- Setting up the Laravel backend for the first time.
+- `apps/backend/composer.json` or `apps/backend/composer.lock` changes.
+- PHP dependencies are missing from `apps/backend/vendor`.
+
+Use `npm i` in an app folder when:
+
+- Setting up `apps/web`, `apps/mobile`, or backend Vite assets for the first time.
+- That app's `package.json` or lockfile changes.
+- Node dependencies are missing from that app's `node_modules`.
+
+Because each app has its own dependency files, run `npm i` inside the specific app you are working on, not from the repository root.
+
+## Daily Development Workflow
+
+1. Pull the latest code.
+2. Check which app changed.
+3. Run dependency installs only where needed:
+   - Backend PHP changes: `cd apps/backend && composer i`
+   - Backend Vite changes: `cd apps/backend && npm i`
+   - Web changes: `cd apps/web && npm i`
+   - Mobile changes: `cd apps/mobile && npm i`
+4. Start the backend if your work needs the API:
+
+   ```bash
+   cd C:\Users\henk-\Development\RAUW\apps\backend
+   php -S 127.0.0.1:8001 -t public
+   ```
+
+5. Start the app you are actively developing from its own folder.
+6. Keep each long-running process in its own terminal.
+
+## Useful Commands
+
+### Backend
+
+```bash
+cd C:\Users\henk-\Development\RAUW\apps\backend
+php artisan migrate
+php artisan test
+npm run build
+```
+
+### Web
+
+```bash
+cd C:\Users\henk-\Development\RAUW\apps\web
+npm run build
+npm run lint
+npm run preview
+```
+
+### Mobile
+
+```bash
+cd C:\Users\henk-\Development\RAUW\apps\mobile
+npm run lint
+```
