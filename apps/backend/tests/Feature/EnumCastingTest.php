@@ -110,6 +110,7 @@ class EnumCastingTest extends TestCase
             'period' => ReportPeriod::Monthly,
             'period_start' => '2026-06-01',
             'period_end' => '2026-06-30',
+            'metrics' => ['priority_counts' => [Priority::Low->value => 1]],
         ]);
 
         $this->assertSame(JoinedVia::Duplicate, $participant->refresh()->joined_via);
@@ -124,6 +125,7 @@ class EnumCastingTest extends TestCase
         $this->assertSame(FlagAction::ContentHidden, $flag->action_taken);
         $this->assertSame(Department::Both, $manager->refresh()->department);
         $this->assertSame(ReportPeriod::Monthly, $snapshot->refresh()->period);
+        $this->assertSame(1, $snapshot->metrics['priority_counts'][Priority::Low->value]);
     }
 
     private function createIssue(array $attributes = []): Issue

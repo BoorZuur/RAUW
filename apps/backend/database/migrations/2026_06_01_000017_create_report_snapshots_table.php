@@ -22,11 +22,7 @@ return new class extends Migration
             $table->integer('open_issues')->default(0);
             $table->integer('resolved_issues')->default(0);
             $table->decimal('avg_resolution_days', 5, 2)->nullable();
-            $table->integer('count_laag')->default(0);
-            $table->integer('count_midden')->default(0);
-            $table->integer('count_zwaar')->default(0);
-            $table->integer('count_wijkbeheer')->default(0);
-            $table->integer('count_boa_jeugd')->default(0);
+            $table->json('metrics')->nullable();
             $table->decimal('satisfaction_rate', 5, 2)->nullable();
             $table->dateTime('generated_at')->useCurrent();
 

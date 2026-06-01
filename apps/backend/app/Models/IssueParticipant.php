@@ -4,12 +4,15 @@ namespace App\Models;
 
 use App\Enums\JoinedVia;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable(['issue_id', 'user_id', 'joined_via', 'via_issue_id', 'joined_at'])]
 class IssueParticipant extends Model
 {
+    use HasFactory;
+
     public $timestamps = false;
 
     /**

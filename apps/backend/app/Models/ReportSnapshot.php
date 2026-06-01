@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ReportPeriod;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -16,21 +17,19 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'open_issues',
     'resolved_issues',
     'avg_resolution_days',
-    'count_laag',
-    'count_midden',
-    'count_zwaar',
-    'count_wijkbeheer',
-    'count_boa_jeugd',
+    'metrics',
     'satisfaction_rate',
 ])]
 class ReportSnapshot extends Model
 {
+    use HasFactory;
+
     public $timestamps = false;
 
     /**
      * Get the attributes that should be cast.
      *
-     * @return array<string, string>
+     * @return array<string, string|class-string>
      */
     protected function casts(): array
     {
@@ -40,6 +39,7 @@ class ReportSnapshot extends Model
             'period_end' => 'date',
             'generated_at' => 'datetime',
             'avg_resolution_days' => 'decimal:2',
+            'metrics' => 'array',
             'satisfaction_rate' => 'decimal:2',
         ];
     }
