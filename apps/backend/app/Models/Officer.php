@@ -63,4 +63,9 @@ class Officer extends Authenticatable
     {
         return $this->hasMany(ContentFlag::class, 'flagged_by_officer_id');
     }
+
+    public function sessions(): HasMany
+    {
+        return $this->hasMany(OfficerSession::class);
+    }
 }
