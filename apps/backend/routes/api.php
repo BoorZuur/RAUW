@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\LogoutController;
+use App\Http\Controllers\Auth\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -18,4 +20,12 @@ use Illuminate\Support\Facades\Route;
 // limiter uses Laravel's built-in throttle middleware (attempts,minutes).
 Route::middleware('throttle:10,1')->prefix('auth')->group(function (): void {
     Route::post('login', LoginController::class)->name('auth.login');
+});
+
+// Authenticated auth endpoints. `auth:sanctum` resolves the bearer token
+// against the personal_access_tokens table and works for User, Officer,
+// and Manager tokenable models alike.
+Route::middleware('auth:sanctum')->prefix('auth')->group(function (): void {
+    Route::get('me', ProfileController::class)->name('auth.me');
+    Route::post('logout', LogoutController::class)->name('auth.logout');
 });
