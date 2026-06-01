@@ -16,11 +16,12 @@ return new class extends Migration
             $table->string('username', 50)->unique();
             $table->string('email')->unique();
             $table->string('password');
+            $table->rememberToken();
             $table->string('department', 15)->default('beide');
             $table->foreignId('district_id')->nullable()->constrained('districts')->nullOnDelete();
             $table->boolean('is_active')->default(true);
             $table->softDeletes();
-            $table->timestamp('created_at')->nullable();
+            $table->timestamps();
         });
     }
 

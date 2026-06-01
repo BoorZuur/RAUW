@@ -16,8 +16,6 @@ class Manager extends Authenticatable
 {
     use Notifiable, SoftDeletes;
 
-    public const UPDATED_AT = null;
-
     /**
      * Get the attributes that should be cast.
      *

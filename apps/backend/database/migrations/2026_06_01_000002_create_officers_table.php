@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('username', 50)->unique();
             $table->string('email')->unique();
             $table->string('password');
+            $table->rememberToken();
             $table->string('badge_number', 20)->unique();
             $table->foreignId('district_id')->nullable()->constrained('districts')->nullOnDelete();
             $table->boolean('is_active')->default(true);
