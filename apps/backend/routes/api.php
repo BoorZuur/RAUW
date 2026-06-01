@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\LoginController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -12,3 +13,9 @@ use Illuminate\Support\Facades\Route;
 | Authentication endpoints and other backend API endpoints live here.
 |
 */
+
+// Login is rate-limited to mitigate credential brute-force attempts. The
+// limiter uses Laravel's built-in throttle middleware (attempts,minutes).
+Route::middleware('throttle:10,1')->prefix('auth')->group(function (): void {
+    Route::post('login', LoginController::class)->name('auth.login');
+});
