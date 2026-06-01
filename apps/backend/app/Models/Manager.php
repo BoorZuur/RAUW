@@ -11,12 +11,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['username', 'email', 'password', 'department', 'district_id'])]
 #[Hidden(['password', 'remember_token'])]
 class Manager extends Authenticatable
 {
-    use HasFactory, Notifiable, SoftDeletes;
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     /**
      * The model's default values for attributes.
