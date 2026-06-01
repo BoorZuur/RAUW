@@ -18,10 +18,10 @@ return new class extends Migration
             $table->foreignId('message_id')->nullable()->constrained('issue_messages')->nullOnDelete();
             $table->foreignId('flagged_by_officer_id')->nullable()->constrained('officers')->nullOnDelete();
             $table->foreignId('reviewed_by_manager_id')->nullable()->constrained('managers')->nullOnDelete();
-            $table->string('flag_source', 20);
+            $table->string('flag_source', 10);
+            $table->string('flag_reason', 25);
             $table->string('matched_keyword', 100)->nullable();
-            $table->string('flag_reason', 255)->nullable();
-            $table->boolean('counts_toward_review')->default(true);
+            $table->boolean('counts_toward_review')->default(false);
             $table->string('action_taken', 50)->nullable();
             $table->dateTime('flagged_at')->useCurrent();
         });
