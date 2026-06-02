@@ -1,0 +1,57 @@
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Actions\Auth\ResolveLoginActor;
+use App\Enums\ActorType;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Resources\AuthProfileResource;
+use App\Models\Manager;
+use App\Models\Officer;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response;
+
+class LoginController extends Controller
+{
+    public function __construct(private readonly ResolveLoginActor $resolver)
+    {
+    }
+
+    /**
+     * Authenticate a user, officer, or manager with shared email/password
+     * credentials and return a Sanctum bearer token alongside the actor's
+     * canonical safe profile payload.
+     */
+    public function __invoke(LoginRequest $request): JsonResponse
+    {
+        try {
+            $match = $this->resolver->resolve($request->email(), $request->password());
+        } catch (AuthenticationException) {
+            return response()->json([
+                'message' => 'Invalid credentials.',
+            ], Response::HTTP_UNAUTHORIZED);
+        }
+
+        /** @var \Illuminate\Database\Eloquent\Model&\Laravel\Sanctum\HasApiTokens $actor */
+        $actor = $match['actor'];
+        /** @var ActorType $type */
+        $type = $match['type'];
+
+        // Eager-load compact district relation for officers and managers so
+        // the profile resource can embed it without triggering lazy queries.
+        if (($actor instanceof Officer || $actor instanceof Manager) && ! $actor->relationLoaded('district')) {
+            $actor->loadMissing('district');
+        }
+
+        $token = $actor->createToken('api-login')->plainTextToken;
+
+        return response()->json([
+            'token_type' => 'Bearer',
+            'access_token' => $token,
+            'actor_type' => $type->value,
+            'profile' => (new AuthProfileResource($actor))->toArray($request),
+        ]);
+    }
+}

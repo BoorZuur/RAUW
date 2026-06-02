@@ -187,4 +187,6 @@ auth.json
 
 # ==========================================================================
 plans/
-
+.agents/skills/caveman/
+.agents/skills/caveman-commit/
+.agents/skills/caveman-review/

@@ -29,6 +29,30 @@ class AuthSchemaTest extends TestCase
         $this->assertTrue(Schema::hasColumn('managers', 'remember_token'));
     }
 
+    public function test_sanctum_personal_access_tokens_table_is_installed(): void
+    {
+        $this->assertTrue(Schema::hasTable('personal_access_tokens'));
+        $this->assertTrue(Schema::hasColumn('personal_access_tokens', 'tokenable_type'));
+        $this->assertTrue(Schema::hasColumn('personal_access_tokens', 'tokenable_id'));
+        $this->assertTrue(Schema::hasColumn('personal_access_tokens', 'token'));
+    }
+
+    public function test_all_actor_models_can_issue_sanctum_tokens(): void
+    {
+        $this->assertContains(
+            \Laravel\Sanctum\HasApiTokens::class,
+            class_uses_recursive(User::class),
+        );
+        $this->assertContains(
+            \Laravel\Sanctum\HasApiTokens::class,
+            class_uses_recursive(Officer::class),
+        );
+        $this->assertContains(
+            \Laravel\Sanctum\HasApiTokens::class,
+            class_uses_recursive(Manager::class),
+        );
+    }
+
     public function test_user_moderation_fields_are_not_publicly_mass_assignable(): void
     {
         $user = new User();

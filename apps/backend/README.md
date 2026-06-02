@@ -7,6 +7,76 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## RAUW Backend API
+
+This Laravel application exposes the backend API for RAUW. Local API development is documented in the repository-level [local development guide](../../docs/local-development.md).
+
+## Backend Authentication
+
+The backend uses bearer token authentication for API consumers. One shared login endpoint accepts only `email` and `password`, resolves the authenticated actor, and returns a Sanctum bearer token plus a safe profile payload.
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `POST` | `/api/auth/login` | None | Authenticate a user, officer, or manager. |
+| `GET` | `/api/auth/me` | `Authorization: Bearer <token>` | Return the current actor type and profile. |
+| `POST` | `/api/auth/logout` | `Authorization: Bearer <token>` | Revoke the current bearer token. |
+
+### Manual Token Flow
+
+1. Send a JSON login request with `email` and `password` only:
+
+   ```bash
+   curl -X POST http://127.0.0.1:8001/api/auth/login \
+     -H "Accept: application/json" \
+     -H "Content-Type: application/json" \
+     -d '{"email":"demo.user@example.com","password":"password"}'
+   ```
+
+2. Copy the `access_token` from the successful response.
+3. Send protected requests with `Authorization: Bearer <access_token>`:
+
+   ```bash
+   curl http://127.0.0.1:8001/api/auth/me \
+     -H "Accept: application/json" \
+     -H "Authorization: Bearer <access_token>"
+   ```
+
+4. Revoke the current token when finished:
+
+   ```bash
+   curl -X POST http://127.0.0.1:8001/api/auth/logout \
+     -H "Accept: application/json" \
+     -H "Authorization: Bearer <access_token>"
+   ```
+
+Successful login responses include:
+
+```json
+{
+  "token_type": "Bearer",
+  "access_token": "<token>",
+  "actor_type": "user",
+  "profile": {
+    "actor_type": "user",
+    "id": 1,
+    "email": "demo.user@example.com"
+  }
+}
+```
+
+Supported `actor_type` values are `user`, `officer`, and `manager`.
+
+Common auth status codes are:
+
+- `200 OK` for successful login, profile, and logout requests.
+- `401 Unauthorized` for invalid credentials, inactive or ambiguous accounts, missing tokens, invalid tokens, and revoked tokens.
+- `422 Unprocessable Entity` when login validation fails because `email` or `password` is missing or invalid.
+
+For manual API testing, import the Postman collection and local environment from [`../../docs/postman`](../../docs/postman/README.md):
+
+- [`rauw-backend.postman_collection.json`](../../docs/postman/rauw-backend.postman_collection.json)
+- [`rauw-local.postman_environment.json`](../../docs/postman/rauw-local.postman_environment.json)
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
