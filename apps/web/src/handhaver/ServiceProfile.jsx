@@ -1,7 +1,7 @@
-import "apps/web/src/App.css"
+import "../App.css"
 
-function ServiceProfile (){
-
+function ServiceProfile() {
+    <h1>Service</h1>
 }
 
 export default ServiceProfile

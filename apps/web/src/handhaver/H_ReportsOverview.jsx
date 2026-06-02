@@ -1,6 +1,6 @@
-import "apps/web/src/App.css"
+import "../App.css"
 
-function H_ReportsOverview (){
+function H_ReportsOverview() {
 
 }
 

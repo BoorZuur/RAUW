@@ -1,7 +1,9 @@
-import "apps/web/src/App.css"
+import "../App.css"
 
-function CommandCenter (){
-
+function CommandCenter() {
+    return (
+        <div>Command</div>
+    );
 }
 
 export default CommandCenter
