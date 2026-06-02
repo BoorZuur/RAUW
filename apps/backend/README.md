@@ -78,7 +78,7 @@ Supported `actor_type` values are `user`, `officer`, and `manager`.
 
 Officer registration always returns `actor_type: "officer"` and uses the same safe officer profile serializer as login, including fields such as `username`, `email`, `badge_number`, `departments`, and compact `district` data when available. `department_ids` is required during registration, must contain at least one existing department ID, and cannot contain duplicates. Passwords and secrets are never returned. Registration validates `username` and `badge_number` uniqueness within the officers table and validates `email` uniqueness across users, officers, and managers.
 
-Manager creation uses the `departments` table through `department_id`. Each manager must have exactly one valid department, and manager auth profiles return `department` as a compact object (`id`, `code`, `name`) instead of a legacy enum/string value. Officers must have one or more departments and auth profiles return them in a `departments` array.
+Manager creation uses the `departments` table through `department_ids`. Each manager must have at least one valid department, assignments are stored in the `department_manager` pivot table, and manager auth profiles return a `departments` array of compact objects (`id`, `code`, `name`). Officers keep the same `department_ids` / `department_officer` behavior and auth profiles also return departments in a `departments` array.
 
 Department deletion is blocked while a department is assigned to any manager or officer. Reassign those actors first; category pivot rows are still cleaned up automatically when an otherwise unused department is deleted.
 
@@ -89,7 +89,7 @@ Common auth status codes are:
 - `201 Created` for successful officer registration.
 - `200 OK` for successful login, profile, and logout requests.
 - `401 Unauthorized` for invalid credentials, inactive or ambiguous accounts, missing tokens, invalid tokens, and revoked tokens.
-- `422 Unprocessable Entity` when auth validation fails, including missing or invalid login fields, missing or invalid registration fields, password confirmation mismatch, invalid or missing officer `department_ids`, or duplicate officer username/email/badge number.
+- `422 Unprocessable Entity` when auth validation fails, including missing or invalid login fields, missing or invalid registration fields, password confirmation mismatch, invalid or missing officer or manager `department_ids`, or duplicate officer username/email/badge number.
 
 For manual API testing, import the Postman collection and local environment from [`../../docs/postman`](../../docs/postman/README.md):
 

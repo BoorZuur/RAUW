@@ -36,7 +36,7 @@ Local seeders may create deterministic demo accounts for manual testing. These c
 
 Supported `actor_type` values are `user`, `officer`, and `manager`. The local demo manager is seeded as the main manager and can create other managers. Production environments must provision the initial main manager through trusted operational setup, not through the public API.
 
-Local seeders also create canonical departments in the `departments` table. Managers are assigned exactly one department through `department_id`. Officers are assigned one or more departments through `department_ids` / the `department_officer` pivot.
+Local seeders also create canonical departments in the `departments` table. Managers are assigned one or more departments through `department_ids` / the `department_manager` pivot. Officers are assigned one or more departments through `department_ids` / the `department_officer` pivot.
 
 Actor emails must be unique across users, officers, and managers. This prevents a shared-login email from matching more than one actor table.
 
@@ -192,7 +192,7 @@ Successful response shape:
 }
 ```
 
-Auth response metadata lives on the top-level wrapper. `actor_type` is not duplicated inside `profile`, and auth profiles omit internal fields such as `is_active`, `email_verified_at`, `district_id`, and `created_by_manager_id`. Officer and manager auth profiles include role-specific safe fields such as `badge_number`, `departments`, `department`, `is_main_manager`, and compact `district` data when available. Passwords and secrets are never returned.
+Auth response metadata lives on the top-level wrapper. `actor_type` is not duplicated inside `profile`, and auth profiles omit internal fields such as `is_active`, `email_verified_at`, `district_id`, and `created_by_manager_id`. Officer and manager auth profiles include role-specific safe fields such as `badge_number`, `departments`, `is_main_manager`, and compact `district` data when available. Passwords and secrets are never returned.
 
 Common error responses:
 
@@ -221,7 +221,7 @@ Common error response:
 
 - `401 Unauthorized` when the bearer token is missing, invalid, or revoked.
 
-Manager auth profiles return one compact `department` object, not a scalar enum string:
+Manager auth profiles return a `departments` array of compact department objects:
 
 ```json
 {
@@ -230,18 +230,20 @@ Manager auth profiles return one compact `department` object, not a scalar enum 
     "id": 1,
     "username": "demo-manager",
     "email": "demo.manager@example.com",
-    "department": {
-      "id": 1,
-      "code": "wijkbeheer",
-      "name": "Wijkbeheer"
-    },
+    "departments": [
+      {
+        "id": 1,
+        "code": "wijkbeheer",
+        "name": "Wijkbeheer"
+      }
+    ],
     "is_main_manager": true,
     "district": null
   }
 }
 ```
 
-Officer auth profiles return a `departments` array because officers must belong to one or more departments:
+Officer auth profiles also return a `departments` array because officers must belong to one or more departments:
 
 ```json
 {
@@ -284,12 +286,12 @@ Request body:
   "email": "new.manager@example.com",
   "password": "password123",
   "confirm_password": "password123",
-  "department_id": 1,
+  "department_ids": [1],
   "district_id": null
 }
 ```
 
-`department_id` is required and must reference an existing department. Each manager has exactly one department. Use **Departments / List Departments** to find valid IDs. `district_id` may be `null` or an existing district ID.
+`department_ids` is required, must contain at least one existing department ID, and cannot contain duplicates. Manager assignments are stored through the `department_manager` pivot. Use **Departments / List Departments** to find valid IDs. `district_id` may be `null` or an existing district ID.
 
 Successful response shape:
 
@@ -299,16 +301,17 @@ Successful response shape:
   "id": 2,
   "username": "new-manager",
   "email": "new.manager@example.com",
-  "department_id": 1,
   "district_id": null,
   "is_active": true,
   "is_main_manager": false,
   "created_by_manager_id": 1,
-  "department": {
-    "id": 1,
-    "code": "wijkbeheer",
-    "name": "Wijkbeheer"
-  },
+  "departments": [
+    {
+      "id": 1,
+      "code": "wijkbeheer",
+      "name": "Wijkbeheer"
+    }
+  ],
   "district": null
 }
 ```
@@ -319,7 +322,7 @@ Common error responses:
 
 - `401 Unauthorized` when the bearer token is missing, invalid, or revoked.
 - `403 Forbidden` when the authenticated actor is not an active main manager.
-- `422 Unprocessable Entity` with validation errors when required fields are missing, `email` is invalid, `password` is shorter than 8 characters, `confirm_password` does not match `password`, `department_id` does not reference an existing department, `district_id` does not exist, `username` already exists in the managers table, or `email` already exists for any user, officer, or manager.
+- `422 Unprocessable Entity` with validation errors when required fields are missing, `email` is invalid, `password` is shorter than 8 characters, `confirm_password` does not match `password`, `department_ids` is missing, empty, duplicated, or references unknown departments, `district_id` does not exist, `username` already exists in the managers table, or `email` already exists for any user, officer, or manager.
 
 ### Categories
 
@@ -372,7 +375,7 @@ Common error responses:
 
 ### Departments
 
-Department endpoints use the `departments` table. Categories are attached through the `category_department` pivot, so a category can belong to multiple departments. Managers also reference this table through one required `department_id`; officers reference it through the `department_officer` pivot and must have one or more departments.
+Department endpoints use the `departments` table. Categories are attached through the `category_department` pivot, so a category can belong to multiple departments. Managers reference this table through the `department_manager` pivot and must have one or more departments; officers reference it through the `department_officer` pivot and must have one or more departments.
 
 Issue department migration is intentionally deferred to a later plan. Issue request/response fields may still use the legacy department enum/string contract until that separate migration is implemented, even though issues should eventually support one or more departments.
 

@@ -45,7 +45,7 @@ Table managers {
   username         varchar(50)  [not null, unique]
   email            varchar(255) [not null, unique]
   password_hash    varchar(255) [not null]
-  department_id    int          [not null, ref: > departments.id, note: 'Exact één afdeling per manager; legacy beide is gemigreerd naar wijkbeheer']
+  // Afdelingen via department_manager; een manager kan aan meerdere afdelingen gekoppeld zijn.
   district_id      int          [ref: > districts.id]
   is_active        tinyint(1)   [not null, default: 1]
   deleted_at       datetime
@@ -72,6 +72,20 @@ Table department_officer {
     (department_id, officer_id) [unique]
     department_id
     officer_id
+  }
+}
+
+Table department_manager {
+  id               int          [pk, increment]
+  department_id    int          [not null, ref: > departments.id, note: 'Cascade delete verwijdert alleen pivot-toewijzing']
+  manager_id       int          [not null, ref: > managers.id, note: 'Cascade delete verwijdert alleen pivot-toewijzing']
+  created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (department_id, manager_id) [unique]
+    department_id
+    manager_id
   }
 }
 

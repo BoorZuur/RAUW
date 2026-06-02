@@ -171,7 +171,7 @@ npm run lint
 
 When you run `php artisan migrate --seed` in `apps/backend`, local seeders create canonical rows in the backend `departments` table and assign demo actors to them.
 
-- Managers have exactly one department through `department_id`.
+- Managers have one or more departments through `department_ids` / the `department_manager` pivot.
 - Officers have one or more departments through `department_ids` / the `department_officer` pivot.
 - Use the Postman **Departments / List Departments** request to inspect local department IDs before creating managers or registering officers.
 - Department deletion is blocked while a department is assigned to any manager or officer.

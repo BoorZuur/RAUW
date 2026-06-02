@@ -228,7 +228,7 @@
                 "login"
               ]
             },
-            "description": "Authenticate with email and password only. The response includes token_type, access_token, actor_type, and a cleaned profile. actor_type is only present at the top level; profile omits internal auth fields. The test script stores access_token in collection and active environment variables."
+            "description": "Authenticate with email and password only. The response includes token_type, access_token, actor_type, and a cleaned profile. actor_type is only present at the top level; profile omits internal auth fields. Officer and manager profiles expose assigned departments as a departments array of compact objects. The test script stores access_token in collection and active environment variables."
           },
           "response": []
         },
@@ -264,7 +264,7 @@
                 "me"
               ]
             },
-            "description": "Return the authenticated actor_type and cleaned safe profile payload. actor_type is only present at the top level; profile omits internal auth fields. Requires Authorization: Bearer <token>."
+            "description": "Return the authenticated actor_type and cleaned safe profile payload. actor_type is only present at the top level; profile omits internal auth fields. Officer and manager profiles expose assigned departments as a departments array of compact objects. Requires Authorization: Bearer <token>."
           },
           "response": []
         },
@@ -355,6 +355,7 @@
                   "    pm.expect(response.id).to.exist;",
                   "    pm.expect(response.username).to.be.a('string').and.not.empty;",
                   "    pm.expect(response.email).to.be.a('string').and.not.empty;",
+                  "    pm.expect(response.departments).to.be.an('array').and.not.empty;",
                   "    pm.expect(response.is_main_manager).to.eql(false);",
                   "    pm.expect(response.created_by_manager_id).to.exist;",
                   "    pm.expect(response.access_token).to.be.undefined;",
@@ -389,7 +390,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"new-manager\",\n  \"email\": \"new.manager@example.com\",\n  \"password\": \"password123\",\n  \"confirm_password\": \"password123\",\n  \"department_id\": 1,\n  \"district_id\": null\n}",
+              "raw": "{\n  \"username\": \"new-manager\",\n  \"email\": \"new.manager@example.com\",\n  \"password\": \"password123\",\n  \"confirm_password\": \"password123\",\n  \"department_ids\": [1],\n  \"district_id\": null\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -406,7 +407,7 @@
                 "managers"
               ]
             },
-            "description": "Create an ordinary manager as the authenticated main manager. Requires Authorization: Bearer <token> from an active manager with is_main_manager=true. department_id is required and must reference an existing department; each manager has exactly one department. The 201 response returns the created manager profile only, including department_id plus compact department data, and does not include or store an access_token. The new manager must log in separately through Auth / Login. Change username and email before rerunning because username must be unique within managers and email must be unique across users, officers, and managers."
+            "description": "Create an ordinary manager as the authenticated main manager. Requires Authorization: Bearer <token> from an active manager with is_main_manager=true. department_ids is required, must contain at least one existing department ID, and cannot contain duplicates; manager assignments are stored through the department_manager pivot. The 201 response returns the created manager profile only, including departments as compact objects, and does not include or store an access_token. The new manager must log in separately through Auth / Login. Change username and email before rerunning because username must be unique within managers and email must be unique across users, officers, and managers."
           },
           "response": []
         }
@@ -560,7 +561,7 @@
           "response": []
         }
       ],
-      "description": "Department CRUD requests. Department mutations require an authenticated active main manager. Managers use one required department_id; officers use department_ids through the department_officer pivot and must have one or more departments. Deleting a department is blocked while assigned to managers or officers; otherwise it removes category_department pivot assignments automatically but does not delete categories. Issue department migration is intentionally deferred to a later plan, so issue department fields may still use the legacy enum/string contract."
+      "description": "Department CRUD requests. Department mutations require an authenticated active main manager. Managers use department_ids through the department_manager pivot and must have one or more departments; officers use department_ids through the department_officer pivot and must have one or more departments. Deleting a department is blocked while assigned to managers or officers; otherwise it removes category_department pivot assignments automatically but does not delete categories. Issue department migration is intentionally deferred to a later plan, so issue department fields may still use the legacy enum/string contract."
     }
   ],
   "auth": {

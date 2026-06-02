@@ -143,6 +143,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
+              examples:
+                managerLogin:
+                  summary: Manager login profile
+                  value:
+                    token_type: Bearer
+                    access_token: 1|plain-text-sanctum-token
+                    actor_type: manager
+                    profile:
+                      id: 1
+                      username: demo-manager
+                      email: demo.manager@example.com
+                      departments:
+                        - id: 1
+                          code: wijkbeheer
+                          name: Wijkbeheer
+                      is_main_manager: true
+                      district: null
         '401':
           $ref: '#/components/responses/Unauthorized'
 
@@ -163,6 +180,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthCurrentProfileResponse'
+              examples:
+                managerProfile:
+                  summary: Current manager profile
+                  value:
+                    actor_type: manager
+                    profile:
+                      id: 1
+                      username: demo-manager
+                      email: demo.manager@example.com
+                      departments:
+                        - id: 1
+                          code: wijkbeheer
+                          name: Wijkbeheer
+                      is_main_manager: true
+                      district: null
         '401':
           $ref: '#/components/responses/Unauthorized'
 
@@ -172,9 +204,10 @@ paths:
       summary: Create a manager
       description: >-
         Create an ordinary manager as an authenticated active main manager. The
-        request must include one valid department_id from the departments table;
-        managers have exactly one department. The response returns the created
-        manager profile only and does not issue an access token.
+        request must include department_ids with at least one valid department
+        from the departments table. Manager assignments are stored in the
+        department_manager pivot. The response returns the created manager
+        profile only and does not issue an access token.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -188,7 +221,7 @@ paths:
               email: new.manager@example.com
               password: password123
               confirm_password: password123
-              department_id: 1
+              department_ids: [1]
               district_id: null
       responses:
         '201':
@@ -197,6 +230,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Manager'
+              example:
+                actor_type: manager
+                id: 2
+                username: new-manager
+                email: new.manager@example.com
+                district_id: null
+                is_active: true
+                is_main_manager: false
+                created_by_manager_id: 1
+                departments:
+                  - id: 1
+                    code: wijkbeheer
+                    name: Wijkbeheer
+                district: null
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -912,7 +959,7 @@ components:
 
     ManagerCreate:
       type: object
-      required: [ username, email, password, confirm_password, department_id ]
+      required: [ username, email, password, confirm_password, department_ids ]
       properties:
         username:
           type: string
@@ -930,9 +977,13 @@ components:
           type: string
           format: password
           description: Must exactly match password.
-        department_id:
-          type: integer
-          description: Existing department ID. Managers must have exactly one department.
+        department_ids:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          description: Existing department IDs. Managers must have one or more departments.
+          items:
+            type: integer
         district_id:
           type: integer
           nullable: true
@@ -952,8 +1003,6 @@ components:
         email:
           type: string
           format: email
-        department_id:
-          type: integer
         district_id:
           type: integer
           nullable: true
@@ -964,10 +1013,11 @@ components:
         created_by_manager_id:
           type: integer
           nullable: true
-        department:
-          nullable: true
-          allOf:
-            - $ref: '#/components/schemas/AuthDepartmentProfile'
+        departments:
+          type: array
+          description: Compact department objects. Managers must have one or more departments.
+          items:
+            $ref: '#/components/schemas/AuthDepartmentProfile'
         district:
           nullable: true
           allOf:
@@ -1094,10 +1144,11 @@ components:
         email:
           type: string
           format: email
-        department:
-          nullable: true
-          allOf:
-            - $ref: '#/components/schemas/AuthDepartmentProfile'
+        departments:
+          type: array
+          description: Compact department objects. Managers must have one or more departments.
+          items:
+            $ref: '#/components/schemas/AuthDepartmentProfile'
         is_main_manager:
           type: boolean
         district:
@@ -1314,8 +1365,8 @@ components:
       type: object
       description: >-
         Department table row. Categories are assigned to one or more departments
-        through category_department. Managers reference exactly one department
-        through department_id. Officers reference one or more departments
+        through category_department. Managers reference one or more departments
+        through department_manager. Officers reference one or more departments
         through department_officer. Deleting a department is blocked while it is
         assigned to managers or officers; otherwise it cascades only category
         pivot assignments and does not delete category rows. Issue department
