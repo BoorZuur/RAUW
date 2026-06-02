@@ -11,12 +11,10 @@ import M_dashboard from "./manager/M_dashboard.jsx";
 
 
 function Layout() {
-    return null;
 }
 
 function App() {
     const router = createBrowserRouter([{
-        element: <Layout/>,
         children: [
             {path: "/", element: <CommandCenter/>},
 
