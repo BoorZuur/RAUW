@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Auth\ProfileController;
 use App\Http\Controllers\Auth\RegisterOfficerController;
 use App\Http\Controllers\Auth\RegisterUserController;
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ManagerController;
 use Illuminate\Support\Facades\Route;
 
@@ -51,4 +52,18 @@ Route::middleware('auth:sanctum')->prefix('auth')->group(function (): void {
 // manager, who must authenticate via `POST /api/auth/login`.
 Route::middleware(['auth:sanctum', 'throttle:30,1'])->group(function (): void {
     Route::post('managers', [ManagerController::class, 'store'])->name('managers.store');
+
+    // Manager-protected category management. Authorization is narrowed inside
+    // the category FormRequests to an authenticated, active manager; users,
+    // officers, and inactive managers receive a 403. Disabling (PATCH
+    // `/categories/{category}/disable`) is the standard safe removal path,
+    // while hard delete (DELETE `/categories/{category}`) is guarded against
+    // main categories that still have subcategories and against rows still
+    // referenced by existing issues.
+    Route::get('categories', [CategoryController::class, 'index'])->name('categories.index');
+    Route::post('categories', [CategoryController::class, 'store'])->name('categories.store');
+    Route::get('categories/{category}', [CategoryController::class, 'show'])->name('categories.show');
+    Route::match(['put', 'patch'], 'categories/{category}', [CategoryController::class, 'update'])->name('categories.update');
+    Route::patch('categories/{category}/disable', [CategoryController::class, 'disable'])->name('categories.disable');
+    Route::delete('categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
 });
