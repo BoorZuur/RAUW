@@ -4,18 +4,9 @@ function App() {
 
   return (
       <>
-        <section id="center">
+        <div className={"card"}>
 
-        </section>
-
-        <div className="ticks"></div>
-
-        <section id="next-steps">
-
-        </section>
-
-        <div className="ticks"></div>
-        <section id="spacer"></section>
+        </div>
       </>
   )
 }
