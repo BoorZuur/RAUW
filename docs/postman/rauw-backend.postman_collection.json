@@ -10,6 +10,78 @@
       "name": "Auth",
       "item": [
         {
+          "name": "Register Officer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Officer registration succeeded', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Response contains bearer token and officer profile', function () {",
+                  "    pm.expect(response.token_type).to.eql('Bearer');",
+                  "    pm.expect(response.access_token).to.be.a('string').and.not.empty;",
+                  "    pm.expect(response.actor_type).to.eql('officer');",
+                  "    pm.expect(response.profile).to.be.an('object');",
+                  "    pm.expect(response.profile.actor_type).to.eql('officer');",
+                  "});",
+                  "",
+                  "if (response.access_token) {",
+                  "    pm.collectionVariables.set('access_token', response.access_token);",
+                  "",
+                  "    if (pm.environment.name) {",
+                  "        pm.environment.set('access_token', response.access_token);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"new-officer\",\n  \"email\": \"new.officer@example.com\",\n  \"password\": \"password123\",\n  \"confirm_password\": \"password123\",\n  \"badge_number\": \"BOA-1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register/officer",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register",
+                "officer"
+              ]
+            },
+            "description": "Register a backend API-only officer account with username, email, password, confirm_password, and badge_number. The 201 response includes token_type, access_token, actor_type, and the same safe officer profile serializer used by login. The test script stores access_token in collection and active environment variables. Change username, email, and badge_number before rerunning because each must be unique within officers."
+          },
+          "response": []
+        },
+        {
           "name": "Login",
           "event": [
             {

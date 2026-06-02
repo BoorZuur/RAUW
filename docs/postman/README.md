@@ -48,15 +48,15 @@ Supported `actor_type` values are `user`, `officer`, and `manager`.
 | Variable | Local value | Notes |
 |----------|-------------|-------|
 | `base_url` | `http://127.0.0.1:8001` | Change this to point at another backend without editing each request. |
-| `access_token` | blank | Filled automatically after a successful login request. |
+| `access_token` | blank | Filled automatically after a successful login or officer registration request. |
 
 ## Recommended Request Order
 
-1. Run **Auth / Login**.
+1. Run **Auth / Register Officer** to create a new officer, or run **Auth / Login** with an existing demo account.
 2. Run **Auth / Current Profile**.
 3. Run **Auth / Logout**.
 
-The collection stores the returned `access_token` automatically after a successful login. If you disable collection scripts or the token is not stored, copy the `access_token` value from the login response into the active Postman environment's `access_token` variable before calling protected endpoints.
+The collection stores the returned `access_token` automatically after a successful login or officer registration. If you disable collection scripts or the token is not stored, copy the `access_token` value from the response into the active Postman environment's `access_token` variable before calling protected endpoints.
 
 Protected endpoints use this header:
 
@@ -65,6 +65,48 @@ Authorization: Bearer <token>
 ```
 
 ## Endpoint Contract
+
+### Register Officer
+
+`POST {{base_url}}/api/auth/register/officer`
+
+Register a backend API-only officer account. This creates an `Officer`, immediately issues a Laravel Sanctum bearer token, and returns the same auth response shape and safe officer profile serializer used by login. It does not create a session.
+
+Request body:
+
+```json
+{
+  "username": "new-officer",
+  "email": "new.officer@example.com",
+  "password": "password123",
+  "confirm_password": "password123",
+  "badge_number": "BOA-1234"
+}
+```
+
+Successful response shape:
+
+```json
+{
+  "token_type": "Bearer",
+  "access_token": "<token>",
+  "actor_type": "officer",
+  "profile": {
+    "actor_type": "officer",
+    "id": 1,
+    "username": "new-officer",
+    "email": "new.officer@example.com",
+    "badge_number": "BOA-1234",
+    "district_id": null,
+    "is_active": true,
+    "district": null
+  }
+}
+```
+
+Common error response:
+
+- `422 Unprocessable Entity` with validation errors when required fields are missing, `email` is invalid, `password` is shorter than 8 characters, `confirm_password` does not match `password`, or `username`, `email`, or `badge_number` already exists in the officers table. This does not imply cross-table email uniqueness.
 
 ### Login
 

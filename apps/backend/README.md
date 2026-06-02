@@ -13,17 +13,27 @@ This Laravel application exposes the backend API for RAUW. Local API development
 
 ## Backend Authentication
 
-The backend uses bearer token authentication for API consumers. One shared login endpoint accepts only `email` and `password`, resolves the authenticated actor, and returns a Sanctum bearer token plus a safe profile payload.
+The backend uses bearer token authentication for API consumers. Officer registration and the shared login endpoint return Laravel Sanctum bearer tokens plus safe profile payloads. These endpoints are API-only and do not create session authentication.
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
+| `POST` | `/api/auth/register/officer` | None | Register an officer and return an immediately usable bearer token. |
 | `POST` | `/api/auth/login` | None | Authenticate a user, officer, or manager. |
 | `GET` | `/api/auth/me` | `Authorization: Bearer <token>` | Return the current actor type and profile. |
 | `POST` | `/api/auth/logout` | `Authorization: Bearer <token>` | Revoke the current bearer token. |
 
 ### Manual Token Flow
 
-1. Send a JSON login request with `email` and `password` only:
+1. Send either a JSON officer registration request:
+
+   ```bash
+   curl -X POST http://127.0.0.1:8001/api/auth/register/officer \
+     -H "Accept: application/json" \
+     -H "Content-Type: application/json" \
+     -d '{"username":"new-officer","email":"new.officer@example.com","password":"password123","confirm_password":"password123","badge_number":"BOA-1234"}'
+   ```
+
+   Or send a JSON login request with `email` and `password` only:
 
    ```bash
    curl -X POST http://127.0.0.1:8001/api/auth/login \
@@ -49,7 +59,7 @@ The backend uses bearer token authentication for API consumers. One shared login
      -H "Authorization: Bearer <access_token>"
    ```
 
-Successful login responses include:
+Successful registration and login responses include:
 
 ```json
 {
@@ -66,11 +76,14 @@ Successful login responses include:
 
 Supported `actor_type` values are `user`, `officer`, and `manager`.
 
+Officer registration always returns `actor_type: "officer"` and uses the same safe officer profile serializer as login, including fields such as `username`, `email`, `badge_number`, `district_id`, `is_active`, and compact `district` data when available. Passwords and secrets are never returned. Registration validates `username`, `email`, and `badge_number` uniqueness within the officers table; it does not imply cross-table email uniqueness.
+
 Common auth status codes are:
 
+- `201 Created` for successful officer registration.
 - `200 OK` for successful login, profile, and logout requests.
 - `401 Unauthorized` for invalid credentials, inactive or ambiguous accounts, missing tokens, invalid tokens, and revoked tokens.
-- `422 Unprocessable Entity` when login validation fails because `email` or `password` is missing or invalid.
+- `422 Unprocessable Entity` when auth validation fails, including missing or invalid login fields, missing or invalid registration fields, password confirmation mismatch, or duplicate officer username/email/badge number.
 
 For manual API testing, import the Postman collection and local environment from [`../../docs/postman`](../../docs/postman/README.md):
 
