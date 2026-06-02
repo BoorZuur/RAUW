@@ -1,6 +1,7 @@
-function H_dashboard() {
-    <h1>Handhaver</h1>
+import './App.css'
 
+function H_dashboard (){
+    <h1>Handhaver</h1>
 
 }
 

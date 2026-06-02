@@ -1,4 +1,6 @@
-function ServiceProfile() {
+import "apps/web/src/App.css"
+
+function ServiceProfile (){
     <h1>Service</h1>
 }
 
