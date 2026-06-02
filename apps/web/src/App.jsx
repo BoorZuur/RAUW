@@ -3,6 +3,7 @@ import {useState} from 'react'
 import {createBrowserRouter, RouterProvider} from "react-router-dom";
 
 import CommandCenter from "./handhaver/CommandCenter.jsx";
+
 import SectorSettings from "./handhaver/SectorSettings.jsx";
 import ServiceProfile from "./handhaver/ServiceProfile.jsx";
 import M_dashboard from "./manager/M_dashboard.jsx";
@@ -22,8 +23,7 @@ function App() {
     const router = createBrowserRouter([{
         children: [
             {path: "/", element: <CommandCenter/>},
-
-            {path: "/boa_dashboard", element: <H_dashboard/>},
+            
             {path: "/manager_dashboard", element: <M_dashboard/>},
 
             {path: "/gebruiker_management", element: <UserManagement/>},
