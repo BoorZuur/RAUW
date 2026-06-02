@@ -97,13 +97,10 @@ Successful response shape:
   "access_token": "<token>",
   "actor_type": "officer",
   "profile": {
-    "actor_type": "officer",
     "id": 1,
     "username": "new-officer",
     "email": "new.officer@example.com",
     "badge_number": "BOA-1234",
-    "district_id": null,
-    "is_active": true,
     "district": null
   }
 }
@@ -139,13 +136,10 @@ Successful response shape:
   "access_token": "<token>",
   "actor_type": "user",
   "profile": {
-    "actor_type": "user",
     "id": 1,
     "name": "New User",
     "username": "new-user",
-    "email": "new.user@example.com",
-    "email_verified_at": null,
-    "is_active": true
+    "email": "new.user@example.com"
   }
 }
 ```
@@ -176,18 +170,15 @@ Successful response shape:
   "access_token": "<token>",
   "actor_type": "user",
   "profile": {
-    "actor_type": "user",
     "id": 1,
     "name": "Demo User",
     "username": "demo.user",
-    "email": "demo.user@example.com",
-    "email_verified_at": null,
-    "is_active": true
+    "email": "demo.user@example.com"
   }
 }
 ```
 
-Officer and manager profiles include role-specific safe fields such as `badge_number`, `department`, `district_id`, and compact `district` data when available. Passwords and secrets are never returned.
+Auth response metadata lives on the top-level wrapper. `actor_type` is not duplicated inside `profile`, and auth profiles omit internal fields such as `is_active`, `email_verified_at`, `district_id`, and `created_by_manager_id`. Officer and manager auth profiles include role-specific safe fields such as `badge_number`, `department`, `is_main_manager`, and compact `district` data when available. Passwords and secrets are never returned.
 
 Common error responses:
 
@@ -206,7 +197,6 @@ Successful response shape:
 {
   "actor_type": "user",
   "profile": {
-    "actor_type": "user",
     "id": 1,
     "email": "demo.user@example.com"
   }
