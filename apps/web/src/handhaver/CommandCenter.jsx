@@ -1,7 +1,9 @@
 import "../App.css"
 
 function CommandCenter() {
-    <h1>Command</h1>
+    return (
+        <div>Command</div>
+    );
 }
 
 export default CommandCenter

@@ -1,7 +1,9 @@
 import "../App.css"
 
 function SectorSettings() {
-    <h1>Sector</h1>
+    return (
+        <div>Sector</div>
+    );
 }
 
 export default SectorSettings

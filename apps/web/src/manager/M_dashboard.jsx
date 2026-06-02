@@ -1,7 +1,9 @@
 import "../App.css"
 
 function M_dashboard() {
-    <h1>Manager</h1>
+    return (
+        <div>Manager</div>
+    );
 }
 
 export default M_dashboard
