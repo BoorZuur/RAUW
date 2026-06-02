@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Auth\ProfileController;
+use App\Http\Controllers\Auth\RegisterOfficerController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -20,6 +21,11 @@ use Illuminate\Support\Facades\Route;
 // limiter uses Laravel's built-in throttle middleware (attempts,minutes).
 Route::middleware('throttle:10,1')->prefix('auth')->group(function (): void {
     Route::post('login', LoginController::class)->name('auth.login');
+
+    // Public, rate-limited officer self-registration. The badge-number field
+    // unambiguously maps the request to the Officer actor table (rather than
+    // User or Manager), and a Sanctum token is issued on success.
+    Route::post('register/officer', RegisterOfficerController::class)->name('auth.register.officer');
 });
 
 // Authenticated auth endpoints. `auth:sanctum` resolves the bearer token
