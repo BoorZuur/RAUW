@@ -30,7 +30,7 @@ The backend uses bearer token authentication for API consumers. Officer registra
    curl -X POST http://127.0.0.1:8001/api/auth/register/officer \
      -H "Accept: application/json" \
      -H "Content-Type: application/json" \
-     -d '{"username":"new-officer","email":"new.officer@example.com","password":"password123","confirm_password":"password123","badge_number":"BOA-1234"}'
+     -d '{"username":"new-officer","email":"new.officer@example.com","password":"password123","confirm_password":"password123","badge_number":"BOA-1234","department_ids":[1]}'
    ```
 
    Or send a JSON login request with `email` and `password` only:
@@ -67,8 +67,8 @@ Successful registration and login responses include:
   "access_token": "<token>",
   "actor_type": "user",
   "profile": {
-    "actor_type": "user",
     "id": 1,
+    "username": "demo.user",
     "email": "demo.user@example.com"
   }
 }
@@ -76,14 +76,20 @@ Successful registration and login responses include:
 
 Supported `actor_type` values are `user`, `officer`, and `manager`.
 
-Officer registration always returns `actor_type: "officer"` and uses the same safe officer profile serializer as login, including fields such as `username`, `email`, `badge_number`, `district_id`, `is_active`, and compact `district` data when available. Passwords and secrets are never returned. Registration validates `username`, `email`, and `badge_number` uniqueness within the officers table; it does not imply cross-table email uniqueness.
+Officer registration always returns `actor_type: "officer"` and uses the same safe officer profile serializer as login, including fields such as `username`, `email`, `badge_number`, `departments`, and compact `district` data when available. `department_ids` is required during registration, must contain at least one existing department ID, and cannot contain duplicates. Passwords and secrets are never returned. Registration validates `username` and `badge_number` uniqueness within the officers table and validates `email` uniqueness across users, officers, and managers.
+
+Manager creation uses the `departments` table through `department_id`. Each manager must have exactly one valid department, and manager auth profiles return `department` as a compact object (`id`, `code`, `name`) instead of a legacy enum/string value. Officers must have one or more departments and auth profiles return them in a `departments` array.
+
+Department deletion is blocked while a department is assigned to any manager or officer. Reassign those actors first; category pivot rows are still cleaned up automatically when an otherwise unused department is deleted.
+
+Issue department migration is intentionally deferred to a later plan. Issue request/response fields may still use the legacy department enum/string contract until that separate migration is implemented, even though issues should eventually support one or more departments.
 
 Common auth status codes are:
 
 - `201 Created` for successful officer registration.
 - `200 OK` for successful login, profile, and logout requests.
 - `401 Unauthorized` for invalid credentials, inactive or ambiguous accounts, missing tokens, invalid tokens, and revoked tokens.
-- `422 Unprocessable Entity` when auth validation fails, including missing or invalid login fields, missing or invalid registration fields, password confirmation mismatch, or duplicate officer username/email/badge number.
+- `422 Unprocessable Entity` when auth validation fails, including missing or invalid login fields, missing or invalid registration fields, password confirmation mismatch, invalid or missing officer `department_ids`, or duplicate officer username/email/badge number.
 
 For manual API testing, import the Postman collection and local environment from [`../../docs/postman`](../../docs/postman/README.md):
 

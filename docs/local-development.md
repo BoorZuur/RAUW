@@ -166,3 +166,13 @@ npm run preview
 cd C:\Users\henk-\Development\RAUW\apps\mobile
 npm run lint
 ```
+
+## Backend Department Fixtures
+
+When you run `php artisan migrate --seed` in `apps/backend`, local seeders create canonical rows in the backend `departments` table and assign demo actors to them.
+
+- Managers have exactly one department through `department_id`.
+- Officers have one or more departments through `department_ids` / the `department_officer` pivot.
+- Use the Postman **Departments / List Departments** request to inspect local department IDs before creating managers or registering officers.
+- Department deletion is blocked while a department is assigned to any manager or officer.
+- Issue department migration is intentionally deferred to a later plan. Issue request/response fields may still use the legacy department enum/string contract for now.

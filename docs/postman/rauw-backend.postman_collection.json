@@ -60,7 +60,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"new-officer\",\n  \"email\": \"new.officer@example.com\",\n  \"password\": \"password123\",\n  \"confirm_password\": \"password123\",\n  \"badge_number\": \"BOA-1234\"\n}",
+              "raw": "{\n  \"username\": \"new-officer\",\n  \"email\": \"new.officer@example.com\",\n  \"password\": \"password123\",\n  \"confirm_password\": \"password123\",\n  \"badge_number\": \"BOA-1234\",\n  \"department_ids\": [1]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -79,7 +79,7 @@
                 "officer"
               ]
             },
-            "description": "Register a backend API-only officer account with username, email, password, confirm_password, and badge_number. The 201 response includes token_type, access_token, actor_type, and a cleaned safe officer profile that does not duplicate actor_type or expose internal auth fields. The test script stores access_token in collection and active environment variables. Change username, email, and badge_number before rerunning because username and badge_number must be unique within officers and email must be unique across users, officers, and managers."
+            "description": "Register a backend API-only officer account with username, email, password, confirm_password, badge_number, and department_ids. department_ids is required, must contain at least one existing department ID, and cannot contain duplicates; officers must have one or more departments. The 201 response includes token_type, access_token, actor_type, and a cleaned safe officer profile with departments as compact objects. The test script stores access_token in collection and active environment variables. Change username, email, and badge_number before rerunning because username and badge_number must be unique within officers and email must be unique across users, officers, and managers."
           },
           "response": []
         },
@@ -389,7 +389,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"new-manager\",\n  \"email\": \"new.manager@example.com\",\n  \"password\": \"password123\",\n  \"confirm_password\": \"password123\",\n  \"department\": \"wijkbeheer\",\n  \"district_id\": null\n}",
+              "raw": "{\n  \"username\": \"new-manager\",\n  \"email\": \"new.manager@example.com\",\n  \"password\": \"password123\",\n  \"confirm_password\": \"password123\",\n  \"department_id\": 1,\n  \"district_id\": null\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -406,7 +406,7 @@
                 "managers"
               ]
             },
-            "description": "Create an ordinary manager as the authenticated main manager. Requires Authorization: Bearer <token> from an active manager with is_main_manager=true. The 201 response returns the created manager profile only and does not include or store an access_token. The new manager must log in separately through Auth / Login. Change username and email before rerunning because username must be unique within managers and email must be unique across users, officers, and managers."
+            "description": "Create an ordinary manager as the authenticated main manager. Requires Authorization: Bearer <token> from an active manager with is_main_manager=true. department_id is required and must reference an existing department; each manager has exactly one department. The 201 response returns the created manager profile only, including department_id plus compact department data, and does not include or store an access_token. The new manager must log in separately through Auth / Login. Change username and email before rerunning because username must be unique within managers and email must be unique across users, officers, and managers."
           },
           "response": []
         }
@@ -555,12 +555,12 @@
             "method": "DELETE",
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
             "url": { "raw": "{{base_url}}/api/departments/1", "host": [ "{{base_url}}" ], "path": [ "api", "departments", "1" ] },
-            "description": "Delete a department as an authenticated active main manager. Database cascade removes category_department assignments automatically; category records remain intact."
+            "description": "Delete a department as an authenticated active main manager. Departments assigned to any manager or officer return 409 until those actor assignments are changed. After no actors reference the department, database cascade removes category_department assignments automatically; category records remain intact."
           },
           "response": []
         }
       ],
-      "description": "Department CRUD requests. Department mutations require an authenticated active main manager. Deleting a department removes pivot assignments automatically but does not delete categories."
+      "description": "Department CRUD requests. Department mutations require an authenticated active main manager. Managers use one required department_id; officers use department_ids through the department_officer pivot and must have one or more departments. Deleting a department is blocked while assigned to managers or officers; otherwise it removes category_department pivot assignments automatically but does not delete categories. Issue department migration is intentionally deferred to a later plan, so issue department fields may still use the legacy enum/string contract."
     }
   ],
   "auth": {

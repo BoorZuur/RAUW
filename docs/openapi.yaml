@@ -39,7 +39,9 @@ paths:
         Backend API-only officer registration. Creates an Officer record,
         immediately issues a Sanctum bearer token, and returns the same auth
         response shape and safe profile serializer used by login. This endpoint
-        does not create a session and does not require authentication.
+        does not create a session and does not require authentication. Officers
+        must be assigned to one or more existing departments through
+        department_ids.
       requestBody:
         required: true
         content:
@@ -52,6 +54,7 @@ paths:
               password: password123
               confirm_password: password123
               badge_number: BOA-1234
+              department_ids: [1]
       responses:
         '201':
           description: Officer created and authenticated with a Sanctum bearer token
@@ -68,13 +71,18 @@ paths:
                   username: new-officer
                   email: new.officer@example.com
                   badge_number: BOA-1234
+                  departments:
+                    - id: 1
+                      code: wijkbeheer
+                      name: Wijkbeheer
                   district: null
         '422':
           description: >-
             Validation failed. Returned when required fields are missing,
             email is invalid, password is shorter than 8 characters,
-            confirm_password does not match password, or username/email/badge_number
-            already exists in the officers table.
+            confirm_password does not match password, department_ids is missing,
+            empty, duplicated, or references unknown departments, or
+            username/email/badge_number already exists in the officers table.
           content:
             application/json:
               schema:
@@ -157,6 +165,44 @@ paths:
                 $ref: '#/components/schemas/AuthCurrentProfileResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+  /api/managers:
+    post:
+      tags: [ Managers ]
+      summary: Create a manager
+      description: >-
+        Create an ordinary manager as an authenticated active main manager. The
+        request must include one valid department_id from the departments table;
+        managers have exactly one department. The response returns the created
+        manager profile only and does not issue an access token.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ManagerCreate'
+            example:
+              username: new-manager
+              email: new.manager@example.com
+              password: password123
+              confirm_password: password123
+              department_id: 1
+              district_id: null
+      responses:
+        '201':
+          description: Manager created; no access token is issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manager'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
 
   /issues:
     post:
@@ -720,10 +766,15 @@ paths:
       tags: [ Departments ]
       summary: Delete a department
       description: >-
-        Hard deletes the department row. The category_department pivot uses
-        database-level cascade deletes, so deleting a department automatically
-        removes only its category assignments and leaves categories intact.
-        Restricted to authenticated active main managers only.
+        Hard deletes the department row. Departments assigned to any manager or
+        officer cannot be deleted until those actor assignments are changed.
+        Once no actors reference the department, the category_department pivot
+        uses database-level cascade deletes, so deleting a department
+        automatically removes only its category assignments and leaves
+        categories intact. Issue department migration is intentionally deferred
+        to a later plan, so issue department fields may still use the legacy
+        enum/string contract for now. Restricted to authenticated active main
+        managers only.
       security:
         - bearerAuth: [ ]
       responses:
@@ -735,6 +786,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/ConflictError'
 
   /districts:
     get:
@@ -857,9 +910,72 @@ components:
         password:
           type: string
 
+    ManagerCreate:
+      type: object
+      required: [ username, email, password, confirm_password, department_id ]
+      properties:
+        username:
+          type: string
+          maxLength: 50
+          description: Unique manager username. Uniqueness is checked within managers.
+        email:
+          type: string
+          format: email
+          description: Unique manager email address across users, officers, and managers.
+        password:
+          type: string
+          format: password
+          minLength: 8
+        confirm_password:
+          type: string
+          format: password
+          description: Must exactly match password.
+        department_id:
+          type: integer
+          description: Existing department ID. Managers must have exactly one department.
+        district_id:
+          type: integer
+          nullable: true
+          description: Existing district ID or null.
+
+    Manager:
+      type: object
+      description: Manager resource returned by manager creation. No bearer token is issued.
+      properties:
+        actor_type:
+          type: string
+          enum: [ manager ]
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        department_id:
+          type: integer
+        district_id:
+          type: integer
+          nullable: true
+        is_active:
+          type: boolean
+        is_main_manager:
+          type: boolean
+        created_by_manager_id:
+          type: integer
+          nullable: true
+        department:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/AuthDepartmentProfile'
+        district:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/AuthDistrictProfile'
+
     OfficerRegisterRequest:
       type: object
-      required: [ username, email, password, confirm_password, badge_number ]
+      required: [ username, email, password, confirm_password, badge_number, department_ids ]
       properties:
         username:
           type: string
@@ -868,7 +984,7 @@ components:
         email:
           type: string
           format: email
-          description: Unique officer email address. This does not imply cross-table email uniqueness.
+          description: Unique officer email address across users, officers, and managers.
         password:
           type: string
           format: password
@@ -881,6 +997,13 @@ components:
           type: string
           maxLength: 20
           description: Unique officer badge number.
+        department_ids:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          description: Existing department IDs. Officers must have one or more departments.
+          items:
+            type: integer
 
     AuthResponse:
       type: object
@@ -950,6 +1073,11 @@ components:
           format: email
         badge_number:
           type: string
+        departments:
+          type: array
+          description: Compact department objects. Officers must have one or more departments.
+          items:
+            $ref: '#/components/schemas/AuthDepartmentProfile'
         district:
           nullable: true
           allOf:
@@ -967,13 +1095,28 @@ components:
           type: string
           format: email
         department:
-          type: string
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/AuthDepartmentProfile'
         is_main_manager:
           type: boolean
         district:
           nullable: true
           allOf:
             - $ref: '#/components/schemas/AuthDistrictProfile'
+
+    AuthDepartmentProfile:
+      type: object
+      description: Compact department data returned in actor auth/profile payloads.
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+          example: wijkbeheer
+        name:
+          type: string
+          example: Wijkbeheer
 
     AuthDistrictProfile:
       type: object
@@ -1171,8 +1314,13 @@ components:
       type: object
       description: >-
         Department table row. Categories are assigned to one or more departments
-        through category_department. Deleting a department cascades only pivot
-        assignments and does not delete category rows.
+        through category_department. Managers reference exactly one department
+        through department_id. Officers reference one or more departments
+        through department_officer. Deleting a department is blocked while it is
+        assigned to managers or officers; otherwise it cascades only category
+        pivot assignments and does not delete category rows. Issue department
+        migration is deferred to a later plan, so issues may still expose the
+        legacy enum/string department field.
       properties:
         id:
           type: integer
