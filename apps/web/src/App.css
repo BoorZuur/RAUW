@@ -44,3 +44,30 @@ h2 {
 h3, h4, p{
     font-family: var(--font-family-label), serif;
 }
+
+body{
+    background-color: var(--primary-bg);
+}
+
+/*card component css*/
+.card1{
+    background-color: var(--primary-bg-cards);
+    width: 20vw;
+    height: 20vh;
+    border: solid var(--primary-border-cards) 1px;
+    border-radius: 20px;
+    display: flex;
+}
+
+.card1 > span {
+    color: black;
+}
+
+.card1 > p {
+    color: var(--secondary-text);
+}
+
+.card > img{
+    height: 30px;
+    width: 30px;
+}
