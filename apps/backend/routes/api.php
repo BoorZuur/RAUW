@@ -3,11 +3,13 @@
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Auth\ProfileController;
+use App\Http\Controllers\Auth\ProfileDistrictController;
 use App\Http\Controllers\Auth\RegisterOfficerController;
 use App\Http\Controllers\Auth\RegisterUserController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\ManagerController;
+use App\Http\Controllers\OfficerDistrictController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -43,6 +45,13 @@ Route::middleware('throttle:10,1')->prefix('auth')->group(function (): void {
 Route::middleware('auth:sanctum')->prefix('auth')->group(function (): void {
     Route::get('me', ProfileController::class)->name('auth.me');
     Route::post('logout', LogoutController::class)->name('auth.logout');
+
+    // Self-service district assignment updates. Only active managers and active
+    // officers carry district assignments, so authorization is narrowed inside
+    // UpdateOwnDistrictsRequest: users and any unsupported actor receive a 403.
+    // The authenticated actor's own districts are synced wholesale from the
+    // validated `district_ids` array and the refreshed auth profile is returned.
+    Route::patch('me/districts', ProfileDistrictController::class)->name('auth.me.districts.update');
 });
 
 // Protected manager creation. The route lives outside the `/api/auth` prefix
@@ -53,6 +62,14 @@ Route::middleware('auth:sanctum')->prefix('auth')->group(function (): void {
 // manager, who must authenticate via `POST /api/auth/login`.
 Route::middleware(['auth:sanctum', 'throttle:30,1'])->group(function (): void {
     Route::post('managers', [ManagerController::class, 'store'])->name('managers.store');
+
+    // Manager-protected officer district assignment. Authorization is narrowed
+    // inside UpdateOfficerDistrictsRequest to an authenticated, active manager;
+    // users, officers, and inactive managers receive a 403. Any active manager
+    // may sync the target officer's districts wholesale from the validated
+    // `district_ids` array. The endpoint only touches the officer-side district
+    // pivot and never reassigns `issues.district_id`.
+    Route::patch('officers/{officer}/districts', [OfficerDistrictController::class, 'update'])->name('officers.districts.update');
 
     // Manager-protected category management. Authorization is narrowed inside
     // the category FormRequests to an authenticated, active manager; users,
