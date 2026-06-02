@@ -4,10 +4,12 @@ import {createBrowserRouter, RouterProvider} from "react-router-dom";
 
 import CommandCenter from "./handhaver/CommandCenter.jsx";
 import H_dashboard from "./handhaver/H_dashboard.jsx";
-import ReportOverview from "./handhaver/ReportOverview.jsx";
 import SectorSettings from "./handhaver/SectorSettings.jsx";
 import ServiceProfile from "./handhaver/ServiceProfile.jsx";
 import M_dashboard from "./manager/M_dashboard.jsx";
+import H_ReportsOverview from "./handhaver/H_ReportsOverview.jsx";
+import Flagged_Dashboard from "./manager/Flagged_Dashboard.jsx";
+import ReportsOverview from "./manager/M_ReportsOverview.jsx";
 
 
 function Layout() {
@@ -18,10 +20,12 @@ function App() {
         children: [
             {path: "/", element: <CommandCenter/>},
 
-            {path: "/BOA_dashboard", element: <H_dashboard/>},
-            {path: "/Manager_dashboard", element: <M_dashboard/>},
+            {path: "/boa_dashboard", element: <H_dashboard/>},
+            {path: "/manager_dashboard", element: <M_dashboard/>},
 
-            {path: "/rapport", element: <ReportOverview/>},
+            {path: "/rapport", element: <H_ReportsOverview/>},
+            {path: "/flagged_dashboard", element: <Flagged_Dashboard/>},
+            {path: "/reports_overview", element: <ReportsOverview/>},
             {path: "/sector_instellingen", element: <SectorSettings/>},
             {path: "/dienstprofiel", element: <ServiceProfile/>},
 
