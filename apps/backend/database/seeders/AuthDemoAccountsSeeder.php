@@ -55,7 +55,7 @@ class AuthDemoAccountsSeeder extends Seeder
             ],
         );
 
-        Manager::updateOrCreate(
+        $manager = Manager::updateOrCreate(
             ['email' => 'demo.manager@example.com'],
             [
                 'username' => 'demo.manager',
@@ -63,7 +63,20 @@ class AuthDemoAccountsSeeder extends Seeder
                 'department' => Department::Both->value,
                 'district_id' => $district?->id,
                 'is_active' => true,
+                'created_by_manager_id' => null,
             ],
         );
+
+        // The local demo manager is the deterministic main manager used for
+        // Postman testing. `is_main_manager` is intentionally NOT mass
+        // assignable, so it is set directly here to bypass the model guard.
+        //
+        // In production the initial main manager MUST be provisioned through
+        // trusted operational seeding or direct administration, never through
+        // the public API.
+        if (! $manager->is_main_manager) {
+            $manager->is_main_manager = true;
+            $manager->save();
+        }
     }
 }

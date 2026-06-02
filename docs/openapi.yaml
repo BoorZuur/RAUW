@@ -4,8 +4,8 @@ info:
   description: >-
     OpenAPI 3.0 specification (Swagger UI) for the WIJK application derived from
     the provided ERD. This spec focuses on the main public/admin endpoints used
-    by mobile/web clients and officer/manager consoles. It uses Bearer JWT
-    authentication (adapt to Laravel Sanctum/Passport if needed).
+    by mobile/web clients and officer/manager consoles. It uses Laravel Sanctum
+    bearer token authentication for API consumers.
   version: '1.0.0'
 servers:
   - url: /api/v1
@@ -31,6 +31,93 @@ paths:
         '400':
           $ref: '#/components/responses/ValidationError'
 
+  /api/auth/register/officer:
+    post:
+      tags: [ Auth ]
+      summary: Register a new officer and receive a Sanctum bearer token
+      description: >-
+        Backend API-only officer registration. Creates an Officer record,
+        immediately issues a Sanctum bearer token, and returns the same auth
+        response shape and safe profile serializer used by login. This endpoint
+        does not create a session and does not require authentication.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OfficerRegisterRequest'
+            example:
+              username: new-officer
+              email: new.officer@example.com
+              password: password123
+              confirm_password: password123
+              badge_number: BOA-1234
+      responses:
+        '201':
+          description: Officer created and authenticated with a Sanctum bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              example:
+                token_type: Bearer
+                access_token: 1|plain-text-sanctum-token
+                actor_type: officer
+                profile:
+                  id: 1
+                  username: new-officer
+                  email: new.officer@example.com
+                  badge_number: BOA-1234
+                  district: null
+        '422':
+          description: >-
+            Validation failed. Returned when required fields are missing,
+            email is invalid, password is shorter than 8 characters,
+            confirm_password does not match password, or username/email/badge_number
+            already exists in the officers table.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              examples:
+                missingFields:
+                  summary: Missing required fields
+                  value:
+                    message: The username field is required. (and 4 more errors)
+                    errors:
+                      username:
+                        - The username field is required.
+                      email:
+                        - The email field is required.
+                      password:
+                        - The password field is required.
+                      confirm_password:
+                        - The confirm password field is required.
+                      badge_number:
+                        - The badge number field is required.
+                invalidFields:
+                  summary: Invalid email, short password, and confirmation mismatch
+                  value:
+                    message: The email field must be a valid email address. (and 2 more errors)
+                    errors:
+                      email:
+                        - The email field must be a valid email address.
+                      password:
+                        - The password field must be at least 8 characters.
+                      confirm_password:
+                        - The confirm password field must match password.
+                duplicateIdentifiers:
+                  summary: Duplicate officer identifiers
+                  value:
+                    message: The username has already been taken. (and 2 more errors)
+                    errors:
+                      username:
+                        - The username has already been taken.
+                      email:
+                        - The email has already been taken.
+                      badge_number:
+                        - The badge number has already been taken.
+
   /auth/login:
     post:
       tags: [ Auth ]
@@ -55,6 +142,10 @@ paths:
     get:
       tags: [ Auth ]
       summary: Current authenticated user
+      description: >-
+        Returns the authenticated actor_type and cleaned safe profile payload.
+        This response does not issue a token. actor_type is only present at the
+        top level; profile omits internal auth fields.
       security:
         - bearerAuth: [ ]
       responses:
@@ -63,7 +154,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: '#/components/schemas/AuthCurrentProfileResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
 
@@ -343,7 +434,7 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
-      bearerFormat: JWT
+      bearerFormat: Sanctum
 
   parameters:
     page:
@@ -395,6 +486,18 @@ components:
           type: object
           additionalProperties: true
 
+    ValidationError:
+      type: object
+      properties:
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+
     RegisterRequest:
       type: object
       required: [ username, email, password ]
@@ -419,15 +522,133 @@ components:
         password:
           type: string
 
+    OfficerRegisterRequest:
+      type: object
+      required: [ username, email, password, confirm_password, badge_number ]
+      properties:
+        username:
+          type: string
+          maxLength: 50
+          description: Unique officer username. Uniqueness is checked within officers.
+        email:
+          type: string
+          format: email
+          description: Unique officer email address. This does not imply cross-table email uniqueness.
+        password:
+          type: string
+          format: password
+          minLength: 8
+        confirm_password:
+          type: string
+          format: password
+          description: Must exactly match password.
+        badge_number:
+          type: string
+          maxLength: 20
+          description: Unique officer badge number.
+
     AuthResponse:
       type: object
+      description: >-
+        Auth response wrapper. Token-issuing responses include token_type and
+        access_token. The actor_type field is emitted once at the top level and
+        is not duplicated inside profile.
+      required: [ token_type, access_token, actor_type, profile ]
       properties:
+        token_type:
+          type: string
+          example: Bearer
         access_token:
           type: string
-        refresh_token:
+          description: Plain-text Laravel Sanctum token. Use as Authorization: Bearer <token>.
+        actor_type:
           type: string
-        expires_in:
+          enum: [ user, officer, manager ]
+        profile:
+          oneOf:
+            - $ref: '#/components/schemas/AuthUserProfile'
+            - $ref: '#/components/schemas/AuthOfficerProfile'
+            - $ref: '#/components/schemas/AuthManagerProfile'
+
+    AuthCurrentProfileResponse:
+      type: object
+      description: >-
+        Current authenticated actor response. No token fields are included.
+        actor_type is emitted once at the top level and is not duplicated inside
+        profile.
+      required: [ actor_type, profile ]
+      properties:
+        actor_type:
+          type: string
+          enum: [ user, officer, manager ]
+        profile:
+          oneOf:
+            - $ref: '#/components/schemas/AuthUserProfile'
+            - $ref: '#/components/schemas/AuthOfficerProfile'
+            - $ref: '#/components/schemas/AuthManagerProfile'
+
+    AuthUserProfile:
+      type: object
+      description: Clean user profile payload returned in auth responses.
+      properties:
+        id:
           type: integer
+        name:
+          type: string
+          nullable: true
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+
+    AuthOfficerProfile:
+      type: object
+      description: Safe officer profile payload returned by login, officer registration, and current profile. Internal fields such as actor_type, district_id, and is_active are omitted.
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        badge_number:
+          type: string
+        district:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/AuthDistrictProfile'
+
+    AuthManagerProfile:
+      type: object
+      description: Safe manager profile payload returned by login and current profile. Internal fields such as actor_type, district_id, is_active, and created_by_manager_id are omitted.
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        department:
+          type: string
+        is_main_manager:
+          type: boolean
+        district:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/AuthDistrictProfile'
+
+    AuthDistrictProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        postal_prefix:
+          type: string
 
     User:
       type: object
