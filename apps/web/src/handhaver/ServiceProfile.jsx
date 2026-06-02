@@ -1,4 +1,4 @@
-import './App.css'
+import "apps/web/src/App.css"
 
 function ServiceProfile (){
 
