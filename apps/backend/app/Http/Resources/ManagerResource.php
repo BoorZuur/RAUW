@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Enums\ActorType;
+use App\Models\Department;
 use App\Models\District;
 use App\Models\Manager;
 use Illuminate\Http\Request;
@@ -41,14 +42,38 @@ class ManagerResource extends JsonResource
             'id' => $manager->id,
             'username' => $manager->username,
             'email' => $manager->email,
-            'department' => $manager->department instanceof \BackedEnum
-                ? $manager->department->value
-                : $manager->department,
+            'department_id' => $manager->department_id,
             'district_id' => $manager->district_id,
             'is_active' => (bool) $manager->is_active,
             'is_main_manager' => (bool) $manager->is_main_manager,
             'created_by_manager_id' => $manager->created_by_manager_id,
+            'department' => $this->compactDepartment($manager),
             'district' => $this->compactDistrict($manager),
+        ];
+    }
+
+    /**
+     * Return a compact department payload only when the relation has already
+     * been loaded on the model, avoiding unintended lazy queries.
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function compactDepartment(Manager $manager): ?array
+    {
+        if (! $manager->relationLoaded('department')) {
+            return null;
+        }
+
+        $department = $manager->getRelation('department');
+
+        if (! $department instanceof Department) {
+            return null;
+        }
+
+        return [
+            'id' => $department->id,
+            'code' => $department->code,
+            'name' => $department->name,
         ];
     }
 

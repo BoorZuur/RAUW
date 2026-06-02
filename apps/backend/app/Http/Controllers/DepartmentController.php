@@ -89,13 +89,23 @@ class DepartmentController extends Controller
      *
      * Authorization (active main manager only) is enforced by the route's
      * UpdateDepartmentRequest-equivalent gate through the dedicated
-     * authorization helper below. Deleting the department relies on the
-     * `category_department` pivot's `cascadeOnDelete` foreign keys to remove
-     * the category assignments automatically; the category rows themselves are
-     * never touched, so historical issue context is preserved.
+     * authorization helper below. Deletion is rejected when the department is
+     * still assigned to any manager or officer, because managers must have
+     * exactly one department and officers must have one or more: removing the
+     * row would orphan those actors and break the invariant. Once no actor
+     * references the department, deleting it relies on the `category_department`
+     * pivot's `cascadeOnDelete` foreign keys to remove the category assignments
+     * automatically; the category rows themselves are never touched, so
+     * historical issue context is preserved.
      */
     public function destroy(UpdateDepartmentRequest $request, Department $department): JsonResponse
     {
+        if ($department->managers()->exists() || $department->officers()->exists()) {
+            return response()->json([
+                'message' => 'This department is still assigned to one or more managers or officers and cannot be deleted. Reassign those actors first.',
+            ], Response::HTTP_CONFLICT);
+        }
+
         $department->delete();
 
         return response()->json([], Response::HTTP_NO_CONTENT);

@@ -30,7 +30,7 @@ class ManagerController extends Controller
             'username' => $request->username(),
             'email' => $request->email(),
             'password' => $request->password(),
-            'department' => $request->department(),
+            'department_id' => $request->departmentId(),
             'district_id' => $request->districtId(),
             'created_by_manager_id' => $creator->id,
         ]);
@@ -38,7 +38,7 @@ class ManagerController extends Controller
         // `is_active = true` and `is_main_manager = false` are applied by the
         // model's attribute defaults; no client input can override them.
 
-        $manager->loadMissing('district');
+        $manager->loadMissing('department', 'district');
 
         return (new ManagerResource($manager))
             ->response()

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Department;
 use App\Models\District;
 use App\Models\Manager;
 use App\Models\Officer;
@@ -32,7 +33,7 @@ use InvalidArgumentException;
  *
  * Profile shape by actor type:
  *   - User:    id, name, username, email
- *   - Officer: id, username, email, badge_number, district?
+ *   - Officer: id, username, email, badge_number, departments, district?
  *   - Manager: id, username, email, department, is_main_manager, district?
  *
  * Retained fields with tradeoffs (kept intentionally, covered by tests):
@@ -94,6 +95,7 @@ class AuthProfileResource extends JsonResource
             'username' => $officer->username,
             'email' => $officer->email,
             'badge_number' => $officer->badge_number,
+            'departments' => $this->compactDepartments($officer),
             'district' => $this->compactDistrict($officer),
         ];
     }
@@ -107,11 +109,56 @@ class AuthProfileResource extends JsonResource
             'id' => $manager->id,
             'username' => $manager->username,
             'email' => $manager->email,
-            'department' => $manager->department instanceof \BackedEnum
-                ? $manager->department->value
-                : $manager->department,
+            'department' => $this->compactManagerDepartment($manager),
             'is_main_manager' => (bool) $manager->is_main_manager,
             'district' => $this->compactDistrict($manager),
+        ];
+    }
+
+    /**
+     * Return the officer's assigned departments as compact objects, only when
+     * the `departments` relation has already been loaded to avoid lazy queries.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function compactDepartments(Officer $officer): array
+    {
+        if (! $officer->relationLoaded('departments')) {
+            return [];
+        }
+
+        return $officer->getRelation('departments')
+            ->map(static fn (Department $department): array => [
+                'id' => $department->id,
+                'code' => $department->code,
+                'name' => $department->name,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Return the manager's single department as a compact object, only when the
+     * `department` relation has already been loaded to avoid lazy queries.
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function compactManagerDepartment(Manager $manager): ?array
+    {
+        if (! $manager->relationLoaded('department')) {
+            return null;
+        }
+
+        $department = $manager->getRelation('department');
+
+        if (! $department instanceof Department) {
+            return null;
+        }
+
+        return [
+            'id' => $department->id,
+            'code' => $department->code,
+            'name' => $department->name,
         ];
     }
 

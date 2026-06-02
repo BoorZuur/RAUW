@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\Managers;
 
-use App\Enums\Department;
 use App\Models\Manager;
 use App\Rules\UniqueActorEmail;
 use Illuminate\Foundation\Http\FormRequest;
@@ -49,7 +48,7 @@ class StoreManagerRequest extends FormRequest
             'email' => ['required', 'email', new UniqueActorEmail()],
             'password' => ['required', 'string', Password::min(8)],
             'confirm_password' => ['required', 'string', 'same:password'],
-            'department' => ['required', Rule::enum(Department::class)],
+            'department_id' => ['required', 'integer', Rule::exists('departments', 'id')],
             'district_id' => ['nullable', Rule::exists('districts', 'id')],
         ];
     }
@@ -74,9 +73,9 @@ class StoreManagerRequest extends FormRequest
         return (string) $this->input('confirm_password');
     }
 
-    public function department(): string
+    public function departmentId(): int
     {
-        return (string) $this->input('department');
+        return (int) $this->input('department_id');
     }
 
     public function districtId(): ?int

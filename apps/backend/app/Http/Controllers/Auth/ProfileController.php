@@ -47,6 +47,17 @@ class ProfileController extends Controller
             $actor->loadMissing('district');
         }
 
+        // Eager-load the actor's department relationship(s) so the profile
+        // resource can embed them without triggering lazy queries: managers
+        // have exactly one `department`, officers have one or more `departments`.
+        if ($actor instanceof Manager && ! $actor->relationLoaded('department')) {
+            $actor->loadMissing('department');
+        }
+
+        if ($actor instanceof Officer && ! $actor->relationLoaded('departments')) {
+            $actor->loadMissing('departments');
+        }
+
         return response()->json([
             'actor_type' => $type->value,
             'profile' => (new AuthProfileResource($actor))->toArray($request),

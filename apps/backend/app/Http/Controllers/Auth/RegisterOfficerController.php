@@ -35,9 +35,12 @@ class RegisterOfficerController extends Controller
             'badge_number' => $request->badgeNumber(),
         ]);
 
-        // Eager-load the compact district relation so AuthProfileResource embeds
-        // the same district key behavior as login (null when unassigned).
-        $officer->loadMissing('district');
+        // Persist the officer's one-or-more department assignments in the pivot.
+        $officer->departments()->sync($request->departmentIds());
+
+        // Eager-load the compact district and department relations so
+        // AuthProfileResource embeds the same keys as login without lazy queries.
+        $officer->loadMissing('departments', 'district');
 
         $token = $officer->createToken('api-login')->plainTextToken;
 

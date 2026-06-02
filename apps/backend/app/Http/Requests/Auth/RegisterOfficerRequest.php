@@ -24,6 +24,9 @@ class RegisterOfficerRequest extends FormRequest
      * officer registration cannot create shared-login ambiguity with users
      * or managers.
      *
+     * Each officer must be assigned at least one existing department through
+     * `department_ids`; `distinct` prevents duplicate pivot assignments.
+     *
      * @return array<string, array<int, mixed>>
      */
     public function rules(): array
@@ -34,6 +37,8 @@ class RegisterOfficerRequest extends FormRequest
             'password' => ['required', 'string', Password::min(8)],
             'confirm_password' => ['required', 'string', 'same:password'],
             'badge_number' => ['required', 'string', 'max:20', Rule::unique('officers', 'badge_number')],
+            'department_ids' => ['required', 'array', 'min:1'],
+            'department_ids.*' => ['integer', 'distinct', Rule::exists('departments', 'id')],
         ];
     }
 
@@ -60,5 +65,15 @@ class RegisterOfficerRequest extends FormRequest
     public function badgeNumber(): string
     {
         return (string) $this->input('badge_number');
+    }
+
+    /**
+     * The validated, de-duplicated department IDs to assign to the officer.
+     *
+     * @return array<int, int>
+     */
+    public function departmentIds(): array
+    {
+        return array_values(array_unique(array_map('intval', $this->input('department_ids', []))));
     }
 }
