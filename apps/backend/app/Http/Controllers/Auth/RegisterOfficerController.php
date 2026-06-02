@@ -20,6 +20,11 @@ class RegisterOfficerController extends Controller
      * exactly one Officer record is created (no User or Manager rows), and the
      * response always reports the Officer actor type. `district_id` is left
      * unset (nullable) and `is_active` defaults to true via the model.
+     *
+     * The response follows the canonical auth contract: token fields plus a
+     * single top-level `actor_type` live on the wrapper, while `profile`
+     * carries only the cleaned officer identity fields (id, username, email,
+     * badge_number, district?) defined by {@see AuthProfileResource}.
      */
     public function __invoke(RegisterOfficerRequest $request): JsonResponse
     {

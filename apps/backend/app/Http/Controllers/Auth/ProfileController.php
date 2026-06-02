@@ -16,7 +16,13 @@ class ProfileController extends Controller
 {
     /**
      * Return the authenticated actor's canonical profile payload using the
-     * same shape as the shared login response.
+     * same shape as the shared login/register responses, minus the token
+     * fields.
+     *
+     * Per the canonical auth contract, a single top-level `actor_type` is
+     * emitted and `profile` reuses the same cleaned {@see AuthProfileResource}
+     * shape as login/register, so `GET /api/auth/me` stays in lockstep with
+     * the token-issuing endpoints.
      */
     public function __invoke(Request $request): JsonResponse
     {

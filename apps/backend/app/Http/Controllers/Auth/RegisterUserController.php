@@ -21,6 +21,11 @@ class RegisterUserController extends Controller
      * the response always reports the User actor type. System-managed fields
      * (`is_active`, `flag_count`, `is_under_review`) are left to the model
      * defaults rather than accepted from the client.
+     *
+     * The response follows the canonical auth contract: token fields plus a
+     * single top-level `actor_type` live on the wrapper, while `profile`
+     * carries only the cleaned user identity fields (id, name, username,
+     * email) defined by {@see AuthProfileResource}.
      */
     public function __invoke(RegisterUserRequest $request): JsonResponse
     {

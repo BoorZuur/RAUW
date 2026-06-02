@@ -23,6 +23,12 @@ class LoginController extends Controller
      * Authenticate a user, officer, or manager with shared email/password
      * credentials and return a Sanctum bearer token alongside the actor's
      * canonical safe profile payload.
+     *
+     * The response follows the canonical auth contract: token fields
+     * (`token_type`, `access_token`) and a single top-level `actor_type` live
+     * on the wrapper, while `profile` carries only the cleaned, client-facing
+     * identity fields defined by {@see AuthProfileResource}. `actor_type` is
+     * not duplicated inside `profile`.
      */
     public function __invoke(LoginRequest $request): JsonResponse
     {
