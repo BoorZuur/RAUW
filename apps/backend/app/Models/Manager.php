@@ -18,7 +18,7 @@ use Laravel\Sanctum\HasApiTokens;
 // client-submitted request data. `is_main_manager` is intentionally omitted
 // from fillable: the initial main manager is provisioned only through trusted
 // operational seeding or direct administration, never via the public API.
-#[Fillable(['username', 'email', 'password', 'district_id', 'created_by_manager_id'])]
+#[Fillable(['username', 'email', 'password', 'created_by_manager_id'])]
 #[Hidden(['password', 'remember_token'])]
 class Manager extends Authenticatable
 {
@@ -58,9 +58,14 @@ class Manager extends Authenticatable
         return $this->belongsToMany(Department::class, 'department_manager');
     }
 
-    public function district(): BelongsTo
+    /**
+     * The districts this manager is assigned to (many-to-many).
+     *
+     * @return BelongsToMany<District, $this>
+     */
+    public function districts(): BelongsToMany
     {
-        return $this->belongsTo(District::class);
+        return $this->belongsToMany(District::class, 'district_manager');
     }
 
     /**

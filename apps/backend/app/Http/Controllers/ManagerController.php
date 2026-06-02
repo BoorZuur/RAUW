@@ -30,17 +30,20 @@ class ManagerController extends Controller
             'username' => $request->username(),
             'email' => $request->email(),
             'password' => $request->password(),
-            'district_id' => $request->districtId(),
             'created_by_manager_id' => $creator->id,
         ]);
 
         // Persist the manager's one-or-more department assignments in the pivot.
         $manager->departments()->sync($request->departmentIds());
 
+        // Persist any optional district assignments through the pivot. Managers
+        // may be created with no district assignments at all.
+        $manager->districts()->sync($request->districtIds());
+
         // `is_active = true` and `is_main_manager = false` are applied by the
         // model's attribute defaults; no client input can override them.
 
-        $manager->loadMissing('departments', 'district');
+        $manager->loadMissing('departments', 'districts');
 
         return (new ManagerResource($manager))
             ->response()

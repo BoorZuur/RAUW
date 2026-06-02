@@ -42,6 +42,10 @@ class StoreManagerRequest extends FormRequest
      * Each manager must be assigned at least one existing department through
      * `department_ids`; `distinct` prevents duplicate pivot assignments.
      *
+     * District assignment is optional: `district_ids` may be omitted or empty,
+     * but when present every entry must reference an existing active district,
+     * with `distinct` preventing duplicate pivot assignments.
+     *
      * @return array<string, array<int, mixed>>
      */
     public function rules(): array
@@ -53,7 +57,8 @@ class StoreManagerRequest extends FormRequest
             'confirm_password' => ['required', 'string', 'same:password'],
             'department_ids' => ['required', 'array', 'min:1'],
             'department_ids.*' => ['integer', 'distinct', Rule::exists('departments', 'id')],
-            'district_id' => ['nullable', Rule::exists('districts', 'id')],
+            'district_ids' => ['sometimes', 'array'],
+            'district_ids.*' => ['integer', 'distinct', Rule::exists('districts', 'id')->where('is_active', true)],
         ];
     }
 
@@ -87,10 +92,16 @@ class StoreManagerRequest extends FormRequest
         return array_values(array_unique(array_map('intval', $this->input('department_ids', []))));
     }
 
-    public function districtId(): ?int
+    /**
+     * The validated, de-duplicated district IDs to assign to the manager.
+     *
+     * Returns an empty array when no districts are provided, allowing managers
+     * to be created with no district assignments.
+     *
+     * @return array<int, int>
+     */
+    public function districtIds(): array
     {
-        $districtId = $this->input('district_id');
-
-        return $districtId === null ? null : (int) $districtId;
+        return array_values(array_unique(array_map('intval', $this->input('district_ids', []))));
     }
 }

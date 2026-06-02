@@ -42,12 +42,11 @@ class ManagerResource extends JsonResource
             'id' => $manager->id,
             'username' => $manager->username,
             'email' => $manager->email,
-            'district_id' => $manager->district_id,
             'is_active' => (bool) $manager->is_active,
             'is_main_manager' => (bool) $manager->is_main_manager,
             'created_by_manager_id' => $manager->created_by_manager_id,
             'departments' => $this->compactDepartments($manager),
-            'district' => $this->compactDistrict($manager),
+            'districts' => $this->compactDistricts($manager),
         ];
     }
 
@@ -74,27 +73,24 @@ class ManagerResource extends JsonResource
     }
 
     /**
-     * Return a compact district payload only when the relation has already
-     * been loaded on the model, avoiding unintended lazy queries.
+     * Return the manager's assigned districts as compact objects, only when
+     * the `districts` relation has already been loaded to avoid lazy queries.
      *
-     * @return array<string, mixed>|null
+     * @return array<int, array<string, mixed>>
      */
-    protected function compactDistrict(Manager $manager): ?array
+    protected function compactDistricts(Manager $manager): array
     {
-        if (! $manager->relationLoaded('district')) {
-            return null;
+        if (! $manager->relationLoaded('districts')) {
+            return [];
         }
 
-        $district = $manager->getRelation('district');
-
-        if (! $district instanceof District) {
-            return null;
-        }
-
-        return [
-            'id' => $district->id,
-            'name' => $district->name,
-            'postal_prefix' => $district->postal_prefix,
-        ];
+        return $manager->getRelation('districts')
+            ->map(static fn (District $district): array => [
+                'id' => $district->id,
+                'name' => $district->name,
+                'postal_prefix' => $district->postal_prefix,
+            ])
+            ->values()
+            ->all();
     }
 }

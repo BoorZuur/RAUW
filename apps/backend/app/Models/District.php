@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable(['name', 'postal_prefix', 'center_lat', 'center_lng', 'radius_meters', 'is_active'])]
@@ -36,14 +37,24 @@ class District extends Model
         ];
     }
 
-    public function officers(): HasMany
+    /**
+     * The officers assigned to this district (many-to-many).
+     *
+     * @return BelongsToMany<Officer, $this>
+     */
+    public function officers(): BelongsToMany
     {
-        return $this->hasMany(Officer::class);
+        return $this->belongsToMany(Officer::class, 'district_officer');
     }
 
-    public function managers(): HasMany
+    /**
+     * The managers assigned to this district (many-to-many).
+     *
+     * @return BelongsToMany<Manager, $this>
+     */
+    public function managers(): BelongsToMany
     {
-        return $this->hasMany(Manager::class);
+        return $this->belongsToMany(Manager::class, 'district_manager');
     }
 
     public function issues(): HasMany
