@@ -8,6 +8,7 @@ use App\Models\Manager;
 use App\Models\Officer;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Seeds exactly one hardcoded account per actor type (user, officer, manager)
@@ -72,7 +73,6 @@ class AuthDemoAccountsSeeder extends Seeder
                 'username' => 'demo.officer',
                 'password' => self::DEMO_PASSWORD,
                 'badge_number' => 'BOA-DEMO',
-                'district_id' => $district?->id,
                 'is_active' => true,
             ],
         );
@@ -83,12 +83,16 @@ class AuthDemoAccountsSeeder extends Seeder
             collect($departments)->pluck('id')->all()
         );
 
+        // Attach the deterministic demo district through the officer pivot so
+        // re-seeds keep the same single district assignment without relying on
+        // the removed officers.district_id column.
+        $this->syncActorDistrict('district_officer', 'officer_id', $officer->id, $district?->id);
+
         $manager = Manager::updateOrCreate(
             ['email' => 'demo.manager@example.com'],
             [
                 'username' => 'demo.manager',
                 'password' => self::DEMO_PASSWORD,
-                'district_id' => $district?->id,
                 'is_active' => true,
                 'created_by_manager_id' => null,
             ],
@@ -98,6 +102,10 @@ class AuthDemoAccountsSeeder extends Seeder
         // through the pivot so local testing exercises the new many-to-many
         // manager department relationship.
         $manager->departments()->sync([$departments['wijkbeheer']->id]);
+
+        // Attach the deterministic demo district through the manager pivot,
+        // mirroring the officer assignment under the new many-to-many schema.
+        $this->syncActorDistrict('district_manager', 'manager_id', $manager->id, $district?->id);
 
         // The local demo manager is the deterministic main manager used for
         // Postman testing. `is_main_manager` is intentionally NOT mass
@@ -110,5 +118,32 @@ class AuthDemoAccountsSeeder extends Seeder
             $manager->is_main_manager = true;
             $manager->save();
         }
+    }
+
+    /**
+     * Idempotently attach a single district to an actor through its pivot.
+     *
+     * Existing pivot rows for the actor are cleared first so re-seeds keep the
+     * actor pinned to exactly the deterministic demo district. A null district
+     * leaves the actor without any district assignment.
+     */
+    private function syncActorDistrict(
+        string $pivotTable,
+        string $actorKey,
+        int $actorId,
+        ?int $districtId,
+    ): void {
+        DB::table($pivotTable)->where($actorKey, $actorId)->delete();
+
+        if ($districtId === null) {
+            return;
+        }
+
+        DB::table($pivotTable)->insertOrIgnore([
+            $actorKey => $actorId,
+            'district_id' => $districtId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 }

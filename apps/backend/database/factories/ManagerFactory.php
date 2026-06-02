@@ -6,6 +6,7 @@ use App\Models\Department;
 use App\Models\District;
 use App\Models\Manager;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -38,26 +39,73 @@ class ManagerFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'password' => static::$password ??= 'password',
             'remember_token' => Str::random(10),
-            'district_id' => District::factory(),
             'is_active' => true,
         ];
     }
 
     /**
-     * Attach a single canonical department to every created manager so the
-     * one-or-more department invariant holds without manual setup. This runs
-     * first; `withDepartments()`/`forDepartment()` can override the
-     * assignment afterwards.
+     * Attach a single canonical department and a single district to every
+     * created manager so the one-or-more invariants hold without manual setup.
+     * These run first; `withDepartments()`/`forDepartment()` and
+     * `withDistricts()` can override the assignments afterwards.
      */
     public function configure(): static
     {
-        return $this->afterCreating(function (Manager $manager): void {
-            $departmentId = $this->canonicalDepartment(
-                fake()->randomElement(array_keys(self::CANONICAL_DEPARTMENTS))
-            )->id;
+        return $this
+            ->afterCreating(function (Manager $manager): void {
+                $departmentId = $this->canonicalDepartment(
+                    fake()->randomElement(array_keys(self::CANONICAL_DEPARTMENTS))
+                )->id;
 
-            $manager->departments()->syncWithoutDetaching([$departmentId]);
+                $manager->departments()->syncWithoutDetaching([$departmentId]);
+            })
+            ->afterCreating(function (Manager $manager): void {
+                $this->syncDistricts($manager, [District::factory()->create()->id]);
+            });
+    }
+
+    /**
+     * Attach a specific set of districts after creation, replacing any default
+     * district assignment. Accepts District models or district IDs.
+     *
+     * @param  iterable<District|int>  $districts
+     */
+    public function withDistricts(iterable $districts): static
+    {
+        $ids = [];
+
+        foreach ($districts as $district) {
+            $ids[] = $district instanceof District ? $district->id : $district;
+        }
+
+        return $this->afterCreating(function (Manager $manager) use ($ids): void {
+            $this->syncDistricts($manager, $ids);
         });
+    }
+
+    /**
+     * Replace a manager's district pivot rows with the given district IDs.
+     *
+     * @param  array<int, int>  $districtIds
+     */
+    private function syncDistricts(Manager $manager, array $districtIds): void
+    {
+        DB::table('district_manager')->where('manager_id', $manager->id)->delete();
+
+        $rows = [];
+
+        foreach (array_unique($districtIds) as $districtId) {
+            $rows[] = [
+                'manager_id' => $manager->id,
+                'district_id' => $districtId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        if ($rows !== []) {
+            DB::table('district_manager')->insertOrIgnore($rows);
+        }
     }
 
     /**
