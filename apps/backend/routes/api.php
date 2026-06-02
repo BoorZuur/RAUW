@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Auth\ProfileController;
 use App\Http\Controllers\Auth\RegisterOfficerController;
 use App\Http\Controllers\Auth\RegisterUserController;
+use App\Http\Controllers\ManagerController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -40,4 +41,14 @@ Route::middleware('throttle:10,1')->prefix('auth')->group(function (): void {
 Route::middleware('auth:sanctum')->prefix('auth')->group(function (): void {
     Route::get('me', ProfileController::class)->name('auth.me');
     Route::post('logout', LogoutController::class)->name('auth.logout');
+});
+
+// Protected manager creation. The route lives outside the `/api/auth` prefix
+// and requires a valid Sanctum bearer token. Authorization is further narrowed
+// inside StoreManagerRequest to an active main manager only; users, officers,
+// non-main managers, and inactive managers all receive a 403. The endpoint is
+// rate-limited to mitigate abuse. No login token is issued for the created
+// manager, who must authenticate via `POST /api/auth/login`.
+Route::middleware(['auth:sanctum', 'throttle:30,1'])->group(function (): void {
+    Route::post('managers', [ManagerController::class, 'store'])->name('managers.store');
 });
