@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Auth\ProfileController;
 use App\Http\Controllers\Auth\RegisterOfficerController;
+use App\Http\Controllers\Auth\RegisterUserController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -26,6 +27,11 @@ Route::middleware('throttle:10,1')->prefix('auth')->group(function (): void {
     // unambiguously maps the request to the Officer actor table (rather than
     // User or Manager), and a Sanctum token is issued on success.
     Route::post('register/officer', RegisterOfficerController::class)->name('auth.register.officer');
+
+    // Public, rate-limited user self-registration. The route unambiguously
+    // maps the request to the User actor table (rather than Officer or
+    // Manager), and a Sanctum token is issued on success.
+    Route::post('register/user', RegisterUserController::class)->name('auth.register.user');
 });
 
 // Authenticated auth endpoints. `auth:sanctum` resolves the bearer token
