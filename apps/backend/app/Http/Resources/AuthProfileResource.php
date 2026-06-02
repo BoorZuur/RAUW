@@ -90,6 +90,8 @@ class AuthProfileResource extends JsonResource
                 : $manager->department,
             'district_id' => $manager->district_id,
             'is_active' => (bool) $manager->is_active,
+            'is_main_manager' => (bool) $manager->is_main_manager,
+            'created_by_manager_id' => $manager->created_by_manager_id,
             'district' => $this->compactDistrict($manager),
         ];
     }
