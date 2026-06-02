@@ -13,7 +13,12 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['username', 'email', 'password', 'department', 'district_id'])]
+// NOTE: `created_by_manager_id` is fillable so the controller can assign it
+// explicitly from the authenticated creator. It MUST NEVER be populated from
+// client-submitted request data. `is_main_manager` is intentionally omitted
+// from fillable: the initial main manager is provisioned only through trusted
+// operational seeding or direct administration, never via the public API.
+#[Fillable(['username', 'email', 'password', 'department', 'district_id', 'created_by_manager_id'])]
 #[Hidden(['password', 'remember_token'])]
 class Manager extends Authenticatable
 {
@@ -27,6 +32,7 @@ class Manager extends Authenticatable
     protected $attributes = [
         'department' => Department::Both->value,
         'is_active' => true,
+        'is_main_manager' => false,
     ];
 
     /**
@@ -40,12 +46,29 @@ class Manager extends Authenticatable
             'password' => 'hashed',
             'department' => Department::class,
             'is_active' => 'boolean',
+            'is_main_manager' => 'boolean',
         ];
     }
 
     public function district(): BelongsTo
     {
         return $this->belongsTo(District::class);
+    }
+
+    /**
+     * The manager who created this manager, if any.
+     */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(Manager::class, 'created_by_manager_id');
+    }
+
+    /**
+     * The managers that this manager has created.
+     */
+    public function createdManagers(): HasMany
+    {
+        return $this->hasMany(Manager::class, 'created_by_manager_id');
     }
 
     public function blockedKeywords(): HasMany

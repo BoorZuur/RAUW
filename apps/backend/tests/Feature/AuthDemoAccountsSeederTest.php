@@ -51,6 +51,18 @@ class AuthDemoAccountsSeederTest extends TestCase
             : Department::from($manager->department));
     }
 
+    public function test_seeded_demo_manager_is_the_local_main_manager(): void
+    {
+        District::factory()->create(['name' => 'Centrum']);
+
+        $this->seed(AuthDemoAccountsSeeder::class);
+
+        $manager = Manager::where('email', 'demo.manager@example.com')->firstOrFail();
+
+        $this->assertTrue($manager->is_main_manager);
+        $this->assertNull($manager->created_by_manager_id);
+    }
+
     public function test_seeder_is_idempotent(): void
     {
         District::factory()->create(['name' => 'Centrum']);

@@ -10,6 +10,150 @@
       "name": "Auth",
       "item": [
         {
+          "name": "Register Officer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Officer registration succeeded', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Response contains bearer token and officer profile', function () {",
+                  "    pm.expect(response.token_type).to.eql('Bearer');",
+                  "    pm.expect(response.access_token).to.be.a('string').and.not.empty;",
+                  "    pm.expect(response.actor_type).to.eql('officer');",
+                  "    pm.expect(response.profile).to.be.an('object');",
+                  "    pm.expect(response.profile.actor_type).to.eql('officer');",
+                  "});",
+                  "",
+                  "if (response.access_token) {",
+                  "    pm.collectionVariables.set('access_token', response.access_token);",
+                  "",
+                  "    if (pm.environment.name) {",
+                  "        pm.environment.set('access_token', response.access_token);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"new-officer\",\n  \"email\": \"new.officer@example.com\",\n  \"password\": \"password123\",\n  \"confirm_password\": \"password123\",\n  \"badge_number\": \"BOA-1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register/officer",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register",
+                "officer"
+              ]
+            },
+            "description": "Register a backend API-only officer account with username, email, password, confirm_password, and badge_number. The 201 response includes token_type, access_token, actor_type, and the same safe officer profile serializer used by login. The test script stores access_token in collection and active environment variables. Change username, email, and badge_number before rerunning because username and badge_number must be unique within officers and email must be unique across users, officers, and managers."
+          },
+          "response": []
+        },
+        {
+          "name": "Register User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('User registration succeeded', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Response contains bearer token and user profile', function () {",
+                  "    pm.expect(response.token_type).to.eql('Bearer');",
+                  "    pm.expect(response.access_token).to.be.a('string').and.not.empty;",
+                  "    pm.expect(response.actor_type).to.eql('user');",
+                  "    pm.expect(response.profile).to.be.an('object');",
+                  "    pm.expect(response.profile.actor_type).to.eql('user');",
+                  "});",
+                  "",
+                  "if (response.access_token) {",
+                  "    pm.collectionVariables.set('access_token', response.access_token);",
+                  "",
+                  "    if (pm.environment.name) {",
+                  "        pm.environment.set('access_token', response.access_token);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New User\",\n  \"username\": \"new-user\",\n  \"email\": \"new.user@example.com\",\n  \"password\": \"password123\",\n  \"confirm_password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register/user",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register",
+                "user"
+              ]
+            },
+            "description": "Register a public API user account with name, username, email, password, and confirm_password. The 201 response includes token_type, access_token, actor_type, and the same safe user profile serializer used by login. The test script stores access_token in collection and active environment variables. Change username and email before rerunning because username must be unique within users and email must be unique across users, officers, and managers."
+          },
+          "response": []
+        },
+        {
           "name": "Login",
           "event": [
             {
@@ -179,6 +323,86 @@
         }
       ],
       "description": "Authentication requests for user, officer, and manager actors."
+    },
+    {
+      "name": "Managers",
+      "item": [
+        {
+          "name": "Create Manager",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Manager creation succeeded', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Response contains created manager profile only', function () {",
+                  "    pm.expect(response.actor_type).to.eql('manager');",
+                  "    pm.expect(response.id).to.exist;",
+                  "    pm.expect(response.username).to.be.a('string').and.not.empty;",
+                  "    pm.expect(response.email).to.be.a('string').and.not.empty;",
+                  "    pm.expect(response.is_main_manager).to.eql(false);",
+                  "    pm.expect(response.created_by_manager_id).to.exist;",
+                  "    pm.expect(response.access_token).to.be.undefined;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"new-manager\",\n  \"email\": \"new.manager@example.com\",\n  \"password\": \"password123\",\n  \"confirm_password\": \"password123\",\n  \"department\": \"wijkbeheer\",\n  \"district_id\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/managers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "managers"
+              ]
+            },
+            "description": "Create an ordinary manager as the authenticated main manager. Requires Authorization: Bearer <token> from an active manager with is_main_manager=true. The 201 response returns the created manager profile only and does not include or store an access_token. The new manager must log in separately through Auth / Login. Change username and email before rerunning because username must be unique within managers and email must be unique across users, officers, and managers."
+          },
+          "response": []
+        }
+      ],
+      "description": "Protected manager administration requests. Manager creation is restricted to authenticated active main managers."
     }
   ],
   "auth": {

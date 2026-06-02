@@ -173,6 +173,70 @@ class AuthSchemaTest extends TestCase
         $this->assertNotNull($manager->updated_at);
     }
 
+    public function test_managers_table_has_main_manager_fields(): void
+    {
+        $this->assertTrue(Schema::hasColumn('managers', 'is_main_manager'));
+        $this->assertTrue(Schema::hasColumn('managers', 'created_by_manager_id'));
+    }
+
+    public function test_manager_main_manager_fields_default_to_safe_values(): void
+    {
+        $manager = Manager::create([
+            'username' => 'default-flags-manager',
+            'email' => 'default.flags.manager@example.com',
+            'password' => 'password',
+            'department' => Department::Both,
+        ]);
+
+        $manager->refresh();
+
+        $this->assertFalse($manager->is_main_manager);
+        $this->assertNull($manager->created_by_manager_id);
+    }
+
+    public function test_manager_main_manager_fields_are_cast(): void
+    {
+        $manager = Manager::create([
+            'username' => 'cast-flags-manager',
+            'email' => 'cast.flags.manager@example.com',
+            'password' => 'password',
+            'department' => Department::Both,
+        ]);
+
+        $manager->refresh();
+
+        $this->assertIsBool($manager->is_main_manager);
+    }
+
+    public function test_main_manager_field_is_not_publicly_mass_assignable(): void
+    {
+        $manager = new Manager();
+
+        $this->assertNotContains('is_main_manager', $manager->getFillable());
+        $this->assertContains('created_by_manager_id', $manager->getFillable());
+    }
+
+    public function test_manager_self_referential_creator_relationship(): void
+    {
+        $creator = Manager::create([
+            'username' => 'creator-manager',
+            'email' => 'creator.manager@example.com',
+            'password' => 'password',
+            'department' => Department::Both,
+        ]);
+
+        $created = Manager::create([
+            'username' => 'subordinate-manager',
+            'email' => 'subordinate.manager@example.com',
+            'password' => 'password',
+            'department' => Department::Both,
+            'created_by_manager_id' => $creator->id,
+        ]);
+
+        $this->assertTrue($created->creator->is($creator));
+        $this->assertTrue($creator->createdManagers->contains($created));
+    }
+
     private function assertUniqueConstraintStillApplies(callable $callback): void
     {
         try {
