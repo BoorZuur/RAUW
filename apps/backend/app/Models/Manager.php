@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\Department;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -18,7 +17,7 @@ use Laravel\Sanctum\HasApiTokens;
 // client-submitted request data. `is_main_manager` is intentionally omitted
 // from fillable: the initial main manager is provisioned only through trusted
 // operational seeding or direct administration, never via the public API.
-#[Fillable(['username', 'email', 'password', 'department', 'district_id', 'created_by_manager_id'])]
+#[Fillable(['username', 'email', 'password', 'department_id', 'district_id', 'created_by_manager_id'])]
 #[Hidden(['password', 'remember_token'])]
 class Manager extends Authenticatable
 {
@@ -30,7 +29,6 @@ class Manager extends Authenticatable
      * @var array<string, mixed>
      */
     protected $attributes = [
-        'department' => Department::Both->value,
         'is_active' => true,
         'is_main_manager' => false,
     ];
@@ -44,10 +42,17 @@ class Manager extends Authenticatable
     {
         return [
             'password' => 'hashed',
-            'department' => Department::class,
             'is_active' => 'boolean',
             'is_main_manager' => 'boolean',
         ];
+    }
+
+    /**
+     * The single department this manager belongs to.
+     */
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class);
     }
 
     public function district(): BelongsTo

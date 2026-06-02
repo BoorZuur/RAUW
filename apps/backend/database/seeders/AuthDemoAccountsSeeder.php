@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Enums\Department;
+use App\Models\Department;
 use App\Models\District;
 use App\Models\Manager;
 use App\Models\Officer;
@@ -24,6 +24,17 @@ class AuthDemoAccountsSeeder extends Seeder
      */
     private const DEMO_PASSWORD = 'password';
 
+    /**
+     * Canonical department rows actors are assigned to, mirroring the
+     * actor department migration.
+     *
+     * @var array<string, string>
+     */
+    private const CANONICAL_DEPARTMENTS = [
+        'wijkbeheer' => 'Wijkbeheer',
+        'boa_jeugd' => 'BOA / Jeugd',
+    ];
+
     public function run(): void
     {
         // Pick a deterministic district (the first seeded one by name) so
@@ -33,6 +44,17 @@ class AuthDemoAccountsSeeder extends Seeder
             ->where('name', 'Centrum')
             ->first()
             ?? District::query()->orderBy('id')->first();
+
+        // Ensure the canonical department rows exist so demo actors can be
+        // assigned real department records under the new schema.
+        $departments = [];
+
+        foreach (self::CANONICAL_DEPARTMENTS as $code => $name) {
+            $departments[$code] = Department::firstOrCreate(
+                ['code' => $code],
+                ['name' => $name, 'is_active' => true],
+            );
+        }
 
         User::updateOrCreate(
             ['email' => 'demo.user@example.com'],
@@ -44,7 +66,7 @@ class AuthDemoAccountsSeeder extends Seeder
             ],
         );
 
-        Officer::updateOrCreate(
+        $officer = Officer::updateOrCreate(
             ['email' => 'demo.officer@example.com'],
             [
                 'username' => 'demo.officer',
@@ -55,12 +77,18 @@ class AuthDemoAccountsSeeder extends Seeder
             ],
         );
 
+        // The demo officer belongs to both canonical departments so local
+        // testing exercises the one-or-more department invariant.
+        $officer->departments()->sync(
+            collect($departments)->pluck('id')->all()
+        );
+
         $manager = Manager::updateOrCreate(
             ['email' => 'demo.manager@example.com'],
             [
                 'username' => 'demo.manager',
                 'password' => self::DEMO_PASSWORD,
-                'department' => Department::Both->value,
+                'department_id' => $departments['wijkbeheer']->id,
                 'district_id' => $district?->id,
                 'is_active' => true,
                 'created_by_manager_id' => null,
