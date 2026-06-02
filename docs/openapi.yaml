@@ -41,7 +41,9 @@ paths:
         response shape and safe profile serializer used by login. This endpoint
         does not create a session and does not require authentication. Officers
         must be assigned to one or more existing departments through
-        department_ids.
+        department_ids. Optional district assignments use district_ids and are
+        stored through the district_officer pivot; officers may also start with
+        no assigned districts.
       requestBody:
         required: true
         content:
@@ -55,6 +57,7 @@ paths:
               confirm_password: password123
               badge_number: BOA-1234
               department_ids: [1]
+              district_ids: [1]
       responses:
         '201':
           description: Officer created and authenticated with a Sanctum bearer token
@@ -75,14 +78,18 @@ paths:
                     - id: 1
                       code: wijkbeheer
                       name: Wijkbeheer
-                  district: null
+                  districts:
+                    - id: 1
+                      name: Middelharnis
+                      postal_prefix: '3241'
         '422':
           description: >-
             Validation failed. Returned when required fields are missing,
             email is invalid, password is shorter than 8 characters,
             confirm_password does not match password, department_ids is missing,
             empty, duplicated, or references unknown departments, or
-            username/email/badge_number already exists in the officers table.
+            district_ids is duplicated or references inactive/unknown districts,
+            or username/email/badge_number already exists in the officers table.
           content:
             application/json:
               schema:
@@ -126,7 +133,7 @@ paths:
                       badge_number:
                         - The badge number has already been taken.
 
-  /auth/login:
+  /api/auth/login:
     post:
       tags: [ Auth ]
       summary: Login and receive tokens
@@ -159,11 +166,14 @@ paths:
                           code: wijkbeheer
                           name: Wijkbeheer
                       is_main_manager: true
-                      district: null
+                      districts:
+                        - id: 1
+                          name: Middelharnis
+                          postal_prefix: '3241'
         '401':
           $ref: '#/components/responses/Unauthorized'
 
-  /me:
+  /api/auth/me:
     get:
       tags: [ Auth ]
       summary: Current authenticated user
@@ -194,9 +204,64 @@ paths:
                           code: wijkbeheer
                           name: Wijkbeheer
                       is_main_manager: true
-                      district: null
+                      districts:
+                        - id: 1
+                          name: Middelharnis
+                          postal_prefix: '3241'
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+  /api/auth/me/districts:
+    patch:
+      tags: [ Districts ]
+      summary: Update the authenticated actor's district assignments
+      description: >-
+        Replaces the authenticated actor's district assignments with the supplied
+        district_ids array and returns the refreshed auth profile. Only active
+        managers and active officers have district assignments. Users receive
+        403. The request updates only actor district pivots and never modifies
+        the singular issues.district_id issue location/reference field.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DistrictAssignmentUpdate'
+            example:
+              district_ids: [1, 2]
+      responses:
+        '200':
+          description: Refreshed manager or officer profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthCurrentProfileResponse'
+              example:
+                actor_type: officer
+                profile:
+                  id: 1
+                  username: demo-officer
+                  email: demo.officer@example.com
+                  badge_number: BOA-0001
+                  departments:
+                    - id: 1
+                      code: wijkbeheer
+                      name: Wijkbeheer
+                  districts:
+                    - id: 1
+                      name: Middelharnis
+                      postal_prefix: '3241'
+                    - id: 2
+                      name: Sommelsdijk
+                      postal_prefix: '3245'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
 
   /api/managers:
     post:
@@ -205,9 +270,10 @@ paths:
       description: >-
         Create an ordinary manager as an authenticated active main manager. The
         request must include department_ids with at least one valid department
-        from the departments table. Manager assignments are stored in the
-        department_manager pivot. The response returns the created manager
-        profile only and does not issue an access token.
+        from the departments table. Optional district_ids assign the manager to
+        one or more active districts through the district_manager pivot. The
+        response returns the created manager profile only and does not issue an
+        access token.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -222,7 +288,7 @@ paths:
               password: password123
               confirm_password: password123
               department_ids: [1]
-              district_id: null
+              district_ids: [1]
       responses:
         '201':
           description: Manager created; no access token is issued
@@ -235,7 +301,6 @@ paths:
                 id: 2
                 username: new-manager
                 email: new.manager@example.com
-                district_id: null
                 is_active: true
                 is_main_manager: false
                 created_by_manager_id: 1
@@ -243,11 +308,75 @@ paths:
                   - id: 1
                     code: wijkbeheer
                     name: Wijkbeheer
-                district: null
+                districts:
+                  - id: 1
+                    name: Middelharnis
+                    postal_prefix: '3241'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/officers/{officerId}/districts:
+    parameters:
+      - name: officerId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Districts ]
+      summary: Update an officer's district assignments
+      description: >-
+        Replaces the target officer's district assignments with the supplied
+        district_ids array and returns that officer's refreshed profile. Only an
+        authenticated active manager may call this endpoint. Users, officers,
+        inactive managers, and unauthenticated requests cannot update officer
+        districts. The endpoint updates only the district_officer pivot and never
+        modifies issues.district_id.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DistrictAssignmentUpdate'
+            example:
+              district_ids: [1, 2]
+      responses:
+        '200':
+          description: Refreshed officer profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthCurrentProfileResponse'
+              example:
+                actor_type: officer
+                profile:
+                  id: 1
+                  username: demo-officer
+                  email: demo.officer@example.com
+                  badge_number: BOA-0001
+                  departments:
+                    - id: 1
+                      code: wijkbeheer
+                      name: Wijkbeheer
+                  districts:
+                    - id: 1
+                      name: Middelharnis
+                      postal_prefix: '3241'
+                    - id: 2
+                      name: Sommelsdijk
+                      postal_prefix: '3245'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationError'
 
@@ -836,10 +965,19 @@ paths:
         '409':
           $ref: '#/components/responses/ConflictError'
 
-  /districts:
+  /api/districts:
     get:
       tags: [ Districts ]
       summary: List districts
+      description: >-
+        List districts ordered by name, including manager/officer assignment
+        counts and issue reference counts when available. Requires
+        authentication in the protected API group. District records are separate
+        from actor assignments: managers and officers are assigned through
+        district_manager and district_officer pivots, while issues.district_id
+        remains a singular issue location/reference field.
+      security:
+        - bearerAuth: [ ]
       responses:
         '200':
           description: Districts
@@ -849,6 +987,145 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/District'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [ Districts ]
+      summary: Create a district
+      description: >-
+        Create a district row. Only authenticated active managers may create,
+        update, or delete districts. District CRUD manages district records only;
+        actor assignments use district_ids endpoints and issue district
+        references are not reassigned.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DistrictCreate'
+            example:
+              name: Nieuwe Wijk
+              postal_prefix: '3248'
+              center_lat: 51.75000000
+              center_lng: 4.16000000
+              radius_meters: 2500
+              is_active: true
+      responses:
+        '201':
+          description: District created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/District'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/districts/{districtId}:
+    parameters:
+      - name: districtId
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags: [ Districts ]
+      summary: Show a district
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: District resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/District'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [ Districts ]
+      summary: Update a district
+      description: Only authenticated active managers may update districts.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DistrictUpdate'
+            example:
+              name: Nieuwe Wijk bijgewerkt
+              is_active: true
+      responses:
+        '200':
+          description: District updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/District'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    put:
+      tags: [ Districts ]
+      summary: Replace/update a district
+      description: Same behavior and validation as PATCH /api/districts/{districtId}.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DistrictUpdate'
+      responses:
+        '200':
+          description: District updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/District'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [ Districts ]
+      summary: Delete an eligible district
+      description: >-
+        Only authenticated active managers may delete districts. Deletion returns
+        409 Conflict when the district is still assigned to any manager, assigned
+        to any officer, or referenced by any issue through issues.district_id.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '204':
+          description: District deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/ConflictError'
 
 components:
   securitySchemes:
@@ -984,10 +1261,12 @@ components:
           description: Existing department IDs. Managers must have one or more departments.
           items:
             type: integer
-        district_id:
-          type: integer
-          nullable: true
-          description: Existing district ID or null.
+        district_ids:
+          type: array
+          uniqueItems: true
+          description: Optional active district IDs to attach through the district_manager pivot.
+          items:
+            type: integer
 
     Manager:
       type: object
@@ -1003,9 +1282,6 @@ components:
         email:
           type: string
           format: email
-        district_id:
-          type: integer
-          nullable: true
         is_active:
           type: boolean
         is_main_manager:
@@ -1018,10 +1294,11 @@ components:
           description: Compact department objects. Managers must have one or more departments.
           items:
             $ref: '#/components/schemas/AuthDepartmentProfile'
-        district:
-          nullable: true
-          allOf:
-            - $ref: '#/components/schemas/AuthDistrictProfile'
+        districts:
+          type: array
+          description: Compact district objects assigned through the district_manager pivot.
+          items:
+            $ref: '#/components/schemas/AuthDistrictProfile'
 
     OfficerRegisterRequest:
       type: object
@@ -1052,6 +1329,12 @@ components:
           minItems: 1
           uniqueItems: true
           description: Existing department IDs. Officers must have one or more departments.
+          items:
+            type: integer
+        district_ids:
+          type: array
+          uniqueItems: true
+          description: Optional active district IDs to attach through the district_officer pivot.
           items:
             type: integer
 
@@ -1128,10 +1411,11 @@ components:
           description: Compact department objects. Officers must have one or more departments.
           items:
             $ref: '#/components/schemas/AuthDepartmentProfile'
-        district:
-          nullable: true
-          allOf:
-            - $ref: '#/components/schemas/AuthDistrictProfile'
+        districts:
+          type: array
+          description: Compact district objects assigned through the district_officer pivot.
+          items:
+            $ref: '#/components/schemas/AuthDistrictProfile'
 
     AuthManagerProfile:
       type: object
@@ -1151,10 +1435,11 @@ components:
             $ref: '#/components/schemas/AuthDepartmentProfile'
         is_main_manager:
           type: boolean
-        district:
-          nullable: true
-          allOf:
-            - $ref: '#/components/schemas/AuthDistrictProfile'
+        districts:
+          type: array
+          description: Compact district objects assigned through the district_manager pivot.
+          items:
+            $ref: '#/components/schemas/AuthDistrictProfile'
 
     AuthDepartmentProfile:
       type: object
@@ -1202,6 +1487,11 @@ components:
 
     District:
       type: object
+      description: >-
+        District record. Managers and officers are assigned to districts through
+        district_manager and district_officer many-to-many pivots. The
+        issues.district_id field remains a singular issue location/reference and
+        is not changed by actor district assignment endpoints.
       properties:
         id:
           type: integer
@@ -1217,6 +1507,98 @@ components:
           format: double
         radius_meters:
           type: integer
+          nullable: true
+        is_active:
+          type: boolean
+        managers_count:
+          type: integer
+          nullable: true
+        officers_count:
+          type: integer
+          nullable: true
+        issues_count:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    DistrictCreate:
+      type: object
+      required: [ name ]
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        postal_prefix:
+          type: string
+          maxLength: 10
+          nullable: true
+        center_lat:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          nullable: true
+        center_lng:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          nullable: true
+        radius_meters:
+          type: integer
+          minimum: 1
+          nullable: true
+        is_active:
+          type: boolean
+          default: true
+
+    DistrictUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        postal_prefix:
+          type: string
+          maxLength: 10
+          nullable: true
+        center_lat:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          nullable: true
+        center_lng:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          nullable: true
+        radius_meters:
+          type: integer
+          minimum: 1
+          nullable: true
+        is_active:
+          type: boolean
+
+    DistrictAssignmentUpdate:
+      type: object
+      required: [ district_ids ]
+      properties:
+        district_ids:
+          type: array
+          uniqueItems: true
+          description: >-
+            Full replacement set of active district IDs. Use an empty array to
+            clear all actor district assignments. Duplicate IDs and inactive or
+            unknown districts return validation errors.
+          items:
+            type: integer
 
     Category:
       type: object

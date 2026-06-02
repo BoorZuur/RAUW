@@ -20,6 +20,7 @@ The backend uses bearer token authentication for API consumers. Officer registra
 | `POST` | `/api/auth/register/officer` | None | Register an officer and return an immediately usable bearer token. |
 | `POST` | `/api/auth/login` | None | Authenticate a user, officer, or manager. |
 | `GET` | `/api/auth/me` | `Authorization: Bearer <token>` | Return the current actor type and profile. |
+| `PATCH` | `/api/auth/me/districts` | `Authorization: Bearer <token>` | Replace the current manager/officer actor's district assignments. |
 | `POST` | `/api/auth/logout` | `Authorization: Bearer <token>` | Revoke the current bearer token. |
 
 ### Manual Token Flow
@@ -76,9 +77,15 @@ Successful registration and login responses include:
 
 Supported `actor_type` values are `user`, `officer`, and `manager`.
 
-Officer registration always returns `actor_type: "officer"` and uses the same safe officer profile serializer as login, including fields such as `username`, `email`, `badge_number`, `departments`, and compact `district` data when available. `department_ids` is required during registration, must contain at least one existing department ID, and cannot contain duplicates. Passwords and secrets are never returned. Registration validates `username` and `badge_number` uniqueness within the officers table and validates `email` uniqueness across users, officers, and managers.
+Officer registration always returns `actor_type: "officer"` and uses the same safe officer profile serializer as login, including fields such as `username`, `email`, `badge_number`, `departments`, and a `districts` array of compact district objects when assignments are loaded. `department_ids` is required during registration, must contain at least one existing department ID, and cannot contain duplicates. Optional `district_ids` may be supplied to attach one or more active districts through the `district_officer` pivot. Passwords and secrets are never returned. Registration validates `username` and `badge_number` uniqueness within the officers table and validates `email` uniqueness across users, officers, and managers.
 
 Manager creation uses the `departments` table through `department_ids`. Each manager must have at least one valid department, assignments are stored in the `department_manager` pivot table, and manager auth profiles return a `departments` array of compact objects (`id`, `code`, `name`). Officers keep the same `department_ids` / `department_officer` behavior and auth profiles also return departments in a `departments` array.
+
+Manager and officer district assignments are many-to-many. Managers use the `district_manager` pivot, officers use the `district_officer` pivot, and both actor profile types return `districts` arrays of compact objects (`id`, `name`, `postal_prefix`) instead of a singular actor-side `district_id` or `district` object. Active managers and active officers can replace their own district assignments with `PATCH /api/auth/me/districts` and a JSON body such as `{"district_ids":[1,2]}`; an empty array clears all assignments. Active managers can also replace any officer's assignments with `PATCH /api/officers/{officer}/districts` using the same request body. Users do not have district assignments and receive `403 Forbidden` for self-service district updates.
+
+District records are managed through `/api/districts`. Authenticated actors can list and show districts. Only active managers can create, update, or delete districts. Deleting a district is blocked with `409 Conflict` while it is assigned to managers, assigned to officers, or referenced by issues.
+
+Issue district handling is intentionally unchanged. `issues.district_id` remains a singular issue location/reference field and is not updated by actor district assignment endpoints or district CRUD.
 
 Department deletion is blocked while a department is assigned to any manager or officer. Reassign those actors first; category pivot rows are still cleaned up automatically when an otherwise unused department is deleted.
 
