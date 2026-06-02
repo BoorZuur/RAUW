@@ -8,6 +8,7 @@ use App\Http\Controllers\Auth\RegisterOfficerController;
 use App\Http\Controllers\Auth\RegisterUserController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DepartmentController;
+use App\Http\Controllers\DistrictController;
 use App\Http\Controllers\ManagerController;
 use App\Http\Controllers\OfficerDistrictController;
 use Illuminate\Support\Facades\Route;
@@ -97,4 +98,15 @@ Route::middleware(['auth:sanctum', 'throttle:30,1'])->group(function (): void {
     Route::get('departments/{department}', [DepartmentController::class, 'show'])->name('departments.show');
     Route::match(['put', 'patch'], 'departments/{department}', [DepartmentController::class, 'update'])->name('departments.update');
     Route::delete('departments/{department}', [DepartmentController::class, 'destroy'])->name('departments.destroy');
+
+    // District management. Reads preserve the documented district list/show
+    // contract, while writes are authorized inside the district FormRequests to
+    // authenticated, active managers only. Deleting a district is blocked when
+    // manager/officer assignments or issue references still exist; district CRUD
+    // never reassigns or rewrites `issues.district_id`.
+    Route::get('districts', [DistrictController::class, 'index'])->name('districts.index');
+    Route::post('districts', [DistrictController::class, 'store'])->name('districts.store');
+    Route::get('districts/{district}', [DistrictController::class, 'show'])->name('districts.show');
+    Route::match(['put', 'patch'], 'districts/{district}', [DistrictController::class, 'update'])->name('districts.update');
+    Route::delete('districts/{district}', [DistrictController::class, 'destroy'])->name('districts.destroy');
 });
