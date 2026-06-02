@@ -1,7 +1,5 @@
-import './App.css'
-
-function ReportOverview (){
-
+function ReportOverview() {
+    <h1>Report</h1>
 }
 
 export default ReportOverview
