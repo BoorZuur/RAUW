@@ -403,10 +403,10 @@ class ManagerCreationTest extends TestCase
         $loginResponse->assertOk()
             ->assertJsonPath('token_type', 'Bearer')
             ->assertJsonPath('actor_type', ActorType::Manager->value)
-            ->assertJsonPath('profile.actor_type', ActorType::Manager->value)
             ->assertJsonPath('profile.email', 'created.manager@example.com')
             ->assertJsonPath('profile.is_main_manager', false);
 
+        $this->assertArrayNotHasKey('actor_type', $loginResponse->json('profile'));
         $this->assertNotEmpty($loginResponse->json('access_token'));
     }
 }

@@ -64,13 +64,10 @@ paths:
                 access_token: 1|plain-text-sanctum-token
                 actor_type: officer
                 profile:
-                  actor_type: officer
                   id: 1
                   username: new-officer
                   email: new.officer@example.com
                   badge_number: BOA-1234
-                  district_id: null
-                  is_active: true
                   district: null
         '422':
           description: >-
@@ -145,6 +142,10 @@ paths:
     get:
       tags: [ Auth ]
       summary: Current authenticated user
+      description: >-
+        Returns the authenticated actor_type and cleaned safe profile payload.
+        This response does not issue a token. actor_type is only present at the
+        top level; profile omits internal auth fields.
       security:
         - bearerAuth: [ ]
       responses:
@@ -153,7 +154,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: '#/components/schemas/AuthCurrentProfileResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
 
@@ -548,6 +549,10 @@ components:
 
     AuthResponse:
       type: object
+      description: >-
+        Auth response wrapper. Token-issuing responses include token_type and
+        access_token. The actor_type field is emitted once at the top level and
+        is not duplicated inside profile.
       required: [ token_type, access_token, actor_type, profile ]
       properties:
         token_type:
@@ -565,12 +570,27 @@ components:
             - $ref: '#/components/schemas/AuthOfficerProfile'
             - $ref: '#/components/schemas/AuthManagerProfile'
 
-    AuthUserProfile:
+    AuthCurrentProfileResponse:
       type: object
+      description: >-
+        Current authenticated actor response. No token fields are included.
+        actor_type is emitted once at the top level and is not duplicated inside
+        profile.
+      required: [ actor_type, profile ]
       properties:
         actor_type:
           type: string
-          enum: [ user ]
+          enum: [ user, officer, manager ]
+        profile:
+          oneOf:
+            - $ref: '#/components/schemas/AuthUserProfile'
+            - $ref: '#/components/schemas/AuthOfficerProfile'
+            - $ref: '#/components/schemas/AuthManagerProfile'
+
+    AuthUserProfile:
+      type: object
+      description: Clean user profile payload returned in auth responses.
+      properties:
         id:
           type: integer
         name:
@@ -581,20 +601,11 @@ components:
         email:
           type: string
           format: email
-        email_verified_at:
-          type: string
-          format: date-time
-          nullable: true
-        is_active:
-          type: boolean
 
     AuthOfficerProfile:
       type: object
-      description: Safe officer profile payload returned by login and officer registration.
+      description: Safe officer profile payload returned by login, officer registration, and current profile. Internal fields such as actor_type, district_id, and is_active are omitted.
       properties:
-        actor_type:
-          type: string
-          enum: [ officer ]
         id:
           type: integer
         username:
@@ -604,11 +615,6 @@ components:
           format: email
         badge_number:
           type: string
-        district_id:
-          type: integer
-          nullable: true
-        is_active:
-          type: boolean
         district:
           nullable: true
           allOf:
@@ -616,10 +622,8 @@ components:
 
     AuthManagerProfile:
       type: object
+      description: Safe manager profile payload returned by login and current profile. Internal fields such as actor_type, district_id, is_active, and created_by_manager_id are omitted.
       properties:
-        actor_type:
-          type: string
-          enum: [ manager ]
         id:
           type: integer
         username:
@@ -629,10 +633,7 @@ components:
           format: email
         department:
           type: string
-        district_id:
-          type: integer
-          nullable: true
-        is_active:
+        is_main_manager:
           type: boolean
         district:
           nullable: true

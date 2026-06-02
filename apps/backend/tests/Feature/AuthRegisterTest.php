@@ -91,20 +91,20 @@ class AuthRegisterTest extends TestCase
                 'access_token',
                 'actor_type',
                 'profile' => [
-                    'actor_type', 'id', 'username', 'email',
-                    'badge_number', 'district_id', 'is_active',
+                    'id', 'username', 'email', 'badge_number',
                 ],
             ])
             ->assertJsonPath('token_type', 'Bearer')
             ->assertJsonPath('actor_type', ActorType::Officer->value)
-            ->assertJsonPath('profile.actor_type', ActorType::Officer->value)
             ->assertJsonPath('profile.username', 'new-officer')
             ->assertJsonPath('profile.email', 'new.officer@example.com')
-            ->assertJsonPath('profile.badge_number', 'BOA-1234')
-            ->assertJsonPath('profile.is_active', true);
+            ->assertJsonPath('profile.badge_number', 'BOA-1234');
 
         $json = $response->json();
         $this->assertNotEmpty($json['access_token']);
+        // `actor_type` and access-control flags are not duplicated inside `profile`.
+        $this->assertArrayNotHasKey('actor_type', $json['profile']);
+        $this->assertArrayNotHasKey('is_active', $json['profile']);
         $this->assertArrayNotHasKey('password', $json['profile']);
         $this->assertArrayNotHasKey('remember_token', $json['profile']);
         $this->assertArrayNotHasKey('confirm_password', $json['profile']);
@@ -278,8 +278,9 @@ class AuthRegisterTest extends TestCase
         ]));
 
         $response->assertCreated()
-            ->assertJsonPath('actor_type', ActorType::Officer->value)
-            ->assertJsonPath('profile.actor_type', ActorType::Officer->value);
+            ->assertJsonPath('actor_type', ActorType::Officer->value);
+
+        $this->assertArrayNotHasKey('actor_type', $response->json('profile'));
 
         $this->assertSame(1, Officer::query()->count());
         $this->assertSame(0, User::query()->count());
@@ -324,20 +325,20 @@ class AuthRegisterTest extends TestCase
                 'access_token',
                 'actor_type',
                 'profile' => [
-                    'actor_type', 'id', 'name', 'username', 'email',
-                    'email_verified_at', 'is_active',
+                    'id', 'name', 'username', 'email',
                 ],
             ])
             ->assertJsonPath('token_type', 'Bearer')
             ->assertJsonPath('actor_type', ActorType::User->value)
-            ->assertJsonPath('profile.actor_type', ActorType::User->value)
             ->assertJsonPath('profile.name', 'New User')
             ->assertJsonPath('profile.username', 'new-user')
-            ->assertJsonPath('profile.email', 'new.user@example.com')
-            ->assertJsonPath('profile.is_active', true);
+            ->assertJsonPath('profile.email', 'new.user@example.com');
 
         $json = $response->json();
         $this->assertNotEmpty($json['access_token']);
+        // `actor_type` and access-control flags are not duplicated inside `profile`.
+        $this->assertArrayNotHasKey('actor_type', $json['profile']);
+        $this->assertArrayNotHasKey('is_active', $json['profile']);
         $this->assertArrayNotHasKey('password', $json['profile']);
         $this->assertArrayNotHasKey('remember_token', $json['profile']);
         $this->assertArrayNotHasKey('confirm_password', $json['profile']);

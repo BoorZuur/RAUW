@@ -69,19 +69,21 @@ class AuthLoginTest extends TestCase
                 'access_token',
                 'actor_type',
                 'profile' => [
-                    'actor_type', 'id', 'name', 'username', 'email',
-                    'email_verified_at', 'is_active',
+                    'id', 'name', 'username', 'email',
                 ],
             ])
             ->assertJsonPath('token_type', 'Bearer')
             ->assertJsonPath('actor_type', ActorType::User->value)
-            ->assertJsonPath('profile.actor_type', ActorType::User->value)
             ->assertJsonPath('profile.email', $user->email);
 
         $json = $response->json();
         $this->assertNotEmpty($json['access_token']);
+        // `actor_type` lives on the top-level wrapper only; it is intentionally
+        // not duplicated inside `profile`.
+        $this->assertArrayNotHasKey('actor_type', $json['profile']);
         $this->assertArrayNotHasKey('password', $json['profile']);
         $this->assertArrayNotHasKey('remember_token', $json['profile']);
+        $this->assertArrayNotHasKey('is_active', $json['profile']);
         $this->assertArrayNotHasKey('flag_count', $json['profile']);
         $this->assertArrayNotHasKey('is_under_review', $json['profile']);
     }
@@ -98,11 +100,11 @@ class AuthLoginTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('token_type', 'Bearer')
             ->assertJsonPath('actor_type', ActorType::Officer->value)
-            ->assertJsonPath('profile.actor_type', ActorType::Officer->value)
             ->assertJsonPath('profile.badge_number', 'BOA-LOGIN')
             ->assertJsonPath('profile.district.id', $officer->district_id);
 
         $profile = $response->json('profile');
+        $this->assertArrayNotHasKey('actor_type', $profile);
         $this->assertArrayNotHasKey('password', $profile);
         $this->assertArrayNotHasKey('remember_token', $profile);
     }
@@ -119,11 +121,11 @@ class AuthLoginTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('token_type', 'Bearer')
             ->assertJsonPath('actor_type', ActorType::Manager->value)
-            ->assertJsonPath('profile.actor_type', ActorType::Manager->value)
             ->assertJsonPath('profile.department', Department::Both->value)
             ->assertJsonPath('profile.district.id', $manager->district_id);
 
         $profile = $response->json('profile');
+        $this->assertArrayNotHasKey('actor_type', $profile);
         $this->assertArrayNotHasKey('password', $profile);
         $this->assertArrayNotHasKey('remember_token', $profile);
     }
