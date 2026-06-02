@@ -39,6 +39,9 @@ class StoreManagerRequest extends FormRequest
      * `is_active`, `remember_token`, `deleted_at`, and tokens) are never
      * accepted from the client; the controller assigns them explicitly.
      *
+     * Each manager must be assigned at least one existing department through
+     * `department_ids`; `distinct` prevents duplicate pivot assignments.
+     *
      * @return array<string, array<int, mixed>>
      */
     public function rules(): array
@@ -48,7 +51,8 @@ class StoreManagerRequest extends FormRequest
             'email' => ['required', 'email', new UniqueActorEmail()],
             'password' => ['required', 'string', Password::min(8)],
             'confirm_password' => ['required', 'string', 'same:password'],
-            'department_id' => ['required', 'integer', Rule::exists('departments', 'id')],
+            'department_ids' => ['required', 'array', 'min:1'],
+            'department_ids.*' => ['integer', 'distinct', Rule::exists('departments', 'id')],
             'district_id' => ['nullable', Rule::exists('districts', 'id')],
         ];
     }
@@ -73,9 +77,14 @@ class StoreManagerRequest extends FormRequest
         return (string) $this->input('confirm_password');
     }
 
-    public function departmentId(): int
+    /**
+     * The validated, de-duplicated department IDs to assign to the manager.
+     *
+     * @return array<int, int>
+     */
+    public function departmentIds(): array
     {
-        return (int) $this->input('department_id');
+        return array_values(array_unique(array_map('intval', $this->input('department_ids', []))));
     }
 
     public function districtId(): ?int

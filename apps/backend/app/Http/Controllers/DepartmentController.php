@@ -90,11 +90,12 @@ class DepartmentController extends Controller
      * Authorization (active main manager only) is enforced by the route's
      * UpdateDepartmentRequest-equivalent gate through the dedicated
      * authorization helper below. Deletion is rejected when the department is
-     * still assigned to any manager or officer, because managers must have
-     * exactly one department and officers must have one or more: removing the
-     * row would orphan those actors and break the invariant. Once no actor
-     * references the department, deleting it relies on the `category_department`
-     * pivot's `cascadeOnDelete` foreign keys to remove the category assignments
+     * still assigned to any manager or officer through the `department_manager`
+     * or `department_officer` pivots, because managers and officers must each
+     * have one or more departments: removing the row would orphan those actors
+     * and break the at-least-one-department invariant. Once no actor references
+     * the department, deleting it relies on the `category_department` pivot's
+     * `cascadeOnDelete` foreign keys to remove the category assignments
      * automatically; the category rows themselves are never touched, so
      * historical issue context is preserved.
      */

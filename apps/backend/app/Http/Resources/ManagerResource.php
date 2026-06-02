@@ -42,39 +42,35 @@ class ManagerResource extends JsonResource
             'id' => $manager->id,
             'username' => $manager->username,
             'email' => $manager->email,
-            'department_id' => $manager->department_id,
             'district_id' => $manager->district_id,
             'is_active' => (bool) $manager->is_active,
             'is_main_manager' => (bool) $manager->is_main_manager,
             'created_by_manager_id' => $manager->created_by_manager_id,
-            'department' => $this->compactDepartment($manager),
+            'departments' => $this->compactDepartments($manager),
             'district' => $this->compactDistrict($manager),
         ];
     }
 
     /**
-     * Return a compact department payload only when the relation has already
-     * been loaded on the model, avoiding unintended lazy queries.
+     * Return the manager's assigned departments as compact objects, only when
+     * the `departments` relation has already been loaded to avoid lazy queries.
      *
-     * @return array<string, mixed>|null
+     * @return array<int, array<string, mixed>>
      */
-    protected function compactDepartment(Manager $manager): ?array
+    protected function compactDepartments(Manager $manager): array
     {
-        if (! $manager->relationLoaded('department')) {
-            return null;
+        if (! $manager->relationLoaded('departments')) {
+            return [];
         }
 
-        $department = $manager->getRelation('department');
-
-        if (! $department instanceof Department) {
-            return null;
-        }
-
-        return [
-            'id' => $department->id,
-            'code' => $department->code,
-            'name' => $department->name,
-        ];
+        return $manager->getRelation('departments')
+            ->map(static fn (Department $department): array => [
+                'id' => $department->id,
+                'code' => $department->code,
+                'name' => $department->name,
+            ])
+            ->values()
+            ->all();
     }
 
     /**
