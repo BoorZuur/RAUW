@@ -1,6 +1,6 @@
-import "apps/web/src/App.css"
+import "../App.css"
 
-function SectorSettings (){
+function SectorSettings() {
     <h1>Sector</h1>
 }
 

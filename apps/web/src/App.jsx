@@ -8,7 +8,6 @@ import ReportOverview from "./handhaver/ReportOverview.jsx";
 import SectorSettings from "./handhaver/SectorSettings.jsx";
 import ServiceProfile from "./handhaver/ServiceProfile.jsx";
 import M_dashboard from "./manager/M_dashboard.jsx";
-import U_dashboard from "./user/U_dashboard.jsx";
 
 
 function Layout() {
@@ -23,7 +22,6 @@ function App() {
 
             {path: "/BOA_dashboard", element: <H_dashboard/>},
             {path: "/Manager_dashboard", element: <M_dashboard/>},
-            {path: "/Burger_dashboard", element: <U_dashboard/>},
 
             {path: "/rapport", element: <ReportOverview/>},
             {path: "/sector_instellingen", element: <SectorSettings/>},

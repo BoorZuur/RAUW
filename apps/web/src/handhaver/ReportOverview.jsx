@@ -1,6 +1,6 @@
-import './App.css'
+import "../App.css"
 
-function ReportOverview (){
+function ReportOverview() {
     <h1>Report</h1>
 }
 

@@ -1,6 +1,6 @@
-import "apps/web/src/App.css"
+import "../App.css"
 
-function CommandCenter (){
+function CommandCenter() {
     <h1>Command</h1>
 }
 
