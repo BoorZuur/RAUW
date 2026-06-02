@@ -17,7 +17,7 @@ class ManagerFactory extends Factory
 
     /**
      * Canonical department rows actors are assigned to, mirroring the
-     * actor department migration. Managers belong to exactly one of these.
+     * actor department migration. Managers belong to one or more of these.
      *
      * @var array<string, string>
      */
@@ -38,12 +38,26 @@ class ManagerFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'password' => static::$password ??= 'password',
             'remember_token' => Str::random(10),
-            'department_id' => fn () => $this->canonicalDepartment(
-                fake()->randomElement(array_keys(self::CANONICAL_DEPARTMENTS))
-            )->id,
             'district_id' => District::factory(),
             'is_active' => true,
         ];
+    }
+
+    /**
+     * Attach a single canonical department to every created manager so the
+     * one-or-more department invariant holds without manual setup. This runs
+     * first; `withDepartments()`/`forDepartment()` can override the
+     * assignment afterwards.
+     */
+    public function configure(): static
+    {
+        return $this->afterCreating(function (Manager $manager): void {
+            $departmentId = $this->canonicalDepartment(
+                fake()->randomElement(array_keys(self::CANONICAL_DEPARTMENTS))
+            )->id;
+
+            $manager->departments()->syncWithoutDetaching([$departmentId]);
+        });
     }
 
     /**
@@ -51,9 +65,9 @@ class ManagerFactory extends Factory
      */
     public function wijkbeheer(): static
     {
-        return $this->state(fn () => [
-            'department_id' => $this->canonicalDepartment('wijkbeheer')->id,
-        ]);
+        return $this->afterCreating(function (Manager $manager): void {
+            $manager->departments()->sync([$this->canonicalDepartment('wijkbeheer')->id]);
+        });
     }
 
     /**
@@ -61,19 +75,39 @@ class ManagerFactory extends Factory
      */
     public function boaJeugd(): static
     {
-        return $this->state(fn () => [
-            'department_id' => $this->canonicalDepartment('boa_jeugd')->id,
-        ]);
+        return $this->afterCreating(function (Manager $manager): void {
+            $manager->departments()->sync([$this->canonicalDepartment('boa_jeugd')->id]);
+        });
     }
 
     /**
-     * Assign the manager to a specific department.
+     * Assign the manager to a specific department, replacing the default
+     * canonical assignment.
      */
     public function forDepartment(Department $department): static
     {
-        return $this->state(fn () => [
-            'department_id' => $department->id,
-        ]);
+        return $this->afterCreating(function (Manager $manager) use ($department): void {
+            $manager->departments()->sync([$department->id]);
+        });
+    }
+
+    /**
+     * Attach a specific set of departments after creation, replacing the
+     * default canonical assignment.
+     *
+     * @param  iterable<Department|int>  $departments
+     */
+    public function withDepartments(iterable $departments): static
+    {
+        $ids = [];
+
+        foreach ($departments as $department) {
+            $ids[] = $department instanceof Department ? $department->id : $department;
+        }
+
+        return $this->afterCreating(function (Manager $manager) use ($ids): void {
+            $manager->departments()->sync($ids);
+        });
     }
 
     /**

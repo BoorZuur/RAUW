@@ -88,12 +88,16 @@ class AuthDemoAccountsSeeder extends Seeder
             [
                 'username' => 'demo.manager',
                 'password' => self::DEMO_PASSWORD,
-                'department_id' => $departments['wijkbeheer']->id,
                 'district_id' => $district?->id,
                 'is_active' => true,
                 'created_by_manager_id' => null,
             ],
         );
+
+        // The local demo manager is assigned to the Wijkbeheer department
+        // through the pivot so local testing exercises the new many-to-many
+        // manager department relationship.
+        $manager->departments()->sync([$departments['wijkbeheer']->id]);
 
         // The local demo manager is the deterministic main manager used for
         // Postman testing. `is_main_manager` is intentionally NOT mass
