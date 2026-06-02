@@ -56,10 +56,12 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 
 1. Run **Auth / Register User** or **Auth / Register Officer** to create a public actor and auto-login, or run **Auth / Login** with an existing demo account.
 2. Run **Auth / Current Profile** to inspect the actor attached to the stored token.
-3. To test manager creation locally, run **Auth / Login** with `demo.manager@example.com` and password `password`. This stores a main-manager token.
+3. To test manager creation or department mutations locally, run **Auth / Login** with `demo.manager@example.com` and password `password`. This stores a main-manager token.
 4. Run **Managers / Create Manager**. This creates an ordinary manager but does not replace the stored `access_token`.
-5. If desired, run **Auth / Login** with the newly created manager's email and password to authenticate as that manager.
-6. Run **Auth / Logout** when finished.
+5. Run **Departments / List Departments** to find existing department IDs, then use the other department requests while authenticated as the seeded main manager.
+6. Run **Categories / List Categories** to find existing category IDs. Category create/update/disable/delete requests require an active manager token; main-manager status is not required.
+7. If desired, run **Auth / Login** with a newly created ordinary manager's email and password to test category management without main-manager privileges.
+8. Run **Auth / Logout** when finished.
 
 The collection stores the returned `access_token` automatically after a successful login, user registration, or officer registration. Manager creation intentionally does not update `access_token` because it returns only the created manager profile. If you disable collection scripts or the token is not stored, copy the `access_token` value from the auth response into the active Postman environment's `access_token` variable before calling protected endpoints.
 
@@ -254,6 +256,87 @@ Common error responses:
 - `401 Unauthorized` when the bearer token is missing, invalid, or revoked.
 - `403 Forbidden` when the authenticated actor is not an active main manager.
 - `422 Unprocessable Entity` with validation errors when required fields are missing, `email` is invalid, `password` is shorter than 8 characters, `confirm_password` does not match `password`, `department` is not allowed, `district_id` does not exist, `username` already exists in the managers table, or `email` already exists for any user, officer, or manager.
+
+### Categories
+
+Category endpoints require `Authorization: Bearer <token>` for an authenticated, active manager. Ordinary managers may create, update, disable, and hard delete eligible categories. Users, officers, inactive managers, and unauthenticated requests cannot manage categories.
+
+Categories belong to one or more departments through the `category_department` many-to-many pivot. Use `department_ids` in create/update requests to attach existing departments.
+
+Main categories have `parent_id: null` and use `priority` for ordering. Subcategories reference an active main category with `parent_id` and use `weight` for ordering. Lower `priority` and `weight` numbers mean higher priority and sort first. Nested subcategories are rejected.
+
+Common requests:
+
+- `GET {{base_url}}/api/categories` — list main categories with children and departments.
+- `GET {{base_url}}/api/categories/{id}` — show one category.
+- `POST {{base_url}}/api/categories` — create a main category or subcategory.
+- `PATCH {{base_url}}/api/categories/{id}` — update fields and, when `department_ids` is present, replace department assignments.
+- `PATCH {{base_url}}/api/categories/{id}/disable` — standard safe removal path. Sets `is_active` to `false` without deleting the row or removing historical issue context.
+- `DELETE {{base_url}}/api/categories/{id}` — guarded hard delete for eligible records only.
+
+Main category body example:
+
+```json
+{
+  "name": "Openbare ruimte",
+  "parent_id": null,
+  "department_ids": [1],
+  "priority": 10,
+  "is_active": true
+}
+```
+
+Subcategory body example:
+
+```json
+{
+  "name": "Losliggende stoeptegel",
+  "parent_id": 1,
+  "department_ids": [1, 2],
+  "weight": 5,
+  "is_active": true
+}
+```
+
+Common error responses:
+
+- `401 Unauthorized` when the bearer token is missing, invalid, or revoked.
+- `403 Forbidden` when the authenticated actor is not an active manager.
+- `422 Unprocessable Entity` for validation failures, including missing departments, invalid parent categories, nested subcategories, using `priority` on subcategories, or using `weight` on main categories.
+- `409 Conflict` when hard deleting a main category that still has subcategories: `Cannot delete a main category while it still has subcategories.`
+- `409 Conflict` when hard deleting a category that is still referenced by existing issues: `Cannot delete this category because it is still referenced by existing records. Disable it instead.`
+
+### Departments
+
+Department endpoints use the `departments` table. Categories are attached through the `category_department` pivot, so a category can belong to multiple departments.
+
+Department mutations require `Authorization: Bearer <token>` for an authenticated, active main manager (`is_main_manager: true`). Ordinary managers, users, officers, inactive managers, and unauthenticated requests cannot create, update, or delete departments.
+
+Common requests:
+
+- `GET {{base_url}}/api/departments` — list departments with `categories_count`.
+- `GET {{base_url}}/api/departments/{id}` — show one department.
+- `POST {{base_url}}/api/departments` — create a department as a main manager.
+- `PATCH {{base_url}}/api/departments/{id}` — update a department as a main manager.
+- `DELETE {{base_url}}/api/departments/{id}` — hard delete a department as a main manager.
+
+Create body example:
+
+```json
+{
+  "code": "groenbeheer",
+  "name": "Groenbeheer",
+  "is_active": true
+}
+```
+
+Deleting a department automatically removes its `category_department` assignments through database-level cascading. It does not delete category records.
+
+Common error responses:
+
+- `401 Unauthorized` when the bearer token is missing, invalid, or revoked.
+- `403 Forbidden` when the authenticated actor is not an active main manager.
+- `422 Unprocessable Entity` for validation failures, including duplicate department `code` values.
 
 ### Logout
 

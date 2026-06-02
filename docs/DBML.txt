@@ -51,6 +51,15 @@ Table managers {
   created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
 }
 
+Table departments {
+  id               int          [pk, increment]
+  code             varchar(50)  [not null, unique, note: 'Stabiele code, bv. wijkbeheer of boa_jeugd']
+  name             varchar(100) [not null, note: 'Weergavenaam']
+  is_active        tinyint(1)   [not null, default: 1]
+  created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+}
+
 Table officer_sessions {
   id               int          [pk, increment]
   officer_id       int          [not null, ref: > officers.id]
@@ -67,10 +76,26 @@ Table officer_sessions {
 Table categories {
   id               int          [pk, increment]
   name             varchar(100) [not null]
-  department       varchar(20)  [not null, note: 'wijkbeheer | boa_jeugd']
-  weight           tinyint      [note: '1=Laag 2=Midden 3=Zwaar, NULL voor hoofdcategorie']
-  parent_id        int          [ref: > categories.id]
+  weight           tinyint      [note: 'Subcategorie-volgorde; lager getal = hogere prioriteit; NULL voor hoofdcategorie']
+  priority         tinyint      [note: 'Hoofdcategorie-volgorde; lager getal = hogere prioriteit; NULL voor subcategorie']
+  parent_id        int          [ref: > categories.id, note: 'NULL = hoofdcategorie; subcategorie verwijst naar een hoofdcategorie. Hoofdcategorie kan pas hard deleted worden als er geen subcategorieën meer zijn.']
   is_active        tinyint(1)   [not null, default: 1]
+  created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table category_department {
+  id               int          [pk, increment]
+  category_id      int          [not null, ref: > categories.id, note: 'Cascade delete verwijdert alleen pivot-toewijzing']
+  department_id    int          [not null, ref: > departments.id, note: 'Cascade delete verwijdert alleen pivot-toewijzing']
+  created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (category_id, department_id) [unique]
+    category_id
+    department_id
+  }
 }
 
 Table issues {

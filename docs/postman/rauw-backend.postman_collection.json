@@ -412,6 +412,155 @@
         }
       ],
       "description": "Protected manager administration requests. Manager creation is restricted to authenticated active main managers."
+    },
+    {
+      "name": "Categories",
+      "item": [
+        {
+          "name": "List Categories",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "GET",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+            "url": { "raw": "{{base_url}}/api/categories", "host": [ "{{base_url}}" ], "path": [ "api", "categories" ] },
+            "description": "List categories as an authenticated active manager. Main categories are ordered by priority and children by weight; lower numbers mean higher priority. Responses include assigned departments from the category_department pivot."
+          },
+          "response": []
+        },
+        {
+          "name": "Show Category",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "GET",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+            "url": { "raw": "{{base_url}}/api/categories/1", "host": [ "{{base_url}}" ], "path": [ "api", "categories", "1" ] },
+            "description": "Show one category with parent, children when loaded, and assigned departments. Requires an authenticated active manager."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Main Category",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Openbare ruimte\",\n  \"parent_id\": null,\n  \"department_ids\": [1],\n  \"priority\": 10,\n  \"is_active\": true\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/categories", "host": [ "{{base_url}}" ], "path": [ "api", "categories" ] },
+            "description": "Create a main category as an authenticated active manager. Main categories use priority; lower values sort first. department_ids must contain existing departments."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Subcategory",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Losliggende stoeptegel\",\n  \"parent_id\": 1,\n  \"department_ids\": [1, 2],\n  \"weight\": 5,\n  \"is_active\": true\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/categories", "host": [ "{{base_url}}" ], "path": [ "api", "categories" ] },
+            "description": "Create a subcategory under an active main category. Nested subcategories are rejected. Subcategories use weight; lower values sort first."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Category",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "PATCH",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Openbare ruimte bijgewerkt\",\n  \"department_ids\": [1, 2],\n  \"priority\": 1\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/categories/1", "host": [ "{{base_url}}" ], "path": [ "api", "categories", "1" ] },
+            "description": "Partially update a category as an authenticated active manager. If department_ids is present, it replaces the category's pivot assignments."
+          },
+          "response": []
+        },
+        {
+          "name": "Disable Category",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "PATCH",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+            "url": { "raw": "{{base_url}}/api/categories/1/disable", "host": [ "{{base_url}}" ], "path": [ "api", "categories", "1", "disable" ] },
+            "description": "Standard safe removal path. Sets is_active=false while keeping the category row, department assignments, and historical issue references intact."
+          },
+          "response": []
+        },
+        {
+          "name": "Hard Delete Category",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "DELETE",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+            "url": { "raw": "{{base_url}}/api/categories/1", "host": [ "{{base_url}}" ], "path": [ "api", "categories", "1" ] },
+            "description": "Guarded hard delete for eligible categories only. Prefer Disable Category. A main category with subcategories returns 409, and categories referenced by existing issues also return 409."
+          },
+          "response": []
+        }
+      ],
+      "description": "Category management requests. Requires an authenticated active manager. Categories are assigned to departments through a many-to-many pivot. Disable is the standard removal path; hard delete is guarded."
+    },
+    {
+      "name": "Departments",
+      "item": [
+        {
+          "name": "List Departments",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "GET",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+            "url": { "raw": "{{base_url}}/api/departments", "host": [ "{{base_url}}" ], "path": [ "api", "departments" ] },
+            "description": "List departments from the departments table with category counts. Requires authentication in the protected API group."
+          },
+          "response": []
+        },
+        {
+          "name": "Show Department",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "GET",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+            "url": { "raw": "{{base_url}}/api/departments/1", "host": [ "{{base_url}}" ], "path": [ "api", "departments", "1" ] },
+            "description": "Show one department with category count. Requires authentication in the protected API group."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Department",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"code\": \"groenbeheer\",\n  \"name\": \"Groenbeheer\",\n  \"is_active\": true\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/departments", "host": [ "{{base_url}}" ], "path": [ "api", "departments" ] },
+            "description": "Create a department. Requires an authenticated active main manager (is_main_manager=true). Ordinary managers, users, officers, inactive managers, and unauthenticated requests cannot mutate departments."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Department",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "PATCH",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Groenbeheer bijgewerkt\",\n  \"is_active\": true\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/departments/1", "host": [ "{{base_url}}" ], "path": [ "api", "departments", "1" ] },
+            "description": "Update a department. Requires an authenticated active main manager."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Department",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "DELETE",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+            "url": { "raw": "{{base_url}}/api/departments/1", "host": [ "{{base_url}}" ], "path": [ "api", "departments", "1" ] },
+            "description": "Delete a department as an authenticated active main manager. Database cascade removes category_department assignments automatically; category records remain intact."
+          },
+          "response": []
+        }
+      ],
+      "description": "Department CRUD requests. Department mutations require an authenticated active main manager. Deleting a department removes pivot assignments automatically but does not delete categories."
     }
   ],
   "auth": {

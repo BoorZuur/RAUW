@@ -401,10 +401,16 @@ paths:
                 items:
                   $ref: '#/components/schemas/IssueAttachment'
 
-  /categories:
+  /api/categories:
     get:
       tags: [ Categories ]
-      summary: List categories
+      summary: List categories for managers
+      description: >-
+        Returns main categories ordered by priority, with children ordered by
+        weight. Lower numeric priority/weight values sort first and therefore
+        mean higher priority. Requires an authenticated active manager.
+      security:
+        - bearerAuth: [ ]
       responses:
         '200':
           description: Category list
@@ -414,6 +420,321 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Category'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [ Categories ]
+      summary: Create a category
+      description: >-
+        Create a main category or subcategory and assign it to one or more
+        departments through the category_department pivot. Active managers may
+        manage categories; main-manager status is not required. Main categories
+        use priority, subcategories use weight, and lower numbers mean higher
+        priority. Nested subcategories are rejected.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryCreate'
+      responses:
+        '201':
+          description: Category created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/categories/{categoryId}:
+    parameters:
+      - name: categoryId
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags: [ Categories ]
+      summary: Show a category
+      description: Requires an authenticated active manager.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Category resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [ Categories ]
+      summary: Update a category
+      description: >-
+        Partially update a category. Include department_ids to replace the
+        category's department assignments. Main categories use priority;
+        subcategories use weight. Lower numbers mean higher priority.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryUpdate'
+      responses:
+        '200':
+          description: Category updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    put:
+      tags: [ Categories ]
+      summary: Replace/update a category
+      description: Same behavior and validation as PATCH /api/categories/{categoryId}.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryUpdate'
+      responses:
+        '200':
+          description: Category updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [ Categories ]
+      summary: Hard delete an eligible category
+      description: >-
+        Hard deletion is guarded and is not the standard removal path. Prefer
+        PATCH /api/categories/{categoryId}/disable so historical issues keep
+        their category context. A main category cannot be hard deleted while it
+        still has subcategories. Categories referenced by existing issues also
+        return a conflict.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '204':
+          description: Category hard deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+
+  /api/categories/{categoryId}/disable:
+    parameters:
+      - name: categoryId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Categories ]
+      summary: Disable a category
+      description: >-
+        Standard safe removal path for categories. Sets is_active to false while
+        preserving the category row, department assignments, and historical issue
+        references.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Category disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/departments:
+    get:
+      tags: [ Departments ]
+      summary: List departments
+      description: >-
+        Returns departments from the departments table with category counts.
+        Requires authentication in the protected API group.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Department list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Department'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [ Departments ]
+      summary: Create a department
+      description: >-
+        Create a department row. Mutating department endpoints are restricted to
+        authenticated active main managers only.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentCreate'
+      responses:
+        '201':
+          description: Department created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/departments/{departmentId}:
+    parameters:
+      - name: departmentId
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags: [ Departments ]
+      summary: Show a department
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Department resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [ Departments ]
+      summary: Update a department
+      description: Restricted to authenticated active main managers only.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentUpdate'
+      responses:
+        '200':
+          description: Department updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    put:
+      tags: [ Departments ]
+      summary: Replace/update a department
+      description: Same behavior and validation as PATCH /api/departments/{departmentId}.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentUpdate'
+      responses:
+        '200':
+          description: Department updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [ Departments ]
+      summary: Delete a department
+      description: >-
+        Hard deletes the department row. The category_department pivot uses
+        database-level cascade deletes, so deleting a department automatically
+        removes only its category assignments and leaves categories intact.
+        Restricted to authenticated active main managers only.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '204':
+          description: Department deleted; category assignments removed automatically
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /districts:
     get:
@@ -456,7 +777,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Error'
+            $ref: '#/components/schemas/ValidationError'
     Unauthorized:
       description: Authentication required or failed
       content:
@@ -475,6 +796,12 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+    ConflictError:
+      description: Request conflicts with current resource state
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ConflictError'
 
   schemas:
     Error:
@@ -497,6 +824,14 @@ components:
             type: array
             items:
               type: string
+
+    ConflictError:
+      type: object
+      properties:
+        message:
+          type: string
+      example:
+        message: Cannot delete a main category while it still has subcategories.
 
     RegisterRequest:
       type: object
@@ -691,17 +1026,201 @@ components:
 
     Category:
       type: object
+      description: >-
+        Category resource. Categories are assigned to departments through the
+        category_department many-to-many pivot. Main categories have parent_id
+        null and use priority for ordering. Subcategories reference a main
+        category through parent_id and use weight for ordering. For both fields,
+        lower numbers mean higher priority and sort first.
       properties:
         id:
           type: integer
         name:
           type: string
-        department:
-          type: string
-        weight:
-          type: integer
+        is_active:
+          type: boolean
         parent_id:
           type: integer
+          nullable: true
+        is_main_category:
+          type: boolean
+        priority:
+          type: integer
+          nullable: true
+          description: Main-category ordering value; lower number means higher priority.
+        weight:
+          type: integer
+          nullable: true
+          description: Subcategory ordering value; lower number means higher priority.
+        parent:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/CategoryParentSummary'
+        departments:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/DepartmentSummary'
+        children:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/Category'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CategoryParentSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+
+    DepartmentSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+          example: wijkbeheer
+        name:
+          type: string
+          example: Wijkbeheer
+        is_active:
+          type: boolean
+
+    CategoryDepartmentAssignment:
+      type: object
+      description: Pivot assignment between a category and a department.
+      properties:
+        category_id:
+          type: integer
+        department_id:
+          type: integer
+
+    CategoryCreate:
+      type: object
+      required: [ name, department_ids ]
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        parent_id:
+          type: integer
+          nullable: true
+          description: Null for main categories; subcategories must reference an active main category.
+        department_ids:
+          type: array
+          minItems: 1
+          description: Existing department ids to attach through the category_department pivot.
+          items:
+            type: integer
+        priority:
+          type: integer
+          minimum: 0
+          maximum: 255
+          nullable: true
+          description: Main categories only; lower number means higher priority.
+        weight:
+          type: integer
+          minimum: 0
+          maximum: 255
+          nullable: true
+          description: Subcategories only; lower number means higher priority.
+        is_active:
+          type: boolean
+          default: true
+
+    CategoryUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        parent_id:
+          type: integer
+          nullable: true
+        department_ids:
+          type: array
+          minItems: 1
+          description: When present, replaces the category's department assignments.
+          items:
+            type: integer
+        priority:
+          type: integer
+          minimum: 0
+          maximum: 255
+          nullable: true
+          description: Main categories only; lower number means higher priority.
+        weight:
+          type: integer
+          minimum: 0
+          maximum: 255
+          nullable: true
+          description: Subcategories only; lower number means higher priority.
+        is_active:
+          type: boolean
+
+    Department:
+      type: object
+      description: >-
+        Department table row. Categories are assigned to one or more departments
+        through category_department. Deleting a department cascades only pivot
+        assignments and does not delete category rows.
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+          example: wijkbeheer
+        name:
+          type: string
+          example: Wijkbeheer
+        is_active:
+          type: boolean
+        categories_count:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    DepartmentCreate:
+      type: object
+      required: [ code, name ]
+      properties:
+        code:
+          type: string
+          maxLength: 50
+          description: Stable unique department code.
+        name:
+          type: string
+          maxLength: 100
+        is_active:
+          type: boolean
+          default: true
+
+    DepartmentUpdate:
+      type: object
+      properties:
+        code:
+          type: string
+          maxLength: 50
+          description: Stable unique department code.
+        name:
+          type: string
+          maxLength: 100
+        is_active:
+          type: boolean
 
     IssueCreate:
       type: object
