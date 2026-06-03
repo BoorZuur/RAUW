@@ -24,6 +24,13 @@ class RegisterOfficerRequest extends FormRequest
      * officer registration cannot create shared-login ambiguity with users
      * or managers.
      *
+     * Each officer must be assigned at least one existing department through
+     * `department_ids`; `distinct` prevents duplicate pivot assignments.
+     *
+     * District assignment is optional at registration: `district_ids` may be
+     * omitted or empty, but when present every entry must reference an existing
+     * active district, with `distinct` preventing duplicate pivot assignments.
+     *
      * @return array<string, array<int, mixed>>
      */
     public function rules(): array
@@ -34,6 +41,10 @@ class RegisterOfficerRequest extends FormRequest
             'password' => ['required', 'string', Password::min(8)],
             'confirm_password' => ['required', 'string', 'same:password'],
             'badge_number' => ['required', 'string', 'max:20', Rule::unique('officers', 'badge_number')],
+            'department_ids' => ['required', 'array', 'min:1'],
+            'department_ids.*' => ['integer', 'distinct', Rule::exists('departments', 'id')],
+            'district_ids' => ['sometimes', 'array'],
+            'district_ids.*' => ['integer', 'distinct', Rule::exists('districts', 'id')->where('is_active', true)],
         ];
     }
 
@@ -60,5 +71,28 @@ class RegisterOfficerRequest extends FormRequest
     public function badgeNumber(): string
     {
         return (string) $this->input('badge_number');
+    }
+
+    /**
+     * The validated, de-duplicated department IDs to assign to the officer.
+     *
+     * @return array<int, int>
+     */
+    public function departmentIds(): array
+    {
+        return array_values(array_unique(array_map('intval', $this->input('department_ids', []))));
+    }
+
+    /**
+     * The validated, de-duplicated district IDs to assign to the officer.
+     *
+     * Returns an empty array when no districts are provided, allowing officers
+     * to register with no district assignments.
+     *
+     * @return array<int, int>
+     */
+    public function districtIds(): array
+    {
+        return array_values(array_unique(array_map('intval', $this->input('district_ids', []))));
     }
 }

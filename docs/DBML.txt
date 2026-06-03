@@ -24,6 +24,7 @@ Table districts {
   radius_meters    int          [note: 'Straal voor automatische toewijzing']
   is_active        tinyint(1)   [not null, default: 1]
   created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
 }
 
 Table officers {
@@ -32,7 +33,8 @@ Table officers {
   email            varchar(255) [not null, unique]
   password_hash    varchar(255) [not null]
   badge_number     varchar(20)  [not null, unique]
-  district_id      int          [ref: > districts.id]
+  // Wijken via district_officer; een BOA kan aan meerdere wijken gekoppeld zijn.
+  // Afdelingen via department_officer; een BOA kan aan meerdere afdelingen gekoppeld zijn.
   is_active        tinyint(1)   [not null, default: 1]
   deleted_at       datetime
   created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
@@ -44,11 +46,76 @@ Table managers {
   username         varchar(50)  [not null, unique]
   email            varchar(255) [not null, unique]
   password_hash    varchar(255) [not null]
-  department       varchar(15)  [not null, default: 'beide', note: 'wijkbeheer | boa_jeugd | beide']
-  district_id      int          [ref: > districts.id]
+  // Afdelingen via department_manager; een manager kan aan meerdere afdelingen gekoppeld zijn.
+  // Wijken via district_manager; een manager kan aan meerdere wijken gekoppeld zijn.
   is_active        tinyint(1)   [not null, default: 1]
   deleted_at       datetime
   created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table district_officer {
+  id               int          [pk, increment]
+  district_id      int          [not null, ref: > districts.id, note: 'Cascade delete verwijdert alleen pivot-toewijzing']
+  officer_id       int          [not null, ref: > officers.id, note: 'Cascade delete verwijdert alleen pivot-toewijzing']
+  created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (district_id, officer_id) [unique]
+    district_id
+    officer_id
+  }
+}
+
+Table district_manager {
+  id               int          [pk, increment]
+  district_id      int          [not null, ref: > districts.id, note: 'Cascade delete verwijdert alleen pivot-toewijzing']
+  manager_id       int          [not null, ref: > managers.id, note: 'Cascade delete verwijdert alleen pivot-toewijzing']
+  created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (district_id, manager_id) [unique]
+    district_id
+    manager_id
+  }
+}
+
+Table departments {
+  id               int          [pk, increment]
+  code             varchar(50)  [not null, unique, note: 'Stabiele code, bv. wijkbeheer of boa_jeugd; gebruikt door categorieën, managers en BOA-afdelingen']
+  name             varchar(100) [not null, note: 'Weergavenaam']
+  is_active        tinyint(1)   [not null, default: 1]
+  created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table department_officer {
+  id               int          [pk, increment]
+  department_id    int          [not null, ref: > departments.id, note: 'Cascade delete verwijdert alleen pivot-toewijzing']
+  officer_id       int          [not null, ref: > officers.id, note: 'Cascade delete verwijdert alleen pivot-toewijzing']
+  created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (department_id, officer_id) [unique]
+    department_id
+    officer_id
+  }
+}
+
+Table department_manager {
+  id               int          [pk, increment]
+  department_id    int          [not null, ref: > departments.id, note: 'Cascade delete verwijdert alleen pivot-toewijzing']
+  manager_id       int          [not null, ref: > managers.id, note: 'Cascade delete verwijdert alleen pivot-toewijzing']
+  created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (department_id, manager_id) [unique]
+    department_id
+    manager_id
+  }
 }
 
 Table officer_sessions {
@@ -67,10 +134,26 @@ Table officer_sessions {
 Table categories {
   id               int          [pk, increment]
   name             varchar(100) [not null]
-  department       varchar(20)  [not null, note: 'wijkbeheer | boa_jeugd']
-  weight           tinyint      [note: '1=Laag 2=Midden 3=Zwaar, NULL voor hoofdcategorie']
-  parent_id        int          [ref: > categories.id]
+  weight           tinyint      [note: 'Subcategorie-volgorde; lager getal = hogere prioriteit; NULL voor hoofdcategorie']
+  priority         tinyint      [note: 'Hoofdcategorie-volgorde; lager getal = hogere prioriteit; NULL voor subcategorie']
+  parent_id        int          [ref: > categories.id, note: 'NULL = hoofdcategorie; subcategorie verwijst naar een hoofdcategorie. Hoofdcategorie kan pas hard deleted worden als er geen subcategorieën meer zijn.']
   is_active        tinyint(1)   [not null, default: 1]
+  created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table category_department {
+  id               int          [pk, increment]
+  category_id      int          [not null, ref: > categories.id, note: 'Cascade delete verwijdert alleen pivot-toewijzing']
+  department_id    int          [not null, ref: > departments.id, note: 'Cascade delete verwijdert alleen pivot-toewijzing']
+  created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (category_id, department_id) [unique]
+    category_id
+    department_id
+  }
 }
 
 Table issues {
@@ -78,7 +161,7 @@ Table issues {
   user_id              int          [ref: > users.id, note: 'NULL na soft delete user']
   category_id          int          [not null, ref: > categories.id]
   assigned_officer_id  int          [ref: > officers.id]
-  district_id          int          [ref: > districts.id]
+  district_id          int          [ref: > districts.id, note: 'Singuliere issue-locatie/referentie; valt buiten actor-wijk many-to-many toewijzingen']
   duplicate_of_id      int          [ref: > issues.id]
   title                varchar(255) [not null]
   content              text         [not null]
@@ -89,7 +172,7 @@ Table issues {
   longitude            decimal(11,8)
   status               varchar(20)  [not null, default: 'open', note: 'open | in_behandeling | afgerond | afgewezen | gedupliceerd']
   priority             varchar(10)  [not null, default: 'laag', note: 'laag | midden | zwaar']
-  department           varchar(20)  [not null, note: 'wijkbeheer | boa_jeugd']
+  department           varchar(20)  [not null, note: 'wijkbeheer | boa_jeugd; issues zijn nog niet gemigreerd naar departments']
   duplicate_count      int          [not null, default: 0]
   participant_count    int          [not null, default: 0, note: 'Direct opgehoogd, nachtelijks gereconcilieerd']
   vote_count           int          [not null, default: 0, note: 'Direct opgehoogd, nachtelijks gereconcilieerd']

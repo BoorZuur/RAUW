@@ -130,9 +130,10 @@ class EnumCastingTest extends TestCase
 
     private function createIssue(array $attributes = []): Issue
     {
+        // Categories no longer carry a `department` enum column; departments are
+        // a first-class table assigned through the `category_department` pivot.
         $category = Category::create([
             'name' => 'Public space',
-            'department' => Department::DistrictManagement,
         ]);
 
         return Issue::create(array_merge([
