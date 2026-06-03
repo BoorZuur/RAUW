@@ -9,6 +9,7 @@ use App\Http\Controllers\Auth\RegisterUserController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\DistrictController;
+use App\Http\Controllers\IssueController;
 use App\Http\Controllers\ManagerController;
 use App\Http\Controllers\OfficerDistrictController;
 use Illuminate\Support\Facades\Route;
@@ -109,4 +110,18 @@ Route::middleware(['auth:sanctum', 'throttle:30,1'])->group(function (): void {
     Route::get('districts/{district}', [DistrictController::class, 'show'])->name('districts.show');
     Route::match(['put', 'patch'], 'districts/{district}', [DistrictController::class, 'update'])->name('districts.update');
     Route::delete('districts/{district}', [DistrictController::class, 'destroy'])->name('districts.destroy');
+
+    // Issue management. Listing and reads are available to any authenticated
+    // actor, while writes are authorized inside the issue FormRequests to the
+    // authenticated, active regular user who owns the issue. Issues remain
+    // user-owned through `issues.user_id` even when reported anonymously, so the
+    // author can keep managing their own report; anonymous reports are displayed
+    // through a stable, server-generated `anonymous_alias`. Deleting an issue
+    // (DELETE `/issues/{issue}`) is a hard delete that relies on the attachment
+    // foreign-key cascade to remove the issue's attachments.
+    Route::get('issues', [IssueController::class, 'index'])->name('issues.index');
+    Route::post('issues', [IssueController::class, 'store'])->name('issues.store');
+    Route::get('issues/{issue}', [IssueController::class, 'show'])->name('issues.show');
+    Route::match(['put', 'patch'], 'issues/{issue}', [IssueController::class, 'update'])->name('issues.update');
+    Route::delete('issues/{issue}', [IssueController::class, 'destroy'])->name('issues.destroy');
 });
