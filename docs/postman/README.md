@@ -155,7 +155,6 @@ Request body:
 
 ```json
 {
-  "name": "New User",
   "username": "new-user",
   "email": "new.user@example.com",
   "password": "password123",
@@ -172,7 +171,6 @@ Successful response shape:
   "actor_type": "user",
   "profile": {
     "id": 1,
-    "name": "New User",
     "username": "new-user",
     "email": "new.user@example.com"
   }
@@ -206,7 +204,6 @@ Successful response shape:
   "actor_type": "user",
   "profile": {
     "id": 1,
-    "name": "Demo User",
     "username": "demo.user",
     "email": "demo.user@example.com"
   }
@@ -233,6 +230,7 @@ Successful response shape:
   "actor_type": "user",
   "profile": {
     "id": 1,
+    "username": "demo.user",
     "email": "demo.user@example.com"
   }
 }

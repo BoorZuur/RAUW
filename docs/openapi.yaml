@@ -14,7 +14,10 @@ paths:
   /api/auth/register/user:
     post:
       tags: [ Auth ]
-      summary: Register a new user
+      summary: Register a new user (legacy path)
+      description: >-
+        Legacy OpenAPI path. The live backend route for public user registration
+        is POST /api/auth/register/user.
       requestBody:
         required: true
         content:
@@ -132,6 +135,87 @@ paths:
                         - The email has already been taken.
                       badge_number:
                         - The badge number has already been taken.
+
+  /api/auth/register/user:
+    post:
+      tags: [ Auth ]
+      summary: Register a new user and receive a Sanctum bearer token
+      description: >-
+        Backend API-only public user registration. Creates a User record,
+        immediately issues a Sanctum bearer token, and returns the same auth
+        response shape and safe profile serializer used by login. This endpoint
+        does not create a session and does not require authentication.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegisterRequest'
+            example:
+              username: new-user
+              email: new.user@example.com
+              password: password123
+              confirm_password: password123
+      responses:
+        '201':
+          description: User created and authenticated with a Sanctum bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              example:
+                token_type: Bearer
+                access_token: 1|plain-text-sanctum-token
+                actor_type: user
+                profile:
+                  id: 1
+                  username: new-user
+                  email: new.user@example.com
+        '422':
+          description: >-
+            Validation failed. Returned when required fields are missing,
+            email is invalid, password is shorter than 8 characters,
+            confirm_password does not match password, or username already exists
+            in the users table, or email already exists for any user, officer,
+            or manager.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              examples:
+                missingFields:
+                  summary: Missing required fields
+                  value:
+                    message: The username field is required. (and 3 more errors)
+                    errors:
+                      username:
+                        - The username field is required.
+                      email:
+                        - The email field is required.
+                      password:
+                        - The password field is required.
+                      confirm_password:
+                        - The confirm password field is required.
+                invalidFields:
+                  summary: Invalid email, short password, and confirmation mismatch
+                  value:
+                    message: The email field must be a valid email address. (and 2 more errors)
+                    errors:
+                      email:
+                        - The email field must be a valid email address.
+                      password:
+                        - The password field must be at least 8 characters.
+                      confirm_password:
+                        - The confirm password field must match password.
+                duplicateIdentifiers:
+                  summary: Duplicate user identifiers
+                  value:
+                    message: The username has already been taken. (and 1 more error)
+                    errors:
+                      username:
+                        - The username has already been taken.
+                      email:
+                        - The email has already been taken.
 
   /api/auth/login:
     post:
@@ -1712,6 +1796,27 @@ components:
           items:
             type: integer
 
+    UserRegisterRequest:
+      type: object
+      required: [ username, email, password, confirm_password ]
+      properties:
+        username:
+          type: string
+          maxLength: 50
+          description: Unique user username. Uniqueness is checked within users.
+        email:
+          type: string
+          format: email
+          description: Unique user email address across users, officers, and managers.
+        password:
+          type: string
+          format: password
+          minLength: 8
+        confirm_password:
+          type: string
+          format: password
+          description: Must exactly match password.
+
     AuthResponse:
       type: object
       description: >-
@@ -1757,12 +1862,10 @@ components:
     AuthUserProfile:
       type: object
       description: Clean user profile payload returned in auth responses.
+      required: [ id, username, email ]
       properties:
         id:
           type: integer
-        name:
-          type: string
-          nullable: true
         username:
           type: string
         email:
