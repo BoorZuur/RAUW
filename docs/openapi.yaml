@@ -1,0 +1,887 @@
+openapi: 3.0.3
+info:
+  title: WIJK App API
+  description: >-
+    OpenAPI 3.0 specification (Swagger UI) for the WIJK application derived from
+    the provided ERD. This spec focuses on the main public/admin endpoints used
+    by mobile/web clients and officer/manager consoles. It uses Laravel Sanctum
+    bearer token authentication for API consumers.
+  version: '1.0.0'
+servers:
+  - url: /api/v1
+    description: API base path (versioned)
+paths:
+  /auth/register:
+    post:
+      tags: [ Auth ]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/auth/register/officer:
+    post:
+      tags: [ Auth ]
+      summary: Register a new officer and receive a Sanctum bearer token
+      description: >-
+        Backend API-only officer registration. Creates an Officer record,
+        immediately issues a Sanctum bearer token, and returns the same auth
+        response shape and safe profile serializer used by login. This endpoint
+        does not create a session and does not require authentication.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OfficerRegisterRequest'
+            example:
+              username: new-officer
+              email: new.officer@example.com
+              password: password123
+              confirm_password: password123
+              badge_number: BOA-1234
+      responses:
+        '201':
+          description: Officer created and authenticated with a Sanctum bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              example:
+                token_type: Bearer
+                access_token: 1|plain-text-sanctum-token
+                actor_type: officer
+                profile:
+                  id: 1
+                  username: new-officer
+                  email: new.officer@example.com
+                  badge_number: BOA-1234
+                  district: null
+        '422':
+          description: >-
+            Validation failed. Returned when required fields are missing,
+            email is invalid, password is shorter than 8 characters,
+            confirm_password does not match password, or username/email/badge_number
+            already exists in the officers table.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              examples:
+                missingFields:
+                  summary: Missing required fields
+                  value:
+                    message: The username field is required. (and 4 more errors)
+                    errors:
+                      username:
+                        - The username field is required.
+                      email:
+                        - The email field is required.
+                      password:
+                        - The password field is required.
+                      confirm_password:
+                        - The confirm password field is required.
+                      badge_number:
+                        - The badge number field is required.
+                invalidFields:
+                  summary: Invalid email, short password, and confirmation mismatch
+                  value:
+                    message: The email field must be a valid email address. (and 2 more errors)
+                    errors:
+                      email:
+                        - The email field must be a valid email address.
+                      password:
+                        - The password field must be at least 8 characters.
+                      confirm_password:
+                        - The confirm password field must match password.
+                duplicateIdentifiers:
+                  summary: Duplicate officer identifiers
+                  value:
+                    message: The username has already been taken. (and 2 more errors)
+                    errors:
+                      username:
+                        - The username has already been taken.
+                      email:
+                        - The email has already been taken.
+                      badge_number:
+                        - The badge number has already been taken.
+
+  /auth/login:
+    post:
+      tags: [ Auth ]
+      summary: Login and receive tokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /me:
+    get:
+      tags: [ Auth ]
+      summary: Current authenticated user
+      description: >-
+        Returns the authenticated actor_type and cleaned safe profile payload.
+        This response does not issue a token. actor_type is only present at the
+        top level; profile omits internal auth fields.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthCurrentProfileResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /issues:
+    post:
+      tags: [ Issues ]
+      summary: Create a new issue
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueCreate'
+      responses:
+        '201':
+          description: Issue created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+    get:
+      tags: [ Issues ]
+      summary: List issues with filters and pagination
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: department
+          in: query
+          schema:
+            type: string
+        - name: category_id
+          in: query
+          schema:
+            type: integer
+        - name: district_id
+          in: query
+          schema:
+            type: integer
+        - name: lat
+          in: query
+          schema:
+            type: number
+            format: double
+        - name: lng
+          in: query
+          schema:
+            type: number
+            format: double
+        - name: radius
+          in: query
+          schema:
+            type: integer
+            description: radius in meters
+      responses:
+        '200':
+          description: Paged list of issues
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Issue'
+                  page:
+                    type: integer
+                  per_page:
+                    type: integer
+                  total:
+                    type: integer
+
+  /issues/{issueId}:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags: [ Issues ]
+      summary: Get an issue by id
+      responses:
+        '200':
+          description: Issue object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [ Issues ]
+      summary: Update an issue (owner/officer/manager depending on fields)
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueUpdate'
+      responses:
+        '200':
+          description: Updated issue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    delete:
+      tags: [ Issues ]
+      summary: Soft-delete an issue
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '204':
+          description: Deleted
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /issues/{issueId}/comments:
+    get:
+      tags: [ Comments ]
+      summary: List comments for an issue
+      parameters:
+        - name: issueId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Comments list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/IssueComment'
+
+    post:
+      tags: [ Comments ]
+      summary: Post a new comment on an issue
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueCommentCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueComment'
+
+  /issues/{issueId}/messages:
+    get:
+      tags: [ Messages ]
+      summary: Get chat messages for an issue
+      parameters:
+        - name: issueId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/IssueMessage'
+
+    post:
+      tags: [ Messages ]
+      summary: Send a chat message in an issue
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueMessageCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueMessage'
+
+  /issues/{issueId}/attachments:
+    post:
+      tags: [ Attachments ]
+      summary: Upload files for an issue
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+      responses:
+        '201':
+          description: Uploaded attachments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IssueAttachment'
+
+  /categories:
+    get:
+      tags: [ Categories ]
+      summary: List categories
+      responses:
+        '200':
+          description: Category list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+
+  /districts:
+    get:
+      tags: [ Districts ]
+      summary: List districts
+      responses:
+        '200':
+          description: Districts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/District'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum
+
+  parameters:
+    page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+    perPage:
+      name: per_page
+      in: query
+      schema:
+        type: integer
+        default: 25
+
+  responses:
+    ValidationError:
+      description: Input validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Authentication required or failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties: true
+
+    ValidationError:
+      type: object
+      properties:
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+
+    RegisterRequest:
+      type: object
+      required: [ username, email, password ]
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        is_anonymous:
+          type: boolean
+
+    LoginRequest:
+      type: object
+      required: [ email, password ]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    OfficerRegisterRequest:
+      type: object
+      required: [ username, email, password, confirm_password, badge_number ]
+      properties:
+        username:
+          type: string
+          maxLength: 50
+          description: Unique officer username. Uniqueness is checked within officers.
+        email:
+          type: string
+          format: email
+          description: Unique officer email address. This does not imply cross-table email uniqueness.
+        password:
+          type: string
+          format: password
+          minLength: 8
+        confirm_password:
+          type: string
+          format: password
+          description: Must exactly match password.
+        badge_number:
+          type: string
+          maxLength: 20
+          description: Unique officer badge number.
+
+    AuthResponse:
+      type: object
+      description: >-
+        Auth response wrapper. Token-issuing responses include token_type and
+        access_token. The actor_type field is emitted once at the top level and
+        is not duplicated inside profile.
+      required: [ token_type, access_token, actor_type, profile ]
+      properties:
+        token_type:
+          type: string
+          example: Bearer
+        access_token:
+          type: string
+          description: Plain-text Laravel Sanctum token. Use as Authorization: Bearer <token>.
+        actor_type:
+          type: string
+          enum: [ user, officer, manager ]
+        profile:
+          oneOf:
+            - $ref: '#/components/schemas/AuthUserProfile'
+            - $ref: '#/components/schemas/AuthOfficerProfile'
+            - $ref: '#/components/schemas/AuthManagerProfile'
+
+    AuthCurrentProfileResponse:
+      type: object
+      description: >-
+        Current authenticated actor response. No token fields are included.
+        actor_type is emitted once at the top level and is not duplicated inside
+        profile.
+      required: [ actor_type, profile ]
+      properties:
+        actor_type:
+          type: string
+          enum: [ user, officer, manager ]
+        profile:
+          oneOf:
+            - $ref: '#/components/schemas/AuthUserProfile'
+            - $ref: '#/components/schemas/AuthOfficerProfile'
+            - $ref: '#/components/schemas/AuthManagerProfile'
+
+    AuthUserProfile:
+      type: object
+      description: Clean user profile payload returned in auth responses.
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          nullable: true
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+
+    AuthOfficerProfile:
+      type: object
+      description: Safe officer profile payload returned by login, officer registration, and current profile. Internal fields such as actor_type, district_id, and is_active are omitted.
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        badge_number:
+          type: string
+        district:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/AuthDistrictProfile'
+
+    AuthManagerProfile:
+      type: object
+      description: Safe manager profile payload returned by login and current profile. Internal fields such as actor_type, district_id, is_active, and created_by_manager_id are omitted.
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        department:
+          type: string
+        is_main_manager:
+          type: boolean
+        district:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/AuthDistrictProfile'
+
+    AuthDistrictProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        postal_prefix:
+          type: string
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+        is_active:
+          type: boolean
+        flag_count:
+          type: integer
+        is_under_review:
+          type: boolean
+        anonymous_alias:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    District:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        postal_prefix:
+          type: string
+        center_lat:
+          type: number
+          format: double
+        center_lng:
+          type: number
+          format: double
+        radius_meters:
+          type: integer
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        department:
+          type: string
+        weight:
+          type: integer
+        parent_id:
+          type: integer
+
+    IssueCreate:
+      type: object
+      required: [ category_id, title, content, department ]
+      properties:
+        category_id:
+          type: integer
+        title:
+          type: string
+        content:
+          type: string
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        address:
+          type: string
+        postal_code:
+          type: string
+        neighborhood:
+          type: string
+        department:
+          type: string
+          description: wijkbeheer | boa_jeugd
+        is_anonymous:
+          type: boolean
+
+    IssueUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+        category_id:
+          type: integer
+        priority:
+          type: string
+        status:
+          type: string
+
+    Issue:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        category_id:
+          type: integer
+        assigned_officer_id:
+          type: integer
+        district_id:
+          type: integer
+        title:
+          type: string
+        content:
+          type: string
+        address:
+          type: string
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        status:
+          type: string
+        priority:
+          type: string
+        is_flagged:
+          type: boolean
+        visibility:
+          type: string
+        anonymous_alias:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    IssueCommentCreate:
+      type: object
+      required: [ content ]
+      properties:
+        content:
+          type: string
+
+    IssueComment:
+      type: object
+      properties:
+        id:
+          type: integer
+        issue_id:
+          type: integer
+        author_type:
+          type: string
+        user_id:
+          type: integer
+        officer_id:
+          type: integer
+        content:
+          type: string
+        is_flagged:
+          type: boolean
+        visibility:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    IssueMessageCreate:
+      type: object
+      required: [ content ]
+      properties:
+        content:
+          type: string
+
+    IssueMessage:
+      type: object
+      properties:
+        id:
+          type: integer
+        issue_id:
+          type: integer
+        sender_type:
+          type: string
+        user_id:
+          type: integer
+        officer_id:
+          type: integer
+        content:
+          type: string
+        is_read:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    IssueAttachment:
+      type: object
+      properties:
+        id:
+          type: integer
+        issue_id:
+          type: integer
+        file_url:
+          type: string
+        file_type:
+          type: string
+        uploaded_at:
+          type: string
+          format: date-time
+
+    IssueParticipant:
+      type: object
+      properties:
+        id:
+          type: integer
+        issue_id:
+          type: integer
+        user_id:
+          type: integer
+        joined_via:
+          type: string
+        joined_at:
+          type: string
+          format: date-time
+
+    IssueVote:
+      type: object
+      properties:
+        id:
+          type: integer
+        issue_id:
+          type: integer
+        user_id:
+          type: integer
+        voted_at:
+          type: string
+          format: date-time
+

@@ -1,0 +1,192 @@
+# ==========================================================================
+# Root .gitignore for RAW
+# Covers: Laravel (backend/), Vite + React (web/), Expo / React Native (mobile/)
+# Plus common editor, OS, build, cache, and environment artifacts.
+# ==========================================================================
+
+# --------------------------------------------------------------------------
+# OS
+# --------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# --------------------------------------------------------------------------
+# Editors / IDEs
+# --------------------------------------------------------------------------
+.idea/
+.vscode/
+!.vscode/settings.json.example
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+.fleet/
+.zed/
+*.iml
+
+# --------------------------------------------------------------------------
+# Logs
+# --------------------------------------------------------------------------
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# --------------------------------------------------------------------------
+# Environment / Secrets
+# --------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+
+# --------------------------------------------------------------------------
+# Node / npm / yarn / pnpm (web/ and mobile/)
+# --------------------------------------------------------------------------
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/cache
+.yarn/install-state.gz
+.yarn/build-state.yml
+.yarn-integrity
+.pnp.*
+
+# --------------------------------------------------------------------------
+# Vite / React (web/)
+# --------------------------------------------------------------------------
+dist/
+dist-ssr/
+.vite/
+*.local
+
+# --------------------------------------------------------------------------
+# Bundlers / Build output
+# --------------------------------------------------------------------------
+build/
+out/
+.cache/
+.parcel-cache/
+.turbo/
+.next/
+.nuxt/
+.svelte-kit/
+
+# --------------------------------------------------------------------------
+# TypeScript / ESLint / Prettier
+# --------------------------------------------------------------------------
+*.tsbuildinfo
+.eslintcache
+.stylelintcache
+.prettiercache
+
+# --------------------------------------------------------------------------
+# Test / Coverage
+# --------------------------------------------------------------------------
+coverage/
+.nyc_output/
+*.lcov
+
+# --------------------------------------------------------------------------
+# Expo / React Native (mobile/)
+# --------------------------------------------------------------------------
+.expo/
+.expo-shared/
+web-build/
+*.jks
+*.p8
+*.p12
+*.mobileprovision
+*.orig.*
+
+# Metro
+.metro-health-check*
+.metro-cache/
+
+# React Native
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+android/captures/
+ios/Pods/
+ios/build/
+ios/DerivedData/
+*.xcuserstate
+xcuserdata/
+
+# EAS
+.easignore
+eas-build-*/
+
+# --------------------------------------------------------------------------
+# PHP / Composer / Laravel (backend/)
+# --------------------------------------------------------------------------
+vendor/
+composer.phar
+.phpunit.result.cache
+.phpunit.cache/
+.php-cs-fixer.cache
+.php_cs.cache
+.phpstan.cache/
+.psalm/
+
+# Laravel framework
+backend/bootstrap/cache/*.php
+backend/storage/*.key
+backend/storage/app/public
+backend/storage/framework/cache/data/*
+backend/storage/framework/sessions/*
+backend/storage/framework/testing/*
+backend/storage/framework/views/*
+backend/storage/logs/*
+backend/storage/pail/
+backend/storage/debugbar/
+backend/storage/clockwork/
+!backend/storage/**/.gitignore
+!backend/storage/**/.gitkeep
+
+# Laravel public build assets
+backend/public/hot
+backend/public/storage
+backend/public/build/
+
+# Laravel Homestead / Vagrant / Sail
+Homestead.json
+Homestead.yaml
+.vagrant/
+auth.json
+
+# --------------------------------------------------------------------------
+# Docker
+# --------------------------------------------------------------------------
+.docker/
+
+# --------------------------------------------------------------------------
+# Misc
+# --------------------------------------------------------------------------
+*.bak
+*.tmp
+*.temp
+*.pid
+*.seed
+*.tgz
+
+
+# ==========================================================================
+plans/
+.agents/skills/caveman/
+.agents/skills/caveman-commit/
+.agents/skills/caveman-review/

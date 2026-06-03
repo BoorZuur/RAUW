@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+*{
+    --font-family-headline: Roboto Flex;
+    --font-family-body: Literata;
+    --font-family-label: Work Sans;
+
+    /*Light Mode --------------*/
+    --primary-text: #1A2530;
+    --secondary-text: #657381;
+
+    --primary-accent: #2c3e50;
+    --secondary-accent: #26a059;
+
+    --primary-bg: #f8f6f1;
+
+    /*cards*/
+    --primary-bg-cards:#f9f8f5;
+    --primary-border-cards: #e4e1dc;
+
+    /*Dark Mode ------------------*/
+    --primary-text-d: #F5f7fa;
+    --secondary-text-d: #a0aec0;
+
+    --primary-accent-d: #56799c;
+    --secondary-accent-d: #4ade80;
+
+    --primary-bg-d: #121820;
+
+    /*cards*/
+    --primary-bg-cards-d:#364559;
+    --primary-border-cards-d: #e4e1dc;
+}
+
+h1{
+    font-family: var(--font-family-headline), serif;
+}
+
+h2 {
+    font-family: var(--font-family-body), serif;
+
+}
+
+h3, h4, p{
+    font-family: var(--font-family-label), serif;
+}
