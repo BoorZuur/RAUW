@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import RauwLogoImg from '../assets/LogoRAUW.png';
 import BgRotterdam1 from '../assets/AchtergrondRotterdam1.webp';
@@ -9,7 +10,7 @@ const onboardingSteps = [
     {
         id: 1,
         tag: "WELKOM BIJ RAUW",
-        title: "Jouw buurt.\nJouw stem.",
+        title: "Rotterdamse Actie\nUit de Wijken.",
         description: "RAUW is gemaakt voor Rotterdammers die hun wijk kennen. Zie je iets dat niet klopt? Meld het — direct, zonder gedoe.",
         buttonText: "Verder",
         bgImage: BgRotterdam1,
@@ -18,8 +19,8 @@ const onboardingSteps = [
     {
         id: 2,
         tag: "MELDEN IS MAKKELIJK",
-        title: "Pinnen, beschrijven,\nklaar.",
-        description: "Kies de plek op de kaart, omschrijf what je zag en stuur het in. Anoniem kan ook. In minder dan twee minuten heb je een melding gedaan.",
+        title: "Melden, beschrijven,\nklaar.",
+        description: "Kies de plek op de kaart, omschrijf wat je zag en stuur het in. Anoniem kan ook.",
         buttonText: "Verder",
         bgImage: BgRotterdam2,
         bgColor: '#121820'
@@ -39,6 +40,7 @@ const onboardingSteps = [
 export default function Onboarding() {
     const [currentStep, setCurrentStep] = useState(0);
     const [isTransitioning, setIsTransitioning] = useState(false);
+    const navigate = useNavigate();
 
     const triggerStepChange = (nextStepIndex) => {
         setIsTransitioning(true);
@@ -52,7 +54,7 @@ export default function Onboarding() {
         if (currentStep < onboardingSteps.length - 1) {
             triggerStepChange(currentStep + 1);
         } else {
-            window.location.hash = "U_Register";
+            navigate('/register');
         }
     };
 
@@ -82,12 +84,12 @@ export default function Onboarding() {
                 </div>
 
                 <div className="flex items-center ml-auto pointer-events-auto">
-                    <a
-                        href="#U_Login"
-                        className="font-(--font-family-label) text-sm sm:text-base tracking-wide text-(--secondary-text-d) hover:text-(--primary-text-d) transition-colors"
+                    <button
+                        onClick={() => navigate('/login')}
+                        className="font-(--font-family-label) text-sm sm:text-base tracking-wide text-(--secondary-text-d) hover:text-(--primary-text-d) transition-colors bg-transparent border-none cursor-pointer"
                     >
                         Inloggen
-                    </a>
+                    </button>
                 </div>
             </header>
 
@@ -165,9 +167,12 @@ export default function Onboarding() {
                     <div className={`transition-all duration-600 ease-in-out ${currentStep === onboardingSteps.length - 1 ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}`}>
                         <p className="text-xs sm:text-sm font-(--font-family-label) text-(--secondary-text-d)">
                             Al een account?{' '}
-                            <a href="#U_Login" className="text-white underline font-semibold hover:text-neutral-300 ml-1 transition-colors">
+                            <button
+                                onClick={() => navigate('/login')}
+                                className="text-white underline font-semibold hover:text-neutral-300 ml-1 transition-colors bg-transparent border-none cursor-pointer p-0 text-xs sm:text-sm"
+                            >
                                 Inloggen
-                            </a>
+                            </button>
                         </p>
                     </div>
                 </div>
@@ -176,8 +181,8 @@ export default function Onboarding() {
             <footer className="w-full max-w-7xl mx-auto flex justify-between items-center text-[10px] sm:text-[11px] font-(--font-family-label) text-(--secondary-text-d)/40 z-20 pt-2 sm:pt-4 border-t border-white/5 shrink-0">
                 <span>© {new Date().getFullYear()} RAUW Rotterdam</span>
                 <div className="space-x-3">
-                    <a href="#privacy" className="hover:underline">Privacy</a>
-                    <a href="#voorwaarden" className="hover:underline">Voorwaarden</a>
+                    <button onClick={() => navigate('/privacy')} className="hover:underline bg-transparent border-none text-[10px] sm:text-[11px] text-(--secondary-text-d)/40 cursor-pointer p-0">Privacy</button>
+                    <button onClick={() => navigate('/voorwaarden')} className="hover:underline bg-transparent border-none text-[10px] sm:text-[11px] text-(--secondary-text-d)/40 cursor-pointer p-0">Voorwaarden</button>
                 </div>
             </footer>
         </div>
