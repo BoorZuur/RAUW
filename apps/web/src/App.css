@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-*{
+:root{
     --font-family-headline: Roboto Flex;
     --font-family-body: Literata;
     --font-family-label: Work Sans;
@@ -49,25 +49,53 @@ body{
     background-color: var(--primary-bg);
 }
 
+.data-collection{
+    display: flex;
+    flex-direction: row;
+    width: 80vw;
+}
+
 /*card component css*/
 .card1{
     background-color: var(--primary-bg-cards);
-    width: 20vw;
-    height: 20vh;
-    border: solid var(--primary-border-cards) 1px;
-    border-radius: 20px;
+    width: 25vw;
+    height: 15vh;
+    border: solid var(--primary-border-cards) 2px;
+    border-radius: 15px;
     display: flex;
-}
-
-.card1 > span {
-    color: black;
+    justify-content: space-around;
 }
 
 .card1 > p {
     color: var(--secondary-text);
+    font-size: 0.2rem;
 }
 
-.card > img{
-    height: 30px;
-    width: 30px;
+.data-card1 {
+    color: black;
+    text-transform: uppercase;
+    font-weight: bold;
+    font-size: 2rem;
+    margin-top: 1vh;
+}
+
+.card1 > div {
+    text-align: left;
+    align-self: center;
+    text-transform: uppercase;
+    width: 10vw;
+    height: 10vh;
+}
+
+.icon{
+    width: 3vw;
+    height: 7vh;
+    background-color: var(--primary-border-cards);
+    padding: 2%;
+    border-radius: 10px;
+    align-self: center;
+}
+
+@media only screen and (max-width: 1058px){
+
 }
