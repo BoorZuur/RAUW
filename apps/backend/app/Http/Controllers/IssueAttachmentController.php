@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Issues\DeleteIssueAttachmentRequest;
 use App\Http\Requests\Issues\StoreIssueAttachmentRequest;
 use App\Http\Resources\IssueAttachmentResource;
 use App\Models\Issue;
@@ -83,5 +84,31 @@ class IssueAttachmentController extends Controller
         abort_unless($disk->exists($attachment->file_path), Response::HTTP_NOT_FOUND);
 
         return $disk->download($attachment->file_path, $attachment->original_name);
+    }
+
+    /**
+     * Delete a single attachment from an owner's issue.
+     *
+     * Owner-only authorization is enforced by DeleteIssueAttachmentRequest, which
+     * restricts the action to the authenticated, active regular user who owns the
+     * route issue. The attachment must belong to the issue named in the route — a
+     * mismatch yields a 404 so attachment ids cannot be probed or removed across
+     * issues. The backing file is removed from the non-public `local` disk (a
+     * missing file is tolerated so a partial prior cleanup cannot block deletion)
+     * and the attachment row is deleted, returning an empty 204 response.
+     */
+    public function destroy(DeleteIssueAttachmentRequest $request, Issue $issue, IssueAttachment $attachment): Response
+    {
+        abort_unless($attachment->issue_id === $issue->getKey(), Response::HTTP_NOT_FOUND);
+
+        $disk = Storage::disk(self::DISK);
+
+        if ($disk->exists($attachment->file_path)) {
+            $disk->delete($attachment->file_path);
+        }
+
+        $attachment->delete();
+
+        return response()->noContent();
     }
 }

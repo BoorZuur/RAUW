@@ -136,6 +136,12 @@ Route::middleware(['auth:sanctum', 'throttle:30,1'])->group(function (): void {
     // bearer token via this group's `auth:sanctum` middleware and stream the file
     // from local storage only after confirming the attachment belongs to the
     // route issue, so files are never exposed through a public storage URL.
+    // Deletes (DELETE `/issues/{issue}/attachments/{attachment}`) are authorized
+    // inside DeleteIssueAttachmentRequest to the authenticated, active regular
+    // user who owns the route issue; the controller confirms the attachment
+    // belongs to that issue (404 otherwise), removes the backing file from the
+    // non-public local disk, and hard deletes the attachment row.
     Route::post('issues/{issue}/attachments', [IssueAttachmentController::class, 'store'])->name('issues.attachments.store');
     Route::get('issues/{issue}/attachments/{attachment}/download', [IssueAttachmentController::class, 'download'])->name('issues.attachments.download');
+    Route::delete('issues/{issue}/attachments/{attachment}', [IssueAttachmentController::class, 'destroy'])->name('issues.attachments.destroy');
 });
