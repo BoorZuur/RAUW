@@ -58,7 +58,7 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 | `attachment_download_url` | blank | Filled automatically after **Issues / Upload Attachments** for reference. |
 | `district_id` | `1` | Example required district ID and list filter. |
 | `category_id` | `1` | Example category ID and list filter. |
-| `department_filter` | `wijkbeheer` | Example issue list department filter. |
+| `department_filter` | `wijkbeheer` | Example issue list filter using a real department code. It matches issues where any derived department has this code. |
 | `page` | `1` | Example issue list page. |
 | `per_page` | `20` | Example issue list page size. Backend caps this at 100. |
 
@@ -73,7 +73,7 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 7. Run **Districts / Create District**, **Update District**, and **Delete District** with an active manager token. District deletion returns `409 Conflict` while the district is assigned to managers/officers or referenced by issues.
 8. Run **Categories / List Categories** to find existing category IDs. Category create/update/disable/delete requests require an active manager token; main-manager status is not required.
 9. Run **Auth / Login** with `demo.user@example.com` and password `password`, then use **Issues / Create Issue**. This stores `issue_id` for **Show Issue**, **Update Own Issue**, **Upload Attachments**, **Download Attachment**, **Delete Attachment**, and **Hard Delete Own Issue**.
-10. Use **Issues / List Issues - Filtered Paginated** to combine `district_id`, `department_filter`, and `category_id`; pagination is backend-driven by `page` and `per_page`.
+10. Use **Issues / List Issues - Filtered Paginated** to combine `district_id`, `department_filter`, and `category_id`; `department_filter` uses any-match semantics against derived issue departments, and pagination is backend-driven by `page` and `per_page`.
 11. If desired, run **Auth / Login** with a newly created ordinary manager's email and password to test category and district management without main-manager privileges.
 12. Run **Auth / Logout** when finished.
 
@@ -500,7 +500,7 @@ Common error responses:
 
 Department endpoints use the `departments` table. Categories are attached through the `category_department` pivot, so a category can belong to multiple departments. Managers reference this table through the `department_manager` pivot and must have one or more departments; officers reference it through the `department_officer` pivot and must have one or more departments.
 
-Issue department migration is intentionally deferred to a later plan. Issue request/response fields may still use the legacy department enum/string contract until that separate migration is implemented, even though issues should eventually support one or more departments.
+Issue departments are derived from the selected category on create and whenever `category_id` changes. Clients must not send issue department values. Issue responses expose a read-only `departments` array and no singular `department` field. Department filtering on the issue list uses real department codes with any-match semantics, so an issue assigned to multiple departments is included when any assigned department matches the filter.
 
 Department mutations require `Authorization: Bearer <token>` for an authenticated, active main manager (`is_main_manager: true`). Ordinary managers, users, officers, inactive managers, and unauthenticated requests cannot create, update, or delete departments.
 
@@ -522,7 +522,7 @@ Create body example:
 }
 ```
 
-Departments assigned to any manager or officer cannot be deleted until those actor assignments are changed. After no actors reference the department, deleting it automatically removes its `category_department` assignments through database-level cascading. It does not delete category records.
+Departments assigned to any manager or officer cannot be deleted until those actor assignments are changed. After no actors reference the department, deleting it automatically removes its `category_department` and `department_issue` assignments through database-level cascading. It does not delete category or issue records.
 
 Common error responses:
 

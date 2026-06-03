@@ -622,9 +622,11 @@
                   "    pm.collectionVariables.set('issue_id', response.id);",
                   "    if (pm.environment.name) { pm.environment.set('issue_id', response.id); }",
                   "}",
-                  "pm.test('Issue has required district and safe author', function () {",
+                  "pm.test('Issue has derived departments, required district, and safe author', function () {",
+                  "    pm.expect(response.departments).to.be.an('array');",
                   "    pm.expect(response.district_id).to.exist;",
                   "    pm.expect(response.author).to.be.an('object');",
+                  "    pm.expect(response).to.not.have.property('department');",
                   "});"
                 ]
               }
@@ -634,9 +636,9 @@
             "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
             "method": "POST",
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
-            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Losliggende stoeptegel\",\n  \"content\": \"Er ligt een stoeptegel los bij de bushalte.\",\n  \"category_id\": {{category_id}},\n  \"district_id\": {{district_id}},\n  \"department\": \"wijkbeheer\",\n  \"postal_code\": \"3241AB\",\n  \"address\": \"Voorstraat 1, Middelharnis\",\n  \"latitude\": 51.7575,\n  \"longitude\": 4.165,\n  \"is_anonymous\": true\n}", "options": { "raw": { "language": "json" } } },
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Losliggende stoeptegel\",\n  \"content\": \"Er ligt een stoeptegel los bij de bushalte.\",\n  \"category_id\": {{category_id}},\n  \"district_id\": {{district_id}},\n  \"postal_code\": \"3241AB\",\n  \"address\": \"Voorstraat 1, Middelharnis\",\n  \"latitude\": 51.7575,\n  \"longitude\": 4.165,\n  \"is_anonymous\": true\n}", "options": { "raw": { "language": "json" } } },
             "url": { "raw": "{{base_url}}/api/issues", "host": [ "{{base_url}}" ], "path": [ "api", "issues" ] },
-            "description": "Create an issue as an authenticated active user. Required fields are title, content, category_id, district_id, and department. Optional location fields are postal_code, address, latitude, and longitude. Removed legacy locality fields are not accepted. Anonymous issues remain owned through issues.user_id; the backend generates a stable alias such as Melder#A1B2C3D4 and does not accept anonymous_alias from clients. The test stores issue_id for follow-up requests."
+            "description": "Create an issue as an authenticated active user. Required fields are title, content, category_id, and district_id. Do not send department: issue departments are derived server-side from the selected category, stored through the department_issue pivot, and returned as a read-only departments array. Optional location fields are postal_code, address, latitude, and longitude. Removed legacy locality fields are not accepted. Anonymous issues remain owned through issues.user_id; the backend generates a stable alias such as Melder#A1B2C3D4 and does not accept anonymous_alias from clients. The test stores issue_id for follow-up requests."
           },
           "response": []
         },
@@ -652,13 +654,13 @@
               "path": [ "api", "issues" ],
               "query": [
                 { "key": "district_id", "value": "{{district_id}}", "description": "Composable district filter" },
-                { "key": "department", "value": "{{department_filter}}", "description": "Composable department filter" },
+                { "key": "department", "value": "{{department_filter}}", "description": "Composable filter by real department code; matches issues where any assigned department has this code" },
                 { "key": "category_id", "value": "{{category_id}}", "description": "Composable category filter" },
                 { "key": "page", "value": "{{page}}" },
                 { "key": "per_page", "value": "{{per_page}}" }
               ]
             },
-            "description": "List issues for an authenticated actor. district_id, department, and category_id are optional and composable; combine any subset to narrow results. Pagination is backend-driven with page and per_page; per_page defaults to 20 and is capped at 100."
+            "description": "List issues for an authenticated actor. district_id, department, and category_id are optional and composable; combine any subset to narrow results. The department query value must be an existing department code and is applied through the issue departments relationship with any-match semantics, so a multi-department issue is returned when any assigned department matches. Pagination is backend-driven with page and per_page; per_page defaults to 20 and is capped at 100."
           },
           "response": []
         },
@@ -669,7 +671,7 @@
             "method": "GET",
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
             "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}" ] },
-            "description": "Show one issue with category, district, and attachment summaries when loaded. Authenticated request only. Anonymous issues expose an author display alias and not the owning user id."
+            "description": "Show one issue with derived read-only departments plus category, district, and attachment summaries when loaded. The response exposes departments as an array only and does not include a singular department field. Authenticated request only. Anonymous issues expose an author display alias and not the owning user id."
           },
           "response": []
         },
@@ -679,9 +681,9 @@
             "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
             "method": "PATCH",
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
-            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Stoeptegel bij bushalte bijgewerkt\",\n  \"content\": \"De tegel ligt nu volledig los.\",\n  \"district_id\": {{district_id}},\n  \"is_anonymous\": false\n}", "options": { "raw": { "language": "json" } } },
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Stoeptegel bij bushalte bijgewerkt\",\n  \"content\": \"De tegel ligt nu volledig los.\",\n  \"category_id\": {{category_id}},\n  \"district_id\": {{district_id}},\n  \"is_anonymous\": false\n}", "options": { "raw": { "language": "json" } } },
             "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}" ] },
-            "description": "Partially update an issue owned by the authenticated active user. Ownership is checked through issues.user_id, including anonymous issues. Editable fields are title, content, category_id, district_id, department, postal_code, address, latitude, longitude, and is_anonymous. Attachments are changed separately: delete existing attachments first when replacement is needed, then use Upload Attachments."
+            "description": "Partially update an issue owned by the authenticated active user. Ownership is checked through issues.user_id, including anonymous issues. Editable fields are title, content, category_id, district_id, postal_code, address, latitude, longitude, and is_anonymous. Do not send department: when category_id changes, departments are re-derived from that category and returned as a read-only departments array. Attachments are changed separately: delete existing attachments first when replacement is needed, then use Upload Attachments."
           },
           "response": []
         },
@@ -761,7 +763,7 @@
           "response": []
         }
       ],
-      "description": "Authenticated issue CRUD and attachment examples. Issue creation requires district_id and no longer accepts removed legacy locality fields. List filters are composable and pagination is backend-driven. Anonymous issues retain user_id ownership while exposing only a stable alias. Attachment deletion is owner-only for replacement workflows. Issue deletion is hard delete and attachments cascade with the issue."
+      "description": "Authenticated issue CRUD and attachment examples. Issue creation requires district_id and no longer accepts client-supplied department or removed legacy locality fields. Departments are derived from the selected category, stored in department_issue, and exposed as a read-only departments array. List filters are composable; department filtering uses real department codes with any-match semantics, and pagination is backend-driven. Anonymous issues retain user_id ownership while exposing only a stable alias. Attachment deletion is owner-only for replacement workflows. Issue deletion is hard delete and attachments cascade with the issue."
     },
     {
       "name": "Departments",
@@ -824,7 +826,7 @@
           "response": []
         }
       ],
-      "description": "Department CRUD requests. Department mutations require an authenticated active main manager. Managers use department_ids through the department_manager pivot and must have one or more departments; officers use department_ids through the department_officer pivot and must have one or more departments. Deleting a department is blocked while assigned to managers or officers; otherwise it removes category_department pivot assignments automatically but does not delete categories. Issue department migration is intentionally deferred to a later plan, so issue department fields may still use the legacy enum/string contract."
+      "description": "Department CRUD requests. Department mutations require an authenticated active main manager. Managers use department_ids through the department_manager pivot and must have one or more departments; officers use department_ids through the department_officer pivot and must have one or more departments. Deleting a department is blocked while assigned to managers or officers; otherwise it removes category_department and department_issue pivot assignments automatically but does not delete categories or issues. Issue departments are derived from categories and exposed to clients as read-only departments arrays."
     }
   ],
   "auth": {

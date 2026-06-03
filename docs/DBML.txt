@@ -156,6 +156,20 @@ Table category_department {
   }
 }
 
+Table department_issue {
+  id               int          [pk, increment]
+  issue_id         int          [not null, ref: > issues.id, note: 'Cascade delete met issue; source of truth voor issue-afdelingstoewijzingen']
+  department_id    int          [not null, ref: > departments.id, note: 'Cascade delete verwijdert alleen pivot-toewijzing; issue blijft bestaan']
+  created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (issue_id, department_id) [unique]
+    issue_id
+    department_id
+  }
+}
+
 Table issues {
   id                   int          [pk, increment]
   user_id              int          [ref: > users.id, note: 'NULL na soft delete user']
@@ -171,7 +185,7 @@ Table issues {
   longitude            decimal(11,8)
   status               varchar(20)  [not null, default: 'open', note: 'open | in_behandeling | afgerond | afgewezen | gedupliceerd']
   priority             varchar(10)  [not null, default: 'laag', note: 'laag | midden | zwaar']
-  department           varchar(20)  [not null, note: 'wijkbeheer | boa_jeugd; issues zijn nog niet gemigreerd naar departments']
+  department           varchar(20)  [not null, note: 'Legacy compatibility/cache column derived from category departments (wijkbeheer | boa_jeugd | beide indien ondersteund); clients must not write it. Source of truth is department_issue.']
   duplicate_count      int          [not null, default: 0]
   participant_count    int          [not null, default: 0, note: 'Direct opgehoogd, nachtelijks gereconcilieerd']
   vote_count           int          [not null, default: 0, note: 'Direct opgehoogd, nachtelijks gereconcilieerd']

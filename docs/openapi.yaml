@@ -413,10 +413,14 @@ paths:
       summary: Create a new issue
       description: >-
         Create an issue as an authenticated active user. The request requires
-        category_id, district_id, department, title, and content. Location fields
-        are optional. When is_anonymous is true the backend still stores user_id
-        ownership, but generates and persists a stable anonymous alias such as
-        Melder#A1B2C3D4 for public display; clients cannot submit the alias.
+        category_id, district_id, title, and content. The issue's departments are
+        derived server-side from the selected category's department assignments,
+        synced to the issue department pivot, and returned as a read-only
+        departments array. Clients must not send department values. Location
+        fields are optional. When is_anonymous is true the backend still stores
+        user_id ownership, but generates and persists a stable anonymous alias
+        such as Melder#A1B2C3D4 for public display; clients cannot submit the
+        alias.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -430,7 +434,6 @@ paths:
               content: Er ligt een stoeptegel los bij de bushalte.
               category_id: 1
               district_id: 1
-              department: wijkbeheer
               postal_code: '3241AB'
               address: Voorstraat 1, Middelharnis
               latitude: 51.75750000
@@ -456,9 +459,13 @@ paths:
       description: >-
         List issues for any authenticated actor. Filters are optional and
         composable: district_id, department, and category_id may be combined in a
-        single request to narrow the result set. Pagination is backend-driven
-        using page and per_page, with a default per_page of 20 and maximum of
-        100. Results are ordered newest first.
+        single request to narrow the result set. The department filter accepts a
+        real department code from the departments table and matches through the
+        issue departments relationship with any-match semantics, so a
+        multi-department issue is included when any assigned department has the
+        requested code. Pagination is backend-driven using page and per_page,
+        with a default per_page of 20 and maximum of 100. Results are ordered
+        newest first.
       security:
         - bearerAuth: [ ]
       parameters:
@@ -466,10 +473,12 @@ paths:
         - $ref: '#/components/parameters/perPage'
         - name: department
           in: query
-          description: Optional composable department filter.
+          description: >-
+            Optional composable department filter. Must be an existing department
+            code and matches issues where any assigned department has this code.
           schema:
             type: string
-            enum: [ wijkbeheer, boa_jeugd ]
+            example: wijkbeheer
         - name: category_id
           in: query
           description: Optional composable category filter.
@@ -547,6 +556,12 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/IssueUpdate'
+            example:
+              title: Stoeptegel bij bushalte bijgewerkt
+              content: De tegel ligt nu volledig los.
+              category_id: 1
+              district_id: 1
+              is_anonymous: false
       responses:
         '200':
           description: Updated issue
@@ -569,9 +584,11 @@ paths:
       description: >-
         Partially update an issue owned by the authenticated active user. The
         owner is checked through issues.user_id, including for anonymous issues.
-        Clients may update title, content, category_id, district_id, department,
-        optional location fields, and is_anonymous. user_id, status, priority,
-        counters, assignments, and anonymous_alias are server-owned.
+        Clients may update title, content, category_id, district_id, optional
+        location fields, and is_anonymous. When category_id changes, departments
+        are re-derived from the selected category and returned as a read-only
+        departments array. user_id, status, priority, counters, department
+        assignments, and anonymous_alias are server-owned.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -583,6 +600,7 @@ paths:
             example:
               title: Stoeptegel bij bushalte bijgewerkt
               content: De tegel ligt nu volledig los.
+              category_id: 1
               district_id: 1
               is_anonymous: false
       responses:
@@ -1154,17 +1172,16 @@ paths:
         Hard deletes the department row. Departments assigned to any manager or
         officer cannot be deleted until those actor assignments are changed.
         Once no actors reference the department, the category_department pivot
-        uses database-level cascade deletes, so deleting a department
-        automatically removes only its category assignments and leaves
-        categories intact. Issue department migration is intentionally deferred
-        to a later plan, so issue department fields may still use the legacy
-        enum/string contract for now. Restricted to authenticated active main
-        managers only.
+        uses database-level cascade deletes, and department_issue cascades the
+        issue pivot assignments, so deleting a department removes only those
+        assignments while leaving categories and issue rows intact. Issue
+        responses expose derived read-only departments as an array. Restricted to
+        authenticated active main managers only.
       security:
         - bearerAuth: [ ]
       responses:
         '204':
-          description: Department deleted; category assignments removed automatically
+          description: Department deleted; category and issue pivot assignments removed automatically
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1963,9 +1980,9 @@ components:
         through department_manager. Officers reference one or more departments
         through department_officer. Deleting a department is blocked while it is
         assigned to managers or officers; otherwise it cascades only category
-        pivot assignments and does not delete category rows. Issue department
-        migration is deferred to a later plan, so issues may still expose the
-        legacy enum/string department field.
+        and issue pivot assignments and does not delete category or issue rows.
+        Issue departments are derived from categories, stored through the
+        department_issue pivot, and exposed to clients as read-only arrays.
       properties:
         id:
           type: integer
@@ -2019,10 +2036,12 @@ components:
       type: object
       description: >-
         Client payload for creating an issue. district_id is required and must
-        reference an active district. Removed legacy locality fields are not
-        accepted. Anonymous aliases are generated server-side;
-        anonymous issues remain owned by the authenticated user via user_id.
-      required: [ title, content, category_id, district_id, department ]
+        reference an active district. Departments are derived server-side from
+        the selected category's department assignments and are not accepted in
+        the request. Removed legacy locality fields are not accepted. Anonymous
+        aliases are generated server-side; anonymous issues remain owned by the
+        authenticated user via user_id.
+      required: [ title, content, category_id, district_id ]
       properties:
         title:
           type: string
@@ -2034,9 +2053,6 @@ components:
         district_id:
           type: integer
           description: Required active district ID for the issue location/reference.
-        department:
-          type: string
-          enum: [ wijkbeheer, boa_jeugd ]
         latitude:
           type: number
           format: double
@@ -2060,8 +2076,10 @@ components:
       description: >-
         Owner-editable issue fields. All fields are optional for PATCH/PUT and
         only supplied fields are changed. user_id, status, priority,
-        anonymous_alias, assignments, and counters are server-owned. The public
-        API no longer accepts removed legacy locality fields.
+        anonymous_alias, department assignments, and counters are server-owned.
+        When category_id is supplied, departments are re-derived from that
+        category. The public API no longer accepts removed legacy locality fields
+        or client-supplied department values.
       properties:
         title:
           type: string
@@ -2072,9 +2090,6 @@ components:
           type: integer
         district_id:
           type: integer
-        department:
-          type: string
-          enum: [ wijkbeheer, boa_jeugd ]
         postal_code:
           type: string
           nullable: true
@@ -2099,7 +2114,9 @@ components:
         through user_id, but the response exposes only an author display alias
         such as Melder#A1B2C3D4 and never leaks the owning user's id. Non-anonymous
         issues include author identity when loaded. Attachments include
-        authenticated download URLs only.
+        authenticated download URLs only. Department assignments are derived from
+        the issue category and exposed as a read-only departments array; the
+        legacy singular department field is not serialized.
       properties:
         id:
           type: integer
@@ -2125,9 +2142,15 @@ components:
           type: number
           format: double
           nullable: true
-        department:
-          type: string
-          enum: [ wijkbeheer, boa_jeugd ]
+        departments:
+          type: array
+          nullable: true
+          description: >-
+            Read-only compact departments assigned to the issue through the
+            department_issue pivot. Derived from the selected category on create
+            and whenever category_id changes.
+          items:
+            $ref: '#/components/schemas/AuthDepartmentProfile'
         status:
           type: string
         priority:
