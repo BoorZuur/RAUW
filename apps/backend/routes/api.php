@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Auth\ProfileController;
 use App\Http\Controllers\Auth\ProfileDistrictController;
+use App\Http\Controllers\Auth\ProfileUpdateController;
 use App\Http\Controllers\Auth\RegisterOfficerController;
 use App\Http\Controllers\Auth\RegisterUserController;
 use App\Http\Controllers\CategoryController;
@@ -57,6 +58,12 @@ Route::middleware('auth:sanctum')->prefix('auth')->group(function (): void {
     // The authenticated actor's own districts are synced wholesale from the
     // validated `district_ids` array and the refreshed auth profile is returned.
     Route::patch('me/districts', ProfileDistrictController::class)->name('auth.me.districts.update');
+
+    // Self-service identity updates. Active users, officers, and managers may
+    // PATCH their own username, email, and password; officers may also update
+    // badge_number. Department, district, and privileged fields are rejected
+    // by UpdateProfileRequest validation rather than accepted on this path.
+    Route::patch('me', ProfileUpdateController::class)->name('auth.me.update');
 });
 
 // Protected manager creation. The route lives outside the `/api/auth` prefix

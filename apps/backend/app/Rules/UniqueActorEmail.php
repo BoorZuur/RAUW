@@ -15,6 +15,10 @@ use Illuminate\Support\Facades\DB;
  * ambiguity. This rule checks the raw table columns (including soft-deleted
  * rows) so that schema-level unique indexes are respected and reserved
  * identifiers cannot be reused.
+ *
+ * Optional `$ignoreTable` and `$ignoreId` allow profile updates to keep the
+ * actor's current email or move to an unused address without a false positive
+ * on the actor's own row.
  */
 class UniqueActorEmail implements ValidationRule
 {
@@ -24,6 +28,11 @@ class UniqueActorEmail implements ValidationRule
      * @var list<string>
      */
     private const ACTOR_TABLES = ['users', 'officers', 'managers'];
+
+    public function __construct(
+        private ?string $ignoreTable = null,
+        private ?int $ignoreId = null,
+    ) {}
 
     /**
      * @param  Closure(string, ?string=): \Illuminate\Translation\PotentiallyTranslatedString  $fail
@@ -35,9 +44,13 @@ class UniqueActorEmail implements ValidationRule
         }
 
         foreach (self::ACTOR_TABLES as $table) {
-            $exists = DB::table($table)->where('email', $value)->exists();
+            $query = DB::table($table)->where('email', $value);
 
-            if ($exists) {
+            if ($this->ignoreTable !== null && $this->ignoreId !== null && $table === $this->ignoreTable) {
+                $query->where('id', '!=', $this->ignoreId);
+            }
+
+            if ($query->exists()) {
                 $fail('The :attribute has already been taken.');
 
                 return;
