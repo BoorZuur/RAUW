@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\BlockedKeyword;
 use App\Models\Category;
 use App\Models\ContentFlag;
+use App\Models\Department as DepartmentModel;
 use App\Models\District;
 use App\Models\DomainNotification;
 use App\Models\Issue;
@@ -32,14 +33,17 @@ class DomainFactoryTest extends TestCase
     public function test_core_domain_models_can_be_created_with_factories(): void
     {
         $district = District::factory()->create();
-        $category = Category::factory()->create(['department' => Department::DistrictManagement]);
+        // Categories now attach to departments through the pivot table rather
+        // than a `department` enum column.
+        $department = DepartmentModel::factory()->create();
+        $category = Category::factory()->withDepartments($department)->create();
         $officer = Officer::factory()->create(['district_id' => $district->id]);
         $manager = Manager::factory()->create(['district_id' => $district->id]);
         $issue = Issue::factory()->create([
             'category_id' => $category->id,
             'district_id' => $district->id,
             'assigned_officer_id' => $officer->id,
-            'department' => $category->department,
+            'department' => Department::DistrictManagement,
         ]);
 
         $models = [

@@ -45,10 +45,21 @@ class LoginController extends Controller
         /** @var ActorType $type */
         $type = $match['type'];
 
-        // Eager-load compact district relation for officers and managers so
-        // the profile resource can embed it without triggering lazy queries.
-        if (($actor instanceof Officer || $actor instanceof Manager) && ! $actor->relationLoaded('district')) {
-            $actor->loadMissing('district');
+        // Eager-load the compact districts relation for officers and managers
+        // so the profile resource can embed them without triggering lazy queries.
+        if (($actor instanceof Officer || $actor instanceof Manager) && ! $actor->relationLoaded('districts')) {
+            $actor->loadMissing('districts');
+        }
+
+        // Eager-load the actor's department relationships so the profile
+        // resource can embed them without triggering lazy queries: both
+        // managers and officers have one or more `departments`.
+        if ($actor instanceof Manager && ! $actor->relationLoaded('departments')) {
+            $actor->loadMissing('departments');
+        }
+
+        if ($actor instanceof Officer && ! $actor->relationLoaded('departments')) {
+            $actor->loadMissing('departments');
         }
 
         $token = $actor->createToken('api-login')->plainTextToken;

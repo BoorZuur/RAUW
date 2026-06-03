@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Enums\ActorType;
+use App\Models\Department;
 use App\Models\District;
 use App\Models\Manager;
 use Illuminate\Http\Request;
@@ -41,39 +42,55 @@ class ManagerResource extends JsonResource
             'id' => $manager->id,
             'username' => $manager->username,
             'email' => $manager->email,
-            'department' => $manager->department instanceof \BackedEnum
-                ? $manager->department->value
-                : $manager->department,
-            'district_id' => $manager->district_id,
             'is_active' => (bool) $manager->is_active,
             'is_main_manager' => (bool) $manager->is_main_manager,
             'created_by_manager_id' => $manager->created_by_manager_id,
-            'district' => $this->compactDistrict($manager),
+            'departments' => $this->compactDepartments($manager),
+            'districts' => $this->compactDistricts($manager),
         ];
     }
 
     /**
-     * Return a compact district payload only when the relation has already
-     * been loaded on the model, avoiding unintended lazy queries.
+     * Return the manager's assigned departments as compact objects, only when
+     * the `departments` relation has already been loaded to avoid lazy queries.
      *
-     * @return array<string, mixed>|null
+     * @return array<int, array<string, mixed>>
      */
-    protected function compactDistrict(Manager $manager): ?array
+    protected function compactDepartments(Manager $manager): array
     {
-        if (! $manager->relationLoaded('district')) {
-            return null;
+        if (! $manager->relationLoaded('departments')) {
+            return [];
         }
 
-        $district = $manager->getRelation('district');
+        return $manager->getRelation('departments')
+            ->map(static fn (Department $department): array => [
+                'id' => $department->id,
+                'code' => $department->code,
+                'name' => $department->name,
+            ])
+            ->values()
+            ->all();
+    }
 
-        if (! $district instanceof District) {
-            return null;
+    /**
+     * Return the manager's assigned districts as compact objects, only when
+     * the `districts` relation has already been loaded to avoid lazy queries.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function compactDistricts(Manager $manager): array
+    {
+        if (! $manager->relationLoaded('districts')) {
+            return [];
         }
 
-        return [
-            'id' => $district->id,
-            'name' => $district->name,
-            'postal_prefix' => $district->postal_prefix,
-        ];
+        return $manager->getRelation('districts')
+            ->map(static fn (District $district): array => [
+                'id' => $district->id,
+                'name' => $district->name,
+                'postal_prefix' => $district->postal_prefix,
+            ])
+            ->values()
+            ->all();
     }
 }

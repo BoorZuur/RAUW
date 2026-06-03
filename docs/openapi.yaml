@@ -39,7 +39,11 @@ paths:
         Backend API-only officer registration. Creates an Officer record,
         immediately issues a Sanctum bearer token, and returns the same auth
         response shape and safe profile serializer used by login. This endpoint
-        does not create a session and does not require authentication.
+        does not create a session and does not require authentication. Officers
+        must be assigned to one or more existing departments through
+        department_ids. Optional district assignments use district_ids and are
+        stored through the district_officer pivot; officers may also start with
+        no assigned districts.
       requestBody:
         required: true
         content:
@@ -52,6 +56,8 @@ paths:
               password: password123
               confirm_password: password123
               badge_number: BOA-1234
+              department_ids: [1]
+              district_ids: [1]
       responses:
         '201':
           description: Officer created and authenticated with a Sanctum bearer token
@@ -68,13 +74,22 @@ paths:
                   username: new-officer
                   email: new.officer@example.com
                   badge_number: BOA-1234
-                  district: null
+                  departments:
+                    - id: 1
+                      code: wijkbeheer
+                      name: Wijkbeheer
+                  districts:
+                    - id: 1
+                      name: Middelharnis
+                      postal_prefix: '3241'
         '422':
           description: >-
             Validation failed. Returned when required fields are missing,
             email is invalid, password is shorter than 8 characters,
-            confirm_password does not match password, or username/email/badge_number
-            already exists in the officers table.
+            confirm_password does not match password, department_ids is missing,
+            empty, duplicated, or references unknown departments, or
+            district_ids is duplicated or references inactive/unknown districts,
+            or username/email/badge_number already exists in the officers table.
           content:
             application/json:
               schema:
@@ -118,7 +133,7 @@ paths:
                       badge_number:
                         - The badge number has already been taken.
 
-  /auth/login:
+  /api/auth/login:
     post:
       tags: [ Auth ]
       summary: Login and receive tokens
@@ -135,10 +150,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
+              examples:
+                managerLogin:
+                  summary: Manager login profile
+                  value:
+                    token_type: Bearer
+                    access_token: 1|plain-text-sanctum-token
+                    actor_type: manager
+                    profile:
+                      id: 1
+                      username: demo-manager
+                      email: demo.manager@example.com
+                      departments:
+                        - id: 1
+                          code: wijkbeheer
+                          name: Wijkbeheer
+                      is_main_manager: true
+                      districts:
+                        - id: 1
+                          name: Middelharnis
+                          postal_prefix: '3241'
         '401':
           $ref: '#/components/responses/Unauthorized'
 
-  /me:
+  /api/auth/me:
     get:
       tags: [ Auth ]
       summary: Current authenticated user
@@ -155,8 +190,222 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthCurrentProfileResponse'
+              examples:
+                managerProfile:
+                  summary: Current manager profile
+                  value:
+                    actor_type: manager
+                    profile:
+                      id: 1
+                      username: demo-manager
+                      email: demo.manager@example.com
+                      departments:
+                        - id: 1
+                          code: wijkbeheer
+                          name: Wijkbeheer
+                      is_main_manager: true
+                      districts:
+                        - id: 1
+                          name: Middelharnis
+                          postal_prefix: '3241'
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+  /api/auth/me/districts:
+    patch:
+      tags: [ Managers, Officers ]
+      summary: Update my district assignments (manager implemented; officer docs only)
+      description: >-
+        Implemented manager self-service district assignment endpoint. Replaces
+        the authenticated manager's district assignments with the supplied
+        district_ids array and returns the refreshed auth profile. Users receive
+        403 because they do not have district assignments. The request updates
+        only actor district pivots and never modifies the singular
+        issues.district_id issue location/reference field. This operation is
+        also shown under Officers for parity only: the backend does not currently
+        implement an officer self-service district update route or officer
+        behavior for this request.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DistrictAssignmentUpdate'
+            example:
+              district_ids: [1, 2]
+      responses:
+        '200':
+          description: Refreshed manager profile; officer shape is illustrative only
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthCurrentProfileResponse'
+              examples:
+                managerProfile:
+                  summary: Implemented manager self-service response
+                  value:
+                    actor_type: manager
+                    profile:
+                      id: 1
+                      username: demo-manager
+                      email: demo.manager@example.com
+                      departments:
+                        - id: 1
+                          code: wijkbeheer
+                          name: Wijkbeheer
+                      is_main_manager: true
+                      districts:
+                        - id: 1
+                          name: Middelharnis
+                          postal_prefix: '3241'
+                        - id: 2
+                          name: Sommelsdijk
+                          postal_prefix: '3245'
+                officerProfileDocsOnly:
+                  summary: Officer parity response shape (docs only, not implemented)
+                  value:
+                    actor_type: officer
+                    profile:
+                      id: 1
+                      username: demo-officer
+                      email: demo.officer@example.com
+                      badge_number: BOA-0001
+                      departments:
+                        - id: 1
+                          code: wijkbeheer
+                          name: Wijkbeheer
+                      districts:
+                        - id: 1
+                          name: Middelharnis
+                          postal_prefix: '3241'
+                        - id: 2
+                          name: Sommelsdijk
+                          postal_prefix: '3245'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/managers:
+    post:
+      tags: [ Managers ]
+      summary: Create a manager
+      description: >-
+        Create an ordinary manager as an authenticated active main manager. The
+        request must include department_ids with at least one valid department
+        from the departments table. Optional district_ids assign the manager to
+        one or more active districts through the district_manager pivot. The
+        response returns the created manager profile only and does not issue an
+        access token.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ManagerCreate'
+            example:
+              username: new-manager
+              email: new.manager@example.com
+              password: password123
+              confirm_password: password123
+              department_ids: [1]
+              district_ids: [1]
+      responses:
+        '201':
+          description: Manager created; no access token is issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manager'
+              example:
+                actor_type: manager
+                id: 2
+                username: new-manager
+                email: new.manager@example.com
+                is_active: true
+                is_main_manager: false
+                created_by_manager_id: 1
+                departments:
+                  - id: 1
+                    code: wijkbeheer
+                    name: Wijkbeheer
+                districts:
+                  - id: 1
+                    name: Middelharnis
+                    postal_prefix: '3241'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/officers/{officerId}/districts:
+    parameters:
+      - name: officerId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Managers ]
+      summary: Update an officer's district assignments
+      description: >-
+        Manager-admin district assignment endpoint. Replaces the target officer's
+        district assignments with the supplied district_ids array and returns that
+        officer's refreshed profile. Only an authenticated active manager may
+        call this endpoint. Users, officers, inactive managers, and unauthenticated
+        requests cannot update officer districts. The endpoint updates only the
+        district_officer pivot and never modifies issues.district_id.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DistrictAssignmentUpdate'
+            example:
+              district_ids: [1, 2]
+      responses:
+        '200':
+          description: Refreshed officer profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthCurrentProfileResponse'
+              example:
+                actor_type: officer
+                profile:
+                  id: 1
+                  username: demo-officer
+                  email: demo.officer@example.com
+                  badge_number: BOA-0001
+                  departments:
+                    - id: 1
+                      code: wijkbeheer
+                      name: Wijkbeheer
+                  districts:
+                    - id: 1
+                      name: Middelharnis
+                      postal_prefix: '3241'
+                    - id: 2
+                      name: Sommelsdijk
+                      postal_prefix: '3245'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
 
   /issues:
     post:
@@ -401,10 +650,16 @@ paths:
                 items:
                   $ref: '#/components/schemas/IssueAttachment'
 
-  /categories:
+  /api/categories:
     get:
       tags: [ Categories ]
-      summary: List categories
+      summary: List categories for managers
+      description: >-
+        Returns main categories ordered by priority, with children ordered by
+        weight. Lower numeric priority/weight values sort first and therefore
+        mean higher priority. Requires an authenticated active manager.
+      security:
+        - bearerAuth: [ ]
       responses:
         '200':
           description: Category list
@@ -414,11 +669,342 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Category'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [ Categories ]
+      summary: Create a category
+      description: >-
+        Create a main category or subcategory and assign it to one or more
+        departments through the category_department pivot. Active managers may
+        manage categories; main-manager status is not required. Main categories
+        use priority, subcategories use weight, and lower numbers mean higher
+        priority. Nested subcategories are rejected.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryCreate'
+      responses:
+        '201':
+          description: Category created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
 
-  /districts:
+  /api/categories/{categoryId}:
+    parameters:
+      - name: categoryId
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags: [ Categories ]
+      summary: Show a category
+      description: Requires an authenticated active manager.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Category resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [ Categories ]
+      summary: Update a category
+      description: >-
+        Partially update a category. Include department_ids to replace the
+        category's department assignments. Main categories use priority;
+        subcategories use weight. Lower numbers mean higher priority.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryUpdate'
+      responses:
+        '200':
+          description: Category updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    put:
+      tags: [ Categories ]
+      summary: Replace/update a category
+      description: Same behavior and validation as PATCH /api/categories/{categoryId}.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryUpdate'
+      responses:
+        '200':
+          description: Category updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [ Categories ]
+      summary: Hard delete an eligible category
+      description: >-
+        Hard deletion is guarded and is not the standard removal path. Prefer
+        PATCH /api/categories/{categoryId}/disable so historical issues keep
+        their category context. A main category cannot be hard deleted while it
+        still has subcategories. Categories referenced by existing issues also
+        return a conflict.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '204':
+          description: Category hard deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+
+  /api/categories/{categoryId}/disable:
+    parameters:
+      - name: categoryId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Categories ]
+      summary: Disable a category
+      description: >-
+        Standard safe removal path for categories. Sets is_active to false while
+        preserving the category row, department assignments, and historical issue
+        references.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Category disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/departments:
+    get:
+      tags: [ Departments ]
+      summary: List departments
+      description: >-
+        Returns departments from the departments table with category counts.
+        Requires authentication in the protected API group.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Department list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Department'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [ Departments ]
+      summary: Create a department
+      description: >-
+        Create a department row. Mutating department endpoints are restricted to
+        authenticated active main managers only.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentCreate'
+      responses:
+        '201':
+          description: Department created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/departments/{departmentId}:
+    parameters:
+      - name: departmentId
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags: [ Departments ]
+      summary: Show a department
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Department resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [ Departments ]
+      summary: Update a department
+      description: Restricted to authenticated active main managers only.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentUpdate'
+      responses:
+        '200':
+          description: Department updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    put:
+      tags: [ Departments ]
+      summary: Replace/update a department
+      description: Same behavior and validation as PATCH /api/departments/{departmentId}.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentUpdate'
+      responses:
+        '200':
+          description: Department updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [ Departments ]
+      summary: Delete a department
+      description: >-
+        Hard deletes the department row. Departments assigned to any manager or
+        officer cannot be deleted until those actor assignments are changed.
+        Once no actors reference the department, the category_department pivot
+        uses database-level cascade deletes, so deleting a department
+        automatically removes only its category assignments and leaves
+        categories intact. Issue department migration is intentionally deferred
+        to a later plan, so issue department fields may still use the legacy
+        enum/string contract for now. Restricted to authenticated active main
+        managers only.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '204':
+          description: Department deleted; category assignments removed automatically
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+
+  /api/districts:
     get:
       tags: [ Districts ]
       summary: List districts
+      description: >-
+        List districts ordered by name, including manager/officer assignment
+        counts and issue reference counts when available. Requires
+        authentication in the protected API group. District records are separate
+        from actor assignments: managers and officers are assigned through
+        district_manager and district_officer pivots, while issues.district_id
+        remains a singular issue location/reference field.
+      security:
+        - bearerAuth: [ ]
       responses:
         '200':
           description: Districts
@@ -428,6 +1014,145 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/District'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [ Districts ]
+      summary: Create a district
+      description: >-
+        Create a district row. Only authenticated active managers may create,
+        update, or delete districts. District CRUD manages district records only;
+        actor assignments use district_ids endpoints and issue district
+        references are not reassigned.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DistrictCreate'
+            example:
+              name: Nieuwe Wijk
+              postal_prefix: '3248'
+              center_lat: 51.75000000
+              center_lng: 4.16000000
+              radius_meters: 2500
+              is_active: true
+      responses:
+        '201':
+          description: District created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/District'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/districts/{districtId}:
+    parameters:
+      - name: districtId
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags: [ Districts ]
+      summary: Show a district
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: District resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/District'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [ Districts ]
+      summary: Update a district
+      description: Only authenticated active managers may update districts.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DistrictUpdate'
+            example:
+              name: Nieuwe Wijk bijgewerkt
+              is_active: true
+      responses:
+        '200':
+          description: District updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/District'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    put:
+      tags: [ Districts ]
+      summary: Replace/update a district
+      description: Same behavior and validation as PATCH /api/districts/{districtId}.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DistrictUpdate'
+      responses:
+        '200':
+          description: District updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/District'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [ Districts ]
+      summary: Delete an eligible district
+      description: >-
+        Only authenticated active managers may delete districts. Deletion returns
+        409 Conflict when the district is still assigned to any manager, assigned
+        to any officer, or referenced by any issue through issues.district_id.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '204':
+          description: District deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/ConflictError'
 
 components:
   securitySchemes:
@@ -456,7 +1181,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Error'
+            $ref: '#/components/schemas/ValidationError'
     Unauthorized:
       description: Authentication required or failed
       content:
@@ -475,6 +1200,12 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+    ConflictError:
+      description: Request conflicts with current resource state
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ConflictError'
 
   schemas:
     Error:
@@ -497,6 +1228,14 @@ components:
             type: array
             items:
               type: string
+
+    ConflictError:
+      type: object
+      properties:
+        message:
+          type: string
+      example:
+        message: Cannot delete a main category while it still has subcategories.
 
     RegisterRequest:
       type: object
@@ -522,9 +1261,75 @@ components:
         password:
           type: string
 
+    ManagerCreate:
+      type: object
+      required: [ username, email, password, confirm_password, department_ids ]
+      properties:
+        username:
+          type: string
+          maxLength: 50
+          description: Unique manager username. Uniqueness is checked within managers.
+        email:
+          type: string
+          format: email
+          description: Unique manager email address across users, officers, and managers.
+        password:
+          type: string
+          format: password
+          minLength: 8
+        confirm_password:
+          type: string
+          format: password
+          description: Must exactly match password.
+        department_ids:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          description: Existing department IDs. Managers must have one or more departments.
+          items:
+            type: integer
+        district_ids:
+          type: array
+          uniqueItems: true
+          description: Optional active district IDs to attach through the district_manager pivot.
+          items:
+            type: integer
+
+    Manager:
+      type: object
+      description: Manager resource returned by manager creation. No bearer token is issued.
+      properties:
+        actor_type:
+          type: string
+          enum: [ manager ]
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        is_active:
+          type: boolean
+        is_main_manager:
+          type: boolean
+        created_by_manager_id:
+          type: integer
+          nullable: true
+        departments:
+          type: array
+          description: Compact department objects. Managers must have one or more departments.
+          items:
+            $ref: '#/components/schemas/AuthDepartmentProfile'
+        districts:
+          type: array
+          description: Compact district objects assigned through the district_manager pivot.
+          items:
+            $ref: '#/components/schemas/AuthDistrictProfile'
+
     OfficerRegisterRequest:
       type: object
-      required: [ username, email, password, confirm_password, badge_number ]
+      required: [ username, email, password, confirm_password, badge_number, department_ids ]
       properties:
         username:
           type: string
@@ -533,7 +1338,7 @@ components:
         email:
           type: string
           format: email
-          description: Unique officer email address. This does not imply cross-table email uniqueness.
+          description: Unique officer email address across users, officers, and managers.
         password:
           type: string
           format: password
@@ -546,6 +1351,19 @@ components:
           type: string
           maxLength: 20
           description: Unique officer badge number.
+        department_ids:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          description: Existing department IDs. Officers must have one or more departments.
+          items:
+            type: integer
+        district_ids:
+          type: array
+          uniqueItems: true
+          description: Optional active district IDs to attach through the district_officer pivot.
+          items:
+            type: integer
 
     AuthResponse:
       type: object
@@ -615,10 +1433,16 @@ components:
           format: email
         badge_number:
           type: string
-        district:
-          nullable: true
-          allOf:
-            - $ref: '#/components/schemas/AuthDistrictProfile'
+        departments:
+          type: array
+          description: Compact department objects. Officers must have one or more departments.
+          items:
+            $ref: '#/components/schemas/AuthDepartmentProfile'
+        districts:
+          type: array
+          description: Compact district objects assigned through the district_officer pivot.
+          items:
+            $ref: '#/components/schemas/AuthDistrictProfile'
 
     AuthManagerProfile:
       type: object
@@ -631,14 +1455,31 @@ components:
         email:
           type: string
           format: email
-        department:
-          type: string
+        departments:
+          type: array
+          description: Compact department objects. Managers must have one or more departments.
+          items:
+            $ref: '#/components/schemas/AuthDepartmentProfile'
         is_main_manager:
           type: boolean
-        district:
-          nullable: true
-          allOf:
-            - $ref: '#/components/schemas/AuthDistrictProfile'
+        districts:
+          type: array
+          description: Compact district objects assigned through the district_manager pivot.
+          items:
+            $ref: '#/components/schemas/AuthDistrictProfile'
+
+    AuthDepartmentProfile:
+      type: object
+      description: Compact department data returned in actor auth/profile payloads.
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+          example: wijkbeheer
+        name:
+          type: string
+          example: Wijkbeheer
 
     AuthDistrictProfile:
       type: object
@@ -673,6 +1514,11 @@ components:
 
     District:
       type: object
+      description: >-
+        District record. Managers and officers are assigned to districts through
+        district_manager and district_officer many-to-many pivots. The
+        issues.district_id field remains a singular issue location/reference and
+        is not changed by actor district assignment endpoints.
       properties:
         id:
           type: integer
@@ -688,20 +1534,301 @@ components:
           format: double
         radius_meters:
           type: integer
+          nullable: true
+        is_active:
+          type: boolean
+        managers_count:
+          type: integer
+          nullable: true
+        officers_count:
+          type: integer
+          nullable: true
+        issues_count:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    DistrictCreate:
+      type: object
+      required: [ name ]
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        postal_prefix:
+          type: string
+          maxLength: 10
+          nullable: true
+        center_lat:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          nullable: true
+        center_lng:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          nullable: true
+        radius_meters:
+          type: integer
+          minimum: 1
+          nullable: true
+        is_active:
+          type: boolean
+          default: true
+
+    DistrictUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        postal_prefix:
+          type: string
+          maxLength: 10
+          nullable: true
+        center_lat:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          nullable: true
+        center_lng:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          nullable: true
+        radius_meters:
+          type: integer
+          minimum: 1
+          nullable: true
+        is_active:
+          type: boolean
+
+    DistrictAssignmentUpdate:
+      type: object
+      required: [ district_ids ]
+      properties:
+        district_ids:
+          type: array
+          uniqueItems: true
+          description: >-
+            Full replacement set of active district IDs. Use an empty array to
+            clear all actor district assignments. Duplicate IDs and inactive or
+            unknown districts return validation errors.
+          items:
+            type: integer
 
     Category:
+      type: object
+      description: >-
+        Category resource. Categories are assigned to departments through the
+        category_department many-to-many pivot. Main categories have parent_id
+        null and use priority for ordering. Subcategories reference a main
+        category through parent_id and use weight for ordering. For both fields,
+        lower numbers mean higher priority and sort first.
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        is_active:
+          type: boolean
+        parent_id:
+          type: integer
+          nullable: true
+        is_main_category:
+          type: boolean
+        priority:
+          type: integer
+          nullable: true
+          description: Main-category ordering value; lower number means higher priority.
+        weight:
+          type: integer
+          nullable: true
+          description: Subcategory ordering value; lower number means higher priority.
+        parent:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/CategoryParentSummary'
+        departments:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/DepartmentSummary'
+        children:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/Category'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CategoryParentSummary:
       type: object
       properties:
         id:
           type: integer
         name:
           type: string
-        department:
-          type: string
-        weight:
+
+    DepartmentSummary:
+      type: object
+      properties:
+        id:
           type: integer
+        code:
+          type: string
+          example: wijkbeheer
+        name:
+          type: string
+          example: Wijkbeheer
+        is_active:
+          type: boolean
+
+    CategoryDepartmentAssignment:
+      type: object
+      description: Pivot assignment between a category and a department.
+      properties:
+        category_id:
+          type: integer
+        department_id:
+          type: integer
+
+    CategoryCreate:
+      type: object
+      required: [ name, department_ids ]
+      properties:
+        name:
+          type: string
+          maxLength: 100
         parent_id:
           type: integer
+          nullable: true
+          description: Null for main categories; subcategories must reference an active main category.
+        department_ids:
+          type: array
+          minItems: 1
+          description: Existing department ids to attach through the category_department pivot.
+          items:
+            type: integer
+        priority:
+          type: integer
+          minimum: 0
+          maximum: 255
+          nullable: true
+          description: Main categories only; lower number means higher priority.
+        weight:
+          type: integer
+          minimum: 0
+          maximum: 255
+          nullable: true
+          description: Subcategories only; lower number means higher priority.
+        is_active:
+          type: boolean
+          default: true
+
+    CategoryUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        parent_id:
+          type: integer
+          nullable: true
+        department_ids:
+          type: array
+          minItems: 1
+          description: When present, replaces the category's department assignments.
+          items:
+            type: integer
+        priority:
+          type: integer
+          minimum: 0
+          maximum: 255
+          nullable: true
+          description: Main categories only; lower number means higher priority.
+        weight:
+          type: integer
+          minimum: 0
+          maximum: 255
+          nullable: true
+          description: Subcategories only; lower number means higher priority.
+        is_active:
+          type: boolean
+
+    Department:
+      type: object
+      description: >-
+        Department table row. Categories are assigned to one or more departments
+        through category_department. Managers reference one or more departments
+        through department_manager. Officers reference one or more departments
+        through department_officer. Deleting a department is blocked while it is
+        assigned to managers or officers; otherwise it cascades only category
+        pivot assignments and does not delete category rows. Issue department
+        migration is deferred to a later plan, so issues may still expose the
+        legacy enum/string department field.
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+          example: wijkbeheer
+        name:
+          type: string
+          example: Wijkbeheer
+        is_active:
+          type: boolean
+        categories_count:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    DepartmentCreate:
+      type: object
+      required: [ code, name ]
+      properties:
+        code:
+          type: string
+          maxLength: 50
+          description: Stable unique department code.
+        name:
+          type: string
+          maxLength: 100
+        is_active:
+          type: boolean
+          default: true
+
+    DepartmentUpdate:
+      type: object
+      properties:
+        code:
+          type: string
+          maxLength: 50
+          description: Stable unique department code.
+        name:
+          type: string
+          maxLength: 100
+        is_active:
+          type: boolean
 
     IssueCreate:
       type: object
