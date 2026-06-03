@@ -185,6 +185,6 @@ Local seeders also create canonical rows in the backend `districts` table and as
 - Officers have zero or more districts through `district_ids` / the `district_officer` pivot.
 - Auth profile payloads for managers and officers return `districts` arrays of compact objects (`id`, `name`, `postal_prefix`), not a singular actor-side `district_id`.
 - Use the Postman **Districts / List Districts** request to inspect local district IDs before creating managers, registering officers, or updating actor district assignments.
-- Active managers and active officers can replace their own districts with `PATCH /api/auth/me/districts` and `{"district_ids":[1,2]}`. Active managers can replace an officer's districts with `PATCH /api/officers/{officer}/districts`.
+- Active managers can replace their own districts with `PATCH /api/auth/me/districts` and `{"district_ids":[1,2]}`. Active managers can replace an officer's districts with `PATCH /api/officers/{officer}/districts`. The docs also show an officer self-service district update flow for parity, but that flow is illustrative only and is not implemented in the backend.
 - Only active managers can create, update, or delete district records. District deletion is blocked while the district is assigned to any manager, assigned to any officer, or referenced by issues.
 - Issue district handling is intentionally unchanged: `issues.district_id` remains a singular issue location/reference field and is out of scope for actor district many-to-many assignments.

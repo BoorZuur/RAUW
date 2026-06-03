@@ -20,7 +20,7 @@ The backend uses bearer token authentication for API consumers. Officer registra
 | `POST` | `/api/auth/register/officer` | None | Register an officer and return an immediately usable bearer token. |
 | `POST` | `/api/auth/login` | None | Authenticate a user, officer, or manager. |
 | `GET` | `/api/auth/me` | `Authorization: Bearer <token>` | Return the current actor type and profile. |
-| `PATCH` | `/api/auth/me/districts` | `Authorization: Bearer <token>` | Replace the current manager/officer actor's district assignments. |
+| `PATCH` | `/api/auth/me/districts` | `Authorization: Bearer <token>` | Replace the current manager actor's district assignments. Officer self-service is documented for parity only and is not implemented. |
 | `POST` | `/api/auth/logout` | `Authorization: Bearer <token>` | Revoke the current bearer token. |
 
 ### Manual Token Flow
@@ -81,7 +81,7 @@ Officer registration always returns `actor_type: "officer"` and uses the same sa
 
 Manager creation uses the `departments` table through `department_ids`. Each manager must have at least one valid department, assignments are stored in the `department_manager` pivot table, and manager auth profiles return a `departments` array of compact objects (`id`, `code`, `name`). Officers keep the same `department_ids` / `department_officer` behavior and auth profiles also return departments in a `departments` array.
 
-Manager and officer district assignments are many-to-many. Managers use the `district_manager` pivot, officers use the `district_officer` pivot, and both actor profile types return `districts` arrays of compact objects (`id`, `name`, `postal_prefix`) instead of a singular actor-side `district_id` or `district` object. Active managers and active officers can replace their own district assignments with `PATCH /api/auth/me/districts` and a JSON body such as `{"district_ids":[1,2]}`; an empty array clears all assignments. Active managers can also replace any officer's assignments with `PATCH /api/officers/{officer}/districts` using the same request body. Users do not have district assignments and receive `403 Forbidden` for self-service district updates.
+Manager and officer district assignments are many-to-many. Managers use the `district_manager` pivot, officers use the `district_officer` pivot, and both actor profile types return `districts` arrays of compact objects (`id`, `name`, `postal_prefix`) instead of a singular actor-side `district_id` or `district` object. Active managers can replace their own district assignments with `PATCH /api/auth/me/districts` and a JSON body such as `{"district_ids":[1,2]}`; an empty array clears all assignments. Active managers can also replace any officer's assignments with `PATCH /api/officers/{officer}/districts` using the same request body. The docs include an illustrative officer self-service district update flow for parity, but the backend does not currently implement an officer self-service district update route or officer behavior for that request. Users do not have district assignments and receive `403 Forbidden` for self-service district updates.
 
 District records are managed through `/api/districts`. Authenticated actors can list and show districts. Only active managers can create, update, or delete districts. Deleting a district is blocked with `409 Conflict` while it is assigned to managers, assigned to officers, or referenced by issues.
 

@@ -213,14 +213,18 @@ paths:
 
   /api/auth/me/districts:
     patch:
-      tags: [ Districts ]
-      summary: Update the authenticated actor's district assignments
+      tags: [ Managers, Officers ]
+      summary: Update my district assignments (manager implemented; officer docs only)
       description: >-
-        Replaces the authenticated actor's district assignments with the supplied
-        district_ids array and returns the refreshed auth profile. Only active
-        managers and active officers have district assignments. Users receive
-        403. The request updates only actor district pivots and never modifies
-        the singular issues.district_id issue location/reference field.
+        Implemented manager self-service district assignment endpoint. Replaces
+        the authenticated manager's district assignments with the supplied
+        district_ids array and returns the refreshed auth profile. Users receive
+        403 because they do not have district assignments. The request updates
+        only actor district pivots and never modifies the singular
+        issues.district_id issue location/reference field. This operation is
+        also shown under Officers for parity only: the backend does not currently
+        implement an officer self-service district update route or officer
+        behavior for this request.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -233,29 +237,52 @@ paths:
               district_ids: [1, 2]
       responses:
         '200':
-          description: Refreshed manager or officer profile
+          description: Refreshed manager profile; officer shape is illustrative only
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthCurrentProfileResponse'
-              example:
-                actor_type: officer
-                profile:
-                  id: 1
-                  username: demo-officer
-                  email: demo.officer@example.com
-                  badge_number: BOA-0001
-                  departments:
-                    - id: 1
-                      code: wijkbeheer
-                      name: Wijkbeheer
-                  districts:
-                    - id: 1
-                      name: Middelharnis
-                      postal_prefix: '3241'
-                    - id: 2
-                      name: Sommelsdijk
-                      postal_prefix: '3245'
+              examples:
+                managerProfile:
+                  summary: Implemented manager self-service response
+                  value:
+                    actor_type: manager
+                    profile:
+                      id: 1
+                      username: demo-manager
+                      email: demo.manager@example.com
+                      departments:
+                        - id: 1
+                          code: wijkbeheer
+                          name: Wijkbeheer
+                      is_main_manager: true
+                      districts:
+                        - id: 1
+                          name: Middelharnis
+                          postal_prefix: '3241'
+                        - id: 2
+                          name: Sommelsdijk
+                          postal_prefix: '3245'
+                officerProfileDocsOnly:
+                  summary: Officer parity response shape (docs only, not implemented)
+                  value:
+                    actor_type: officer
+                    profile:
+                      id: 1
+                      username: demo-officer
+                      email: demo.officer@example.com
+                      badge_number: BOA-0001
+                      departments:
+                        - id: 1
+                          code: wijkbeheer
+                          name: Wijkbeheer
+                      districts:
+                        - id: 1
+                          name: Middelharnis
+                          postal_prefix: '3241'
+                        - id: 2
+                          name: Sommelsdijk
+                          postal_prefix: '3245'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -327,15 +354,15 @@ paths:
         schema:
           type: integer
     patch:
-      tags: [ Districts ]
+      tags: [ Managers ]
       summary: Update an officer's district assignments
       description: >-
-        Replaces the target officer's district assignments with the supplied
-        district_ids array and returns that officer's refreshed profile. Only an
-        authenticated active manager may call this endpoint. Users, officers,
-        inactive managers, and unauthenticated requests cannot update officer
-        districts. The endpoint updates only the district_officer pivot and never
-        modifies issues.district_id.
+        Manager-admin district assignment endpoint. Replaces the target officer's
+        district assignments with the supplied district_ids array and returns that
+        officer's refreshed profile. Only an authenticated active manager may
+        call this endpoint. Users, officers, inactive managers, and unauthenticated
+        requests cannot update officer districts. The endpoint updates only the
+        district_officer pivot and never modifies issues.district_id.
       security:
         - bearerAuth: [ ]
       requestBody:

@@ -61,7 +61,7 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 3. Run **Districts / List Districts** and **Departments / List Departments** to find local IDs for assignment examples.
 4. To test manager creation, district assignment, or district/department mutations locally, run **Auth / Login** with `demo.manager@example.com` and password `password`. This stores a main-manager token.
 5. Run **Managers / Create Manager**. This creates an ordinary manager but does not replace the stored `access_token`.
-6. Run **Auth / Update My Districts** to replace the authenticated manager/officer district assignments, or **Officers / Update Officer Districts** while authenticated as a manager.
+6. Run **Managers / Update My Districts** for implemented manager self-service district assignments, **Managers / Update Officer Districts** for manager-admin officer assignments, or inspect **Officers / Update My Districts (Docs Only)** for the illustrative officer self-service parity flow.
 7. Run **Districts / Create District**, **Update District**, and **Delete District** with an active manager token. District deletion returns `409 Conflict` while the district is assigned to managers/officers or referenced by issues.
 8. Run **Categories / List Categories** to find existing category IDs. Category create/update/disable/delete requests require an active manager token; main-manager status is not required.
 9. If desired, run **Auth / Login** with a newly created ordinary manager's email and password to test category and district management without main-manager privileges.
@@ -279,11 +279,15 @@ Officer auth profiles also return a `departments` array because officers must be
 }
 ```
 
-### Update My Districts
+### Manager District Assignment Updates
+
+Implemented manager district assignment updates are grouped under the Manager section. The officer self-service parity flow is shown separately as documentation-only.
+
+#### Update My Districts
 
 `PATCH {{base_url}}/api/auth/me/districts`
 
-Requires `Authorization: Bearer <token>` for an active manager or active officer. Users do not have district assignments and receive `403 Forbidden`.
+Requires `Authorization: Bearer <token>` for an active manager. Users do not have district assignments and receive `403 Forbidden`.
 
 Request body replaces the full current assignment set:
 
@@ -293,7 +297,25 @@ Request body replaces the full current assignment set:
 }
 ```
 
-Use an empty array to clear all assignments. Every ID must reference an active district and duplicates are rejected. The response is the refreshed auth profile with a `districts` array. This endpoint only updates actor district pivots and never changes `issues.district_id`.
+Use an empty array to clear all assignments. Every ID must reference an active district and duplicates are rejected. The response is the refreshed auth profile with a `districts` array. This self-service endpoint only updates actor district pivots and never changes `issues.district_id`.
+
+### Officer District Assignment Updates
+
+#### Update My Districts (Docs Only)
+
+`PATCH {{base_url}}/api/auth/me/districts`
+
+This officer self-service flow is documented for parity with manager self-service only. The backend does **not** currently implement an officer self-service district update route or officer behavior for this request. Treat this entry as illustrative until a backend route is added.
+
+Illustrative request body:
+
+```json
+{
+  "district_ids": [1, 2]
+}
+```
+
+The intended parity behavior would replace the authenticated officer's full district assignment set through the `district_officer` pivot and return the refreshed auth profile with `districts`. It would not reassign issues or modify `issues.district_id`.
 
 ### Create Manager
 
@@ -354,7 +376,7 @@ Common error responses:
 - `403 Forbidden` when the authenticated actor is not an active main manager.
 - `422 Unprocessable Entity` with validation errors when required fields are missing, `email` is invalid, `password` is shorter than 8 characters, `confirm_password` does not match `password`, `department_ids` is missing, empty, duplicated, or references unknown departments, `district_ids` is duplicated or references inactive/unknown districts, `username` already exists in the managers table, or `email` already exists for any user, officer, or manager.
 
-### Officer District Assignments
+#### Update Officer Districts
 
 `PATCH {{base_url}}/api/officers/{officer}/districts`
 

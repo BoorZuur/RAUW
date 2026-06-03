@@ -269,18 +269,6 @@
           "response": []
         },
         {
-          "name": "Update My Districts",
-          "request": {
-            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
-            "method": "PATCH",
-            "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
-            "body": { "mode": "raw", "raw": "{\n  \"district_ids\": [1, 2]\n}", "options": { "raw": { "language": "json" } } },
-            "url": { "raw": "{{base_url}}/api/auth/me/districts", "host": [ "{{base_url}}" ], "path": [ "api", "auth", "me", "districts" ] },
-            "description": "Replace the authenticated actor's own district assignments. Requires an active manager or active officer token; users receive 403 because they do not have district assignments. district_ids must be present, may be an empty array to clear assignments, must contain active existing district IDs, and cannot contain duplicates. Returns the refreshed auth profile with a districts array. This only updates actor district pivots and never modifies issues.district_id."
-          },
-          "response": []
-        },
-        {
           "name": "Logout",
           "event": [
             {
@@ -422,13 +410,19 @@
             "description": "Create an ordinary manager as the authenticated main manager. Requires Authorization: Bearer <token> from an active manager with is_main_manager=true. department_ids is required, must contain at least one existing department ID, and cannot contain duplicates; manager department assignments are stored through the department_manager pivot. Optional district_ids must contain active existing districts and are stored through district_manager. The 201 response returns the created manager profile only, including departments and districts as compact arrays, and does not include or store an access_token. The new manager must log in separately through Auth / Login. Change username and email before rerunning because username must be unique within managers and email must be unique across users, officers, and managers."
           },
           "response": []
-        }
-      ],
-      "description": "Protected manager administration requests. Manager creation is restricted to authenticated active main managers."
-    },
-    {
-      "name": "Officers",
-      "item": [
+        },
+        {
+          "name": "Update My Districts",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "PATCH",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"district_ids\": [1, 2]\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/auth/me/districts", "host": [ "{{base_url}}" ], "path": [ "api", "auth", "me", "districts" ] },
+            "description": "Implemented manager self-service district assignment endpoint. Replace the authenticated manager's own district assignments. Users do not have district assignments and receive 403. district_ids must be present, may be an empty array to clear assignments, must contain active existing district IDs, and cannot contain duplicates. Returns the refreshed auth profile with a districts array. This only updates actor district pivots and never modifies issues.district_id. Officer self-service is documented separately as a docs-only parity flow and is not implemented in the backend."
+          },
+          "response": []
+        },
         {
           "name": "Update Officer Districts",
           "request": {
@@ -437,12 +431,30 @@
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
             "body": { "mode": "raw", "raw": "{\n  \"district_ids\": [1, 2]\n}", "options": { "raw": { "language": "json" } } },
             "url": { "raw": "{{base_url}}/api/officers/1/districts", "host": [ "{{base_url}}" ], "path": [ "api", "officers", "1", "districts" ] },
-            "description": "Replace an officer's district assignments as an authenticated active manager. Users, officers, inactive managers, and unauthenticated requests cannot update officer districts. district_ids must be present, may be empty to clear assignments, must contain active existing district IDs, and cannot contain duplicates. Returns the officer's refreshed profile with districts. This only updates district_officer and never modifies issues.district_id."
+            "description": "Manager-admin district assignment endpoint. Replace an officer's district assignments as an authenticated active manager. Users, officers, inactive managers, and unauthenticated requests cannot update officer districts. district_ids must be present, may be empty to clear assignments, must contain active existing district IDs, and cannot contain duplicates. Returns the officer's refreshed profile with districts. This only updates district_officer and never modifies issues.district_id."
           },
           "response": []
         }
       ],
-      "description": "Officer administration requests. Active managers may replace an officer's many-to-many district assignments through district_ids. Issue district references are out of scope."
+      "description": "Protected manager administration requests. Manager creation is restricted to authenticated active main managers. District assignment requests include implemented manager self-service updates and manager-admin officer updates."
+    },
+    {
+      "name": "Officers",
+      "item": [
+        {
+          "name": "Update My Districts (Docs Only)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "PATCH",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"district_ids\": [1, 2]\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/auth/me/districts", "host": [ "{{base_url}}" ], "path": [ "api", "auth", "me", "districts" ] },
+            "description": "Documentation-only illustrative officer self-service district assignment flow for parity with manager self-service. The backend does not currently implement an officer self-service district update route or officer behavior for this request. Intended parity behavior would replace the authenticated officer's district assignments through district_officer, accept district_ids as an array of active existing district IDs without duplicates, allow an empty array to clear assignments, return the refreshed auth profile with districts, and never modify issues.district_id. Do not use this request as an implemented backend contract until a route is added."
+          },
+          "response": []
+        }
+      ],
+      "description": "Officer-focused request examples. The district self-service update entry is documentation-only for parity and is not implemented by the backend yet."
     },
     {
       "name": "Categories",
