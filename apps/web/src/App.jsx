@@ -1,15 +1,14 @@
 import './App.css'
-import {createBrowserRouter, RouterProvider} from "react-router-dom";
+import {createBrowserRouter, Outlet, RouterProvider} from "react-router-dom";
 
 import Onboarding from "./user/Onboarding.jsx";
-import Feed from "./user/Feed.jsx";
-import Report from "./user/Report.jsx";
-import Account from "./user/Account.jsx";
+// import Feed from "./user/Feed.jsx";
+// import Report from "./user/Report.jsx";
+// import Account from "./user/Account.jsx";
 import Login from "./user/U_Login.jsx";
 import Register from "./user/U_Register.jsx";
-import Map from "./user/Map.jsx"
-import AccountSettings from "./user/AccountSettings.jsx"
-
+// import Map from "./user/Map.jsx"
+// import AccountSettings from "./user/AccountSettings.jsx"
 import CommandCenter from "./handhaver/CommandCenter.jsx";
 import SectorSettings from "./handhaver/SectorSettings.jsx";
 import ServiceProfile from "./handhaver/ServiceProfile.jsx";
@@ -44,13 +43,13 @@ function App() {
         children: [
             // User Routes
             {path: "/", element: <Onboarding/>},
-            {path: "/feed", element: <Feed/>},
-            {path: "/report", element: <Report/>},
-            {path: "/account", element: <Account/>},
+            // {path: "/feed", element: <Feed/>},
+            // {path: "/report", element: <Report/>},
+            // {path: "/account", element: <Account/>},
             {path: "/login", element: <Login/>},
             {path: "/register", element: <Register/>},
             {path: "/map", element: <Map/>},
-            {path: "/account_settings", element: <AccountSettings/>},
+            // {path: "/account_settings", element: <AccountSettings/>},
 
             // Handhaver Router
             {path: "/handhaver_login", element: <HandhaverLogin/>},
@@ -69,7 +68,7 @@ function App() {
 
         ]
     },
-    {
+        {
             // BOA or Manager
             element: <GovernmentLayout/>,
             children: [
@@ -84,8 +83,8 @@ function App() {
                 {path: "/flagged_dashboard", element: <FlaggedDashboard/>},
                 {path: "/reports_overview", element: <ReportsOverview/>},
             ]
-        }      
-        ]);
+        }
+    ]);
     return <RouterProvider router={router}/>;
 }
 
