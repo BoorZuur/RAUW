@@ -144,10 +144,11 @@ Route::middleware(['auth:sanctum', 'throttle:30,1'])->group(function (): void {
     // managing their report. Files are stored on a non-public local disk for
     // development (never served from `public`), capped at 5 files of up to 5 MB
     // each, and an issue may hold at most 5 attachments in total. Downloads
-    // (GET `/issues/{issue}/attachments/{attachment}/download`) require a valid
-    // bearer token via this group's `auth:sanctum` middleware and stream the file
-    // from local storage only after confirming the attachment belongs to the
-    // route issue, so files are never exposed through a public storage URL.
+    // (GET `/issues/{issue}/attachments/{attachment}/download`) are authorized
+    // inside DownloadIssueAttachmentRequest to the issue owner (active user),
+    // any active officer, or any active manager; the controller confirms the
+    // attachment belongs to the route issue (404 otherwise) and streams from
+    // the non-public local disk, so files are never exposed through a public URL.
     // Deletes (DELETE `/issues/{issue}/attachments/{attachment}`) are authorized
     // inside DeleteIssueAttachmentRequest to the authenticated, active regular
     // user who owns the route issue; the controller confirms the attachment

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Issues\DeleteIssueAttachmentRequest;
+use App\Http\Requests\Issues\DownloadIssueAttachmentRequest;
 use App\Http\Requests\Issues\StoreIssueAttachmentRequest;
 use App\Http\Resources\IssueAttachmentResource;
 use App\Models\Issue;
@@ -71,16 +72,17 @@ class IssueAttachmentController extends Controller
     }
 
     /**
-     * Stream an attachment file back to an authenticated actor.
+     * Stream an attachment file back to an authorized actor.
      *
-     * Authentication is enforced by the `auth:sanctum` middleware on the route
-     * group, keeping uploaded files private. The attachment must belong to the
-     * issue named in the route — a mismatch yields a 404 so attachment ids cannot
-     * be probed across issues — and the backing file must still exist on the
-     * non-public `local` disk. The file is returned as a streamed download under
-     * its original client filename rather than its hashed storage name.
+     * Download authorization is enforced by DownloadIssueAttachmentRequest: the
+     * authenticated, active issue owner, any active officer, or any active
+     * manager. The attachment must belong to the issue named in the route — a
+     * mismatch yields a 404 so attachment ids cannot be probed across issues —
+     * and the backing file must still exist on the non-public `local` disk. The
+     * file is returned as a streamed download under its original client filename
+     * rather than its hashed storage name.
      */
-    public function download(Issue $issue, IssueAttachment $attachment): StreamedResponse
+    public function download(DownloadIssueAttachmentRequest $request, Issue $issue, IssueAttachment $attachment): StreamedResponse
     {
         abort_unless($attachment->issue_id === $issue->getKey(), Response::HTTP_NOT_FOUND);
 

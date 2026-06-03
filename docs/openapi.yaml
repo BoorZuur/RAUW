@@ -1060,10 +1060,12 @@ paths:
       tags: [ Attachments ]
       summary: Download an issue attachment
       description: >-
-        Stream an attachment from non-public local development storage. Downloads
-        are authenticated only. The attachment must belong to the issue in the
-        route and the backing local file must still exist; otherwise the backend
-        returns 404.
+        Stream an attachment from non-public local development storage. Allowed for
+        the authenticated active user who owns the issue, any active officer, or
+        any active manager. Non-owner users, inactive actors, and unauthenticated
+        requests receive 403. The attachment must belong to the issue in the route
+        and the backing local file must still exist; otherwise the backend returns
+        404.
       security:
         - bearerAuth: [ ]
       responses:
@@ -1076,6 +1078,8 @@ paths:
                 format: binary
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
 
