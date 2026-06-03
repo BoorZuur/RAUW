@@ -5,7 +5,7 @@ Use this Postman collection to test the backend-only authentication API against 
 ## Files
 
 - `rauw-backend.postman_collection.json` — importable Postman Collection v2.1 file.
-- `rauw-local.postman_environment.json` — local environment with `base_url` set to `http://127.0.0.1:8001` and an empty `access_token` variable.
+- `rauw-local.postman_environment.json` — local environment with `base_url` set to `http://127.0.0.1:8001`, an empty `access_token` variable, and default issue/filter variables for issue examples.
 
 ## Required Local Backend Setup
 
@@ -53,6 +53,14 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 |----------|-------------|-------|
 | `base_url` | `http://127.0.0.1:8001` | Change this to point at another backend without editing each request. |
 | `access_token` | blank | Filled automatically after a successful login, user registration, or officer registration request. |
+| `issue_id` | `1` | Filled automatically after **Issues / Create Issue**. Used by show, update, attachment, and delete examples. |
+| `attachment_id` | `1` | Filled automatically after **Issues / Upload Attachments**. Used by authenticated download. |
+| `attachment_download_url` | blank | Filled automatically after **Issues / Upload Attachments** for reference. |
+| `district_id` | `1` | Example required district ID and list filter. |
+| `category_id` | `1` | Example category ID and list filter. |
+| `department_filter` | `wijkbeheer` | Example issue list department filter. |
+| `page` | `1` | Example issue list page. |
+| `per_page` | `20` | Example issue list page size. Backend caps this at 100. |
 
 ## Recommended Request Order
 
@@ -64,10 +72,14 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 6. Run **Managers / Update My Districts** for implemented manager self-service district assignments, **Managers / Update Officer Districts** for manager-admin officer assignments, or inspect **Officers / Update My Districts (Docs Only)** for the illustrative officer self-service parity flow.
 7. Run **Districts / Create District**, **Update District**, and **Delete District** with an active manager token. District deletion returns `409 Conflict` while the district is assigned to managers/officers or referenced by issues.
 8. Run **Categories / List Categories** to find existing category IDs. Category create/update/disable/delete requests require an active manager token; main-manager status is not required.
-9. If desired, run **Auth / Login** with a newly created ordinary manager's email and password to test category and district management without main-manager privileges.
-10. Run **Auth / Logout** when finished.
+9. Run **Auth / Login** with `demo.user@example.com` and password `password`, then use **Issues / Create Issue**. This stores `issue_id` for **Show Issue**, **Update Own Issue**, **Upload Attachments**, **Download Attachment**, and **Hard Delete Own Issue**.
+10. Use **Issues / List Issues - Filtered Paginated** to combine `district_id`, `department_filter`, and `category_id`; pagination is backend-driven by `page` and `per_page`.
+11. If desired, run **Auth / Login** with a newly created ordinary manager's email and password to test category and district management without main-manager privileges.
+12. Run **Auth / Logout** when finished.
 
 The collection stores the returned `access_token` automatically after a successful login, user registration, or officer registration. Manager creation intentionally does not update `access_token` because it returns only the created manager profile. If you disable collection scripts or the token is not stored, copy the `access_token` value from the auth response into the active Postman environment's `access_token` variable before calling protected endpoints.
+
+Issue examples also store `issue_id` after issue creation and `attachment_id` / `attachment_download_url` after attachment upload. Attachment upload uses local, non-public development storage. Downloads require `Authorization: Bearer <token>` and stream through the authenticated API route.
 
 Protected endpoints use this header:
 

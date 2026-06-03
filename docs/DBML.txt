@@ -161,11 +161,10 @@ Table issues {
   user_id              int          [ref: > users.id, note: 'NULL na soft delete user']
   category_id          int          [not null, ref: > categories.id]
   assigned_officer_id  int          [ref: > officers.id]
-  district_id          int          [ref: > districts.id, note: 'Singuliere issue-locatie/referentie; valt buiten actor-wijk many-to-many toewijzingen']
+  district_id          int          [not null, ref: > districts.id, note: 'Verplichte singuliere issue-locatie/referentie; restrict delete; valt buiten actor-wijk many-to-many toewijzingen']
   duplicate_of_id      int          [ref: > issues.id]
   title                varchar(255) [not null]
   content              text         [not null]
-  neighborhood         varchar(100)
   postal_code          varchar(10)
   address              varchar(255)
   latitude             decimal(10,8)
@@ -178,8 +177,8 @@ Table issues {
   vote_count           int          [not null, default: 0, note: 'Direct opgehoogd, nachtelijks gereconcilieerd']
   is_flagged           tinyint(1)   [not null, default: 0]
   visibility           varchar(20)  [not null, default: 'visible', note: 'visible | hidden_pending | hidden_removed | visible_approved']
-  is_anonymous         tinyint(1)   [not null, default: 0, note: 'Publiek + BOA zien alleen alias']
-  anonymous_alias      varchar(20)  [note: 'Bv. Melder #A7F3, getoond i.p.v. username']
+  is_anonymous         tinyint(1)   [not null, default: 0, note: 'User_id blijft eigenaar; publiek + BOA zien alleen alias']
+  anonymous_alias      varchar(20)  [note: 'Bv. Melder#A1B2C3D4, stabiel server-generated alias getoond i.p.v. username']
   chat_status          varchar(10)  [not null, default: 'closed', note: 'open | closed - alleen BOA bedient dit']
   chat_closed_by_officer_id int     [ref: > officers.id]
   resolved_at          datetime
@@ -238,10 +237,17 @@ Table issue_messages {
 
 Table issue_attachments {
   id               int          [pk, increment]
-  issue_id         int          [not null, ref: > issues.id]
-  file_url         varchar(500) [not null]
-  file_type        varchar(50)
+  issue_id         int          [not null, ref: > issues.id, note: 'Cascade delete met issue']
+  file_path        varchar(500) [not null, note: 'Niet-publiek local storage path, bv. issue-attachments/{issue_id}/{hash}']
+  file_url         varchar(500) [note: 'Nullable legacy/display field; downloads lopen via authenticated endpoint']
+  original_name    varchar(255) [note: 'Originele clientbestandsnaam']
+  file_type        varchar(100) [note: 'MIME type, bv. image/jpeg of application/pdf']
+  file_size        bigint       [note: 'Bestandsgrootte in bytes; uploadlimiet 5 MB per bestand']
   uploaded_at      datetime     [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    issue_id
+  }
 }
 
 Table issue_status_history {

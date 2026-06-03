@@ -9,6 +9,7 @@ use App\Http\Controllers\Auth\RegisterUserController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\DistrictController;
+use App\Http\Controllers\IssueAttachmentController;
 use App\Http\Controllers\IssueController;
 use App\Http\Controllers\ManagerController;
 use App\Http\Controllers\OfficerDistrictController;
@@ -124,4 +125,17 @@ Route::middleware(['auth:sanctum', 'throttle:30,1'])->group(function (): void {
     Route::get('issues/{issue}', [IssueController::class, 'show'])->name('issues.show');
     Route::match(['put', 'patch'], 'issues/{issue}', [IssueController::class, 'update'])->name('issues.update');
     Route::delete('issues/{issue}', [IssueController::class, 'destroy'])->name('issues.destroy');
+
+    // Issue attachments. Uploads are authorized inside StoreIssueAttachmentRequest
+    // to the authenticated, active regular user who owns the issue, mirroring the
+    // owner-only edit/delete model so an author can add or replace files while
+    // managing their report. Files are stored on a non-public local disk for
+    // development (never served from `public`), capped at 5 files of up to 5 MB
+    // each, and an issue may hold at most 5 attachments in total. Downloads
+    // (GET `/issues/{issue}/attachments/{attachment}/download`) require a valid
+    // bearer token via this group's `auth:sanctum` middleware and stream the file
+    // from local storage only after confirming the attachment belongs to the
+    // route issue, so files are never exposed through a public storage URL.
+    Route::post('issues/{issue}/attachments', [IssueAttachmentController::class, 'store'])->name('issues.attachments.store');
+    Route::get('issues/{issue}/attachments/{attachment}/download', [IssueAttachmentController::class, 'download'])->name('issues.attachments.download');
 });

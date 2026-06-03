@@ -606,6 +606,148 @@
       "description": "District CRUD requests. Reads require authentication; mutations require an authenticated active manager. Actor district assignments are many-to-many through district_manager and district_officer. Issue district handling is out of scope: issues.district_id remains singular."
     },
     {
+      "name": "Issues",
+      "item": [
+        {
+          "name": "Create Issue",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Issue created', function () { pm.response.to.have.status(201); });",
+                  "const response = pm.response.json();",
+                  "if (response.id) {",
+                  "    pm.collectionVariables.set('issue_id', response.id);",
+                  "    if (pm.environment.name) { pm.environment.set('issue_id', response.id); }",
+                  "}",
+                  "pm.test('Issue has required district and safe author', function () {",
+                  "    pm.expect(response.district_id).to.exist;",
+                  "    pm.expect(response.author).to.be.an('object');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Losliggende stoeptegel\",\n  \"content\": \"Er ligt een stoeptegel los bij de bushalte.\",\n  \"category_id\": {{category_id}},\n  \"district_id\": {{district_id}},\n  \"department\": \"wijkbeheer\",\n  \"postal_code\": \"3241AB\",\n  \"address\": \"Voorstraat 1, Middelharnis\",\n  \"latitude\": 51.7575,\n  \"longitude\": 4.165,\n  \"is_anonymous\": true\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/issues", "host": [ "{{base_url}}" ], "path": [ "api", "issues" ] },
+            "description": "Create an issue as an authenticated active user. Required fields are title, content, category_id, district_id, and department. Optional location fields are postal_code, address, latitude, and longitude. Removed legacy locality fields are not accepted. Anonymous issues remain owned through issues.user_id; the backend generates a stable alias such as Melder#A1B2C3D4 and does not accept anonymous_alias from clients. The test stores issue_id for follow-up requests."
+          },
+          "response": []
+        },
+        {
+          "name": "List Issues - Filtered Paginated",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "GET",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+            "url": {
+              "raw": "{{base_url}}/api/issues?district_id={{district_id}}&department={{department_filter}}&category_id={{category_id}}&page={{page}}&per_page={{per_page}}",
+              "host": [ "{{base_url}}" ],
+              "path": [ "api", "issues" ],
+              "query": [
+                { "key": "district_id", "value": "{{district_id}}", "description": "Composable district filter" },
+                { "key": "department", "value": "{{department_filter}}", "description": "Composable department filter" },
+                { "key": "category_id", "value": "{{category_id}}", "description": "Composable category filter" },
+                { "key": "page", "value": "{{page}}" },
+                { "key": "per_page", "value": "{{per_page}}" }
+              ]
+            },
+            "description": "List issues for an authenticated actor. district_id, department, and category_id are optional and composable; combine any subset to narrow results. Pagination is backend-driven with page and per_page; per_page defaults to 20 and is capped at 100."
+          },
+          "response": []
+        },
+        {
+          "name": "Show Issue",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "GET",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+            "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}" ] },
+            "description": "Show one issue with category, district, and attachment summaries when loaded. Authenticated request only. Anonymous issues expose an author display alias and not the owning user id."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Own Issue",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "PATCH",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Stoeptegel bij bushalte bijgewerkt\",\n  \"content\": \"De tegel ligt nu volledig los.\",\n  \"district_id\": {{district_id}},\n  \"is_anonymous\": false\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}" ] },
+            "description": "Partially update an issue owned by the authenticated active user. Ownership is checked through issues.user_id, including anonymous issues. Editable fields are title, content, category_id, district_id, department, postal_code, address, latitude, longitude, and is_anonymous. Attachments are changed separately: remove existing attachments first when replacement is needed, then use Upload Attachments."
+          },
+          "response": []
+        },
+        {
+          "name": "Upload Attachments",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Attachments uploaded', function () { pm.response.to.have.status(201); });",
+                  "const response = pm.response.json();",
+                  "if (Array.isArray(response) && response.length > 0) {",
+                  "    pm.collectionVariables.set('attachment_id', response[0].id);",
+                  "    pm.collectionVariables.set('attachment_download_url', response[0].download_url);",
+                  "    if (pm.environment.name) {",
+                  "        pm.environment.set('attachment_id', response[0].id);",
+                  "        pm.environment.set('attachment_download_url', response[0].download_url);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "files[]", "type": "file", "src": [], "description": "Choose 1-5 files. Each file must be <= 5 MB and one of jpg, jpeg, png, gif, webp, or pdf." }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/attachments", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "attachments" ] },
+            "description": "Upload attachments to an issue owned by the authenticated active user. Each issue may hold at most 5 attachments total. Each file is limited to 5 MB. Files are stored on local non-public development storage and are downloaded only through authenticated endpoints. The test stores attachment_id and attachment_download_url from the first uploaded file."
+          },
+          "response": []
+        },
+        {
+          "name": "Download Attachment",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "GET",
+            "header": [ { "key": "Accept", "value": "application/octet-stream", "type": "text" } ],
+            "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/attachments/{{attachment_id}}/download", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "attachments", "{{attachment_id}}", "download" ] },
+            "description": "Authenticated attachment download. The attachment must belong to the issue in the route and the local backing file must exist. The API streams the original filename from non-public local storage."
+          },
+          "response": []
+        },
+        {
+          "name": "Hard Delete Own Issue",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "DELETE",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+            "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}" ] },
+            "description": "Hard delete an issue owned by the authenticated active user. This is not a soft delete: the issue row is removed and attachments cascade with the issue. Run after attachment examples if you want to preserve issue_id for follow-up requests."
+          },
+          "response": []
+        }
+      ],
+      "description": "Authenticated issue CRUD and attachment examples. Issue creation requires district_id and no longer accepts removed legacy locality fields. List filters are composable and pagination is backend-driven. Anonymous issues retain user_id ownership while exposing only a stable alias. Issue deletion is hard delete and attachments cascade with the issue."
+    },
+    {
       "name": "Departments",
       "item": [
         {
@@ -682,6 +824,46 @@
     {
       "key": "access_token",
       "value": "",
+      "type": "string"
+    },
+    {
+      "key": "issue_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "attachment_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "attachment_download_url",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "district_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "category_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "department_filter",
+      "value": "wijkbeheer",
+      "type": "string"
+    },
+    {
+      "key": "page",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "per_page",
+      "value": "20",
       "type": "string"
     }
   ]

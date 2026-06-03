@@ -411,6 +411,12 @@ paths:
     post:
       tags: [ Issues ]
       summary: Create a new issue
+      description: >-
+        Create an issue as an authenticated active user. The request requires
+        category_id, district_id, department, title, and content. Location fields
+        are optional. When is_anonymous is true the backend still stores user_id
+        ownership, but generates and persists a stable anonymous alias such as
+        Melder#A1B2C3D4 for public display; clients cannot submit the alias.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -419,6 +425,17 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/IssueCreate'
+            example:
+              title: Losliggende stoeptegel
+              content: Er ligt een stoeptegel los bij de bushalte.
+              category_id: 1
+              district_id: 1
+              department: wijkbeheer
+              postal_code: '3241AB'
+              address: Voorstraat 1, Middelharnis
+              latitude: 51.75750000
+              longitude: 4.16500000
+              is_anonymous: true
       responses:
         '201':
           description: Issue created
@@ -426,49 +443,46 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Issue'
-        '400':
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
           $ref: '#/components/responses/ValidationError'
 
     get:
       tags: [ Issues ]
       summary: List issues with filters and pagination
+      description: >-
+        List issues for any authenticated actor. Filters are optional and
+        composable: district_id, department, and category_id may be combined in a
+        single request to narrow the result set. Pagination is backend-driven
+        using page and per_page, with a default per_page of 20 and maximum of
+        100. Results are ordered newest first.
+      security:
+        - bearerAuth: [ ]
       parameters:
         - $ref: '#/components/parameters/page'
         - $ref: '#/components/parameters/perPage'
-        - name: status
-          in: query
-          schema:
-            type: string
         - name: department
           in: query
+          description: Optional composable department filter.
           schema:
             type: string
+            enum: [ wijkbeheer, boa_jeugd ]
         - name: category_id
           in: query
+          description: Optional composable category filter.
           schema:
             type: integer
         - name: district_id
           in: query
+          description: Optional composable district filter.
           schema:
             type: integer
-        - name: lat
-          in: query
-          schema:
-            type: number
-            format: double
-        - name: lng
-          in: query
-          schema:
-            type: number
-            format: double
-        - name: radius
-          in: query
-          schema:
-            type: integer
-            description: radius in meters
       responses:
         '200':
-          description: Paged list of issues
+          description: Backend-paginated list of issues
           content:
             application/json:
               schema:
@@ -478,12 +492,24 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/Issue'
-                  page:
-                    type: integer
-                  per_page:
-                    type: integer
-                  total:
-                    type: integer
+                  links:
+                    type: object
+                    additionalProperties: true
+                  meta:
+                    type: object
+                    properties:
+                      current_page:
+                        type: integer
+                      per_page:
+                        type: integer
+                      total:
+                        type: integer
+                      last_page:
+                        type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
 
   /issues/{issueId}:
     parameters:
@@ -495,6 +521,8 @@ paths:
     get:
       tags: [ Issues ]
       summary: Get an issue by id
+      security:
+        - bearerAuth: [ ]
       responses:
         '200':
           description: Issue object
@@ -502,15 +530,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Issue'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
 
-    patch:
+    put:
       tags: [ Issues ]
-      summary: Update an issue (owner/officer/manager depending on fields)
+      summary: Replace/update own issue
+      description: Same partial-update behavior and validation as PATCH /issues/{issueId}.
       security:
         - bearerAuth: [ ]
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -522,19 +554,71 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Issue'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    patch:
+      tags: [ Issues ]
+      summary: Update own issue
+      description: >-
+        Partially update an issue owned by the authenticated active user. The
+        owner is checked through issues.user_id, including for anonymous issues.
+        Clients may update title, content, category_id, district_id, department,
+        optional location fields, and is_anonymous. user_id, status, priority,
+        counters, assignments, and anonymous_alias are server-owned.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueUpdate'
+            example:
+              title: Stoeptegel bij bushalte bijgewerkt
+              content: De tegel ligt nu volledig los.
+              district_id: 1
+              is_anonymous: false
+      responses:
+        '200':
+          description: Updated issue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
 
     delete:
       tags: [ Issues ]
-      summary: Soft-delete an issue
+      summary: Hard delete own issue
+      description: >-
+        Hard delete an issue owned by the authenticated active user. This is not
+        a soft delete. The issue row is removed outright and issue attachments
+        cascade with the issue through the database foreign key.
       security:
         - bearerAuth: [ ]
       responses:
         '204':
-          description: Deleted
+          description: Issue hard deleted; attachments cascaded
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /issues/{issueId}/comments:
     get:
@@ -623,9 +707,23 @@ paths:
                 $ref: '#/components/schemas/IssueMessage'
 
   /issues/{issueId}/attachments:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: integer
     post:
       tags: [ Attachments ]
       summary: Upload files for an issue
+      description: >-
+        Upload attachments to an issue owned by the authenticated active user.
+        Each issue may hold at most 5 attachments in total. Each uploaded file is
+        limited to 5 MB and must be jpg, jpeg, png, gif, webp, or pdf. In local
+        development files are stored on the non-public local disk and are served
+        only through the authenticated download endpoint; no public storage URL
+        is exposed. To replace files while editing an issue, remove existing
+        attachments first, then upload new files within the same total limit.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -634,9 +732,12 @@ paths:
           multipart/form-data:
             schema:
               type: object
+              required: [ files ]
               properties:
                 files:
                   type: array
+                  minItems: 1
+                  maxItems: 5
                   items:
                     type: string
                     format: binary
@@ -649,6 +750,49 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/IssueAttachment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /issues/{issueId}/attachments/{attachmentId}/download:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: attachmentId
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags: [ Attachments ]
+      summary: Download an issue attachment
+      description: >-
+        Stream an attachment from non-public local development storage. Downloads
+        are authenticated only. The attachment must belong to the issue in the
+        route and the backing local file must still exist; otherwise the backend
+        returns 404.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Attachment file stream
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /api/categories:
     get:
@@ -1171,9 +1315,12 @@ components:
     perPage:
       name: per_page
       in: query
+      description: Backend-driven page size. Defaults to 20 and is capped at 100.
       schema:
         type: integer
-        default: 25
+        default: 20
+        minimum: 1
+        maximum: 100
 
   responses:
     ValidationError:
@@ -1832,56 +1979,93 @@ components:
 
     IssueCreate:
       type: object
-      required: [ category_id, title, content, department ]
+      description: >-
+        Client payload for creating an issue. district_id is required and must
+        reference an active district. Removed legacy locality fields are not
+        accepted. Anonymous aliases are generated server-side;
+        anonymous issues remain owned by the authenticated user via user_id.
+      required: [ title, content, category_id, district_id, department ]
       properties:
-        category_id:
-          type: integer
         title:
           type: string
+          maxLength: 255
         content:
           type: string
+        category_id:
+          type: integer
+        district_id:
+          type: integer
+          description: Required active district ID for the issue location/reference.
+        department:
+          type: string
+          enum: [ wijkbeheer, boa_jeugd ]
         latitude:
           type: number
           format: double
+          nullable: true
         longitude:
           type: number
           format: double
+          nullable: true
         address:
           type: string
+          nullable: true
         postal_code:
           type: string
-        neighborhood:
-          type: string
-        department:
-          type: string
-          description: wijkbeheer | boa_jeugd
+          nullable: true
         is_anonymous:
           type: boolean
+          default: false
 
     IssueUpdate:
       type: object
+      description: >-
+        Owner-editable issue fields. All fields are optional for PATCH/PUT and
+        only supplied fields are changed. user_id, status, priority,
+        anonymous_alias, assignments, and counters are server-owned. The public
+        API no longer accepts removed legacy locality fields.
       properties:
         title:
           type: string
+          maxLength: 255
         content:
           type: string
         category_id:
           type: integer
-        priority:
+        district_id:
+          type: integer
+        department:
           type: string
-        status:
+          enum: [ wijkbeheer, boa_jeugd ]
+        postal_code:
           type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        latitude:
+          type: number
+          format: double
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          nullable: true
+        is_anonymous:
+          type: boolean
 
     Issue:
       type: object
+      description: >-
+        Issue resource. Anonymous issues remain user-owned in the database
+        through user_id, but the response exposes only an author display alias
+        such as Melder#A1B2C3D4 and never leaks the owning user's id. Non-anonymous
+        issues include author identity when loaded. Attachments include
+        authenticated download URLs only.
       properties:
         id:
           type: integer
-        user_id:
-          type: integer
         category_id:
-          type: integer
-        assigned_officer_id:
           type: integer
         district_id:
           type: integer
@@ -1889,27 +2073,90 @@ components:
           type: string
         content:
           type: string
+        postal_code:
+          type: string
+          nullable: true
         address:
           type: string
+          nullable: true
         latitude:
           type: number
           format: double
+          nullable: true
         longitude:
           type: number
           format: double
+          nullable: true
+        department:
+          type: string
+          enum: [ wijkbeheer, boa_jeugd ]
         status:
           type: string
         priority:
           type: string
-        is_flagged:
+        is_anonymous:
           type: boolean
-        visibility:
-          type: string
-        anonymous_alias:
-          type: string
+        author:
+          $ref: '#/components/schemas/IssueAuthor'
+        vote_count:
+          type: integer
+        participant_count:
+          type: integer
+        duplicate_count:
+          type: integer
+        category:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+        district:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+        attachments:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/IssueAttachment'
         created_at:
           type: string
           format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        resolved_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    IssueAuthor:
+      type: object
+      description: >-
+        Ownership-safe author summary. For anonymous issues this contains only
+        is_anonymous=true and display_name with the stable alias; user_id is not
+        returned even though the database keeps ownership via issues.user_id.
+      properties:
+        is_anonymous:
+          type: boolean
+        id:
+          type: integer
+          nullable: true
+        name:
+          type: string
+          nullable: true
+        username:
+          type: string
+          nullable: true
+        display_name:
+          type: string
+          example: Melder#A1B2C3D4
 
     IssueCommentCreate:
       type: object
@@ -1971,18 +2218,31 @@ components:
 
     IssueAttachment:
       type: object
+      description: >-
+        Attachment metadata. Files are stored in non-public local development
+        storage and are downloadable only through the authenticated download_url.
+        Raw storage paths and public file URLs are not exposed.
       properties:
         id:
           type: integer
         issue_id:
           type: integer
-        file_url:
+        original_name:
           type: string
+          nullable: true
         file_type:
           type: string
+          nullable: true
+        file_size:
+          type: integer
+          nullable: true
+          description: File size in bytes. Each uploaded file is limited to 5 MB.
         uploaded_at:
           type: string
           format: date-time
+        download_url:
+          type: string
+          description: Authenticated download endpoint for this attachment.
 
     IssueParticipant:
       type: object
