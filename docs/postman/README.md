@@ -411,6 +411,63 @@ Common error responses:
 - `404 Not Found` when the officer route ID does not exist.
 - `422 Unprocessable Entity` when `district_ids` is missing, not an array, contains duplicates, or references inactive/unknown districts.
 
+#### Update Officer Departments (planned)
+
+`PATCH {{base_url}}/api/officers/{officer}/departments`
+
+**Planned** — not registered in `routes/api.php` until backend implementation merges. Documented in OpenAPI and this collection for spec-first client work.
+
+Requires `Authorization: Bearer <token>` for an authenticated **active main manager** (`is_main_manager: true`). Users, officers, ordinary managers, inactive managers, inactive main managers, and unauthenticated requests receive `403 Forbidden`. This is stricter than **Update Officer Districts**, which allows any authenticated active manager.
+
+Request body:
+
+```json
+{
+  "department_ids": [1, 2]
+}
+```
+
+Use an empty array to clear all assignments:
+
+```json
+{
+  "department_ids": []
+}
+```
+
+`department_ids` must be present and must be an array. Empty `[]` is valid for PATCH (unlike create/register, which require at least one department). IDs must exist in the `departments` table; duplicates are rejected.
+
+The request replaces the target officer's full department assignment set through the `department_officer` pivot and returns `{ "actor_type": "officer", "profile": { ... } }` with a refreshed `departments` array.
+
+Common error responses:
+
+- `401 Unauthorized` when the bearer token is missing, invalid, or revoked.
+- `403 Forbidden` when the authenticated actor is not an active main manager.
+- `404 Not Found` when the officer route ID does not exist or the officer is soft-deleted.
+- `422 Unprocessable Entity` when `department_ids` is missing, not an array, contains duplicates, or references unknown departments.
+
+#### Update Manager Departments (planned)
+
+`PATCH {{base_url}}/api/managers/{manager}/departments`
+
+**Planned** — same spec-first status as officer department PATCH above.
+
+Requires `Authorization: Bearer <token>` for an authenticated **active main manager**. A main manager may update any manager, including other main managers.
+
+Request body example:
+
+```json
+{
+  "department_ids": [1]
+}
+```
+
+Clear all manager department assignments with `"department_ids": []`.
+
+Returns the flat `Manager` resource shape (same as **Create Manager**), including `departments` and `districts` compact arrays. Soft-deleted managers return `404`.
+
+Common error responses match officer department PATCH: `401`, `403` (not active main manager), `404`, `422`.
+
 ### Districts
 
 District endpoints use the `districts` table. Managers are assigned to districts through the `district_manager` pivot and officers through the `district_officer` pivot. Issue district handling is separate: `issues.district_id` remains a singular issue location/reference field.
@@ -523,6 +580,8 @@ Create body example:
 ```
 
 Departments assigned to any manager or officer cannot be deleted until those actor assignments are changed. After no actors reference the department, deleting it automatically removes its `category_department` and `department_issue` assignments through database-level cascading. It does not delete category or issue records.
+
+**Carve-out (planned actor department PATCH):** Create, register, and the delete guard above assume managers and officers keep at least one department while pivots still reference a row. The planned `PATCH /api/officers/{officer}/departments` and `PATCH /api/managers/{manager}/departments` endpoints (main manager only) intentionally allow `"department_ids": []` to clear all assignments. That can leave an actor with zero departments and is valid for PATCH even though empty `department_ids` is rejected on create/register. Clearing assignments first is the supported way to unblock department deletion when the delete guard cites remaining actor pivots.
 
 Common error responses:
 

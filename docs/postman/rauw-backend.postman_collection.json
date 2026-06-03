@@ -434,9 +434,33 @@
             "description": "Manager-admin district assignment endpoint. Replace an officer's district assignments as an authenticated active manager. Users, officers, inactive managers, and unauthenticated requests cannot update officer districts. district_ids must be present, may be empty to clear assignments, must contain active existing district IDs, and cannot contain duplicates. Returns the officer's refreshed profile with districts. This only updates district_officer and never modifies issues.district_id."
           },
           "response": []
+        },
+        {
+          "name": "Update Officer Departments",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "PATCH",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"department_ids\": [1, 2]\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/officers/1/departments", "host": [ "{{base_url}}" ], "path": [ "api", "officers", "1", "departments" ] },
+            "description": "Planned main-manager-only department assignment endpoint (not yet in routes/api.php). Replace an officer's department assignments as an authenticated active main manager (is_main_manager=true). Users, officers, ordinary managers, inactive managers, inactive main managers, and unauthenticated requests receive 403. Unlike Update Officer Districts, non-main managers cannot call this endpoint. department_ids must be present, may be an empty array to clear assignments, must reference existing department IDs from the departments table, and cannot contain duplicates. Returns the officer's refreshed auth profile (actor_type + profile) with departments. Soft-deleted officers return 404. This only updates department_officer."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Manager Departments",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "PATCH",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"department_ids\": [1]\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/managers/2/departments", "host": [ "{{base_url}}" ], "path": [ "api", "managers", "2", "departments" ] },
+            "description": "Planned main-manager-only department assignment endpoint (not yet in routes/api.php). Replace a manager's department assignments as an authenticated active main manager. department_ids must be present, may be [] to clear all assignments, must reference existing department IDs, and cannot contain duplicates. Returns the refreshed Manager resource (flat manager profile with departments and districts). Soft-deleted managers return 404. Use the main manager token from Auth / Login (demo.manager@example.com locally)."
+          },
+          "response": []
         }
       ],
-      "description": "Protected manager administration requests. Manager creation is restricted to authenticated active main managers. District assignment requests include implemented manager self-service updates and manager-admin officer updates."
+      "description": "Protected manager administration requests. Manager creation is restricted to authenticated active main managers. District assignment requests include implemented manager self-service updates and manager-admin officer district updates. Department assignment PATCH requests are spec-first until backend routes ship; they require an active main manager token."
     },
     {
       "name": "Officers",

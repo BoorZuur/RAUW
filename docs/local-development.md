@@ -176,6 +176,7 @@ When you run `php artisan migrate --seed` in `apps/backend`, local seeders creat
 - Use the Postman **Departments / List Departments** request to inspect local department IDs before creating managers or registering officers.
 - Department deletion is blocked while a department is assigned to any manager or officer.
 - Issue departments are derived from the selected category on create and whenever `category_id` changes on update. They are stored through the `department_issue` pivot and exposed to clients as a read-only `departments` array. Clients must not send a singular `department` field.
+- **Planned (OpenAPI / Postman):** active main managers will replace officer or manager department pivots with `PATCH /api/officers/{officer}/departments` and `PATCH /api/managers/{manager}/departments`, body `{"department_ids":[1,2]}` or `[]` to clear. These routes are not in `routes/api.php` yet; use the Postman **Managers** folder requests after backend implementation.
 
 ## Backend District Fixtures
 

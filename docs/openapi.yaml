@@ -343,6 +343,80 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
 
+  /api/managers/{managerId}/departments:
+    parameters:
+      - name: managerId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Managers ]
+      summary: Update a manager's department assignments
+      description: >-
+        Planned endpoint (not yet registered in routes/api.php). Main-manager-only
+        department assignment endpoint. Replaces the target manager's department
+        assignments with the supplied department_ids array and returns that
+        manager's refreshed Manager resource. Only an authenticated active main
+        manager (is_main_manager=true) may call this endpoint. Users, officers,
+        ordinary managers, inactive managers, inactive main managers, and
+        unauthenticated requests receive 403. The endpoint updates only the
+        department_manager pivot. department_ids must be present and may be an
+        empty array to clear all assignments; unlike manager creation, PATCH does
+        not require at least one department. Unknown department IDs and duplicates
+        return 422. Soft-deleted managers return 404.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentAssignmentUpdate'
+            examples:
+              assignDepartments:
+                summary: Replace with two departments
+                value:
+                  department_ids: [1, 2]
+              clearDepartments:
+                summary: Clear all department assignments
+                value:
+                  department_ids: []
+      responses:
+        '200':
+          description: Refreshed manager profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manager'
+              example:
+                actor_type: manager
+                id: 2
+                username: new-manager
+                email: new.manager@example.com
+                is_active: true
+                is_main_manager: false
+                created_by_manager_id: 1
+                departments:
+                  - id: 1
+                    code: wijkbeheer
+                    name: Wijkbeheer
+                  - id: 2
+                    code: boa_jeugd
+                    name: BOA Jeugd
+                districts:
+                  - id: 1
+                    name: Middelharnis
+                    postal_prefix: '3241'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
   /api/officers/{officerId}/districts:
     parameters:
       - name: officerId
@@ -395,6 +469,80 @@ paths:
                     - id: 2
                       name: Sommelsdijk
                       postal_prefix: '3245'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/officers/{officerId}/departments:
+    parameters:
+      - name: officerId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Managers ]
+      summary: Update an officer's department assignments
+      description: >-
+        Planned endpoint (not yet registered in routes/api.php). Main-manager-only
+        department assignment endpoint. Replaces the target officer's department
+        assignments with the supplied department_ids array and returns that
+        officer's refreshed auth profile. Only an authenticated active main manager
+        (is_main_manager=true) may call this endpoint. Users, officers, ordinary
+        managers, inactive managers, inactive main managers, and unauthenticated
+        requests receive 403. This differs from PATCH /api/officers/{officerId}/districts,
+        which any authenticated active manager may call. The endpoint updates only
+        the department_officer pivot. department_ids must be present and may be an
+        empty array to clear all assignments; unlike officer registration, PATCH
+        does not require at least one department. Unknown department IDs and
+        duplicates return 422. Soft-deleted officers return 404.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentAssignmentUpdate'
+            examples:
+              assignDepartments:
+                summary: Replace with two departments
+                value:
+                  department_ids: [1, 2]
+              clearDepartments:
+                summary: Clear all department assignments
+                value:
+                  department_ids: []
+      responses:
+        '200':
+          description: Refreshed officer profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthCurrentProfileResponse'
+              example:
+                actor_type: officer
+                profile:
+                  id: 1
+                  username: demo-officer
+                  email: demo.officer@example.com
+                  badge_number: BOA-0001
+                  departments:
+                    - id: 1
+                      code: wijkbeheer
+                      name: Wijkbeheer
+                    - id: 2
+                      code: boa_jeugd
+                      name: BOA Jeugd
+                  districts:
+                    - id: 1
+                      name: Middelharnis
+                      postal_prefix: '3241'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1823,6 +1971,23 @@ components:
             Full replacement set of active district IDs. Use an empty array to
             clear all actor district assignments. Duplicate IDs and inactive or
             unknown districts return validation errors.
+          items:
+            type: integer
+
+    DepartmentAssignmentUpdate:
+      type: object
+      required: [ department_ids ]
+      properties:
+        department_ids:
+          type: array
+          uniqueItems: true
+          description: >-
+            Full replacement set of department IDs from the departments table.
+            The key must be present. Use an empty array to clear all actor
+            department assignments (valid for PATCH; differs from create/register
+            flows that require at least one department). Duplicate IDs and
+            unknown department IDs return validation errors. Department active
+            status is not filtered on assignment (matches create/register).
           items:
             type: integer
 
