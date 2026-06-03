@@ -490,7 +490,7 @@
             "method": "GET",
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
             "url": { "raw": "{{base_url}}/api/categories", "host": [ "{{base_url}}" ], "path": [ "api", "categories" ] },
-            "description": "List categories as an authenticated active manager. Main categories are ordered by priority and children by weight; lower numbers mean higher priority. Responses include assigned departments from the category_department pivot."
+            "description": "List categories as any authenticated actor. Main categories are ordered by priority and children by weight; lower numbers mean higher priority. Responses include assigned departments from the category_department pivot."
           },
           "response": []
         },
@@ -501,7 +501,7 @@
             "method": "GET",
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
             "url": { "raw": "{{base_url}}/api/categories/1", "host": [ "{{base_url}}" ], "path": [ "api", "categories", "1" ] },
-            "description": "Show one category with parent, children when loaded, and assigned departments. Requires an authenticated active manager."
+            "description": "Show one category with parent, children when loaded, and assigned departments. Any authenticated actor may call this endpoint."
           },
           "response": []
         },

@@ -71,7 +71,7 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 5. Run **Managers / Create Manager**. This creates an ordinary manager but does not replace the stored `access_token`.
 6. Run **Managers / Update My Districts** or **Officers / Update My Districts** for implemented self-service district assignments, or **Managers / Update Officer Districts** for manager-admin officer assignments.
 7. Run **Districts / Create District**, **Update District**, and **Delete District** with an active manager token. District deletion returns `409 Conflict` while the district is assigned to managers/officers or referenced by issues.
-8. Run **Categories / List Categories** to find existing category IDs. Category create/update/disable/delete requests require an active manager token; main-manager status is not required.
+8. Run **Categories / List Categories** to find existing category IDs. Category reads work for any authenticated actor; create/update/disable/delete require an active manager token.
 9. Run **Auth / Login** with `demo.user@example.com` and password `password`, then use **Issues / Create Issue**. This stores `issue_id` for **Show Issue**, **Update Own Issue**, **Upload Attachments**, **Download Attachment**, **Delete Attachment**, and **Hard Delete Own Issue**.
 10. Use **Issues / List Issues - Filtered Paginated** to combine `district_id`, `department` (env `department_filter`), and `category_id`. The `department` query param accepts a department code and uses any-match semantics on `department_issue`; pagination is backend-driven by `page` and `per_page`.
 11. If desired, run **Auth / Login** with a newly created ordinary manager's email and password to test category and district management without main-manager privileges.
@@ -500,7 +500,7 @@ Common error responses:
 
 ### Categories
 
-Category endpoints require `Authorization: Bearer <token>` for an authenticated, active manager. Ordinary managers may create, update, disable, and hard delete eligible categories. Users, officers, inactive managers, and unauthenticated requests cannot manage categories.
+Category reads (`GET /api/categories`, `GET /api/categories/{id}`) require `Authorization: Bearer <token>` for any authenticated actor (user, officer, or manager). Category mutations require an authenticated, active manager. Ordinary managers may create, update, disable, and hard delete eligible categories. Users, officers, inactive managers, and unauthenticated requests receive `403` on mutations.
 
 Categories belong to one or more departments through the `category_department` many-to-many pivot. Use `department_ids` in create/update requests to attach existing departments.
 

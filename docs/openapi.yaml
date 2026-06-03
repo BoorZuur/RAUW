@@ -11,29 +11,6 @@ servers:
   - url: /
     description: Backend host root; API routes are prefixed with /api.
 paths:
-  /api/auth/register/user:
-    post:
-      tags: [ Auth ]
-      summary: Register a new user (legacy path)
-      description: >-
-        Legacy OpenAPI path. The live backend route for public user registration
-        is POST /api/auth/register/user.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RegisterRequest'
-      responses:
-        '201':
-          description: Created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-        '400':
-          $ref: '#/components/responses/ValidationError'
-
   /api/auth/register/officer:
     post:
       tags: [ Auth ]
@@ -366,6 +343,33 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '422':
           $ref: '#/components/responses/ValidationError'
+
+  /api/auth/logout:
+    post:
+      tags: [ Auth ]
+      summary: Logout and revoke current bearer token
+      description: >-
+        Revokes only the Sanctum bearer token used for the current request.
+        Other tokens issued to the same actor remain valid until explicitly
+        revoked or expired.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Token revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ message ]
+                properties:
+                  message:
+                    type: string
+                    example: Logged out.
+              example:
+                message: Logged out.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /api/auth/me/districts:
     patch:
@@ -941,92 +945,6 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  /api/issues/{issueId}/comments:
-    get:
-      tags: [ Comments ]
-      summary: List comments for an issue
-      parameters:
-        - name: issueId
-          in: path
-          required: true
-          schema:
-            type: integer
-        - $ref: '#/components/parameters/page'
-        - $ref: '#/components/parameters/perPage'
-      responses:
-        '200':
-          description: Comments list
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/IssueComment'
-
-    post:
-      tags: [ Comments ]
-      summary: Post a new comment on an issue
-      security:
-        - bearerAuth: [ ]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/IssueCommentCreate'
-      responses:
-        '201':
-          description: Created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/IssueComment'
-
-  /api/issues/{issueId}/messages:
-    get:
-      tags: [ Messages ]
-      summary: Get chat messages for an issue
-      parameters:
-        - name: issueId
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: List of messages
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/IssueMessage'
-
-    post:
-      tags: [ Messages ]
-      summary: Send a chat message in an issue
-      security:
-        - bearerAuth: [ ]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/IssueMessageCreate'
-      responses:
-        '201':
-          description: Created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/IssueMessage'
 
   /api/issues/{issueId}/attachments:
     parameters:
@@ -1749,20 +1667,6 @@ components:
       example:
         message: Cannot delete a main category while it still has subcategories.
 
-    RegisterRequest:
-      type: object
-      required: [ username, email, password ]
-      properties:
-        username:
-          type: string
-        email:
-          type: string
-          format: email
-        password:
-          type: string
-        is_anonymous:
-          type: boolean
-
     LoginRequest:
       type: object
       required: [ email, password ]
@@ -2053,27 +1957,6 @@ components:
           type: string
         postal_prefix:
           type: string
-
-    User:
-      type: object
-      properties:
-        id:
-          type: integer
-        username:
-          type: string
-        email:
-          type: string
-        is_active:
-          type: boolean
-        flag_count:
-          type: integer
-        is_under_review:
-          type: boolean
-        anonymous_alias:
-          type: string
-        created_at:
-          type: string
-          format: date-time
 
     District:
       type: object
@@ -2606,64 +2489,6 @@ components:
           type: string
           example: Melder#A1B2C3D4
 
-    IssueCommentCreate:
-      type: object
-      required: [ content ]
-      properties:
-        content:
-          type: string
-
-    IssueComment:
-      type: object
-      properties:
-        id:
-          type: integer
-        issue_id:
-          type: integer
-        author_type:
-          type: string
-        user_id:
-          type: integer
-        officer_id:
-          type: integer
-        content:
-          type: string
-        is_flagged:
-          type: boolean
-        visibility:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-
-    IssueMessageCreate:
-      type: object
-      required: [ content ]
-      properties:
-        content:
-          type: string
-
-    IssueMessage:
-      type: object
-      properties:
-        id:
-          type: integer
-        issue_id:
-          type: integer
-        sender_type:
-          type: string
-        user_id:
-          type: integer
-        officer_id:
-          type: integer
-        content:
-          type: string
-        is_read:
-          type: boolean
-        created_at:
-          type: string
-          format: date-time
-
     IssueAttachment:
       type: object
       description: >-
@@ -2691,32 +2516,4 @@ components:
         download_url:
           type: string
           description: Authenticated download endpoint for this attachment.
-
-    IssueParticipant:
-      type: object
-      properties:
-        id:
-          type: integer
-        issue_id:
-          type: integer
-        user_id:
-          type: integer
-        joined_via:
-          type: string
-        joined_at:
-          type: string
-          format: date-time
-
-    IssueVote:
-      type: object
-      properties:
-        id:
-          type: integer
-        issue_id:
-          type: integer
-        user_id:
-          type: integer
-        voted_at:
-          type: string
-          format: date-time
 
