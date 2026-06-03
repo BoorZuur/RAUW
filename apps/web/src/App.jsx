@@ -1,4 +1,5 @@
 import './App.css'
+import {useState} from 'react'
 import {createBrowserRouter, RouterProvider} from "react-router-dom";
 
 // import Onboarding from "./user/Onboarding.jsx";
@@ -24,6 +25,9 @@ import HandhaverRegister from "./handhaver/H_Register.jsx";
 // import UserManagement from "./manager/UserManagement.jsx";
 // import ManagerLogin from "./manager/M_Login.jsx";
 
+
+function Layout() {
+}
 
 function App() {
     const router = createBrowserRouter([{
