@@ -2,11 +2,11 @@
 
 namespace App\Models;
 
-use App\Enums\Department;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -18,7 +18,7 @@ use Laravel\Sanctum\HasApiTokens;
 // client-submitted request data. `is_main_manager` is intentionally omitted
 // from fillable: the initial main manager is provisioned only through trusted
 // operational seeding or direct administration, never via the public API.
-#[Fillable(['username', 'email', 'password', 'department', 'district_id', 'created_by_manager_id'])]
+#[Fillable(['username', 'email', 'password', 'created_by_manager_id'])]
 #[Hidden(['password', 'remember_token'])]
 class Manager extends Authenticatable
 {
@@ -30,7 +30,6 @@ class Manager extends Authenticatable
      * @var array<string, mixed>
      */
     protected $attributes = [
-        'department' => Department::Both->value,
         'is_active' => true,
         'is_main_manager' => false,
     ];
@@ -44,15 +43,29 @@ class Manager extends Authenticatable
     {
         return [
             'password' => 'hashed',
-            'department' => Department::class,
             'is_active' => 'boolean',
             'is_main_manager' => 'boolean',
         ];
     }
 
-    public function district(): BelongsTo
+    /**
+     * The departments this manager belongs to (one or more).
+     *
+     * @return BelongsToMany<Department, $this>
+     */
+    public function departments(): BelongsToMany
     {
-        return $this->belongsTo(District::class);
+        return $this->belongsToMany(Department::class, 'department_manager');
+    }
+
+    /**
+     * The districts this manager is assigned to (many-to-many).
+     *
+     * @return BelongsToMany<District, $this>
+     */
+    public function districts(): BelongsToMany
+    {
+        return $this->belongsToMany(District::class, 'district_manager');
     }
 
     /**

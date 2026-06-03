@@ -5,14 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['username', 'email', 'password', 'badge_number', 'district_id'])]
+#[Fillable(['username', 'email', 'password', 'badge_number'])]
 #[Hidden(['password', 'remember_token'])]
 class Officer extends Authenticatable
 {
@@ -40,9 +40,24 @@ class Officer extends Authenticatable
         ];
     }
 
-    public function district(): BelongsTo
+    /**
+     * The districts this officer is assigned to (many-to-many).
+     *
+     * @return BelongsToMany<District, $this>
+     */
+    public function districts(): BelongsToMany
     {
-        return $this->belongsTo(District::class);
+        return $this->belongsToMany(District::class, 'district_officer');
+    }
+
+    /**
+     * The departments this officer belongs to (one or more).
+     *
+     * @return BelongsToMany<Department, $this>
+     */
+    public function departments(): BelongsToMany
+    {
+        return $this->belongsToMany(Department::class, 'department_officer');
     }
 
     public function assignedIssues(): HasMany

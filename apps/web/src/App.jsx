@@ -23,6 +23,21 @@ import ReportsOverview from "./manager/M_ReportsOverview.jsx";
 import UserManagement from "./manager/UserManagement.jsx";
 import ManagerLogin from "./manager/M_Login.jsx";
 
+import HM_Nav from "./components/HM_Nav.jsx";
+
+function GovernmentLayout() {
+    return (
+        <div className="flex h-screen w-screen overflow-hidden bg-stone-100">
+            {/* Sidebar to the left */}
+            <HM_Nav/>
+
+            {/* Page to the right */}
+            <main className="flex-1 h-full overflow-y-auto p-6">
+                <Outlet/>
+            </main>
+        </div>
+    );
+}
 
 function App() {
     const router = createBrowserRouter([{
@@ -41,20 +56,37 @@ function App() {
             {path: "/handhaver_login", element: <HandhaverLogin/>},
             {path: "/handhaver_register", element: <HandhaverRegister/>},
             {path: "/rapport", element: <H_ReportsOverview/>},
-            {path: "/sector_instellingen", element: <SectorSettings/>},
-            {path: "/dienstprofiel", element: <ServiceProfile/>},
-            {path: "/commandcenter", element: <CommandCenter/>},
-
+//             {path: "/sector_instellingen", element: <SectorSettings/>},
+//             {path: "/dienstprofiel", element: <ServiceProfile/>},
+//             {path: "/commandcenter", element: <CommandCenter/>},
+//             {path: "/flagged_dashboard", element: <FlaggedDashboard/>},
+//             {path: "/reports_overview", element: <ReportsOverview/>},
 
             // Manager Routes
             {path: "/manager_dashboard", element: <M_dashboard/>},
             {path: "/gebruiker_management", element: <UserManagement/>},
             {path: "/manager_login", element: <ManagerLogin/>},
-            {path: "/flagged_dashboard", element: <FlaggedDashboard/>},
-            {path: "/reports_overview", element: <ReportsOverview/>},
+
         ]
-    }]);
+    },
+    {
+            // BOA or Manager
+            element: <GovernmentLayout/>,
+            children: [
+                // Handhaver / BOA
+                {path: "/commando_centrum", element: <CommandCenter/>},
+                {path: "/dienstprofiel", element: <ServiceProfile/>},
+                {path: "/handhaver_rapport", element: <H_ReportsOverview/>},
+                {path: "/sector_instellingen", element: <SectorSettings/>},
+
+                // Manager
+                {path: "/manager_dashboard", element: <M_dashboard/>},
+                {path: "/flagged_dashboard", element: <FlaggedDashboard/>},
+                {path: "/reports_overview", element: <ReportsOverview/>},
+            ]
+        }      
+        ]);
     return <RouterProvider router={router}/>;
 }
 
-export default App
+export default App;
