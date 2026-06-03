@@ -32,7 +32,7 @@ use InvalidArgumentException;
  * an internal concern surfaced through admin-specific endpoints instead.
  *
  * Profile shape by actor type:
- *   - User:    id, name, username, email
+ *   - User:    id, username, email
  *   - Officer: id, username, email, badge_number, departments, districts
  *   - Manager: id, username, email, departments, is_main_manager, districts
  *
@@ -80,7 +80,6 @@ class AuthProfileResource extends JsonResource
     {
         return [
             'id' => $user->id,
-            'name' => $user->name,
             'username' => $user->username,
             'email' => $user->email,
         ];
