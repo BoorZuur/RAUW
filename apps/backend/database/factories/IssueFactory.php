@@ -37,7 +37,6 @@ class IssueFactory extends Factory
             'chat_closed_by_officer_id' => null,
             'title' => fake()->sentence(4),
             'content' => fake()->paragraph(),
-            'neighborhood' => fake()->citySuffix(),
             'postal_code' => fake()->postcode(),
             'address' => fake()->streetAddress(),
             'latitude' => fake()->latitude(51.8, 52.5),

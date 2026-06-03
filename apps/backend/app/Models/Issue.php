@@ -22,7 +22,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'chat_closed_by_officer_id',
     'title',
     'content',
-    'neighborhood',
     'postal_code',
     'address',
     'latitude',

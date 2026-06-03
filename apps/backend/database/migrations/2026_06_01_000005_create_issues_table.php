@@ -21,12 +21,11 @@ return new class extends Migration
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('category_id')->constrained('categories')->restrictOnDelete();
             $table->foreignId('assigned_officer_id')->nullable()->constrained('officers')->nullOnDelete();
-            $table->foreignId('district_id')->nullable()->constrained('districts')->nullOnDelete();
+            $table->foreignId('district_id')->constrained('districts')->restrictOnDelete();
             $table->foreignId('duplicate_of_id')->nullable()->constrained('issues')->nullOnDelete();
             $table->foreignId('chat_closed_by_officer_id')->nullable()->constrained('officers')->nullOnDelete();
             $table->string('title');
             $table->text('content');
-            $table->string('neighborhood', 100)->nullable();
             $table->string('postal_code', 10)->nullable();
             $table->string('address')->nullable();
             $table->decimal('latitude', 10, 8)->nullable();
@@ -57,6 +56,9 @@ return new class extends Migration
             $table->index('chat_closed_by_officer_id', 'issues_chat_closed_by_officer_id_idx');
             $table->index('created_at', 'issues_created_at_idx');
             $table->index('resolved_at', 'issues_resolved_at_idx');
+            $table->index(['district_id', 'created_at', 'id'], 'issues_district_created_at_id_idx');
+            $table->index(['department', 'created_at', 'id'], 'issues_department_created_at_id_idx');
+            $table->index(['category_id', 'created_at', 'id'], 'issues_category_created_at_id_idx');
             $table->index(['status', 'district_id', 'created_at'], 'issues_status_district_created_at_idx');
             $table->index(['status', 'assigned_officer_id', 'created_at'], 'issues_status_assigned_officer_created_at_idx');
             $table->index(['visibility', 'created_at'], 'issues_visibility_created_at_idx');
