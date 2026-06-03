@@ -1082,11 +1082,12 @@ paths:
   /api/categories:
     get:
       tags: [ Categories ]
-      summary: List categories for managers
+      summary: List categories
       description: >-
         Returns main categories ordered by priority, with children ordered by
         weight. Lower numeric priority/weight values sort first and therefore
-        mean higher priority. Requires an authenticated active manager.
+        mean higher priority. Any authenticated Sanctum actor (User, Officer, or
+        Manager) may call this endpoint.
       security:
         - bearerAuth: [ ]
       responses:
@@ -1100,8 +1101,6 @@ paths:
                   $ref: '#/components/schemas/Category'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
     post:
       tags: [ Categories ]
       summary: Create a category
@@ -1143,7 +1142,10 @@ paths:
     get:
       tags: [ Categories ]
       summary: Show a category
-      description: Requires an authenticated active manager.
+      description: >-
+        Returns a single category with departments, parent, and children. Any
+        authenticated Sanctum actor (User, Officer, or Manager) may call this
+        endpoint.
       security:
         - bearerAuth: [ ]
       responses:
@@ -1155,8 +1157,6 @@ paths:
                 $ref: '#/components/schemas/Category'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
     patch:
@@ -1220,11 +1220,12 @@ paths:
       tags: [ Categories ]
       summary: Hard delete an eligible category
       description: >-
-        Hard deletion is guarded and is not the standard removal path. Prefer
-        PATCH /api/categories/{categoryId}/disable so historical issues keep
-        their category context. A main category cannot be hard deleted while it
-        still has subcategories. Categories referenced by existing issues also
-        return a conflict.
+        Only authenticated active managers may hard delete categories. Hard
+        deletion is guarded and is not the standard removal path. Prefer PATCH
+        /api/categories/{categoryId}/disable so historical issues keep their
+        category context. A main category cannot be hard deleted while it still
+        has subcategories. Categories referenced by existing issues also return
+        a conflict.
       security:
         - bearerAuth: [ ]
       responses:
@@ -1250,8 +1251,9 @@ paths:
       tags: [ Categories ]
       summary: Disable a category
       description: >-
-        Standard safe removal path for categories. Sets is_active to false while
-        preserving the category row, department assignments, and historical issue
+        Only authenticated active managers may disable categories. Standard safe
+        removal path for categories. Sets is_active to false while preserving
+        the category row, department assignments, and historical issue
         references.
       security:
         - bearerAuth: [ ]

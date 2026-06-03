@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Categories\DeleteCategoryRequest;
+use App\Http\Requests\Categories\DisableCategoryRequest;
 use App\Http\Requests\Categories\StoreCategoryRequest;
 use App\Http\Requests\Categories\UpdateCategoryRequest;
 use App\Http\Resources\CategoryResource;
@@ -130,7 +132,7 @@ class CategoryController extends Controller
      * associations intact, so historical entries never lose their category
      * context. This is preferred over hard deletion.
      */
-    public function disable(Category $category): CategoryResource
+    public function disable(DisableCategoryRequest $request, Category $category): CategoryResource
     {
         $category->update(['is_active' => false]);
 
@@ -148,7 +150,7 @@ class CategoryController extends Controller
      * `restrictOnDelete`; that constraint failure is caught and returned as a
      * 409 conflict rather than surfacing as a 500.
      */
-    public function destroy(Category $category): JsonResponse
+    public function destroy(DeleteCategoryRequest $request, Category $category): JsonResponse
     {
         if ($category->parent_id === null && $category->children()->exists()) {
             return response()->json([
