@@ -23,19 +23,25 @@ function App() {
     const router = createBrowserRouter([{
         children: [
             {path: "/", element: <CommandCenter/>},
-            
-            {path: "/manager_dashboard", element: <M_dashboard/>},
 
-            {path: "/gebruiker_management", element: <UserManagement/>},
-            {path: "/manger_login", element: <ManagerLogin/>},
-            {path: "/handhaver_login", element: <HandhaverLogin/>},
-            {path: "/handhaver_registratie", element: <HandhaverRegister/>},
-
-            {path: "/rapport", element: <H_ReportsOverview/>},
+            // General
             {path: "/flagged_dashboard", element: <FlaggedDashboard/>},
             {path: "/reports_overview", element: <ReportsOverview/>},
             {path: "/sector_instellingen", element: <SectorSettings/>},
+
+            // Manager
+            {path: "/manager_dashboard", element: <M_dashboard/>},
+            {path: "/manager_login", element: <ManagerLogin/>},
+
+            // User
+            {path: "/gebruiker_management", element: <UserManagement/>},
+
+            // BOA
+            {path: "/handhaver_login", element: <HandhaverLogin/>},
+            {path: "/handhaver_registratie", element: <HandhaverRegister/>},
+            {path: "/handhaver_rapport", element: <H_ReportsOverview/>},
             {path: "/dienstprofiel", element: <ServiceProfile/>},
+
 
         ]
     }]);
