@@ -1,18 +1,47 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 import RauwLogoImg from '../assets/LogoRAUW.png';
 import BgRotterdam1 from '../assets/BOAachtergrond.jpg';
+import {Eye, EyeClosed, Lock, Mail} from "lucide-react";
+
 
 export default function BoaLogin() {
-    const [identifier, setIdentifier] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [error, setError] = useState('');
     const navigate = useNavigate();
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        if (identifier && password) {
+        setError('');
+
+        try {
+            // Pointing to the officer login endpoint
+            const response = await axios.post('http://localhost:8001/api/auth/officer/login', {
+                email: email,
+                password: password,
+            }, {
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            if (response.data.token) {
+                localStorage.setItem('officer_auth_token', response.data.token);
+            }
             navigate('/dashboard');
+        } catch (err) {
+            if (err.response && err.response.status === 401) {
+                setError('Dienstgegevens zijn onjuist.');
+            } else if (err.response && err.response.data.message) {
+                setError(err.response.data.message);
+            } else {
+                setError('Verbindingsfout. Probeer het later opnieuw.');
+            }
         }
     };
 
@@ -30,7 +59,6 @@ export default function BoaLogin() {
                     <img src={RauwLogoImg} alt="RAUW Rotterdam" className="w-full h-full object-contain" />
                 </div>
 
-                {/* Typography perfectly centered horizontally and vertically inside the column ALSJEBLIEFT RENEE*/}
                 <div className="max-w-md z-10 text-(--primary-text-d)">
                     <h1 className="text-4xl lg:text-5xl font-bold tracking-tight leading-[1.15] mb-6 whitespace-pre-line text-balance">
                         Toezicht &<br />Handhaving<br />Rotterdam.
@@ -62,60 +90,75 @@ export default function BoaLogin() {
                         </p>
                     </div>
 
+                    {/* Error display */}
+                    {error && (
+                        <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-xs font-medium text-center">
+                            {error}
+                        </div>
+                    )}
+
+                    {/* Standard procedural account form handler (Aligned left internally) */}
                     <form onSubmit={handleSubmit} className="space-y-4">
 
-                        {/* E-mail or Badgenumber */}
-                        <div>
-                            <div className="flex justify-between items-center mb-1.5">
-                                <label className="block text-xs font-bold tracking-wider text-(--primary-text) uppercase">
-                                    E-mailadres of Dienstnummer
-                                </label>
-                            </div>
+                        {/* Core Identity Access Intake Area */}
+                        <div className="text-left">
+                            <label className="block text-xs font-bold tracking-wider text-(--primary-text) uppercase mb-1.5">
+                                E-mailadres
+                            </label>
                             <div className="relative">
                                 <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-(--secondary-text)">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor" className="w-4 h-4">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5zm6-10.125a1.875 1.875 0 11-3.75 0 1.875 1.875 0 013.75 0zm1.294 6.336a6.721 6.721 0 01-3.17.789 6.721 6.721 0 01-3.168-.789 3.376 3.376 0 016.338 0z" />
-                                    </svg>
+                                    <Mail />
                                 </span>
                                 <input
-                                    type="text"
-                                    required
-                                    value={identifier}
-                                    onChange={(e) => setIdentifier(e.target.value)}
-                                    placeholder="naam@rotterdam.nl of RT-1094"
+                                    type="email"
+                                    required value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    placeholder="naam@rotterdam.nl"
                                     className="w-full h-12 pl-11 pr-4 bg-(--primary-bg-cards) border border-(--primary-border-cards) rounded-xl text-sm transition-all focus:outline-none focus:border-(--primary-text) focus:bg-white placeholder-neutral-400 text-(--primary-text)"
+                                    style={{backgroundColor: 'var(--primary-bg-cards)', borderColor: 'var(--primary-border-cards)', color: 'var(--primary-text)'}}
                                 />
                             </div>
                         </div>
 
-                        {/* Password */}
-                        <div>
+                        {/* Security Password Input Interface */}
+                        <div className="text-left">
                             <div className="flex justify-between items-center mb-1.5">
                                 <label className="block text-xs font-bold tracking-wider text-(--primary-text) uppercase">
                                     Wachtwoord
                                 </label>
                                 <button
                                     type="button"
-                                    onClick={() => navigate('/wachtwoord-vergeten')}
-                                    className="text-xs text-(--secondary-text) hover:underline bg-transparent border-none cursor-pointer"
+                                    onClick={() => navigate('/forgot-password')}
+                                    className="text-xs font-medium text-(--secondary-text) hover:text-(--primary-text) hover:underline bg-transparent border-none cursor-pointer"
                                 >
-                                    Wachtwoord vergeten?
+                                    Vergeten?
                                 </button>
                             </div>
                             <div className="relative">
+                                {/* Lock Icoon */}
                                 <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-(--secondary-text)">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor" className="w-4 h-4">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v-6.75a2.25 2.25 0 002.25-2.25z" />
-                                    </svg>
+                                    < Lock/>
                                 </span>
                                 <input
-                                    type="password"
-                                    required
-                                    value={password}
+                                    type={showPassword ? "text" : "password"}
+                                    required value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="••••••••"
-                                    className="w-full h-12 pl-11 pr-4 bg-(--primary-bg-cards) border border-(--primary-border-cards) rounded-xl text-sm transition-all focus:outline-none focus:border-(--primary-text) focus:bg-white placeholder-neutral-400 text-(--primary-text)"
+                                    placeholder="Jouw wachtwoord"
+                                    className="w-full h-12 pl-11 pr-12 bg-(--primary-bg-cards) border border-(--primary-border-cards) rounded-xl text-sm transition-all focus:outline-none focus:border-(--primary-text) focus:bg-white placeholder-neutral-400 text-(--primary-text)"
+                                    style={{backgroundColor: 'var(--primary-bg-cards)', borderColor: 'var(--primary-border-cards)', color: 'var(--primary-text)'}}
                                 />
+                                {/* Toggle Knop */}
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute inset-y-0 right-0 flex items-center pr-4 text-(--secondary-text) hover:text-(--primary-text) cursor-pointer"
+                                >
+                                    {showPassword ? (
+                                        <Eye />
+                                    ) : (
+                                        <EyeClosed />
+                                    )}
+                                </button>
                             </div>
                         </div>
 
@@ -123,21 +166,10 @@ export default function BoaLogin() {
                             type="submit"
                             className="w-full h-12 mt-4 bg-[#2c3e50] hover:bg-[#1A2530] text-white font-medium rounded-xl transition-all flex items-center justify-center space-x-2 shadow-md active:scale-[0.98] cursor-pointer"
                         >
-                            <span>Aanmelden</span>
+                            <span>Inloggen</span>
                         </button>
                     </form>
 
-                    <div className="mt-6 text-center">
-                        <p className="text-sm text-(--secondary-text)">
-                            Nieuw op het command center?{' '}
-                            <button
-                                onClick={() => navigate('/handhaver_register')}
-                                className="text-(--primary-text) font-bold hover:underline ml-0.5 bg-transparent border-none cursor-pointer text-sm"
-                            >
-                                Dienstaccount aanmaken
-                            </button>
-                        </p>
-                    </div>
                 </div>
             </div>
         </div>
