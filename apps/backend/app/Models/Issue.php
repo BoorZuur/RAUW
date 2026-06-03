@@ -4,7 +4,6 @@ namespace App\Models;
 
 use App\Enums\ChatStatus;
 use App\Enums\IssueStatus;
-use App\Enums\Priority;
 use App\Enums\Visibility;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -46,7 +45,6 @@ class Issue extends Model
     protected $attributes = [
         'status' => IssueStatus::Open->value,
         'chat_status' => ChatStatus::Closed->value,
-        'priority' => Priority::Low->value,
         'duplicate_count' => 0,
         'participant_count' => 0,
         'vote_count' => 0,
@@ -65,7 +63,7 @@ class Issue extends Model
         return [
             'status' => IssueStatus::class,
             'chat_status' => ChatStatus::class,
-            'priority' => Priority::class,
+            'priority' => 'integer',
             'latitude' => 'decimal:8',
             'longitude' => 'decimal:8',
             'duplicate_count' => 'integer',

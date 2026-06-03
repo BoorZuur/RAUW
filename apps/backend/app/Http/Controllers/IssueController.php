@@ -10,6 +10,7 @@ use App\Http\Resources\IssueResource;
 use App\Models\Category;
 use App\Models\Issue;
 use App\Models\User;
+use App\Support\IssuePriorityResolver;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -74,8 +75,9 @@ class IssueController extends Controller
      * when reported anonymously, so the author can still manage it later. The
      * issue's departments are auto-assigned from the selected category's
      * department assignments via the pivot source of truth (supporting multiple
-     * departments per issue); they are never accepted from the client. When
-     * `is_anonymous` is true a stable, unique
+     * departments per issue); they are never accepted from the client. Integer
+     * `priority` is derived from the category's main-category priority and is
+     * never accepted from the client. When `is_anonymous` is true a stable,
      * `anonymous_alias` is generated server-side and persisted once at creation;
      * it is never accepted from the client and never regenerated on subsequent
      * reads or updates. When the report is not anonymous the alias stays null.
@@ -107,6 +109,8 @@ class IssueController extends Controller
             ->with('departments')
             ->findOrFail($attributes['category_id']);
 
+        $attributes['priority'] = IssuePriorityResolver::fromCategory($category);
+
         $issue = Issue::create($attributes);
 
         $issue->syncDepartments($category->departmentIds());
@@ -135,10 +139,10 @@ class IssueController extends Controller
      * Ownership and authorization are enforced by UpdateIssueRequest. Only the
      * keys present in the validated payload are applied, so partial updates
      * leave untouched fields intact. When `category_id` is supplied the issue's
-     * departments are re-derived from the new category and re-synced through the
-     * pivot source of truth (supporting multiple departments per issue);
-     * departments are never accepted from the client. The `user_id` is never
-     * reassigned and the server-generated `anonymous_alias` is never accepted
+     * departments and integer `priority` are re-derived from the new category
+     * and re-synced through the pivot source of truth (supporting multiple
+     * departments per issue); departments and priority are never accepted from
+     * the client. The `user_id` is never reassigned and the server-generated `anonymous_alias` is never accepted
      * from the client: toggling `is_anonymous` on lazily generates a stable
      * alias only when one does not already exist (so an existing alias is
      * preserved), while toggling it off clears the alias.
@@ -163,6 +167,8 @@ class IssueController extends Controller
             $category = Category::query()
                 ->with('departments')
                 ->findOrFail($attributes['category_id']);
+
+            $attributes['priority'] = IssuePriorityResolver::fromCategory($category);
         }
 
         if (array_key_exists('is_anonymous', $attributes)) {

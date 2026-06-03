@@ -4,7 +4,6 @@ namespace Database\Factories;
 
 use App\Enums\ChatStatus;
 use App\Enums\IssueStatus;
-use App\Enums\Priority;
 use App\Enums\Visibility;
 use App\Models\Category;
 use App\Models\District;
@@ -42,7 +41,7 @@ class IssueFactory extends Factory
             'longitude' => fake()->longitude(4.0, 5.5),
             'status' => $status,
             'chat_status' => fake()->randomElement(ChatStatus::cases()),
-            'priority' => fake()->randomElement(Priority::cases()),
+            'priority' => fake()->optional()->numberBetween(1, 40),
             'duplicate_count' => 0,
             'participant_count' => 0,
             'vote_count' => 0,

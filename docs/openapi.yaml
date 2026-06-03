@@ -649,7 +649,9 @@ paths:
         fields are optional. When is_anonymous is true the backend still stores
         user_id ownership, but generates and persists a stable anonymous alias
         such as Melder#A1B2C3D4 for public display; clients cannot submit the
-        alias.
+        alias. The integer priority is derived server-side from the selected
+        category's main-category priority (lower number = higher urgency) and
+        must not be sent in the request body.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -815,9 +817,10 @@ paths:
         owner is checked through issues.user_id, including for anonymous issues.
         Clients may update title, content, category_id, district_id, optional
         location fields, and is_anonymous. When category_id changes, departments
-        are re-derived from the selected category and returned as a read-only
-        departments array. user_id, status, priority, counters, department
-        assignments, and anonymous_alias are server-owned.
+        and integer priority are re-derived from the selected category's
+        main-category priority and returned as read-only fields. user_id, status,
+        priority, counters, department assignments, and anonymous_alias are
+        server-owned; clients must not send priority.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -2311,9 +2314,11 @@ components:
         Client payload for creating an issue. district_id is required and must
         reference an active district. Departments are derived server-side from
         the selected category's department assignments and are not accepted in
-        the request. Removed legacy locality fields are not accepted. Anonymous
-        aliases are generated server-side; anonymous issues remain owned by the
-        authenticated user via user_id.
+        the request. The integer priority is derived server-side from the
+        selected category's main-category priority and must not be sent.
+        Removed legacy locality fields are not accepted. Anonymous aliases are
+        generated server-side; anonymous issues remain owned by the authenticated
+        user via user_id.
       required: [ title, content, category_id, district_id ]
       properties:
         title:
@@ -2349,9 +2354,10 @@ components:
       description: >-
         Owner-editable issue fields. All fields are optional for PATCH/PUT and
         only supplied fields are changed. user_id, status, priority,
-        anonymous_alias, department assignments, and counters are server-owned.
-        When category_id is supplied, departments are re-derived from that
-        category. The public API no longer accepts removed legacy locality fields
+        anonymous_alias, department assignments, and counters are server-owned;
+        priority must not be sent. When category_id is supplied, departments and
+        integer priority are re-derived from that category's main-category
+        priority. The public API no longer accepts removed legacy locality fields
         or client-supplied department values.
       properties:
         title:
@@ -2428,7 +2434,12 @@ components:
         status:
           type: string
         priority:
-          type: string
+          type: integer
+          nullable: true
+          description: >-
+            Server-derived integer priority copied from the issue category's
+            main-category priority on create and whenever category_id changes.
+            Lower number means higher urgency; same scale as categories.priority.
         is_anonymous:
           type: boolean
         author:

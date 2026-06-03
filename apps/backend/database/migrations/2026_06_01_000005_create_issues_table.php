@@ -2,7 +2,6 @@
 
 use App\Enums\ChatStatus;
 use App\Enums\IssueStatus;
-use App\Enums\Priority;
 use App\Enums\Visibility;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -31,7 +30,7 @@ return new class extends Migration
             $table->decimal('longitude', 11, 8)->nullable();
             $table->enum('status', IssueStatus::values())->default(IssueStatus::Open->value);
             $table->enum('chat_status', ChatStatus::values())->default(ChatStatus::Closed->value);
-            $table->enum('priority', Priority::values())->default(Priority::Low->value);
+            $table->unsignedTinyInteger('priority')->nullable();
             $table->integer('duplicate_count')->default(0);
             $table->integer('participant_count')->default(0);
             $table->integer('vote_count')->default(0);

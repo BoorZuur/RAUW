@@ -38,12 +38,13 @@ class UpdateIssueRequest extends FormRequest
      *
      * Only fields the author legitimately owns are editable, and every rule uses
      * `sometimes` so a partial update validates and applies only the supplied
-     * keys. Changing `category_id` re-derives the issue's departments
-     * server-side from the new category, so departments are never accepted from
-     * the client. Ownership (`user_id`), triage state (`status`, assignment,
-     * counters), the server-generated `anonymous_alias`, and the removed
-     * `neighborhood` field are intentionally excluded and can never be set
-     * through this request.
+     * keys. Changing `category_id` re-derives the issue's departments and
+     * integer `priority` server-side from the new category's main-category
+     * priority, so departments and priority are never accepted from the client.
+     * Ownership (`user_id`), triage state (`status`, assignment, counters),
+     * the server-generated `anonymous_alias`, and the removed `neighborhood`
+     * field are intentionally excluded and can never be set through this
+     * request.
      *
      * @return array<string, array<int, mixed>>
      */
@@ -59,6 +60,7 @@ class UpdateIssueRequest extends FormRequest
             'latitude' => ['sometimes', 'nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['sometimes', 'nullable', 'numeric', 'between:-180,180'],
             'is_anonymous' => ['sometimes', 'boolean'],
+            'priority' => ['prohibited'],
         ];
     }
 }

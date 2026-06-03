@@ -33,6 +33,12 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * them as a `departments` array only; the legacy single `department` enum field
  * is no longer serialized.
  *
+ * Priority
+ * --------
+ * The integer `priority` is server-derived from the issue category's
+ * main-category priority (lower number = higher urgency) and is read-only in
+ * API responses.
+ *
  * @mixin Issue
  */
 class IssueResource extends JsonResource

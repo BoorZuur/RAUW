@@ -36,8 +36,10 @@ class StoreIssueRequest extends FormRequest
      * `address`, `latitude`, `longitude`) is optional. The optional
      * `is_anonymous` flag opts the report into anonymous display; the stable
      * `anonymous_alias` is generated server-side and is never accepted from the
-     * client. Triage-owned fields (status, priority, assignment, counters) are
-     * intentionally not accepted here.
+     * client. The integer `priority` is derived server-side from the selected
+     * category's main-category priority and is prohibited in the request.
+     * Triage-owned fields (status, assignment, counters) are intentionally not
+     * accepted here.
      *
      * @return array<string, array<int, mixed>>
      */
@@ -53,6 +55,7 @@ class StoreIssueRequest extends FormRequest
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'is_anonymous' => ['sometimes', 'boolean'],
+            'priority' => ['prohibited'],
         ];
     }
 }
