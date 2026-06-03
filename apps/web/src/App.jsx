@@ -1,6 +1,5 @@
 import './App.css'
-import {useState} from 'react'
-import {createBrowserRouter, RouterProvider} from "react-router-dom";
+import {createBrowserRouter, RouterProvider, Outlet} from "react-router-dom";
 
 // import Onboarding from "./user/Onboarding.jsx";
 // import Feed from "./user/Feed.jsx";
@@ -16,50 +15,70 @@ import CommandCenter from "./handhaver/CommandCenter.jsx";
 import SectorSettings from "./handhaver/SectorSettings.jsx";
 import ServiceProfile from "./handhaver/ServiceProfile.jsx";
 import H_ReportsOverview from "./handhaver/H_ReportsOverview.jsx";
+
+import M_dashboard from "./manager/M_dashboard.jsx";
+import FlaggedDashboard from "./manager/Flagged_Dashboard.jsx";
+import ReportsOverview from "./manager/M_ReportsOverview.jsx";
+import UserManagement from "./manager/UserManagement.jsx";
+
+import ManagerLogin from "./manager/M_Login.jsx";
 import HandhaverLogin from "./handhaver/H_Login.jsx";
 import HandhaverRegister from "./handhaver/H_Register.jsx";
-//
-// import M_dashboard from "./manager/M_dashboard.jsx";
-// import FlaggedDashboard from "./manager/Flagged_Dashboard.jsx";
-// import ReportsOverview from "./manager/M_ReportsOverview.jsx";
-// import UserManagement from "./manager/UserManagement.jsx";
-// import ManagerLogin from "./manager/M_Login.jsx";
+import HM_Nav from "./components/HM_Nav.jsx";
 
+function GovernmentLayout() {
+    return (
+        <div className="flex h-screen w-screen overflow-hidden bg-stone-100">
+            {/* Sidebar to the left */}
+            <HM_Nav/>
 
-function Layout() {
+            {/* Page to the right */}
+            <main className="flex-1 h-full overflow-y-auto p-6">
+                <Outlet/>
+            </main>
+        </div>
+    );
 }
 
 function App() {
-    const router = createBrowserRouter([{
-        children: [
-            // User Routes
-            // {path: "/", element: <Onboarding/>},
-            // {path: "/feed", element: <Feed/>},
-            // {path: "/report", element: <Report/>},
-            // {path: "/account", element: <Account/>},
-            // {path: "/login", element: <Login/>},
-            // {path: "/register", element: <Register/>},
-            // {path: "/map", element: <Map/>},
-            //     {path: "/account_settings", element: <AccountSettings/>},
-            //
-            //     // Handhaver Routes
-                {path: "/CommandCenter", element: <CommandCenter/>},
-                {path: "/handhaver_login", element: <HandhaverLogin/>},
-                {path: "/handhaver_registratie", element: <HandhaverRegister/>},
-                {path: "/rapport", element: <H_ReportsOverview/>},
-                {path: "/sector_instellingen", element: <SectorSettings/>},
+    const router = createBrowserRouter([
+        {
+            // BOA or Manager
+            element: <GovernmentLayout/>,
+            children: [
+                // Handhaver / BOA
+                {path: "/commando_centrum", element: <CommandCenter/>},
                 {path: "/dienstprofiel", element: <ServiceProfile/>},
-            //
-            //
-            //     // Manager Routes
-            //     {path: "/manager_dashboard", element: <M_dashboard/>},
-            //     {path: "/gebruiker_management", element: <UserManagement/>},
-            //     {path: "/manger_login", element: <ManagerLogin/>},
-            //     {path: "/flagged_dashboard", element: <FlaggedDashboard/>},
-            //     {path: "/reports_overview", element: <ReportsOverview/>},
-        ]
-    }]);
+                {path: "/handhaver_rapport", element: <H_ReportsOverview/>},
+                {path: "/sector_instellingen", element: <SectorSettings/>},
+
+                // Manager
+                {path: "/manager_dashboard", element: <M_dashboard/>},
+                {path: "/flagged_dashboard", element: <FlaggedDashboard/>},
+                {path: "/reports_overview", element: <ReportsOverview/>},
+            ]
+        },
+
+        // User Routes
+        // {path: "/", element: <Onboarding/>},
+        // {path: "/feed", element: <Feed/>},
+        // {path: "/report", element: <Report/>},
+        // {path: "/account", element: <Account/>},
+        // {path: "/login", element: <Login/>},
+        // {path: "/register", element: <Register/>},
+        // {path: "/map", element: <Map/>},
+        // {path: "/account_settings", element: <AccountSettings/>},
+
+        // Not grouped yet
+        {path: "/gebruiker_management", element: <UserManagement/>},
+
+        // Login or registration
+        {path: "/manager_login", element: <ManagerLogin/>},
+        {path: "/handhaver_login", element: <HandhaverLogin/>},
+        {path: "/handhaver_registratie", element: <HandhaverRegister/>}
+    ]);
+
     return <RouterProvider router={router}/>;
 }
 
-export default App
+export default App;
