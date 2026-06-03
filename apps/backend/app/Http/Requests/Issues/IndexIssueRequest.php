@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\Issues;
 
-use App\Enums\Department;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -33,8 +32,11 @@ class IndexIssueRequest extends FormRequest
      * Validation rules for the composable issue list filters and pagination.
      *
      * Filters are optional and composable: `district_id`, `department`, and
-     * `category_id` may be combined to narrow the result set. Pagination is
-     * bounded so `per_page` can never exceed a safe maximum.
+     * `category_id` may be combined to narrow the result set. The `department`
+     * filter accepts a real department code and is applied against the issue
+     * departments relationship with any-match semantics, so an issue assigned
+     * to multiple departments is returned whenever any one of them matches.
+     * Pagination is bounded so `per_page` can never exceed a safe maximum.
      *
      * @return array<string, array<int, mixed>>
      */
@@ -42,7 +44,7 @@ class IndexIssueRequest extends FormRequest
     {
         return [
             'district_id' => ['sometimes', 'integer', Rule::exists('districts', 'id')],
-            'department' => ['sometimes', Rule::in(Department::values())],
+            'department' => ['sometimes', 'string', Rule::exists('departments', 'code')],
             'category_id' => ['sometimes', 'integer', Rule::exists('categories', 'id')],
             'page' => ['sometimes', 'integer', 'min:1'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:'.self::MAX_PER_PAGE],

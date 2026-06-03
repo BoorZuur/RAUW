@@ -31,10 +31,13 @@ class IssueController extends Controller
      * A single Eloquent query is built and the optional `district_id`,
      * `department`, and `category_id` filters are applied conditionally and
      * cumulatively, so any subset (or all) of the filters may be combined to
-     * narrow the result set. Results are eager loaded, ordered newest-first by
-     * `created_at` then `id` for a stable, deterministic sort, and paginated
-     * using Laravel's length-aware paginator metadata with a safe default
-     * `per_page`.
+     * narrow the result set. The `department` filter is resolved through the
+     * issue departments relationship with any-match semantics, so an issue
+     * assigned to multiple departments is returned whenever any one of them
+     * matches the requested code. Results are eager loaded, ordered
+     * newest-first by `created_at` then `id` for a stable, deterministic sort,
+     * and paginated using Laravel's length-aware paginator metadata with a safe
+     * default `per_page`.
      */
     public function index(IndexIssueRequest $request): AnonymousResourceCollection
     {
@@ -46,7 +49,10 @@ class IssueController extends Controller
             )
             ->when(
                 $request->filled('department'),
-                fn ($query) => $query->where('department', (string) $request->input('department')),
+                fn ($query) => $query->whereHas(
+                    'departments',
+                    fn ($departmentQuery) => $departmentQuery->where('code', (string) $request->input('department')),
+                ),
             )
             ->when(
                 $request->filled('category_id'),

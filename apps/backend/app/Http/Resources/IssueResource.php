@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Category;
+use App\Models\Department;
 use App\Models\District;
 use App\Models\Issue;
 use App\Models\User;
@@ -24,6 +25,13 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * Relation summaries (`category`, `district`, `attachments`) and relation
  * counts are emitted only when the controller has loaded them, so the resource
  * never triggers an implicit lazy query.
+ *
+ * Department exposure
+ * -------------------
+ * An issue's departments are auto-assigned from its category through the pivot
+ * source of truth and are read-only from the client. The public payload exposes
+ * them as a `departments` array only; the legacy single `department` enum field
+ * is no longer serialized.
  *
  * @mixin Issue
  */
@@ -51,7 +59,7 @@ class IssueResource extends JsonResource
             'content' => $issue->content,
             'category_id' => $issue->category_id,
             'district_id' => $issue->district_id,
-            'department' => $issue->department,
+            'departments' => $this->compactDepartments($issue),
             'status' => $issue->status,
             'priority' => $issue->priority,
             'postal_code' => $issue->postal_code,
@@ -169,5 +177,32 @@ class IssueResource extends JsonResource
         }
 
         return IssueAttachmentResource::collection($issue->getRelation('attachments'))->resolve();
+    }
+
+    /**
+     * Return compact department summaries only when the relation is loaded.
+     *
+     * The pivot is the source of truth for an issue's department assignments
+     * and supports multiple departments per issue, so the payload always
+     * exposes them as an array. Null is returned when the relation has not been
+     * eager loaded, mirroring the other relation summaries and avoiding an
+     * implicit lazy query.
+     *
+     * @return array<int, array<string, mixed>>|null
+     */
+    protected function compactDepartments(Issue $issue): ?array
+    {
+        if (! $issue->relationLoaded('departments')) {
+            return null;
+        }
+
+        return $issue->getRelation('departments')
+            ->map(fn (Department $department): array => [
+                'id' => $department->id,
+                'code' => $department->code,
+                'name' => $department->name,
+            ])
+            ->values()
+            ->all();
     }
 }
