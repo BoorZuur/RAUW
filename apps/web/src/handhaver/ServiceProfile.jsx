@@ -1,7 +1,11 @@
 import "../App.css"
+import "../components/HM_styling.css"
+import HM_Nav from "../components/HM_Nav.jsx";
 
-function ServiceProfile() {
-    <h1>Service</h1>
+export default function ServiceProfile() {
+    return (
+        <>
+            <HM_Nav></HM_Nav>
+        </>
+    )
 }
-
-export default ServiceProfile
