@@ -54,7 +54,7 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 | `base_url` | `http://127.0.0.1:8001` | Change this to point at another backend without editing each request. |
 | `access_token` | blank | Filled automatically after a successful login, user registration, or officer registration request. |
 | `issue_id` | `1` | Filled automatically after **Issues / Create Issue**. Used by show, update, attachment, and delete examples. |
-| `attachment_id` | `1` | Filled automatically after **Issues / Upload Attachments**. Used by authenticated download. |
+| `attachment_id` | `1` | Filled automatically after **Issues / Upload Attachments**. Used by authenticated download and delete. |
 | `attachment_download_url` | blank | Filled automatically after **Issues / Upload Attachments** for reference. |
 | `district_id` | `1` | Example required district ID and list filter. |
 | `category_id` | `1` | Example category ID and list filter. |
@@ -72,14 +72,14 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 6. Run **Managers / Update My Districts** for implemented manager self-service district assignments, **Managers / Update Officer Districts** for manager-admin officer assignments, or inspect **Officers / Update My Districts (Docs Only)** for the illustrative officer self-service parity flow.
 7. Run **Districts / Create District**, **Update District**, and **Delete District** with an active manager token. District deletion returns `409 Conflict` while the district is assigned to managers/officers or referenced by issues.
 8. Run **Categories / List Categories** to find existing category IDs. Category create/update/disable/delete requests require an active manager token; main-manager status is not required.
-9. Run **Auth / Login** with `demo.user@example.com` and password `password`, then use **Issues / Create Issue**. This stores `issue_id` for **Show Issue**, **Update Own Issue**, **Upload Attachments**, **Download Attachment**, and **Hard Delete Own Issue**.
+9. Run **Auth / Login** with `demo.user@example.com` and password `password`, then use **Issues / Create Issue**. This stores `issue_id` for **Show Issue**, **Update Own Issue**, **Upload Attachments**, **Download Attachment**, **Delete Attachment**, and **Hard Delete Own Issue**.
 10. Use **Issues / List Issues - Filtered Paginated** to combine `district_id`, `department_filter`, and `category_id`; pagination is backend-driven by `page` and `per_page`.
 11. If desired, run **Auth / Login** with a newly created ordinary manager's email and password to test category and district management without main-manager privileges.
 12. Run **Auth / Logout** when finished.
 
 The collection stores the returned `access_token` automatically after a successful login, user registration, or officer registration. Manager creation intentionally does not update `access_token` because it returns only the created manager profile. If you disable collection scripts or the token is not stored, copy the `access_token` value from the auth response into the active Postman environment's `access_token` variable before calling protected endpoints.
 
-Issue examples also store `issue_id` after issue creation and `attachment_id` / `attachment_download_url` after attachment upload. Attachment upload uses local, non-public development storage. Downloads require `Authorization: Bearer <token>` and stream through the authenticated API route.
+Issue examples also store `issue_id` after issue creation and `attachment_id` / `attachment_download_url` after attachment upload. Attachment upload returns a `data: [...]` wrapper, and the collection stores these variables from `response.data[0]`. Attachment upload uses local, non-public development storage. Downloads and deletes require `Authorization: Bearer <token>` and use authenticated API routes.
 
 Protected endpoints use this header:
 
@@ -530,6 +530,41 @@ Common error responses:
 - `403 Forbidden` when the authenticated actor is not an active main manager.
 - `422 Unprocessable Entity` for validation failures, including duplicate department `code` values.
 - `409 Conflict` when deleting a department that is still assigned to one or more managers or officers.
+
+### Issue Attachments
+
+Attachment endpoints require `Authorization: Bearer <token>`. Upload and delete are owner-only for the authenticated active regular user who owns the issue. Downloads are authenticated and require the attachment to belong to the issue in the route.
+
+Common requests:
+
+- `POST {{base_url}}/api/issues/{issue}/attachments` — upload 1-5 files. Each file must be 5 MB or smaller and one of `jpg`, `jpeg`, `png`, `gif`, `webp`, or `pdf`.
+- `GET {{base_url}}/api/issues/{issue}/attachments/{attachment}/download` — stream the file from non-public local storage through the authenticated API route.
+- `DELETE {{base_url}}/api/issues/{issue}/attachments/{attachment}` — owner-only hard delete for one attachment. Use this before uploading replacement files.
+
+Successful upload response shape:
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "issue_id": 1,
+      "original_name": "photo.jpg",
+      "file_type": "image/jpeg",
+      "file_size": 12345,
+      "uploaded_at": "2026-06-03T12:00:00.000000Z",
+      "download_url": "http://127.0.0.1:8001/api/issues/1/attachments/1/download"
+    }
+  ]
+}
+```
+
+Common error responses:
+
+- `401 Unauthorized` when the bearer token is missing, invalid, or revoked.
+- `403 Forbidden` when uploading or deleting as a non-owner, officer, manager, or inactive user.
+- `404 Not Found` when the issue or attachment does not exist, the attachment does not belong to the route issue, or a download backing file is missing.
+- `422 Unprocessable Entity` when upload validation fails.
 
 ### Logout
 

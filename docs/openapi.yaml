@@ -722,7 +722,7 @@ paths:
         limited to 5 MB and must be jpg, jpeg, png, gif, webp, or pdf. In local
         development files are stored on the non-public local disk and are served
         only through the authenticated download endpoint; no public storage URL
-        is exposed. To replace files while editing an issue, remove existing
+        is exposed. To replace files while editing an issue, delete existing
         attachments first, then upload new files within the same total limit.
       security:
         - bearerAuth: [ ]
@@ -747,9 +747,13 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/IssueAttachment'
+                type: object
+                required: [ data ]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/IssueAttachment'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -758,6 +762,40 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationError'
+
+  /issues/{issueId}/attachments/{attachmentId}:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: attachmentId
+        in: path
+        required: true
+        schema:
+          type: integer
+    delete:
+      tags: [ Attachments ]
+      summary: Delete an issue attachment
+      description: >-
+        Hard delete one attachment from an issue owned by the authenticated active
+        user. Officers, managers, inactive users, unauthenticated requests, and
+        non-owner users receive 403. The attachment must belong to the issue in
+        the route; otherwise the backend returns 404. Deletion removes the backing
+        file from non-public local storage when present and deletes the attachment
+        row, enabling replace workflows before uploading new files.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '204':
+          description: Attachment hard deleted; no response body
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /issues/{issueId}/attachments/{attachmentId}/download:
     parameters:

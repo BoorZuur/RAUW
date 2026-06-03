@@ -38,8 +38,12 @@ class IssueAttachmentController extends Controller
      * non-public `local` disk under a per-issue directory using a hashed storage
      * name, and one IssueAttachment row is persisted per file capturing the
      * storage path, original filename, MIME type, byte size, and upload time.
-     * The newly created attachments are returned as a collection whose URLs point
-     * at the authenticated download endpoint, never a public storage URL.
+     * The newly created attachments are returned as a `data`-wrapped collection
+     * whose URLs point at the authenticated download endpoint, never a public
+     * storage URL. The wrapping is applied explicitly here because the resource
+     * itself disables wrapping (`$wrap = null`) for the flat single-resource
+     * shape used elsewhere, while this upload endpoint contractually returns
+     * `{ "data": [ ... ] }`.
      */
     public function store(StoreIssueAttachmentRequest $request, Issue $issue): JsonResponse
     {
@@ -60,9 +64,10 @@ class IssueAttachmentController extends Controller
             ]);
         }
 
-        return IssueAttachmentResource::collection($created)
-            ->response()
-            ->setStatusCode(Response::HTTP_CREATED);
+        return response()->json(
+            ['data' => IssueAttachmentResource::collection($created)],
+            Response::HTTP_CREATED,
+        );
     }
 
     /**

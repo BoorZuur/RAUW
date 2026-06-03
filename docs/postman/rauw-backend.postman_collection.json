@@ -681,7 +681,7 @@
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
             "body": { "mode": "raw", "raw": "{\n  \"title\": \"Stoeptegel bij bushalte bijgewerkt\",\n  \"content\": \"De tegel ligt nu volledig los.\",\n  \"district_id\": {{district_id}},\n  \"is_anonymous\": false\n}", "options": { "raw": { "language": "json" } } },
             "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}" ] },
-            "description": "Partially update an issue owned by the authenticated active user. Ownership is checked through issues.user_id, including anonymous issues. Editable fields are title, content, category_id, district_id, department, postal_code, address, latitude, longitude, and is_anonymous. Attachments are changed separately: remove existing attachments first when replacement is needed, then use Upload Attachments."
+            "description": "Partially update an issue owned by the authenticated active user. Ownership is checked through issues.user_id, including anonymous issues. Editable fields are title, content, category_id, district_id, department, postal_code, address, latitude, longitude, and is_anonymous. Attachments are changed separately: delete existing attachments first when replacement is needed, then use Upload Attachments."
           },
           "response": []
         },
@@ -695,14 +695,19 @@
                 "exec": [
                   "pm.test('Attachments uploaded', function () { pm.response.to.have.status(201); });",
                   "const response = pm.response.json();",
-                  "if (Array.isArray(response) && response.length > 0) {",
-                  "    pm.collectionVariables.set('attachment_id', response[0].id);",
-                  "    pm.collectionVariables.set('attachment_download_url', response[0].download_url);",
+                  "const attachments = Array.isArray(response.data) ? response.data : [];",
+                  "if (attachments.length > 0) {",
+                  "    const firstAttachment = attachments[0];",
+                  "    pm.collectionVariables.set('attachment_id', firstAttachment.id);",
+                  "    pm.collectionVariables.set('attachment_download_url', firstAttachment.download_url);",
                   "    if (pm.environment.name) {",
-                  "        pm.environment.set('attachment_id', response[0].id);",
-                  "        pm.environment.set('attachment_download_url', response[0].download_url);",
+                  "        pm.environment.set('attachment_id', firstAttachment.id);",
+                  "        pm.environment.set('attachment_download_url', firstAttachment.download_url);",
                   "    }",
-                  "}"
+                  "}",
+                  "pm.test('Response wraps attachments in data array', function () {",
+                  "    pm.expect(response.data).to.be.an('array');",
+                  "});"
                 ]
               }
             }
@@ -718,7 +723,18 @@
               ]
             },
             "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/attachments", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "attachments" ] },
-            "description": "Upload attachments to an issue owned by the authenticated active user. Each issue may hold at most 5 attachments total. Each file is limited to 5 MB. Files are stored on local non-public development storage and are downloaded only through authenticated endpoints. The test stores attachment_id and attachment_download_url from the first uploaded file."
+            "description": "Upload attachments to an issue owned by the authenticated active user. Each issue may hold at most 5 attachments total. Each file is limited to 5 MB. Files are stored on local non-public development storage and are downloaded only through authenticated endpoints. The 201 response wraps attachments as data: [...]. The test stores attachment_id and attachment_download_url from response.data[0]."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Attachment",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "DELETE",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+            "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/attachments/{{attachment_id}}", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "attachments", "{{attachment_id}}" ] },
+            "description": "Owner-only attachment deletion. Requires Authorization: Bearer <token> for the active regular user who owns the issue. The attachment must belong to the issue in the route. A successful request returns 204 No Content, removes the backing file from non-public local storage when present, and hard deletes the attachment row. Use before Upload Attachments when replacing files."
           },
           "response": []
         },
@@ -745,7 +761,7 @@
           "response": []
         }
       ],
-      "description": "Authenticated issue CRUD and attachment examples. Issue creation requires district_id and no longer accepts removed legacy locality fields. List filters are composable and pagination is backend-driven. Anonymous issues retain user_id ownership while exposing only a stable alias. Issue deletion is hard delete and attachments cascade with the issue."
+      "description": "Authenticated issue CRUD and attachment examples. Issue creation requires district_id and no longer accepts removed legacy locality fields. List filters are composable and pagination is backend-driven. Anonymous issues retain user_id ownership while exposing only a stable alias. Attachment deletion is owner-only for replacement workflows. Issue deletion is hard delete and attachments cascade with the issue."
     },
     {
       "name": "Departments",
