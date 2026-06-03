@@ -3,7 +3,6 @@
 namespace Database\Factories;
 
 use App\Enums\ChatStatus;
-use App\Enums\Department;
 use App\Enums\IssueStatus;
 use App\Enums\Priority;
 use App\Enums\Visibility;
@@ -30,7 +29,7 @@ class IssueFactory extends Factory
 
         return [
             'user_id' => User::factory(),
-            'category_id' => Category::factory(),
+            'category_id' => Category::factory()->withDepartments(),
             'assigned_officer_id' => null,
             'district_id' => District::factory(),
             'duplicate_of_id' => null,
@@ -44,7 +43,6 @@ class IssueFactory extends Factory
             'status' => $status,
             'chat_status' => fake()->randomElement(ChatStatus::cases()),
             'priority' => fake()->randomElement(Priority::cases()),
-            'department' => fake()->randomElement(Department::cases()),
             'duplicate_count' => 0,
             'participant_count' => 0,
             'vote_count' => 0,
@@ -54,6 +52,17 @@ class IssueFactory extends Factory
             'anonymous_alias' => null,
             'resolved_at' => in_array($status, [IssueStatus::Resolved, IssueStatus::Closed], true) ? now() : null,
         ];
+    }
+
+    public function configure(): static
+    {
+        return $this->afterCreating(function (Issue $issue): void {
+            $category = $issue->category()->with('departments')->first();
+
+            if ($category !== null) {
+                $issue->syncDepartments($category->departmentIds());
+            }
+        });
     }
 
     public function assigned(): static

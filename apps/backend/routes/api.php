@@ -12,6 +12,8 @@ use App\Http\Controllers\DistrictController;
 use App\Http\Controllers\IssueAttachmentController;
 use App\Http\Controllers\IssueController;
 use App\Http\Controllers\ManagerController;
+use App\Http\Controllers\ManagerDepartmentController;
+use App\Http\Controllers\OfficerDepartmentController;
 use App\Http\Controllers\OfficerDistrictController;
 use Illuminate\Support\Facades\Route;
 
@@ -73,6 +75,16 @@ Route::middleware(['auth:sanctum', 'throttle:30,1'])->group(function (): void {
     // `district_ids` array. The endpoint only touches the officer-side district
     // pivot and never reassigns `issues.district_id`.
     Route::patch('officers/{officer}/districts', [OfficerDistrictController::class, 'update'])->name('officers.districts.update');
+
+    // Main-manager-protected actor department assignment. Authorization is narrowed
+    // inside the department assignment FormRequests to an authenticated, active
+    // main manager only; users, officers, non-main managers, and inactive managers
+    // receive a 403. Any active main manager may sync the target officer's or
+    // manager's departments wholesale from the validated `department_ids` array,
+    // including an empty array to clear all assignments. These endpoints only touch
+    // the department_officer / department_manager pivots.
+    Route::patch('officers/{officer}/departments', [OfficerDepartmentController::class, 'update'])->name('officers.departments.update');
+    Route::patch('managers/{manager}/departments', [ManagerDepartmentController::class, 'update'])->name('managers.departments.update');
 
     // Manager-protected category management. Authorization is narrowed inside
     // the category FormRequests to an authenticated, active manager; users,

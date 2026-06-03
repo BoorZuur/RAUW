@@ -16,7 +16,7 @@ cd apps/backend
 composer i
 copy .env.example .env
 php artisan key:generate
-php artisan migrate --seed
+php artisan migrate:fresh --seed
 php -S 127.0.0.1:8001 -t public
 ```
 
@@ -58,7 +58,7 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 | `attachment_download_url` | blank | Filled automatically after **Issues / Upload Attachments** for reference. |
 | `district_id` | `1` | Example required district ID and list filter. |
 | `category_id` | `1` | Example category ID and list filter. |
-| `department_filter` | `wijkbeheer` | Example issue list filter using a real department code. It matches issues where any derived department has this code. |
+| `department_filter` | `wijkbeheer` | Example value for the issue list query param `department` (department code). Any-match against rows in `department_issue`. Not sent in create/update bodies. |
 | `page` | `1` | Example issue list page. |
 | `per_page` | `20` | Example issue list page size. Backend caps this at 100. |
 
@@ -73,7 +73,7 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 7. Run **Districts / Create District**, **Update District**, and **Delete District** with an active manager token. District deletion returns `409 Conflict` while the district is assigned to managers/officers or referenced by issues.
 8. Run **Categories / List Categories** to find existing category IDs. Category create/update/disable/delete requests require an active manager token; main-manager status is not required.
 9. Run **Auth / Login** with `demo.user@example.com` and password `password`, then use **Issues / Create Issue**. This stores `issue_id` for **Show Issue**, **Update Own Issue**, **Upload Attachments**, **Download Attachment**, **Delete Attachment**, and **Hard Delete Own Issue**.
-10. Use **Issues / List Issues - Filtered Paginated** to combine `district_id`, `department_filter`, and `category_id`; `department_filter` uses any-match semantics against derived issue departments, and pagination is backend-driven by `page` and `per_page`.
+10. Use **Issues / List Issues - Filtered Paginated** to combine `district_id`, `department` (env `department_filter`), and `category_id`. The `department` query param accepts a department code and uses any-match semantics on `department_issue`; pagination is backend-driven by `page` and `per_page`.
 11. If desired, run **Auth / Login** with a newly created ordinary manager's email and password to test category and district management without main-manager privileges.
 12. Run **Auth / Logout** when finished.
 
@@ -411,11 +411,9 @@ Common error responses:
 - `404 Not Found` when the officer route ID does not exist.
 - `422 Unprocessable Entity` when `district_ids` is missing, not an array, contains duplicates, or references inactive/unknown districts.
 
-#### Update Officer Departments (planned)
+#### Update Officer Departments
 
 `PATCH {{base_url}}/api/officers/{officer}/departments`
-
-**Planned** — not registered in `routes/api.php` until backend implementation merges. Documented in OpenAPI and this collection for spec-first client work.
 
 Requires `Authorization: Bearer <token>` for an authenticated **active main manager** (`is_main_manager: true`). Users, officers, ordinary managers, inactive managers, inactive main managers, and unauthenticated requests receive `403 Forbidden`. This is stricter than **Update Officer Districts**, which allows any authenticated active manager.
 
@@ -446,11 +444,9 @@ Common error responses:
 - `404 Not Found` when the officer route ID does not exist or the officer is soft-deleted.
 - `422 Unprocessable Entity` when `department_ids` is missing, not an array, contains duplicates, or references unknown departments.
 
-#### Update Manager Departments (planned)
+#### Update Manager Departments
 
 `PATCH {{base_url}}/api/managers/{manager}/departments`
-
-**Planned** — same spec-first status as officer department PATCH above.
 
 Requires `Authorization: Bearer <token>` for an authenticated **active main manager**. A main manager may update any manager, including other main managers.
 
@@ -557,7 +553,7 @@ Common error responses:
 
 Department endpoints use the `departments` table. Categories are attached through the `category_department` pivot, so a category can belong to multiple departments. Managers reference this table through the `department_manager` pivot and must have one or more departments; officers reference it through the `department_officer` pivot and must have one or more departments.
 
-Issue departments are derived from the selected category on create and whenever `category_id` changes. Clients must not send issue department values. Issue responses expose a read-only `departments` array and no singular `department` field. Department filtering on the issue list uses real department codes with any-match semantics, so an issue assigned to multiple departments is included when any assigned department matches the filter.
+Issue departments are derived from the selected category on create and whenever `category_id` changes, persisted only through the `department_issue` pivot (there is no `issues.department` column). Clients must not send issue `department` in create or update bodies. Issue responses expose a read-only `departments` array only. List filtering uses query param `department` with a department code (`department_filter` in the Postman environment); any-match semantics apply across pivot assignments.
 
 Department mutations require `Authorization: Bearer <token>` for an authenticated, active main manager (`is_main_manager: true`). Ordinary managers, users, officers, inactive managers, and unauthenticated requests cannot create, update, or delete departments.
 
@@ -581,7 +577,7 @@ Create body example:
 
 Departments assigned to any manager or officer cannot be deleted until those actor assignments are changed. After no actors reference the department, deleting it automatically removes its `category_department` and `department_issue` assignments through database-level cascading. It does not delete category or issue records.
 
-**Carve-out (planned actor department PATCH):** Create, register, and the delete guard above assume managers and officers keep at least one department while pivots still reference a row. The planned `PATCH /api/officers/{officer}/departments` and `PATCH /api/managers/{manager}/departments` endpoints (main manager only) intentionally allow `"department_ids": []` to clear all assignments. That can leave an actor with zero departments and is valid for PATCH even though empty `department_ids` is rejected on create/register. Clearing assignments first is the supported way to unblock department deletion when the delete guard cites remaining actor pivots.
+**Carve-out (actor department PATCH):** Create, register, and the delete guard above assume managers and officers keep at least one department while pivots still reference a row. `PATCH /api/officers/{officer}/departments` and `PATCH /api/managers/{manager}/departments` (main manager only) intentionally allow `"department_ids": []` to clear all assignments. That can leave an actor with zero departments and is valid for PATCH even though empty `department_ids` is rejected on create/register. Clearing assignments first is the supported way to unblock department deletion when the delete guard cites remaining actor pivots.
 
 Common error responses:
 

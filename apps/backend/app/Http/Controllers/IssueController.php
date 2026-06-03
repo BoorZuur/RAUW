@@ -74,9 +74,8 @@ class IssueController extends Controller
      * when reported anonymously, so the author can still manage it later. The
      * issue's departments are auto-assigned from the selected category's
      * department assignments via the pivot source of truth (supporting multiple
-     * departments per issue); they are never accepted from the client. The
-     * legacy `department` enum column is kept in sync from the same category for
-     * backwards compatibility. When `is_anonymous` is true a stable, unique
+     * departments per issue); they are never accepted from the client. When
+     * `is_anonymous` is true a stable, unique
      * `anonymous_alias` is generated server-side and persisted once at creation;
      * it is never accepted from the client and never regenerated on subsequent
      * reads or updates. When the report is not anonymous the alias stays null.
@@ -108,8 +107,6 @@ class IssueController extends Controller
             ->with('departments')
             ->findOrFail($attributes['category_id']);
 
-        $attributes['department'] = $category->legacyDepartment()?->value;
-
         $issue = Issue::create($attributes);
 
         $issue->syncDepartments($category->departmentIds());
@@ -139,8 +136,7 @@ class IssueController extends Controller
      * keys present in the validated payload are applied, so partial updates
      * leave untouched fields intact. When `category_id` is supplied the issue's
      * departments are re-derived from the new category and re-synced through the
-     * pivot source of truth (supporting multiple departments per issue), and the
-     * legacy `department` enum column is kept in sync from the same category;
+     * pivot source of truth (supporting multiple departments per issue);
      * departments are never accepted from the client. The `user_id` is never
      * reassigned and the server-generated `anonymous_alias` is never accepted
      * from the client: toggling `is_anonymous` on lazily generates a stable
@@ -167,8 +163,6 @@ class IssueController extends Controller
             $category = Category::query()
                 ->with('departments')
                 ->findOrFail($attributes['category_id']);
-
-            $attributes['department'] = $category->legacyDepartment()?->value;
         }
 
         if (array_key_exists('is_anonymous', $attributes)) {

@@ -1,0 +1,36 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Enums\ActorType;
+use App\Http\Requests\DepartmentAssignments\UpdateOfficerDepartmentsRequest;
+use App\Http\Resources\AuthProfileResource;
+use App\Models\Officer;
+use Illuminate\Http\JsonResponse;
+
+class OfficerDepartmentController extends Controller
+{
+    /**
+     * Sync a target officer's department assignments on behalf of an active main
+     * manager and return the officer's refreshed profile payload.
+     *
+     * Authorization is enforced by {@see UpdateOfficerDepartmentsRequest}. The
+     * officer is resolved through route model binding, their `departments()`
+     * relation is replaced wholesale with the validated set, and the response
+     * reuses the canonical {@see AuthProfileResource} officer shape.
+     *
+     * This endpoint only touches the `department_officer` pivot; it never
+     * modifies district assignments or issue data.
+     */
+    public function update(UpdateOfficerDepartmentsRequest $request, Officer $officer): JsonResponse
+    {
+        $officer->departments()->sync($request->departmentIds());
+
+        $officer->load('departments', 'districts');
+
+        return response()->json([
+            'actor_type' => ActorType::Officer->value,
+            'profile' => (new AuthProfileResource($officer))->toArray($request),
+        ]);
+    }
+}

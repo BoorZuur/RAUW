@@ -1,7 +1,6 @@
 <?php
 
 use App\Enums\ChatStatus;
-use App\Enums\Department;
 use App\Enums\IssueStatus;
 use App\Enums\Priority;
 use App\Enums\Visibility;
@@ -33,7 +32,6 @@ return new class extends Migration
             $table->enum('status', IssueStatus::values())->default(IssueStatus::Open->value);
             $table->enum('chat_status', ChatStatus::values())->default(ChatStatus::Closed->value);
             $table->enum('priority', Priority::values())->default(Priority::Low->value);
-            $table->enum('department', Department::values());
             $table->integer('duplicate_count')->default(0);
             $table->integer('participant_count')->default(0);
             $table->integer('vote_count')->default(0);
@@ -46,7 +44,6 @@ return new class extends Migration
 
             $table->index('status', 'issues_status_idx');
             $table->index('priority', 'issues_priority_idx');
-            $table->index('department', 'issues_department_idx');
             $table->index('visibility', 'issues_visibility_idx');
             $table->index('user_id', 'issues_user_id_idx');
             $table->index('district_id', 'issues_district_id_idx');
@@ -57,7 +54,6 @@ return new class extends Migration
             $table->index('created_at', 'issues_created_at_idx');
             $table->index('resolved_at', 'issues_resolved_at_idx');
             $table->index(['district_id', 'created_at', 'id'], 'issues_district_created_at_id_idx');
-            $table->index(['department', 'created_at', 'id'], 'issues_department_created_at_id_idx');
             $table->index(['category_id', 'created_at', 'id'], 'issues_category_created_at_id_idx');
             $table->index(['status', 'district_id', 'created_at'], 'issues_status_district_created_at_idx');
             $table->index(['status', 'assigned_officer_id', 'created_at'], 'issues_status_assigned_officer_created_at_idx');

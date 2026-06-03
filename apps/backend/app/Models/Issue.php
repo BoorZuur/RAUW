@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Enums\ChatStatus;
-use App\Enums\Department;
 use App\Enums\IssueStatus;
 use App\Enums\Priority;
 use App\Enums\Visibility;
@@ -31,7 +30,6 @@ use Illuminate\Support\Collection;
     'status',
     'chat_status',
     'priority',
-    'department',
     'visibility',
     'is_anonymous',
     'anonymous_alias',
@@ -68,7 +66,6 @@ class Issue extends Model
             'status' => IssueStatus::class,
             'chat_status' => ChatStatus::class,
             'priority' => Priority::class,
-            'department' => Department::class,
             'latitude' => 'decimal:8',
             'longitude' => 'decimal:8',
             'duplicate_count' => 'integer',
@@ -95,8 +92,7 @@ class Issue extends Model
      * Departments this issue is assigned to via the pivot table.
      *
      * This pivot is the source of truth for an issue's department assignments
-     * and supports multiple departments per issue. The legacy `department`
-     * enum column is retained for backwards compatibility only.
+     * and supports multiple departments per issue.
      *
      * @return BelongsToMany<\App\Models\Department, $this>
      */

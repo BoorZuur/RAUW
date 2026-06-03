@@ -146,10 +146,12 @@ Because each app has its own dependency files, run `npm i` inside the specific a
 
 ```bash
 cd C:\Users\henk-\Development\RAUW\apps\backend
-php artisan migrate
+php artisan migrate:fresh --seed
 php artisan test
 npm run build
 ```
+
+After the department schema squash, use `migrate:fresh --seed` rather than incremental `migrate` when resetting local data. There is no upgrade path from databases that still had legacy enum columns on `issues`, `categories`, or `managers`, or singular `district_id` on `officers` / `managers`.
 
 ### Web
 
@@ -169,14 +171,14 @@ npm run lint
 
 ## Backend Department Fixtures
 
-When you run `php artisan migrate --seed` in `apps/backend`, local seeders create canonical rows in the backend `departments` table and assign demo actors to them.
+When you run `php artisan migrate:fresh --seed` in `apps/backend`, local seeders create canonical rows in the backend `departments` table and assign demo actors to them.
 
 - Managers have one or more departments through `department_ids` / the `department_manager` pivot.
 - Officers have one or more departments through `department_ids` / the `department_officer` pivot.
 - Use the Postman **Departments / List Departments** request to inspect local department IDs before creating managers or registering officers.
 - Department deletion is blocked while a department is assigned to any manager or officer.
-- Issue departments are derived from the selected category on create and whenever `category_id` changes on update. They are stored through the `department_issue` pivot and exposed to clients as a read-only `departments` array. Clients must not send a singular `department` field.
-- **Planned (OpenAPI / Postman):** active main managers will replace officer or manager department pivots with `PATCH /api/officers/{officer}/departments` and `PATCH /api/managers/{manager}/departments`, body `{"department_ids":[1,2]}` or `[]` to clear. These routes are not in `routes/api.php` yet; use the Postman **Managers** folder requests after backend implementation.
+- Issue departments are derived from the selected category on create and whenever `category_id` changes on update. They are stored only in the `department_issue` pivot (the `issues.department` enum column was removed). API responses expose a read-only `departments` array; clients must not send `department` on issue create or update. Issue list filtering uses query param `department` with a department code (pivot any-match).
+- Active main managers can replace officer or manager department pivots with `PATCH /api/officers/{officer}/departments` and `PATCH /api/managers/{manager}/departments`, body `{"department_ids":[1,2]}` or `[]` to clear all assignments. Non-main managers receive `403 Forbidden`. Use the Postman **Managers** folder requests with a main manager token.
 
 ## Backend District Fixtures
 

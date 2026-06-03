@@ -354,8 +354,7 @@ paths:
       tags: [ Managers ]
       summary: Update a manager's department assignments
       description: >-
-        Planned endpoint (not yet registered in routes/api.php). Main-manager-only
-        department assignment endpoint. Replaces the target manager's department
+        Main-manager-only department assignment endpoint. Replaces the target manager's department
         assignments with the supplied department_ids array and returns that
         manager's refreshed Manager resource. Only an authenticated active main
         manager (is_main_manager=true) may call this endpoint. Users, officers,
@@ -489,8 +488,7 @@ paths:
       tags: [ Managers ]
       summary: Update an officer's department assignments
       description: >-
-        Planned endpoint (not yet registered in routes/api.php). Main-manager-only
-        department assignment endpoint. Replaces the target officer's department
+        Main-manager-only department assignment endpoint. Replaces the target officer's department
         assignments with the supplied department_ids array and returns that
         officer's refreshed auth profile. Only an authenticated active main manager
         (is_main_manager=true) may call this endpoint. Users, officers, ordinary
@@ -560,8 +558,10 @@ paths:
         Create an issue as an authenticated active user. The request requires
         category_id, district_id, title, and content. The issue's departments are
         derived server-side from the selected category's department assignments,
-        synced to the issue department pivot, and returned as a read-only
-        departments array. Clients must not send department values. Location
+        synced to the department_issue pivot, and returned as a read-only
+        departments array. Clients must not send department values. The database
+        no longer stores issues.department; pivot rows are the only persistence.
+        Location
         fields are optional. When is_anonymous is true the backend still stores
         user_id ownership, but generates and persists a stable anonymous alias
         such as Melder#A1B2C3D4 for public display; clients cannot submit the
@@ -604,11 +604,11 @@ paths:
       description: >-
         List issues for any authenticated actor. Filters are optional and
         composable: district_id, department, and category_id may be combined in a
-        single request to narrow the result set. The department filter accepts a
-        real department code from the departments table and matches through the
-        issue departments relationship with any-match semantics, so a
-        multi-department issue is included when any assigned department has the
-        requested code. Pagination is backend-driven using page and per_page,
+        single request to narrow the result set. Query param department accepts a
+        department code from the departments table and matches through
+        department_issue with any-match semantics, so a multi-department issue is
+        included when any pivot assignment has the requested code. Pagination is
+        backend-driven using page and per_page,
         with a default per_page of 20 and maximum of 100. Results are ordered
         newest first.
       security:
@@ -1725,7 +1725,9 @@ components:
           example: Bearer
         access_token:
           type: string
-          description: Plain-text Laravel Sanctum token. Use as Authorization: Bearer <token>.
+          description: >-
+            Plain-text Laravel Sanctum token. Use as Authorization Bearer header
+            value (format `Bearer <token>`).
         actor_type:
           type: string
           enum: [ user, officer, manager ]
@@ -2276,9 +2278,10 @@ components:
         through user_id, but the response exposes only an author display alias
         such as Melder#A1B2C3D4 and never leaks the owning user's id. Non-anonymous
         issues include author identity when loaded. Attachments include
-        authenticated download URLs only. Department assignments are derived from
-        the issue category and exposed as a read-only departments array; the
-        legacy singular department field is not serialized.
+        authenticated download URLs only. Department assignments are stored in
+        department_issue, derived from the issue category, and exposed as a
+        read-only departments array only (no singular department property on
+        requests or responses).
       properties:
         id:
           type: integer
