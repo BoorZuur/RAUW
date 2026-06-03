@@ -8,10 +8,10 @@ info:
     bearer token authentication for API consumers.
   version: '1.0.0'
 servers:
-  - url: /api/v1
-    description: API base path (versioned)
+  - url: /
+    description: Backend host root; API routes are prefixed with /api.
 paths:
-  /auth/register:
+  /api/auth/register/user:
     post:
       tags: [ Auth ]
       summary: Register a new user
@@ -214,17 +214,14 @@ paths:
   /api/auth/me/districts:
     patch:
       tags: [ Managers, Officers ]
-      summary: Update my district assignments (manager implemented; officer docs only)
+      summary: Update my district assignments
       description: >-
-        Implemented manager self-service district assignment endpoint. Replaces
-        the authenticated manager's district assignments with the supplied
-        district_ids array and returns the refreshed auth profile. Users receive
-        403 because they do not have district assignments. The request updates
-        only actor district pivots and never modifies the singular
-        issues.district_id issue location/reference field. This operation is
-        also shown under Officers for parity only: the backend does not currently
-        implement an officer self-service district update route or officer
-        behavior for this request.
+        Self-service district assignment endpoint for active managers and active
+        officers. Replaces the authenticated actor's district assignments with
+        the supplied district_ids array and returns the refreshed auth profile.
+        Users receive 403 because they do not have district assignments. The
+        request updates only actor district pivots and never modifies the
+        singular issues.district_id issue location/reference field.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -237,7 +234,7 @@ paths:
               district_ids: [1, 2]
       responses:
         '200':
-          description: Refreshed manager profile; officer shape is illustrative only
+          description: Refreshed manager or officer profile
           content:
             application/json:
               schema:
@@ -263,8 +260,8 @@ paths:
                         - id: 2
                           name: Sommelsdijk
                           postal_prefix: '3245'
-                officerProfileDocsOnly:
-                  summary: Officer parity response shape (docs only, not implemented)
+                officerProfile:
+                  summary: Implemented officer self-service response
                   value:
                     actor_type: officer
                     profile:
@@ -407,7 +404,7 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
 
-  /issues:
+  /api/issues:
     post:
       tags: [ Issues ]
       summary: Create a new issue
@@ -520,7 +517,7 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
 
-  /issues/{issueId}:
+  /api/issues/{issueId}:
     parameters:
       - name: issueId
         in: path
@@ -547,7 +544,7 @@ paths:
     put:
       tags: [ Issues ]
       summary: Replace/update own issue
-      description: Same partial-update behavior and validation as PATCH /issues/{issueId}.
+      description: Same partial-update behavior and validation as PATCH /api/issues/{issueId}.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -638,7 +635,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /issues/{issueId}/comments:
+  /api/issues/{issueId}/comments:
     get:
       tags: [ Comments ]
       summary: List comments for an issue
@@ -682,7 +679,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/IssueComment'
 
-  /issues/{issueId}/messages:
+  /api/issues/{issueId}/messages:
     get:
       tags: [ Messages ]
       summary: Get chat messages for an issue
@@ -724,7 +721,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/IssueMessage'
 
-  /issues/{issueId}/attachments:
+  /api/issues/{issueId}/attachments:
     parameters:
       - name: issueId
         in: path
@@ -781,7 +778,7 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
 
-  /issues/{issueId}/attachments/{attachmentId}:
+  /api/issues/{issueId}/attachments/{attachmentId}:
     parameters:
       - name: issueId
         in: path
@@ -815,7 +812,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /issues/{issueId}/attachments/{attachmentId}/download:
+  /api/issues/{issueId}/attachments/{attachmentId}/download:
     parameters:
       - name: issueId
         in: path

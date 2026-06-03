@@ -419,7 +419,7 @@
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
             "body": { "mode": "raw", "raw": "{\n  \"district_ids\": [1, 2]\n}", "options": { "raw": { "language": "json" } } },
             "url": { "raw": "{{base_url}}/api/auth/me/districts", "host": [ "{{base_url}}" ], "path": [ "api", "auth", "me", "districts" ] },
-            "description": "Implemented manager self-service district assignment endpoint. Replace the authenticated manager's own district assignments. Users do not have district assignments and receive 403. district_ids must be present, may be an empty array to clear assignments, must contain active existing district IDs, and cannot contain duplicates. Returns the refreshed auth profile with a districts array. This only updates actor district pivots and never modifies issues.district_id. Officer self-service is documented separately as a docs-only parity flow and is not implemented in the backend."
+            "description": "Implemented self-service district assignment endpoint for active managers and active officers. Replace the authenticated actor's own district assignments. Users do not have district assignments and receive 403. district_ids must be present, may be an empty array to clear assignments, must contain active existing district IDs, and cannot contain duplicates. Returns the refreshed auth profile with a districts array. This only updates actor district pivots and never modifies issues.district_id."
           },
           "response": []
         },
@@ -442,19 +442,19 @@
       "name": "Officers",
       "item": [
         {
-          "name": "Update My Districts (Docs Only)",
+          "name": "Update My Districts",
           "request": {
             "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
             "method": "PATCH",
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
             "body": { "mode": "raw", "raw": "{\n  \"district_ids\": [1, 2]\n}", "options": { "raw": { "language": "json" } } },
             "url": { "raw": "{{base_url}}/api/auth/me/districts", "host": [ "{{base_url}}" ], "path": [ "api", "auth", "me", "districts" ] },
-            "description": "Documentation-only illustrative officer self-service district assignment flow for parity with manager self-service. The backend does not currently implement an officer self-service district update route or officer behavior for this request. Intended parity behavior would replace the authenticated officer's district assignments through district_officer, accept district_ids as an array of active existing district IDs without duplicates, allow an empty array to clear assignments, return the refreshed auth profile with districts, and never modify issues.district_id. Do not use this request as an implemented backend contract until a route is added."
+            "description": "Implemented officer self-service district assignment flow. Replace the authenticated officer's district assignments through district_officer. district_ids must be an array of active existing district IDs without duplicates; use an empty array to clear assignments. Returns the refreshed auth profile with districts and never modifies issues.district_id."
           },
           "response": []
         }
       ],
-      "description": "Officer-focused request examples. The district self-service update entry is documentation-only for parity and is not implemented by the backend yet."
+      "description": "Officer-focused request examples. The district self-service update entry is implemented for active officers."
     },
     {
       "name": "Categories",
@@ -821,7 +821,7 @@
             "method": "DELETE",
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
             "url": { "raw": "{{base_url}}/api/departments/1", "host": [ "{{base_url}}" ], "path": [ "api", "departments", "1" ] },
-            "description": "Delete a department as an authenticated active main manager. Departments assigned to any manager or officer return 409 until those actor assignments are changed. After no actors reference the department, database cascade removes category_department assignments automatically; category records remain intact."
+            "description": "Delete a department as an authenticated active main manager. Departments assigned to any manager or officer return 409 until those actor assignments are changed. After no actors reference the department, database cascade removes category_department and department_issue assignments automatically; category and issue records remain intact."
           },
           "response": []
         }

@@ -69,7 +69,7 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 3. Run **Districts / List Districts** and **Departments / List Departments** to find local IDs for assignment examples.
 4. To test manager creation, district assignment, or district/department mutations locally, run **Auth / Login** with `demo.manager@example.com` and password `password`. This stores a main-manager token.
 5. Run **Managers / Create Manager**. This creates an ordinary manager but does not replace the stored `access_token`.
-6. Run **Managers / Update My Districts** for implemented manager self-service district assignments, **Managers / Update Officer Districts** for manager-admin officer assignments, or inspect **Officers / Update My Districts (Docs Only)** for the illustrative officer self-service parity flow.
+6. Run **Managers / Update My Districts** or **Officers / Update My Districts** for implemented self-service district assignments, or **Managers / Update Officer Districts** for manager-admin officer assignments.
 7. Run **Districts / Create District**, **Update District**, and **Delete District** with an active manager token. District deletion returns `409 Conflict` while the district is assigned to managers/officers or referenced by issues.
 8. Run **Categories / List Categories** to find existing category IDs. Category create/update/disable/delete requests require an active manager token; main-manager status is not required.
 9. Run **Auth / Login** with `demo.user@example.com` and password `password`, then use **Issues / Create Issue**. This stores `issue_id` for **Show Issue**, **Update Own Issue**, **Upload Attachments**, **Download Attachment**, **Delete Attachment**, and **Hard Delete Own Issue**.
@@ -291,15 +291,15 @@ Officer auth profiles also return a `departments` array because officers must be
 }
 ```
 
-### Manager District Assignment Updates
+### Self-Service District Assignment Updates
 
-Implemented manager district assignment updates are grouped under the Manager section. The officer self-service parity flow is shown separately as documentation-only.
+Self-service district assignment updates are implemented for active managers and active officers.
 
 #### Update My Districts
 
 `PATCH {{base_url}}/api/auth/me/districts`
 
-Requires `Authorization: Bearer <token>` for an active manager. Users do not have district assignments and receive `403 Forbidden`.
+Requires `Authorization: Bearer <token>` for an active manager or active officer. Users do not have district assignments and receive `403 Forbidden`.
 
 Request body replaces the full current assignment set:
 
@@ -309,17 +309,17 @@ Request body replaces the full current assignment set:
 }
 ```
 
-Use an empty array to clear all assignments. Every ID must reference an active district and duplicates are rejected. The response is the refreshed auth profile with a `districts` array. This self-service endpoint only updates actor district pivots and never changes `issues.district_id`.
+Use an empty array to clear all assignments. Every ID must reference an active district and duplicates are rejected. The response is the refreshed auth profile with a `districts` array. This self-service endpoint only updates the authenticated manager's `district_manager` assignments or authenticated officer's `district_officer` assignments and never changes `issues.district_id`.
 
 ### Officer District Assignment Updates
 
-#### Update My Districts (Docs Only)
+#### Update My Districts
 
 `PATCH {{base_url}}/api/auth/me/districts`
 
-This officer self-service flow is documented for parity with manager self-service only. The backend does **not** currently implement an officer self-service district update route or officer behavior for this request. Treat this entry as illustrative until a backend route is added.
+This officer self-service flow is implemented by the same `PATCH /api/auth/me/districts` route used for manager self-service.
 
-Illustrative request body:
+Request body:
 
 ```json
 {
@@ -327,7 +327,7 @@ Illustrative request body:
 }
 ```
 
-The intended parity behavior would replace the authenticated officer's full district assignment set through the `district_officer` pivot and return the refreshed auth profile with `districts`. It would not reassign issues or modify `issues.district_id`.
+The request replaces the authenticated officer's full district assignment set through the `district_officer` pivot and returns the refreshed auth profile with `districts`. It does not reassign issues or modify `issues.district_id`.
 
 ### Create Manager
 
