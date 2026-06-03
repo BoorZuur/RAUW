@@ -11,7 +11,9 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 
 #[Fillable([
     'user_id',
@@ -87,6 +89,40 @@ class Issue extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    /**
+     * Departments this issue is assigned to via the pivot table.
+     *
+     * This pivot is the source of truth for an issue's department assignments
+     * and supports multiple departments per issue. The legacy `department`
+     * enum column is retained for backwards compatibility only.
+     *
+     * @return BelongsToMany<\App\Models\Department, $this>
+     */
+    public function departments(): BelongsToMany
+    {
+        return $this->belongsToMany(\App\Models\Department::class, 'department_issue');
+    }
+
+    /**
+     * The department codes currently assigned to this issue.
+     *
+     * @return Collection<int, string>
+     */
+    public function departmentCodes(): Collection
+    {
+        return $this->departments->pluck('code')->values();
+    }
+
+    /**
+     * Sync the issue's assigned departments by their model identifiers.
+     *
+     * @param  iterable<int>  $departmentIds
+     */
+    public function syncDepartments(iterable $departmentIds): void
+    {
+        $this->departments()->sync($departmentIds);
     }
 
     public function assignedOfficer(): BelongsTo
