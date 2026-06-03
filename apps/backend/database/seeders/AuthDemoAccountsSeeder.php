@@ -60,7 +60,6 @@ class AuthDemoAccountsSeeder extends Seeder
         User::updateOrCreate(
             ['email' => 'demo.user@example.com'],
             [
-                'name' => 'Demo User',
                 'username' => 'demo.user',
                 'password' => self::DEMO_PASSWORD,
                 'is_active' => true,
