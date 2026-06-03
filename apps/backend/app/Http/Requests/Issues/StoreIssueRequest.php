@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\Issues;
 
-use App\Enums\Department;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -29,10 +28,11 @@ class StoreIssueRequest extends FormRequest
     /**
      * Validation rules for issue creation.
      *
-     * Required reporting fields are `title`, `content`, `category_id`,
-     * `district_id`, and `department`. The `category_id` and `district_id` must
-     * reference existing active records, and `department` must be one of the
-     * backend Department enum values. Location metadata (`postal_code`,
+     * Required reporting fields are `title`, `content`, `category_id`, and
+     * `district_id`. The `category_id` and `district_id` must reference
+     * existing active records. The issue's departments are derived
+     * server-side from the selected category's department assignments and are
+     * never accepted from the client. Location metadata (`postal_code`,
      * `address`, `latitude`, `longitude`) is optional. The optional
      * `is_anonymous` flag opts the report into anonymous display; the stable
      * `anonymous_alias` is generated server-side and is never accepted from the
@@ -48,7 +48,6 @@ class StoreIssueRequest extends FormRequest
             'content' => ['required', 'string'],
             'category_id' => ['required', 'integer', Rule::exists('categories', 'id')->where('is_active', true)],
             'district_id' => ['required', 'integer', Rule::exists('districts', 'id')->where('is_active', true)],
-            'department' => ['required', Rule::in(Department::values())],
             'postal_code' => ['nullable', 'string', 'max:10'],
             'address' => ['nullable', 'string', 'max:255'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],

@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\Issues;
 
-use App\Enums\Department;
 use App\Models\Issue;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
@@ -39,7 +38,9 @@ class UpdateIssueRequest extends FormRequest
      *
      * Only fields the author legitimately owns are editable, and every rule uses
      * `sometimes` so a partial update validates and applies only the supplied
-     * keys. Ownership (`user_id`), triage state (`status`, assignment,
+     * keys. Changing `category_id` re-derives the issue's departments
+     * server-side from the new category, so departments are never accepted from
+     * the client. Ownership (`user_id`), triage state (`status`, assignment,
      * counters), the server-generated `anonymous_alias`, and the removed
      * `neighborhood` field are intentionally excluded and can never be set
      * through this request.
@@ -53,7 +54,6 @@ class UpdateIssueRequest extends FormRequest
             'content' => ['sometimes', 'required', 'string'],
             'category_id' => ['sometimes', 'required', 'integer', Rule::exists('categories', 'id')->where('is_active', true)],
             'district_id' => ['sometimes', 'required', 'integer', Rule::exists('districts', 'id')->where('is_active', true)],
-            'department' => ['sometimes', 'required', Rule::in(Department::values())],
             'postal_code' => ['sometimes', 'nullable', 'string', 'max:10'],
             'address' => ['sometimes', 'nullable', 'string', 'max:255'],
             'latitude' => ['sometimes', 'nullable', 'numeric', 'between:-90,90'],

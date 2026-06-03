@@ -7,6 +7,7 @@ use App\Http\Requests\Issues\IndexIssueRequest;
 use App\Http\Requests\Issues\StoreIssueRequest;
 use App\Http\Requests\Issues\UpdateIssueRequest;
 use App\Http\Resources\IssueResource;
+use App\Models\Category;
 use App\Models\Issue;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -22,7 +23,7 @@ class IssueController extends Controller
      *
      * @var array<int, string>
      */
-    private const ISSUE_RELATIONS = ['user', 'category', 'district', 'attachments'];
+    private const ISSUE_RELATIONS = ['user', 'category', 'district', 'departments', 'attachments'];
 
     /**
      * List issues with composable filters and bounded pagination.
@@ -64,11 +65,15 @@ class IssueController extends Controller
      *
      * Authorization (active user only) and validation are enforced by
      * StoreIssueRequest. The issue remains user-owned through `user_id` even
-     * when reported anonymously, so the author can still manage it later. When
-     * `is_anonymous` is true a stable, unique `anonymous_alias` is generated
-     * server-side and persisted once at creation; it is never accepted from the
-     * client and never regenerated on subsequent reads or updates. When the
-     * report is not anonymous the alias stays null.
+     * when reported anonymously, so the author can still manage it later. The
+     * issue's departments are auto-assigned from the selected category's
+     * department assignments via the pivot source of truth (supporting multiple
+     * departments per issue); they are never accepted from the client. The
+     * legacy `department` enum column is kept in sync from the same category for
+     * backwards compatibility. When `is_anonymous` is true a stable, unique
+     * `anonymous_alias` is generated server-side and persisted once at creation;
+     * it is never accepted from the client and never regenerated on subsequent
+     * reads or updates. When the report is not anonymous the alias stays null.
      */
     public function store(StoreIssueRequest $request): JsonResponse
     {
@@ -80,7 +85,6 @@ class IssueController extends Controller
             'content',
             'category_id',
             'district_id',
-            'department',
             'postal_code',
             'address',
             'latitude',
@@ -94,7 +98,15 @@ class IssueController extends Controller
         $attributes['is_anonymous'] = $isAnonymous;
         $attributes['anonymous_alias'] = $isAnonymous ? $this->generateAnonymousAlias() : null;
 
+        $category = Category::query()
+            ->with('departments')
+            ->findOrFail($attributes['category_id']);
+
+        $attributes['department'] = $category->legacyDepartment()?->value;
+
         $issue = Issue::create($attributes);
+
+        $issue->syncDepartments($category->departmentIds());
 
         $issue->load(self::ISSUE_RELATIONS);
 
@@ -119,11 +131,15 @@ class IssueController extends Controller
      *
      * Ownership and authorization are enforced by UpdateIssueRequest. Only the
      * keys present in the validated payload are applied, so partial updates
-     * leave untouched fields intact. The `user_id` is never reassigned and the
-     * server-generated `anonymous_alias` is never accepted from the client:
-     * toggling `is_anonymous` on lazily generates a stable alias only when one
-     * does not already exist (so an existing alias is preserved), while
-     * toggling it off clears the alias.
+     * leave untouched fields intact. When `category_id` is supplied the issue's
+     * departments are re-derived from the new category and re-synced through the
+     * pivot source of truth (supporting multiple departments per issue), and the
+     * legacy `department` enum column is kept in sync from the same category;
+     * departments are never accepted from the client. The `user_id` is never
+     * reassigned and the server-generated `anonymous_alias` is never accepted
+     * from the client: toggling `is_anonymous` on lazily generates a stable
+     * alias only when one does not already exist (so an existing alias is
+     * preserved), while toggling it off clears the alias.
      */
     public function update(UpdateIssueRequest $request, Issue $issue): IssueResource
     {
@@ -132,13 +148,22 @@ class IssueController extends Controller
             'content',
             'category_id',
             'district_id',
-            'department',
             'postal_code',
             'address',
             'latitude',
             'longitude',
             'is_anonymous',
         ]);
+
+        $category = null;
+
+        if (array_key_exists('category_id', $attributes)) {
+            $category = Category::query()
+                ->with('departments')
+                ->findOrFail($attributes['category_id']);
+
+            $attributes['department'] = $category->legacyDepartment()?->value;
+        }
 
         if (array_key_exists('is_anonymous', $attributes)) {
             $isAnonymous = (bool) $attributes['is_anonymous'];
@@ -157,6 +182,10 @@ class IssueController extends Controller
 
         if ($attributes !== []) {
             $issue->update($attributes);
+        }
+
+        if ($category !== null) {
+            $issue->syncDepartments($category->departmentIds());
         }
 
         $issue->refresh()->load(self::ISSUE_RELATIONS);
