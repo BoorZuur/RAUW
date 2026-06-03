@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Department;
 use App\Models\District;
 use App\Models\Manager;
 use App\Models\Officer;
@@ -32,14 +33,15 @@ use InvalidArgumentException;
  *
  * Profile shape by actor type:
  *   - User:    id, name, username, email
- *   - Officer: id, username, email, badge_number, district?
- *   - Manager: id, username, email, department, is_main_manager, district?
+ *   - Officer: id, username, email, badge_number, departments, districts
+ *   - Manager: id, username, email, departments, is_main_manager, districts
  *
  * Retained fields with tradeoffs (kept intentionally, covered by tests):
  *   - `badge_number` (Officer): the client displays officer identity.
- *   - `district`     (Officer + Manager): compact assigned-district display;
- *     embedded only when the relation is already loaded. `district.id` carries
- *     the identifier, so the redundant `district_id` is omitted.
+ *   - `districts`    (Officer + Manager): compact assigned-district array;
+ *     embedded only when the `districts` relation is already loaded. Each
+ *     entry carries its own `id`, so no redundant singular `district_id` is
+ *     emitted.
  *   - `is_main_manager` (Manager): lets the client conditionally show
  *     manager-administration UI. Backend authorization remains the source of
  *     truth for protected actions regardless of this flag.
@@ -94,7 +96,8 @@ class AuthProfileResource extends JsonResource
             'username' => $officer->username,
             'email' => $officer->email,
             'badge_number' => $officer->badge_number,
-            'district' => $this->compactDistrict($officer),
+            'departments' => $this->compactDepartments($officer),
+            'districts' => $this->compactDistricts($officer),
         ];
     }
 
@@ -107,36 +110,53 @@ class AuthProfileResource extends JsonResource
             'id' => $manager->id,
             'username' => $manager->username,
             'email' => $manager->email,
-            'department' => $manager->department instanceof \BackedEnum
-                ? $manager->department->value
-                : $manager->department,
+            'departments' => $this->compactDepartments($manager),
             'is_main_manager' => (bool) $manager->is_main_manager,
-            'district' => $this->compactDistrict($manager),
+            'districts' => $this->compactDistricts($manager),
         ];
     }
 
     /**
-     * Return a compact district payload only when the relation has already
-     * been loaded on the model, avoiding unintended lazy queries.
+     * Return the actor's assigned departments as compact objects, only when
+     * the `departments` relation has already been loaded to avoid lazy queries.
      *
-     * @return array<string, mixed>|null
+     * @return array<int, array<string, mixed>>
      */
-    protected function compactDistrict(Officer|Manager $actor): ?array
+    protected function compactDepartments(Officer|Manager $actor): array
     {
-        if (! $actor->relationLoaded('district')) {
-            return null;
+        if (! $actor->relationLoaded('departments')) {
+            return [];
         }
 
-        $district = $actor->getRelation('district');
+        return $actor->getRelation('departments')
+            ->map(static fn (Department $department): array => [
+                'id' => $department->id,
+                'code' => $department->code,
+                'name' => $department->name,
+            ])
+            ->values()
+            ->all();
+    }
 
-        if (! $district instanceof District) {
-            return null;
+    /**
+     * Return the actor's assigned districts as compact objects, only when the
+     * `districts` relation has already been loaded to avoid lazy queries.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function compactDistricts(Officer|Manager $actor): array
+    {
+        if (! $actor->relationLoaded('districts')) {
+            return [];
         }
 
-        return [
-            'id' => $district->id,
-            'name' => $district->name,
-            'postal_prefix' => $district->postal_prefix,
-        ];
+        return $actor->getRelation('districts')
+            ->map(static fn (District $district): array => [
+                'id' => $district->id,
+                'name' => $district->name,
+                'postal_prefix' => $district->postal_prefix,
+            ])
+            ->values()
+            ->all();
     }
 }

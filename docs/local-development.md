@@ -166,3 +166,25 @@ npm run preview
 cd C:\Users\henk-\Development\RAUW\apps\mobile
 npm run lint
 ```
+
+## Backend Department Fixtures
+
+When you run `php artisan migrate --seed` in `apps/backend`, local seeders create canonical rows in the backend `departments` table and assign demo actors to them.
+
+- Managers have one or more departments through `department_ids` / the `department_manager` pivot.
+- Officers have one or more departments through `department_ids` / the `department_officer` pivot.
+- Use the Postman **Departments / List Departments** request to inspect local department IDs before creating managers or registering officers.
+- Department deletion is blocked while a department is assigned to any manager or officer.
+- Issue department migration is intentionally deferred to a later plan. Issue request/response fields may still use the legacy department enum/string contract for now.
+
+## Backend District Fixtures
+
+Local seeders also create canonical rows in the backend `districts` table and assign demo managers/officers through many-to-many pivots.
+
+- Managers have zero or more districts through `district_ids` / the `district_manager` pivot.
+- Officers have zero or more districts through `district_ids` / the `district_officer` pivot.
+- Auth profile payloads for managers and officers return `districts` arrays of compact objects (`id`, `name`, `postal_prefix`), not a singular actor-side `district_id`.
+- Use the Postman **Districts / List Districts** request to inspect local district IDs before creating managers, registering officers, or updating actor district assignments.
+- Active managers can replace their own districts with `PATCH /api/auth/me/districts` and `{"district_ids":[1,2]}`. Active managers can replace an officer's districts with `PATCH /api/officers/{officer}/districts`. The docs also show an officer self-service district update flow for parity, but that flow is illustrative only and is not implemented in the backend.
+- Only active managers can create, update, or delete district records. District deletion is blocked while the district is assigned to any manager, assigned to any officer, or referenced by issues.
+- Issue district handling is intentionally unchanged: `issues.district_id` remains a singular issue location/reference field and is out of scope for actor district many-to-many assignments.

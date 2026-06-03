@@ -6,10 +6,9 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'postal_prefix', 'center_lat', 'center_lng', 'radius_meters', 'is_active'])]
-class District extends Model
+#[Fillable(['code', 'name', 'is_active'])]
+class Department extends Model
 {
     use HasFactory;
 
@@ -30,35 +29,37 @@ class District extends Model
     protected function casts(): array
     {
         return [
-            'center_lat' => 'decimal:8',
-            'center_lng' => 'decimal:8',
-            'radius_meters' => 'integer',
             'is_active' => 'boolean',
         ];
     }
 
     /**
-     * The officers assigned to this district (many-to-many).
+     * Categories assigned to this department via the pivot table.
      *
-     * @return BelongsToMany<Officer, $this>
+     * @return BelongsToMany<Category, $this>
      */
-    public function officers(): BelongsToMany
+    public function categories(): BelongsToMany
     {
-        return $this->belongsToMany(Officer::class, 'district_officer');
+        return $this->belongsToMany(Category::class, 'category_department');
     }
 
     /**
-     * The managers assigned to this district (many-to-many).
+     * Managers assigned to this department via the pivot table.
      *
      * @return BelongsToMany<Manager, $this>
      */
     public function managers(): BelongsToMany
     {
-        return $this->belongsToMany(Manager::class, 'district_manager');
+        return $this->belongsToMany(Manager::class, 'department_manager');
     }
 
-    public function issues(): HasMany
+    /**
+     * Officers assigned to this department via the pivot table.
+     *
+     * @return BelongsToMany<Officer, $this>
+     */
+    public function officers(): BelongsToMany
     {
-        return $this->hasMany(Issue::class);
+        return $this->belongsToMany(Officer::class, 'department_officer');
     }
 }
