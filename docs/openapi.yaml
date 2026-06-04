@@ -28,8 +28,9 @@ paths:
         immediately issues a Sanctum bearer token, and returns the same auth
         response shape and safe profile serializer used by login. This endpoint
         does not create a session and does not require authentication. Officers
-        must be assigned to one or more existing departments through
-        department_ids. Optional district assignments use district_ids and are
+        must be assigned to one or more existing active departments through
+        department_ids; inactive department IDs are rejected with 422. Optional
+        district assignments use district_ids and are
         stored through the district_officer pivot; officers may also start with
         no assigned districts.
       requestBody:
@@ -75,7 +76,7 @@ paths:
             Validation failed. Returned when required fields are missing,
             email is invalid, password is shorter than 8 characters,
             confirm_password does not match password, department_ids is missing,
-            empty, duplicated, or references unknown departments, or
+            empty, duplicated, or references unknown or inactive departments, or
             district_ids is duplicated or references inactive/unknown districts,
             or username/email/badge_number already exists in the officers table.
           content:
@@ -1811,7 +1812,9 @@ components:
           type: array
           minItems: 1
           uniqueItems: true
-          description: Existing department IDs. Officers must have one or more departments.
+          description: >-
+            Existing active department IDs. Officers must have one or more
+            departments; inactive department IDs are rejected with 422.
           items:
             type: integer
         district_ids:
