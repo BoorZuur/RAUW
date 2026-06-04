@@ -28,9 +28,10 @@ class UpdateDepartmentRequest extends FormRequest
      * Validation rules for department updates.
      *
      * All fields use `sometimes` so a partial update only validates and applies
-     * the provided keys. The `code` uniqueness check ignores the department
-     * currently being updated so re-submitting its own code is not flagged as a
-     * conflict.
+     * the provided keys. Deactivation uses PATCH
+     * `/api/departments/{department}/disable` instead of this request. The
+     * `code` uniqueness check ignores the department currently being updated so
+     * re-submitting its own code is not flagged as a conflict.
      *
      * @return array<string, array<int, mixed>>
      */
@@ -48,7 +49,6 @@ class UpdateDepartmentRequest extends FormRequest
                 Rule::unique('departments', 'code')->ignore($departmentId),
             ],
             'name' => ['sometimes', 'required', 'string', 'max:100'],
-            'is_active' => ['sometimes', 'boolean'],
         ];
     }
 }

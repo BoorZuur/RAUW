@@ -1705,7 +1705,10 @@ paths:
     patch:
       tags: [ Departments ]
       summary: Update a department
-      description: Restricted to authenticated active main managers only.
+      description: >-
+        Restricted to authenticated active main managers only. Updates code and
+        name only; use PATCH /api/departments/{departmentId}/disable to
+        deactivate a department.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -1773,6 +1776,40 @@ paths:
       responses:
         '204':
           description: Department deleted; category and issue pivot assignments removed automatically
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+
+  /api/departments/{departmentId}/disable:
+    parameters:
+      - name: departmentId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Departments ]
+      summary: Disable a department
+      description: >-
+        Only authenticated active main managers may disable departments.
+        Standard safe removal path. Sets is_active to false while preserving
+        the department row and its category, manager, officer, and issue pivot
+        associations. Returns 409 when the update is blocked by existing
+        references.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Department disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2643,11 +2680,13 @@ components:
         Department table row. Categories are assigned to one or more departments
         through category_department. Managers reference one or more departments
         through department_manager. Officers reference one or more departments
-        through department_officer. Deleting a department is blocked while it is
-        assigned to managers or officers; otherwise it cascades only category
-        and issue pivot assignments and does not delete category or issue rows.
-        Issue departments are derived from categories, stored through the
-        department_issue pivot, and exposed to clients as read-only arrays.
+        through department_officer. Deactivation uses PATCH
+        /api/departments/{departmentId}/disable (main manager only). Deleting a
+        department is blocked while it is assigned to managers or officers;
+        otherwise it cascades only category and issue pivot assignments and does
+        not delete category or issue rows. Issue departments are derived from
+        categories, stored through the department_issue pivot, and exposed to
+        clients as read-only arrays.
       properties:
         id:
           type: integer
@@ -2694,8 +2733,6 @@ components:
         name:
           type: string
           maxLength: 100
-        is_active:
-          type: boolean
 
     IssueCreate:
       type: object

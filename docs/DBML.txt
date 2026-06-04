@@ -88,7 +88,7 @@ Table departments {
   id               int          [pk, increment]
   code             varchar(50)  [not null, unique, note: 'Stabiele code, bv. wijkbeheer of boa_jeugd; gebruikt door categorieën, managers en BOA-afdelingen']
   name             varchar(100) [not null, note: 'Weergavenaam']
-  is_active        tinyint(1)   [not null, default: 1]
+  is_active        tinyint(1)   [not null, default: 1, note: 'Standaard veilige deactivatie via PATCH /api/departments/{id}/disable (main manager); generieke PATCH mag is_active niet wijzigen']
   created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
   updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
 }
