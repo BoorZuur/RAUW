@@ -32,7 +32,7 @@ trait AssignsActorDepartments
     {
         return [
             'department_ids' => ['present', 'array'],
-            'department_ids.*' => ['integer', 'distinct', Rule::exists('departments', 'id')],
+            'department_ids.*' => ['integer', 'distinct', Rule::exists('departments', 'id')->where('is_active', true)],
         ];
     }
 
