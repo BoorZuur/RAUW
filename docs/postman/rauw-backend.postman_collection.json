@@ -331,7 +331,7 @@
           "response": []
         }
       ],
-      "description": "Authentication requests for user, officer, and manager actors."
+      "description": "Authentication requests for user, officer, and manager actors. Inactive accounts: a valid bearer token for a deactivated actor receives 403 (message: \"This account is inactive.\") on most protected routes, but may still call Get Me, Logout, and PATCH /api/auth/me for profile recovery. PATCH /api/auth/me/districts and operational APIs (e.g. List Issues) return 403 while inactive. To test: deactivate an actor in the database, log in before deactivation or reuse an existing token, then call Get Me (200) vs a protected route such as List Issues (403)."
     },
     {
       "name": "Managers",

@@ -6,6 +6,14 @@ info:
     the provided ERD. This spec focuses on the main public/admin endpoints used
     by mobile/web clients and officer/manager consoles. It uses Laravel Sanctum
     bearer token authentication for API consumers.
+
+    Inactive accounts: after `auth:sanctum` resolves a bearer token, global
+    middleware rejects deactivated users, officers, and managers with **403**
+    (`InactiveAccount`) on protected routes. Login already returns generic
+    **401** for inactive credentials. While inactive, actors may still call
+    **GET** `/api/auth/me`, **POST** `/api/auth/logout`, and **PATCH**
+    `/api/auth/me` (self-service identity only). All other protected routes,
+    including **PATCH** `/api/auth/me/districts`, return **403**.
   version: '1.0.0'
 servers:
   - url: /
@@ -241,7 +249,8 @@ paths:
       description: >-
         Returns the authenticated actor_type and cleaned safe profile payload.
         This response does not issue a token. actor_type is only present at the
-        top level; profile omits internal auth fields.
+        top level; profile omits internal auth fields. Inactive accounts may
+        still call this route (whitelisted by global inactive-actor middleware).
       security:
         - bearerAuth: [ ]
       responses:
@@ -276,12 +285,14 @@ paths:
       tags: [ Auth ]
       summary: Update my profile identity fields
       description: >-
-        Self-service identity update for active users, officers, and managers.
-        Accepts a partial PATCH body: send only the fields to change. Users and
-        managers may update username, email, and password; officers may also
-        update badge_number. When password is present, confirm_password must
-        match. Department, district, and privileged fields are rejected with
-        422 validation errors and must not be sent on this path.
+        Self-service identity update for users, officers, and managers.
+        Inactive accounts may call this route to recover profile fields
+        (whitelisted by global inactive-actor middleware). Accepts a partial
+        PATCH body: send only the fields to change. Users and managers may
+        update username, email, and password; officers may also update
+        badge_number. When password is present, confirm_password must match.
+        Department, district, and privileged fields are rejected with 422
+        validation errors and must not be sent on this path.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -351,7 +362,8 @@ paths:
       description: >-
         Revokes only the Sanctum bearer token used for the current request.
         Other tokens issued to the same actor remain valid until explicitly
-        revoked or expired.
+        revoked or expired. Inactive accounts may call this route (whitelisted by
+        global inactive-actor middleware).
       security:
         - bearerAuth: [ ]
       responses:
@@ -379,9 +391,11 @@ paths:
         Self-service district assignment endpoint for active managers and active
         officers. Replaces the authenticated actor's district assignments with
         the supplied district_ids array and returns the refreshed auth profile.
-        Users receive 403 because they do not have district assignments. The
-        request updates only actor district pivots and never modifies the
-        singular issues.district_id issue location/reference field.
+        Users receive 403 because they do not have district assignments.
+        Inactive accounts receive 403 from global inactive-actor middleware
+        (not whitelisted). The request updates only actor district pivots and
+        never modifies the singular issues.district_id issue location/reference
+        field.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -824,6 +838,8 @@ paths:
                         type: integer
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InactiveAccount'
         '422':
           $ref: '#/components/responses/ValidationError'
 
@@ -1624,6 +1640,19 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+    InactiveAccount:
+      description: >-
+        Authenticated account is inactive. Returned by global middleware on
+        protected routes when the bearer token is valid but the actor's account
+        is deactivated. Whitelisted while inactive: GET /api/auth/me, POST
+        /api/auth/logout, PATCH /api/auth/me. Login rejects inactive credentials
+        with 401.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: This account is inactive.
     NotFound:
       description: Resource not found
       content:

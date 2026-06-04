@@ -47,8 +47,9 @@ Route::middleware('throttle:10,1')->prefix('auth')->group(function (): void {
 
 // Authenticated auth endpoints. `auth:sanctum` resolves the bearer token
 // against the personal_access_tokens table and works for User, Officer,
-// and Manager tokenable models alike.
-Route::middleware('auth:sanctum')->prefix('auth')->group(function (): void {
+// and Manager tokenable models alike. `actor.active` runs after Sanctum so
+// inactive actors are blocked except on the whitelisted auth.me routes below.
+Route::middleware(['auth:sanctum', 'actor.active'])->prefix('auth')->group(function (): void {
     Route::get('me', ProfileController::class)->name('auth.me');
     Route::post('logout', LogoutController::class)->name('auth.logout');
 
@@ -72,7 +73,7 @@ Route::middleware('auth:sanctum')->prefix('auth')->group(function (): void {
 // non-main managers, and inactive managers all receive a 403. The endpoint is
 // rate-limited to mitigate abuse. No login token is issued for the created
 // manager, who must authenticate via `POST /api/auth/login`.
-Route::middleware(['auth:sanctum', 'throttle:30,1'])->group(function (): void {
+Route::middleware(['auth:sanctum', 'actor.active', 'throttle:30,1'])->group(function (): void {
     Route::post('managers', [ManagerController::class, 'store'])->name('managers.store');
 
     // Manager-protected officer district assignment. Authorization is narrowed
