@@ -2,10 +2,8 @@ import React, { useState } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { Map, Megaphone, Newspaper, LayoutGrid, Bell, User, Moon, Sun, X } from 'lucide-react';
 import RauwLogoImg from '../assets/LogoRAUW.png';
-import { useTheme } from '../ThemeContext.jsx'; // Aangepaste import
 
-export default function Navbar() {
-    const { isDark, toggleTheme } = useTheme();
+export default function Navbar({ currentTheme, toggleTheme }) {
     const location = useLocation();
     const navigate = useNavigate();
     const [showNotifications, setShowNotifications] = useState(false);
@@ -44,7 +42,7 @@ export default function Navbar() {
             {/* Utilities */}
             <div className="flex items-center gap-2 text-primary-text">
                 <button onClick={toggleTheme} className="p-3 rounded-2xl hover:bg-black/5 dark:hover:bg-white/5 transition-all">
-                    {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                    {currentTheme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                 </button>
 
                 <div className="relative">

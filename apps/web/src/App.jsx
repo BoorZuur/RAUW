@@ -1,5 +1,5 @@
 import './App.css';
-import {createBrowserRouter, RouterProvider} from "react-router-dom";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
 // Imports
 import Onboarding from "./user/Onboarding.jsx";
@@ -9,6 +9,7 @@ import Register from "./user/U_Register.jsx";
 // import Feed from "./user/Feed.jsx";
 // import Report from "./user/Report.jsx";
 // import NewsFeed from "./user/Newsfeed.jsx";
+import Account from "./user/Account.jsx";
 // import AccountSettings from "./user/AccountSettings.jsx";
 // import CommandCenter from "./handhaver/CommandCenter.jsx";
 // import SectorSettings from "./handhaver/SectorSettings.jsx";
@@ -41,6 +42,7 @@ function App() {
         {path: "/registreerhandhaver", element: <HandhaverRegister/>},
         {path: "/loginmanager", element: <ManagerLogin/>},
 
+        { path: "/account", element: <Account /> },
         // 2. User Routes
         // {
         //     element: <RoleProtectedRoute allowedRoles={['officer']} />,
