@@ -11,10 +11,8 @@ import Register from "./user/U_Register.jsx";
 // import NewsFeed from "./user/Newsfeed.jsx";
 import Account from "./user/Account.jsx";
 // import AccountSettings from "./user/AccountSettings.jsx";
-
 // import CommandCenter from "./handhaver/CommandCenter.jsx";
 // import SectorSettings from "./handhaver/SectorSettings.jsx";
-// import ServiceProfile from "./handhaver/ServiceProfile.jsx";
 // import H_ReportsOverview from "./handhaver/H_ReportsOverview.jsx";
 import HandhaverLogin from "./handhaver/H_Login.jsx";
 import HandhaverRegister from "./handhaver/H_Register.jsx";
@@ -37,30 +35,14 @@ import ManagerLogin from "./manager/M_Login.jsx";
 function App() {
     const router = createBrowserRouter([
         // 1. Publieke routes
-        { path: "/", element: <Onboarding /> },
-        { path: "/login", element: <Login /> },
-        { path: "/registreer", element: <Register /> },
-        { path: "/loginhandhaver", element: <HandhaverLogin /> },
-        { path: "/registreerhandhaver", element: <HandhaverRegister /> },
-        { path: "/loginmanager", element: <ManagerLogin /> },
+        {path: "/", element: <Onboarding/>},
+        {path: "/login", element: <Login/>},
+        {path: "/registreer", element: <Register/>},
+        {path: "/loginhandhaver", element: <HandhaverLogin/>},
+        {path: "/registreerhandhaver", element: <HandhaverRegister/>},
+        {path: "/loginmanager", element: <ManagerLogin/>},
 
-        // { path: "/map", element: <Map /> },
-        // { path: "/feed", element: <Feed /> },
-        // { path: "/meld", element: <Report /> },
         { path: "/account", element: <Account /> },
-        // { path: "/instellingen", element: <AccountSettings /> },
-        // { path: "/nieuws", element: <NewsFeed /> },
-        //
-        // { path: "/meldingen", element: <CommandCenter /> },
-        // { path: "/dienstprofiel", element: <ServiceProfile /> },
-        // { path: "/rapport", element: <H_ReportsOverview /> },
-        // { path: "/sectorinstellingen", element: <SectorSettings /> },
-        //
-        // { path: "/dashboard", element: <M_dashboard /> },
-        // { path: "/flaggedaccounts", element: <FlaggedDashboard /> },
-        // { path: "/rapportoverzicht", element: <ReportsOverview /> },
-        // { path: "/gebruikermanagement", element: <UserManagement /> },
-
         // 2. User Routes
         // {
         //     element: <RoleProtectedRoute allowedRoles={['officer']} />,
