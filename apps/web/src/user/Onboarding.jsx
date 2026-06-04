@@ -19,7 +19,7 @@ const onboardingSteps = [
     {
         id: 2,
         tag: "MELDEN IS MAKKELIJK",
-        title: "Melden, beschrijven,\nklaar.",
+        title: "Melden, beschrijven en klaar.",
         description: "Kies de plek op de kaart, omschrijf wat je zag en stuur het in. Anoniem kan ook.",
         buttonText: "Verder",
         bgImage: BgRotterdam2,
@@ -28,7 +28,7 @@ const onboardingSteps = [
     {
         id: 3,
         tag: "BOA'S REAGEREN DIRECT",
-        title: "Je melding\nverdwijnt\nniet in een la.",
+        title: "Je melding verdwijnt\nniet in een lade.",
         description: "Handhavers van de gemeente Rotterdam reageren op jouw signalen. Je volgt de status live — van nieuw tot opgelost.",
         buttonText: "Account aanmaken",
         showArrow: true,
@@ -54,7 +54,7 @@ export default function Onboarding() {
         if (currentStep < onboardingSteps.length - 1) {
             triggerStepChange(currentStep + 1);
         } else {
-            navigate('/register');
+            navigate('/registreer');
         }
     };
 
@@ -68,7 +68,7 @@ export default function Onboarding() {
 
     return (
         <div
-            className="fixed inset-0 h-screen w-screen m-0 p-4 sm:p-6 flex flex-col justify-between transition-all duration-600 ease-in-out select-none overflow-hidden bg-no-repeat bg-cover bg-center"
+            className="fixed inset-0 h-screen w-screen m-0 p-4 sm:p-6 flex flex-col justify-between transition-all duration-600 ease-in-out select-none overflow-hidden bg-no-repeat bg-cover bg-center text-white"
             style={{
                 backgroundImage: `linear-gradient(to bottom, rgba(0, 0, 0, 0.7), rgba(18, 24, 32, 0.9)), url('${step.bgImage}')`,
                 backgroundColor: step.bgColor
@@ -76,17 +76,13 @@ export default function Onboarding() {
         >
             <header className="w-full flex justify-between items-center z-30 max-w-7xl mx-auto pointer-events-none h-20 sm:h-24 shrink-0">
                 <div className="w-20 h-20 sm:w-24 sm:h-24 overflow-hidden flex items-center justify-center transition-transform hover:scale-105 pointer-events-auto">
-                    <img
-                        src={RauwLogoImg}
-                        alt="RAUW Rotterdam"
-                        className="w-full h-full object-contain"
-                    />
+                    <img src={RauwLogoImg} alt="RAUW Rotterdam" className="w-full h-full object-contain" />
                 </div>
 
                 <div className="flex items-center ml-auto pointer-events-auto">
                     <button
                         onClick={() => navigate('/login')}
-                        className="font-(--font-family-label) text-sm sm:text-base tracking-wide text-(--secondary-text-d) hover:text-(--primary-text-d) transition-colors bg-transparent border-none cursor-pointer"
+                        className="font-label text-sm sm:text-base tracking-wide text-gray-300 hover:text-white transition-colors bg-transparent border-none cursor-pointer"
                     >
                         Inloggen
                     </button>
@@ -100,45 +96,43 @@ export default function Onboarding() {
                             isTransitioning ? 'opacity-0 scale-98 blur-sm' : 'opacity-100 scale-100 blur-none'
                         }`}
                     >
-                        <div className="inline-block bg-white/10 backdrop-blur-md px-3.5 py-1.5 rounded-full text-[11px] sm:text-xs font-(--font-family-label) tracking-widest text-(--secondary-text-d) mb-4 sm:mb-6 border border-white/5 uppercase select-none">
+                        <div className="inline-block bg-white/10 backdrop-blur-md px-3.5 py-1.5 rounded-full text-[11px] sm:text-xs font-label tracking-widest text-gray-300 mb-4 sm:mb-6 border border-white/5 uppercase select-none">
                             {step.tag}
                         </div>
 
-                        <h1 className="text-3xl sm:text-5xl md:text-6xl tracking-tight leading-[1.1] mb-4 sm:mb-6 whitespace-pre-line font-(--font-family-headline) drop-shadow-sm">
+                        <h1 className="text-3xl sm:text-5xl md:text-6xl tracking-tight leading-[1.1] mb-4 sm:mb-6 whitespace-pre-line font-headline drop-shadow-sm">
                             {step.title}
                         </h1>
 
-                        <p className="text-sm sm:text-base md:text-lg text-(--secondary-text-d) leading-relaxed font-(--font-family-body) max-w-md md:max-w-lg text-balance mx-auto">
+                        <p className="text-sm sm:text-base md:text-lg text-gray-300 leading-relaxed font-body max-w-md md:max-w-lg text-balance mx-auto">
                             {step.description}
                         </p>
                     </div>
                 </div>
 
-                <div className="w-full flex justify-center mb-6 sm:mb-8 mt-4" aria-label={`Stap ${currentStep + 1} van 3`}>
+                {/* Progress Indicators */}
+                <div className="w-full flex justify-center mb-6 sm:mb-8 mt-4">
                     <div className="flex space-x-2.5">
                         {onboardingSteps.map((_, index) => (
                             <button
                                 key={index}
-                                onClick={() => {
-                                    if (index !== currentStep) triggerStepChange(index);
-                                }}
+                                onClick={() => index !== currentStep && triggerStepChange(index)}
                                 className={`h-1 transition-all duration-500 rounded-full cursor-pointer ${
                                     index === currentStep ? 'w-10 bg-white' : 'w-5 bg-white/20 hover:bg-white/40'
                                 }`}
-                                aria-label={`Ga naar stap ${index + 1}`}
                             />
                         ))}
                     </div>
                 </div>
 
+                {/* Navigation Buttons */}
                 <div className="w-full h-14 flex items-center justify-center relative">
                     <div className="flex items-center justify-center space-x-4 absolute inset-0">
-                        <div className="w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center shrink-0">
+                        <div className="w-12 h-12 flex items-center justify-center shrink-0">
                             {currentStep > 0 && (
                                 <button
                                     onClick={handleBack}
                                     className="flex items-center justify-center w-full h-full rounded-full border border-white/20 bg-black/10 backdrop-blur-sm hover:bg-white/10 text-white transition-all active:scale-95 cursor-pointer"
-                                    aria-label="Vorige stap"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
@@ -149,7 +143,7 @@ export default function Onboarding() {
 
                         <button
                             onClick={handleNext}
-                            className="w-48 sm:w-64 h-12 sm:h-14 bg-white hover:bg-neutral-100 active:scale-98 text-black font-(--font-family-label) rounded-full transition-all flex items-center justify-center space-x-2.5 text-sm sm:text-base md:text-lg shadow-lg cursor-pointer shrink-0"
+                            className="w-48 sm:w-64 h-12 sm:h-14 bg-white hover:bg-neutral-100 active:scale-98 text-black font-label rounded-full transition-all flex items-center justify-center space-x-2.5 text-sm sm:text-base shadow-lg cursor-pointer"
                         >
                             <span>{step.buttonText}</span>
                             {step.showArrow && (
@@ -158,32 +152,13 @@ export default function Onboarding() {
                                 </svg>
                             )}
                         </button>
-
-                        <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 hidden sm:block" />
-                    </div>
-                </div>
-
-                <div className="w-full h-6 mt-4 flex justify-center items-center">
-                    <div className={`transition-all duration-600 ease-in-out ${currentStep === onboardingSteps.length - 1 ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}`}>
-                        <p className="text-xs sm:text-sm font-(--font-family-label) text-(--secondary-text-d)">
-                            Al een account?{' '}
-                            <button
-                                onClick={() => navigate('/login')}
-                                className="text-white underline font-semibold hover:text-neutral-300 ml-1 transition-colors bg-transparent border-none cursor-pointer p-0 text-xs sm:text-sm"
-                            >
-                                Inloggen
-                            </button>
-                        </p>
+                        <div className="w-12 h-12 shrink-0 hidden sm:block" />
                     </div>
                 </div>
             </main>
 
-            <footer className="w-full max-w-7xl mx-auto flex justify-between items-center text-[10px] sm:text-[11px] font-(--font-family-label) text-(--secondary-text-d)/40 z-20 pt-2 sm:pt-4 border-t border-white/5 shrink-0">
+            <footer className="w-full max-w-7xl mx-auto flex justify-between items-center text-[10px] sm:text-[11px] font-label text-gray-400 z-20 pt-2 sm:pt-4 border-t border-white/5 shrink-0">
                 <span>© {new Date().getFullYear()} RAUW Rotterdam</span>
-                <div className="space-x-3">
-                    <button onClick={() => navigate('/privacy')} className="hover:underline bg-transparent border-none text-[10px] sm:text-[11px] text-(--secondary-text-d)/40 cursor-pointer p-0">Privacy</button>
-                    <button onClick={() => navigate('/voorwaarden')} className="hover:underline bg-transparent border-none text-[10px] sm:text-[11px] text-(--secondary-text-d)/40 cursor-pointer p-0">Voorwaarden</button>
-                </div>
             </footer>
         </div>
     );

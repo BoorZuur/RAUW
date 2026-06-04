@@ -9,7 +9,7 @@ import Register from "./user/U_Register.jsx";
 // import Feed from "./user/Feed.jsx";
 // import Report from "./user/Report.jsx";
 // import NewsFeed from "./user/Newsfeed.jsx";
-// import Account from "./user/Account.jsx";
+import Account from "./user/Account.jsx";
 // import AccountSettings from "./user/AccountSettings.jsx";
 
 // import CommandCenter from "./handhaver/CommandCenter.jsx";
@@ -37,29 +37,29 @@ import ManagerLogin from "./manager/M_Login.jsx";
 function App() {
     const router = createBrowserRouter([
         // 1. Publieke routes
-        {path: "/", element: <Onboarding/>},
-        {path: "/login", element: <Login/>},
-        {path: "/register", element: <Register/>},
-        {path: "/handhaver_login", element: <HandhaverLogin/>},
-        {path: "/handhaver_register", element: <HandhaverRegister/>},
-        {path: "/manager_login", element: <ManagerLogin/>},
+        { path: "/", element: <Onboarding /> },
+        { path: "/login", element: <Login /> },
+        { path: "/registreer", element: <Register /> },
+        { path: "/loginhandhaver", element: <HandhaverLogin /> },
+        { path: "/registreerhandhaver", element: <HandhaverRegister /> },
+        { path: "/loginmanager", element: <ManagerLogin /> },
 
         // { path: "/map", element: <Map /> },
         // { path: "/feed", element: <Feed /> },
-        // { path: "/report", element: <Report /> },
+        // { path: "/meld", element: <Report /> },
+        { path: "/account", element: <Account /> },
+        // { path: "/instellingen", element: <AccountSettings /> },
         // { path: "/nieuws", element: <NewsFeed /> },
-        // { path: "/account", element: <Account /> },
-        // { path: "/account_instellingen", element: <AccountSettings /> },
         //
-        // { path: "/commando_centrum", element: <CommandCenter /> },
-        {path: "/dienstprofiel", element: <ServiceProfile/>},
-        // { path: "/handhaver_rapport", element: <H_ReportsOverview /> },
-        // { path: "/sector_instellingen", element: <SectorSettings /> },
+        // { path: "/meldingen", element: <CommandCenter /> },
+        // { path: "/dienstprofiel", element: <ServiceProfile /> },
+        // { path: "/rapport", element: <H_ReportsOverview /> },
+        // { path: "/sectorinstellingen", element: <SectorSettings /> },
         //
-        // { path: "/manager_dashboard", element: <M_dashboard /> },
-        // { path: "/flagged_dashboard", element: <FlaggedDashboard /> },
-        // { path: "/reports_overview", element: <ReportsOverview /> },
-        // { path: "/gebruiker_management", element: <UserManagement /> },
+        // { path: "/dashboard", element: <M_dashboard /> },
+        // { path: "/flaggedaccounts", element: <FlaggedDashboard /> },
+        // { path: "/rapportoverzicht", element: <ReportsOverview /> },
+        // { path: "/gebruikermanagement", element: <UserManagement /> },
 
         // 2. User Routes
         // {
@@ -67,10 +67,10 @@ function App() {
         //     children: [
         //         { path: "/map", element: <Map /> },
         //         { path: "/feed", element: <Feed /> },
-        //         { path: "/report", element: <Report /> },
+        //         { path: "/meld", element: <Report /> },
         //         { path: "/nieuws", element: <NewsFeed /> },
         //         { path: "/account", element: <Account /> },
-        //         { path: "/account_instellingen", element: <AccountSettings /> },
+        //         { path: "/instellingen", element: <AccountSettings /> },
         //     ]
         // },
         //
@@ -78,10 +78,10 @@ function App() {
         // {
         //     element: <RoleProtectedRoute allowedRoles={['boa']} />,
         //     children: [
-        //         { path: "/commando_centrum", element: <CommandCenter /> },
+        //         { path: "/meldingen", element: <CommandCenter /> },
         //         { path: "/dienstprofiel", element: <ServiceProfile /> },
-        //         { path: "/handhaver_rapport", element: <H_ReportsOverview /> },
-        //         { path: "/sector_instellingen", element: <SectorSettings /> },
+        //         { path: "/rapport", element: <H_ReportsOverview /> },
+        //         { path: "/sectorinstellingen", element: <SectorSettings /> },
         //     ]
         // },
 
@@ -89,10 +89,10 @@ function App() {
         // {
         //     element: <RoleProtectedRoute allowedRoles={['manager']} />,
         //     children: [
-        //         { path: "/manager_dashboard", element: <M_dashboard /> },
-        //         { path: "/flagged_dashboard", element: <FlaggedDashboard /> },
-        //         { path: "/reports_overview", element: <ReportsOverview /> },
-        //         { path: "/gebruiker_management", element: <UserManagement /> },
+        //         { path: "/dashboard", element: <M_dashboard /> },
+        //         { path: "/flaggeddashboard", element: <FlaggedDashboard /> },
+        //         { path: "/rapportoverzicht", element: <ReportsOverview /> },
+        //         { path: "/gebruikermanagement", element: <UserManagement /> },
         //     ]
         // }
     ]);
