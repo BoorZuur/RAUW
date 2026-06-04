@@ -335,6 +335,31 @@ Requires `Authorization: Bearer <token>` for an authenticated, active manager wh
 
 Optional query params: `page` (default `1`), `per_page` (default `20`, max `100`). Results include only managers with `is_main_manager: true`, ordered by username ascending, with `departments` and `districts` compact arrays. The response uses Laravel pagination (`data`, `links`, `meta`).
 
+### Update Main Manager
+
+`PATCH {{base_url}}/api/main-managers/{managerId}`
+
+Requires `Authorization: Bearer <token>` for an authenticated, active manager whose profile has `is_main_manager: true`. The path target must also be a main manager (`is_main_manager: true`); ordinary manager IDs return `404`.
+
+Request body (send only fields to change):
+
+```json
+{
+  "username": "updated-main",
+  "email": "updated.main@example.com",
+  "password": "newpassword123",
+  "confirm_password": "newpassword123"
+}
+```
+
+`is_main_manager`, `is_active`, `created_by_manager_id`, `department_ids`, and `district_ids` are rejected with `422`. Returns the updated `Manager` resource (no token fields).
+
+### Disable Main Manager
+
+`PATCH {{base_url}}/api/main-managers/{managerId}/disable`
+
+Requires the same main-manager authorization as update. Sets `is_active` to `false` on the target main manager and returns the updated `Manager` resource. Returns `409` when the target is the last active main manager. Ordinary manager IDs return `404`.
+
 ### Create Manager
 
 `POST {{base_url}}/api/managers`

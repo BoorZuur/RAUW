@@ -103,4 +103,23 @@ class Manager extends Authenticatable
     {
         return $this->hasMany(UserReview::class, 'reviewed_by_manager_id');
     }
+
+    /**
+     * Resolve the manager for implicit route model binding.
+     *
+     * Main-manager routes require `is_main_manager = true` on the target row;
+     * ordinary manager routes (phase 13) will scope to non-main managers.
+     */
+    public function resolveRouteBinding($value, $field = null): ?static
+    {
+        $field = $field ?? $this->getRouteKeyName();
+
+        $query = static::query()->where($field, $value);
+
+        if (request()->routeIs('main-managers.*')) {
+            $query->where('is_main_manager', true);
+        }
+
+        return $query->first();
+    }
 }

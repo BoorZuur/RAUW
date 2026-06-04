@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Managers\DisableMainManagerRequest;
 use App\Http\Requests\Managers\IndexMainManagerRequest;
+use App\Http\Requests\Managers\UpdateMainManagerRequest;
 use App\Http\Resources\ManagerResource;
 use App\Models\Manager;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Response;
 
 class MainManagerController extends Controller
 {
@@ -28,5 +32,66 @@ class MainManagerController extends Controller
             ->withQueryString();
 
         return ManagerResource::collection($managers);
+    }
+
+    /**
+     * Update another main manager's identity fields.
+     *
+     * Authorization is enforced by UpdateMainManagerRequest, which restricts
+     * this action to an authenticated, active, main manager. Only username,
+     * email, and password may be changed; privileged fields are rejected with
+     * validation errors. The route binding limits the target to rows with
+     * `is_main_manager = true`.
+     */
+    public function update(UpdateMainManagerRequest $request, Manager $manager): ManagerResource
+    {
+        $attributes = $request->changedAttributes();
+
+        if ($attributes !== []) {
+            $manager->fill($attributes);
+            $manager->save();
+        }
+
+        $manager->load(['departments', 'districts']);
+
+        return new ManagerResource($manager);
+    }
+
+    /**
+     * Disable a main manager without removing the row.
+     *
+     * Authorization is enforced by DisableMainManagerRequest. Setting
+     * `is_active = false` preserves the manager record and historical
+     * associations. Deactivation is blocked when the target is the last active
+     * main manager so the system always retains at least one.
+     */
+    public function disable(DisableMainManagerRequest $request, Manager $manager): ManagerResource|JsonResponse
+    {
+        if ($this->isLastActiveMainManager($manager)) {
+            return response()->json([
+                'message' => 'Cannot deactivate the last active main manager.',
+            ], Response::HTTP_CONFLICT);
+        }
+
+        $manager->update(['is_active' => false]);
+
+        $manager->load(['departments', 'districts']);
+
+        return new ManagerResource($manager);
+    }
+
+    /**
+     * Whether disabling the given manager would leave no active main managers.
+     */
+    private function isLastActiveMainManager(Manager $manager): bool
+    {
+        if (! $manager->is_active) {
+            return false;
+        }
+
+        return Manager::query()
+            ->where('is_main_manager', true)
+            ->where('is_active', true)
+            ->count() <= 1;
     }
 }

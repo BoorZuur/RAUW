@@ -81,6 +81,14 @@ Route::middleware(['auth:sanctum', 'actor.active', 'throttle:30,1'])->group(func
     // receive a 403. Results include only rows with `is_main_manager = true`,
     // ordered by username ascending, with departments and districts eager loaded.
     Route::get('main-managers', [MainManagerController::class, 'index'])->name('main-managers.index');
+    // Main-manager-protected main manager update and disable. Authorization is
+    // narrowed inside the main-manager FormRequests to an authenticated, active
+    // main manager only. Route binding limits `{manager}` to rows with
+    // `is_main_manager = true` (non-main or unknown ids return 404). Update
+    // accepts partial username, email, and password only; disable sets
+    // `is_active = false` and rejects deactivating the last active main manager.
+    Route::patch('main-managers/{manager}', [MainManagerController::class, 'update'])->name('main-managers.update');
+    Route::patch('main-managers/{manager}/disable', [MainManagerController::class, 'disable'])->name('main-managers.disable');
 
     Route::post('managers', [ManagerController::class, 'store'])->name('managers.store');
 

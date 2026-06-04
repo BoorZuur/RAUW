@@ -382,6 +382,88 @@
           "response": []
         },
         {
+          "name": "Update Main Manager",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"updated.main@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/main-managers/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "main-managers",
+                "1"
+              ]
+            },
+            "description": "Update another main manager's username, email, and/or password as an authenticated active main manager. Send only fields to change. When password is present, confirm_password must match. Privileged fields (is_main_manager, is_active, created_by_manager_id, department_ids, district_ids) are rejected with 422. Path target must have is_main_manager=true; ordinary managers and unknown ids return 404. Users, officers, ordinary managers, inactive managers, and unauthenticated requests receive 403."
+          },
+          "response": []
+        },
+        {
+          "name": "Disable Main Manager",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/main-managers/1/disable",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "main-managers",
+                "1",
+                "disable"
+              ]
+            },
+            "description": "Deactivate a main manager (is_active=false) as an authenticated active main manager. Path target must have is_main_manager=true; ordinary managers and unknown ids return 404. Returns 409 when disabling the last active main manager. Users, officers, ordinary managers, inactive managers, and unauthenticated requests receive 403."
+          },
+          "response": []
+        },
+        {
           "name": "Create Manager",
           "event": [
             {

@@ -538,6 +538,87 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
 
+  /api/main-managers/{managerId}:
+    parameters:
+      - name: managerId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Managers ]
+      summary: Update a main manager
+      description: >-
+        Update another main manager's username, email, and/or password as an
+        authenticated active main manager. Send only fields to change. When
+        password is present, confirm_password must match. Email must remain
+        unique across users, officers, and managers. Privileged fields
+        (is_main_manager, is_active, created_by_manager_id, department_ids, and
+        district_ids) are not accepted. The path target must have
+        is_main_manager=true; ordinary managers and unknown ids return 404.
+        Users, officers, ordinary managers, inactive managers, and
+        unauthenticated requests receive 403.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MainManagerUpdate'
+            example:
+              email: updated.main@example.com
+      responses:
+        '200':
+          description: Updated main manager profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manager'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/main-managers/{managerId}/disable:
+    parameters:
+      - name: managerId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Managers ]
+      summary: Disable a main manager
+      description: >-
+        Deactivate a main manager as an authenticated active main manager by
+        setting is_active to false while preserving the row and associations.
+        The path target must have is_main_manager=true; ordinary managers and
+        unknown ids return 404. Deactivation is rejected with 409 when the
+        target is the last active main manager. Users, officers, ordinary
+        managers, inactive managers, and unauthenticated requests receive 403.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Main manager disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manager'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+
   /api/managers:
     post:
       tags: [ Managers ]
@@ -1819,6 +1900,32 @@ components:
           format: email
         password:
           type: string
+
+    MainManagerUpdate:
+      type: object
+      description: >-
+        Partial main-manager identity update. All fields are optional; send only
+        fields to change. When password is present, confirm_password is required
+        and must match. Privileged fields (is_main_manager, is_active,
+        created_by_manager_id, department_ids, and district_ids) are not
+        accepted on this path.
+      properties:
+        username:
+          type: string
+          maxLength: 50
+          description: Unique manager username. Uniqueness is checked within managers.
+        email:
+          type: string
+          format: email
+          description: Unique email address across users, officers, and managers.
+        password:
+          type: string
+          format: password
+          minLength: 8
+        confirm_password:
+          type: string
+          format: password
+          description: Required when password is present; must exactly match password.
 
     ManagerCreate:
       type: object
