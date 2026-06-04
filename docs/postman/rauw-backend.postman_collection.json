@@ -158,6 +158,72 @@
           "response": []
         },
         {
+          "name": "Register User - Duplicate Email (Generic 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Duplicate registration returns 422', function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "const emailErrors = (body.errors && body.errors.email) || [];",
+                  "const genericMessage = 'The provided credentials could not be registered.';",
+                  "",
+                  "pm.test('Email error is generic (no email enumeration)', function () {",
+                  "    pm.expect(emailErrors.length).to.be.above(0);",
+                  "    const joined = emailErrors.join(' ');",
+                  "    pm.expect(joined).to.include(genericMessage);",
+                  "    pm.expect(joined.toLowerCase()).to.not.include('taken');",
+                  "    pm.expect(joined.toLowerCase()).to.not.include('already been');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"duplicate-user-attempt\",\n  \"email\": \"demo.user@example.com\",\n  \"password\": \"password123\",\n  \"confirm_password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register/user",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register",
+                "user"
+              ]
+            },
+            "description": "Smoke test for anti-enumeration registration errors. Uses a seeded local email (demo.user@example.com) with a new username. Expects 422 with errors.email containing the generic message \"The provided credentials could not be registered.\" — not Laravel's default \"already been taken\" wording. Does not store a token."
+          },
+          "response": []
+        },
+        {
           "name": "Login",
           "event": [
             {
@@ -233,6 +299,76 @@
           "response": []
         },
         {
+          "name": "Login as Main Manager",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Main manager login succeeded', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Authenticated actor is main manager', function () {",
+                  "    pm.expect(response.actor_type).to.eql('manager');",
+                  "    pm.expect(response.profile.is_main_manager).to.eql(true);",
+                  "});",
+                  "",
+                  "if (response.access_token) {",
+                  "    pm.collectionVariables.set('access_token', response.access_token);",
+                  "    pm.collectionVariables.set('main_manager_access_token', response.access_token);",
+                  "",
+                  "    if (pm.environment.name) {",
+                  "        pm.environment.set('access_token', response.access_token);",
+                  "        pm.environment.set('main_manager_access_token', response.access_token);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"demo.manager@example.com\",\n  \"password\": \"password\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Log in as the seeded main manager (demo.manager@example.com / password locally). Stores access_token and main_manager_access_token for main-manager-only folders (Managers, department mutations). Ordinary manager flows use manager_access_token after a separate login."
+          },
+          "response": []
+        },
+        {
           "name": "Current Profile",
           "request": {
             "auth": {
@@ -265,6 +401,120 @@
               ]
             },
             "description": "Return the authenticated actor_type and cleaned safe profile payload. actor_type is only present at the top level; profile omits internal auth fields. Officer and manager profiles expose assigned departments and districts as compact arrays. Requires Authorization: Bearer <token>."
+          },
+          "response": []
+        },
+        {
+          "name": "Update My Profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"demo.user\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Self-service identity PATCH for users, officers, and managers. Send only fields to change (username, email, password; officers may send badge_number). Inactive actors may still call this route for recovery. Privileged and assignment fields are rejected with 422. When password is present, confirm_password must match."
+          },
+          "response": []
+        },
+        {
+          "name": "Inactive Actor - List Issues (403 Smoke)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Inactive actor blocked on protected route', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('Inactive message returned', function () {",
+                  "    pm.expect(body.message).to.eql('This account is inactive.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{inactive_access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/issues?page=1&per_page=5",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "issues"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "per_page",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": "Smoke test for global inactive-actor middleware. Set inactive_access_token to a bearer token for an actor you deactivated (is_active=false) after login. Expects 403 with message \"This account is inactive.\" Whitelisted routes while inactive: GET/PATCH /api/auth/me (identity), POST /api/auth/logout — compare with Current Profile (200) using the same token."
           },
           "response": []
         },
@@ -344,7 +594,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{main_manager_access_token}}",
                   "type": "string"
                 }
               ]
@@ -389,7 +639,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{main_manager_access_token}}",
                   "type": "string"
                 }
               ]
@@ -434,7 +684,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{main_manager_access_token}}",
                   "type": "string"
                 }
               ]
@@ -471,7 +721,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{main_manager_access_token}}",
                   "type": "string"
                 }
               ]
@@ -531,7 +781,13 @@
                   "    pm.expect(response.is_main_manager).to.eql(false);",
                   "    pm.expect(response.created_by_manager_id).to.exist;",
                   "    pm.expect(response.access_token).to.be.undefined;",
-                  "});"
+                  "});",
+                  "",
+                  "if (response.id) {",
+                  "    const managerId = String(response.id);",
+                  "    pm.collectionVariables.set('manager_id', managerId);",
+                  "    if (pm.environment.name) { pm.environment.set('manager_id', managerId); }",
+                  "}"
                 ]
               }
             }
@@ -542,7 +798,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{main_manager_access_token}}",
                   "type": "string"
                 }
               ]
@@ -591,7 +847,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{main_manager_access_token}}",
                   "type": "string"
                 }
               ]
@@ -614,14 +870,14 @@
               "raw": "{\n  \"email\": \"updated.manager@example.com\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/managers/2",
+              "raw": "{{base_url}}/api/managers/{{manager_id}}",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
                 "managers",
-                "2"
+                "{{manager_id}}"
               ]
             },
             "description": "Update another ordinary manager's username, email, and/or password as an authenticated active main manager. Send only fields to change. When password is present, confirm_password must match. Privileged fields (is_main_manager, is_active, created_by_manager_id, department_ids, district_ids) are rejected with 422. Path target must have is_main_manager=false; main manager IDs and unknown ids return 404. Users, officers, ordinary managers, inactive managers, and unauthenticated requests receive 403."
@@ -636,7 +892,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{main_manager_access_token}}",
                   "type": "string"
                 }
               ]
@@ -650,14 +906,14 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/managers/2/disable",
+              "raw": "{{base_url}}/api/managers/{{manager_id}}/disable",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
                 "managers",
-                "2",
+                "{{manager_id}}",
                 "disable"
               ]
             },
@@ -692,7 +948,7 @@
         {
           "name": "Update Officer Departments",
           "request": {
-            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{main_manager_access_token}}", "type": "string" } ] },
             "method": "PATCH",
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
             "body": { "mode": "raw", "raw": "{\n  \"department_ids\": [1, 2]\n}", "options": { "raw": { "language": "json" } } },
@@ -704,17 +960,17 @@
         {
           "name": "Update Manager Departments",
           "request": {
-            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{main_manager_access_token}}", "type": "string" } ] },
             "method": "PATCH",
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
             "body": { "mode": "raw", "raw": "{\n  \"department_ids\": [1]\n}", "options": { "raw": { "language": "json" } } },
-            "url": { "raw": "{{base_url}}/api/managers/2/departments", "host": [ "{{base_url}}" ], "path": [ "api", "managers", "2", "departments" ] },
+            "url": { "raw": "{{base_url}}/api/managers/{{manager_id}}/departments", "host": [ "{{base_url}}" ], "path": [ "api", "managers", "{{manager_id}}", "departments" ] },
             "description": "Main-manager-only department assignment endpoint. Replace a manager's department assignments as an authenticated active main manager. department_ids must be present, may be [] to clear all assignments, must reference existing department IDs, and cannot contain duplicates. Returns the refreshed Manager resource (flat manager profile with departments and districts). Soft-deleted managers return 404. Use the main manager token from Auth / Login (demo.manager@example.com locally)."
           },
           "response": []
         }
       ],
-      "description": "Protected manager administration requests. List Main Managers, Create Manager, Update Manager, and Disable Manager require an authenticated active main manager token. District assignment requests include manager self-service updates and manager-admin officer district updates. Department assignment PATCH requests require an active main manager token."
+      "description": "Protected manager administration requests. Run Auth / Login as Main Manager first so main_manager_access_token is set. List/create/update/disable main managers and ordinary managers use main_manager_access_token. Update Officer Districts accepts any active manager token (access_token after Login). Update Officer Departments and Update Manager Departments require main_manager_access_token. manager_id defaults to 2 locally and is overwritten by Create Manager."
     },
     {
       "name": "Officers",
@@ -963,6 +1219,26 @@
           "response": []
         },
         {
+          "name": "List Issues - Hidden Filter",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "GET",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+            "url": {
+              "raw": "{{base_url}}/api/issues?visibility=hidden&page={{page}}&per_page={{per_page}}",
+              "host": [ "{{base_url}}" ],
+              "path": [ "api", "issues" ],
+              "query": [
+                { "key": "visibility", "value": "hidden", "description": "Officers and managers only: narrow list to hidden issues. Users receive 422." },
+                { "key": "page", "value": "{{page}}" },
+                { "key": "per_page", "value": "{{per_page}}" }
+              ]
+            },
+            "description": "Officer/manager visibility filter smoke test. Log in as demo.officer@example.com or a manager before running. Query param visibility=hidden returns only hidden issues; omit visibility to see all issues. Active users cannot use visibility and receive 422. Composes with district_id, department, and category_id filters."
+          },
+          "response": []
+        },
+        {
           "name": "Show Issue",
           "request": {
             "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
@@ -1061,7 +1337,7 @@
           "response": []
         }
       ],
-      "description": "Authenticated issue CRUD and attachment examples. Issue creation requires district_id and no longer accepts client-supplied department or removed legacy locality fields. Departments are derived from the selected category, stored in department_issue, and exposed as a read-only departments array. List filters are composable; department filtering uses real department codes with any-match semantics, and pagination is backend-driven. Anonymous issues retain user_id ownership while exposing only a stable alias. Attachment deletion is owner-only for replacement workflows. Issue deletion is hard delete and attachments cascade with the issue."
+      "description": "Authenticated issue CRUD and attachment examples. Issue creation requires district_id and no longer accepts client-supplied department or removed legacy locality fields. Departments are derived from the selected category, stored in department_issue, and exposed as a read-only departments array. List filters are composable: district_id, department (code), category_id, mine (users only), and visibility (officers/managers only). Department filtering uses any-match semantics; pagination is backend-driven. Show returns 404 when the issue is not visible to the actor (e.g. another user's hidden issue). Anonymous issues retain user_id ownership while exposing only a stable alias. Attachment deletion is owner-only for replacement workflows. Issue deletion is hard delete and attachments cascade with the issue."
     },
     {
       "name": "Departments",
@@ -1091,7 +1367,7 @@
         {
           "name": "Create Department",
           "request": {
-            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{main_manager_access_token}}", "type": "string" } ] },
             "method": "POST",
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
             "body": { "mode": "raw", "raw": "{\n  \"code\": \"groenbeheer\",\n  \"name\": \"Groenbeheer\",\n  \"is_active\": true\n}", "options": { "raw": { "language": "json" } } },
@@ -1103,28 +1379,39 @@
         {
           "name": "Update Department",
           "request": {
-            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{main_manager_access_token}}", "type": "string" } ] },
             "method": "PATCH",
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
             "body": { "mode": "raw", "raw": "{\n  \"name\": \"Groenbeheer bijgewerkt\",\n  \"is_active\": true\n}", "options": { "raw": { "language": "json" } } },
-            "url": { "raw": "{{base_url}}/api/departments/1", "host": [ "{{base_url}}" ], "path": [ "api", "departments", "1" ] },
+            "url": { "raw": "{{base_url}}/api/departments/{{department_id}}", "host": [ "{{base_url}}" ], "path": [ "api", "departments", "{{department_id}}" ] },
             "description": "Update a department. Requires an authenticated active main manager."
+          },
+          "response": []
+        },
+        {
+          "name": "Disable Department",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{main_manager_access_token}}", "type": "string" } ] },
+            "method": "PATCH",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+            "url": { "raw": "{{base_url}}/api/departments/{{department_id}}/disable", "host": [ "{{base_url}}" ], "path": [ "api", "departments", "{{department_id}}", "disable" ] },
+            "description": "Safe department removal path: sets is_active=false. Requires main_manager_access_token (Auth / Login as Main Manager). Prefer this over hard delete when historical category/issue context must remain."
           },
           "response": []
         },
         {
           "name": "Delete Department",
           "request": {
-            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{main_manager_access_token}}", "type": "string" } ] },
             "method": "DELETE",
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
-            "url": { "raw": "{{base_url}}/api/departments/1", "host": [ "{{base_url}}" ], "path": [ "api", "departments", "1" ] },
+            "url": { "raw": "{{base_url}}/api/departments/{{department_id}}", "host": [ "{{base_url}}" ], "path": [ "api", "departments", "{{department_id}}" ] },
             "description": "Delete a department as an authenticated active main manager. Departments assigned to any manager or officer return 409 until those actor assignments are changed. After no actors reference the department, database cascade removes category_department and department_issue assignments automatically; category and issue records remain intact."
           },
           "response": []
         }
       ],
-      "description": "Department CRUD requests. Department mutations require an authenticated active main manager. Managers use department_ids through the department_manager pivot and must have one or more departments; officers use department_ids through the department_officer pivot and must have one or more departments. Deleting a department is blocked while assigned to managers or officers; otherwise it removes category_department and department_issue pivot assignments automatically but does not delete categories or issues. Issue departments are derived from categories and exposed to clients as read-only departments arrays."
+      "description": "Department CRUD requests. Department mutations require an authenticated active main manager (main_manager_access_token). Disable sets is_active=false; hard delete is guarded when managers/officers still reference the row. Managers use department_ids through the department_manager pivot and must have one or more departments; officers use department_ids through the department_officer pivot and must have one or more departments. Deleting a department is blocked while assigned to managers or officers; otherwise it removes category_department and department_issue pivot assignments automatically but does not delete categories or issues. Issue departments are derived from categories and exposed to clients as read-only departments arrays."
     }
   ],
   "auth": {
@@ -1180,6 +1467,31 @@
     {
       "key": "per_page",
       "value": "20",
+      "type": "string"
+    },
+    {
+      "key": "main_manager_access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "manager_access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "inactive_access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "manager_id",
+      "value": "2",
+      "type": "string"
+    },
+    {
+      "key": "department_id",
+      "value": "1",
       "type": "string"
     }
   ]
