@@ -196,12 +196,16 @@ Table issues {
   is_flagged           tinyint(1)   [not null, default: 0]
   visibility           varchar(20)  [not null, default: 'visible', note: 'visible | hidden']
   is_anonymous         tinyint(1)   [not null, default: 0, note: 'User_id blijft eigenaar; publiek + BOA zien alleen alias']
-  anonymous_alias      varchar(20)  [note: 'Bv. Melder#A1B2C3D4, stabiel server-generated alias getoond i.p.v. username']
+  anonymous_alias      varchar(20)  [note: 'Bv. Melder#A1B2C3D4, stabiel server-generated alias getoond i.p.v. username; unique index (meerdere NULL toegestaan)']
   chat_status          varchar(10)  [not null, default: 'closed', note: 'open | closed - alleen BOA bedient dit']
   chat_closed_by_officer_id int     [ref: > officers.id]
   resolved_at          datetime
   created_at           datetime     [not null, default: `CURRENT_TIMESTAMP`]
   updated_at           datetime     [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    anonymous_alias [unique, note: 'issues_anonymous_alias_unique; meerdere NULL toegestaan']
+  }
 }
 
 Table issue_participants {

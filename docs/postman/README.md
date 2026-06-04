@@ -26,6 +26,21 @@ The documented local backend URL is:
 http://127.0.0.1:8001
 ```
 
+### CORS (browser / SPA clients)
+
+The API does not use wildcard CORS origins. In `apps/backend/.env`, set:
+
+| Variable | Purpose |
+|----------|---------|
+| `FRONTEND_URL` | Allowed origin for local development (default in `config/cors.php`: `http://localhost:5173`) |
+| `FRONTEND_URL_PRODUCTION` | Optional additional production SPA origin |
+
+Postman and server-side clients are not subject to CORS. Browser-based frontends must call the API from a configured origin or preflight requests will fail.
+
+### Sanctum token lifetime
+
+Personal access tokens expire after **7 days** (10080 minutes). Configure via `SANCTUM_TOKEN_EXPIRATION` in `.env` (see `config/sanctum.php`).
+
 Local seeders may create deterministic demo accounts for manual testing. These credentials are local development fixtures only and are not production behavior.
 
 | Actor type | Email | Password |
@@ -54,7 +69,7 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 | `base_url` | `http://127.0.0.1:8001` | Change this to point at another backend without editing each request. |
 | `access_token` | blank | Filled automatically after **Auth / Login**, **Register User**, or **Register Officer**. Default token for users, officers, and general protected routes. |
 | `main_manager_access_token` | blank | Filled by **Auth / Login as Main Manager** (`demo.manager@example.com` locally). Required for **Managers** folder and department create/update/disable/delete. |
-| `manager_access_token` | blank | Set manually after logging in as an ordinary manager (`is_main_manager: false`). Use to exercise category/district mutations that any active manager may perform. |
+| `manager_access_token` | blank | Set manually after logging in as an ordinary manager (`is_main_manager: false`). Use for category mutations and officer district assignment; district CRUD writes return **403** for non-main managers. |
 | `inactive_access_token` | blank | Copy a token before deactivating an actor in the database; used by **Auth / Inactive Actor - List Issues (403 Smoke)**. |
 | `manager_id` | `2` | Ordinary manager path ID; overwritten by **Managers / Create Manager**. |
 | `department_id` | `1` | Department path ID for update, disable, and delete examples. |
@@ -79,11 +94,11 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 8. As a user, run **Issues / List My Issues** (`mine=1`). As an officer or manager, run **Issues / List Issues - Hidden Filter** (`visibility=hidden`).
 9. Run **Departments / Disable Department** (main manager token) before hard delete when testing department lifecycle.
 10. Run **Managers / Update My Districts** or **Officers / Update My Districts** for self-service district assignments, or **Managers / Update Officer Districts** for manager-admin officer assignments.
-11. Run **Districts / Create District**, **Update District**, and **Delete District** with an active manager token (`access_token` or `manager_access_token`). District deletion returns `409 Conflict` while the district is assigned to managers/officers or referenced by issues.
+11. Run **Districts / Create District**, **Update District**, and **Delete District** with **Auth / Login as Main Manager** (`main_manager_access_token`). Ordinary managers receive `403` on district writes. District deletion returns `409 Conflict` while the district is assigned to managers/officers or referenced by issues.
 12. Run **Categories / List Categories** to find existing category IDs. Category reads work for any authenticated actor; mutations require an active manager (not necessarily main).
 13. Run **Auth / Login** with `demo.user@example.com` and password `password`, then **Issues / Create Issue** (stores `issue_id`).
 14. Use **Issues / List Issues - Filtered Paginated** to combine `district_id`, `department` (env `department_filter`), and `category_id`.
-15. To test ordinary-manager privileges, log in as a created manager and copy the token to `manager_access_token` before category/district mutations.
+15. To test ordinary-manager privileges, log in as a created manager and copy the token to `manager_access_token` before category mutations or **Managers / Update Officer Districts** (not district CRUD).
 16. Run **Auth / Logout** when finished.
 
 The collection stores the returned `access_token` automatically after a successful login, user registration, or officer registration. Manager creation intentionally does not update `access_token` because it returns only the created manager profile. If you disable collection scripts or the token is not stored, copy the `access_token` value from the auth response into the active Postman environment's `access_token` variable before calling protected endpoints.
@@ -118,7 +133,7 @@ Request body:
 }
 ```
 
-`department_ids` is required, must contain at least one existing department ID, and cannot contain duplicates. `district_ids` is optional, may be empty or omitted, must contain active existing district IDs when present, and cannot contain duplicates. Use **Departments / List Departments** and **Districts / List Districts** while authenticated to inspect available IDs.
+`department_ids` is required, must contain at least one **active** department ID (`is_active=true`), and cannot contain duplicates; inactive or unknown IDs return `422`. `district_ids` is optional, may be empty or omitted, must contain active existing district IDs when present, and cannot contain duplicates. Use **Departments / List Departments** and **Districts / List Districts** while authenticated to inspect available IDs.
 
 Successful response shape:
 
@@ -152,7 +167,7 @@ Successful response shape:
 
 Common error response:
 
-- `422 Unprocessable Entity` with validation errors when required fields are missing, `email` is invalid, `password` is shorter than 8 characters, `confirm_password` does not match `password`, `department_ids` is missing, empty, duplicated, or references unknown departments, `district_ids` is duplicated or references inactive/unknown districts, `username` or `badge_number` already exists in the officers table, or `email` already exists for any user, officer, or manager.
+- `422 Unprocessable Entity` with validation errors when required fields are missing, `email` is invalid, `password` is shorter than 8 characters, `confirm_password` does not match `password`, `department_ids` is missing, empty, duplicated, or references inactive/unknown departments, `district_ids` is duplicated or references inactive/unknown districts, `username` or `badge_number` already exists in the officers table, or `email` already exists for any user, officer, or manager.
 
 ### Register User
 
@@ -410,7 +425,7 @@ Request body:
 }
 ```
 
-`department_ids` is required, must contain at least one existing department ID, and cannot contain duplicates. Manager department assignments are stored through the `department_manager` pivot. Optional `district_ids` assigns active districts through the `district_manager` pivot and cannot contain duplicates. Use **Departments / List Departments** and **Districts / List Districts** to find valid IDs.
+`department_ids` is required, must contain at least one **active** department ID (`is_active=true`), and cannot contain duplicates; inactive or unknown IDs return `422`. Manager department assignments are stored through the `department_manager` pivot. Optional `district_ids` assigns active districts through the `district_manager` pivot and cannot contain duplicates. Use **Departments / List Departments** and **Districts / List Districts** to find valid IDs.
 
 Successful response shape:
 
@@ -446,7 +461,7 @@ Common error responses:
 
 - `401 Unauthorized` when the bearer token is missing, invalid, or revoked.
 - `403 Forbidden` when the authenticated actor is not an active main manager.
-- `422 Unprocessable Entity` with validation errors when required fields are missing, `email` is invalid, `password` is shorter than 8 characters, `confirm_password` does not match `password`, `department_ids` is missing, empty, duplicated, or references unknown departments, `district_ids` is duplicated or references inactive/unknown districts, `username` already exists in the managers table, or `email` already exists for any user, officer, or manager.
+- `422 Unprocessable Entity` with validation errors when required fields are missing, `email` is invalid, `password` is shorter than 8 characters, `confirm_password` does not match `password`, `department_ids` is missing, empty, duplicated, or references inactive/unknown departments, `district_ids` is duplicated or references inactive/unknown districts, `username` already exists in the managers table, or `email` already exists for any user, officer, or manager.
 
 ### Update Manager
 
@@ -518,7 +533,7 @@ Use an empty array to clear all assignments:
 }
 ```
 
-`department_ids` must be present and must be an array. Empty `[]` is valid for PATCH (unlike create/register, which require at least one department). IDs must exist in the `departments` table; duplicates are rejected.
+`department_ids` must be present and must be an array. Empty `[]` is valid for PATCH (unlike create/register, which require at least one department). IDs must reference **active** departments (`is_active=true`); duplicates, inactive, and unknown IDs are rejected with `422`.
 
 The request replaces the target officer's full department assignment set through the `department_officer` pivot and returns `{ "actor_type": "officer", "profile": { ... } }` with a refreshed `departments` array.
 
@@ -527,7 +542,7 @@ Common error responses:
 - `401 Unauthorized` when the bearer token is missing, invalid, or revoked.
 - `403 Forbidden` when the authenticated actor is not an active main manager.
 - `404 Not Found` when the officer route ID does not exist or the officer is soft-deleted.
-- `422 Unprocessable Entity` when `department_ids` is missing, not an array, contains duplicates, or references unknown departments.
+- `422 Unprocessable Entity` when `department_ids` is missing, not an array, contains duplicates, or references inactive/unknown departments.
 
 #### Update Manager Departments
 
@@ -553,15 +568,15 @@ Common error responses match officer department PATCH: `401`, `403` (not active 
 
 District endpoints use the `districts` table. Managers are assigned to districts through the `district_manager` pivot and officers through the `district_officer` pivot. Issue district handling is separate: `issues.district_id` remains a singular issue location/reference field.
 
-Authenticated actors can list and show districts. District mutations require `Authorization: Bearer <token>` for an authenticated active manager. Users, officers, inactive managers, and unauthenticated requests cannot create, update, or delete districts.
+Authenticated actors can list and show districts. District mutations (`POST`, `PATCH`, `PUT`, `DELETE`) require `Authorization: Bearer <token>` for an authenticated **active main manager** (`is_main_manager=true`). Users, officers, ordinary managers, inactive managers, and unauthenticated requests receive `403 Forbidden` on district writes.
 
 Common requests:
 
 - `GET {{base_url}}/api/districts` — list districts with manager/officer assignment counts and issue reference counts.
 - `GET {{base_url}}/api/districts/{id}` — show one district.
-- `POST {{base_url}}/api/districts` — create a district as an active manager.
-- `PATCH {{base_url}}/api/districts/{id}` — update a district as an active manager.
-- `DELETE {{base_url}}/api/districts/{id}` — hard delete an eligible district as an active manager.
+- `POST {{base_url}}/api/districts` — create a district as an active main manager.
+- `PATCH {{base_url}}/api/districts/{id}` — update a district as an active main manager.
+- `DELETE {{base_url}}/api/districts/{id}` — hard delete an eligible district as an active main manager.
 
 Create body example:
 
@@ -581,7 +596,7 @@ District deletion is blocked until all manager assignments, officer assignments,
 Common error responses:
 
 - `401 Unauthorized` when the bearer token is missing, invalid, or revoked.
-- `403 Forbidden` when the authenticated actor is not an active manager for mutations.
+- `403 Forbidden` when the authenticated actor is not an active main manager for district mutations.
 - `422 Unprocessable Entity` for validation failures, including duplicate district names or invalid coordinates.
 - `409 Conflict` when deleting a district that is still assigned to one or more managers, assigned to one or more officers, or referenced by one or more issues.
 
@@ -721,7 +736,7 @@ Successful response shape:
 }
 ```
 
-Logout revokes only the bearer token used for the current request. Other issued tokens for the same actor remain valid.
+Logout deletes **all** Sanctum personal access tokens for the authenticated actor, ending every session (not only the token on this request). Other devices or tabs using older tokens for the same actor are signed out as well.
 
 Common error response:
 

@@ -5,7 +5,13 @@ info:
     OpenAPI 3.0 specification (Swagger UI) for the WIJK application derived from
     the provided ERD. This spec focuses on the main public/admin endpoints used
     by mobile/web clients and officer/manager consoles. It uses Laravel Sanctum
-    bearer token authentication for API consumers.
+    bearer token authentication for API consumers. Issued personal access tokens
+    expire after **7 days** (10080 minutes; `SANCTUM_TOKEN_EXPIRATION` in
+    `config/sanctum.php`, default 10080).
+
+    CORS allows explicit origins only (no wildcard): `FRONTEND_URL` (default
+    `http://localhost:5173`) and optional `FRONTEND_URL_PRODUCTION` in
+    `config/cors.php`. Browser clients must call the API from a configured origin.
 
     Inactive accounts: after `auth:sanctum` resolves a bearer token, global
     middleware rejects deactivated users, officers, and managers with **403**
@@ -216,8 +222,9 @@ paths:
       summary: Login and receive tokens
       description: >-
         Authenticate a user, officer, or manager with shared email/password
-        credentials. Returns a Sanctum bearer token and the canonical safe
-        profile payload. Unknown email, wrong password, inactive accounts, and
+        credentials. Returns a Sanctum bearer token (expires after 7 days / 10080
+        minutes) and the canonical safe profile payload. Unknown email, wrong
+        password, inactive accounts, and
         ambiguous email matches across actor tables all return the same generic
         **401** with message `Invalid credentials.` so callers cannot infer
         account state.
@@ -371,17 +378,17 @@ paths:
   /api/auth/logout:
     post:
       tags: [ Auth ]
-      summary: Logout and revoke current bearer token
+      summary: Logout and revoke all bearer tokens for the actor
       description: >-
-        Revokes only the Sanctum bearer token used for the current request.
-        Other tokens issued to the same actor remain valid until explicitly
-        revoked or expired. Inactive accounts may call this route (whitelisted by
-        global inactive-actor middleware).
+        Deletes all Sanctum personal access tokens for the authenticated actor,
+        invalidating every active session (not only the bearer token on this
+        request). Inactive accounts may call this route (whitelisted by global
+        inactive-actor middleware).
       security:
         - bearerAuth: [ ]
       responses:
         '200':
-          description: Token revoked
+          description: All tokens for the actor revoked
           content:
             application/json:
               schema:
@@ -727,8 +734,9 @@ paths:
       summary: Create a manager
       description: >-
         Create an ordinary manager as an authenticated active main manager. The
-        request must include department_ids with at least one valid department
-        from the departments table. Optional district_ids assign the manager to
+        request must include department_ids with at least one active department
+        (`is_active=true`); inactive or unknown department IDs return **422**.
+        Optional district_ids assign the manager to
         one or more active districts through the district_manager pivot. The
         response returns the created manager profile only and does not issue an
         access token.
@@ -874,8 +882,8 @@ paths:
         unauthenticated requests receive 403. The endpoint updates only the
         department_manager pivot. department_ids must be present and may be an
         empty array to clear all assignments; unlike manager creation, PATCH does
-        not require at least one department. Unknown department IDs and duplicates
-        return 422. Soft-deleted managers return 404.
+        not require at least one department. Inactive (`is_active=false`), unknown
+        department IDs, and duplicates return **422**. Soft-deleted managers return 404.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -1009,8 +1017,8 @@ paths:
         which any authenticated active manager may call. The endpoint updates only
         the department_officer pivot. department_ids must be present and may be an
         empty array to clear all assignments; unlike officer registration, PATCH
-        does not require at least one department. Unknown department IDs and
-        duplicates return 422. Soft-deleted officers return 404.
+        does         not require at least one department. Inactive (`is_active=false`), unknown
+        department IDs, and duplicates return **422**. Soft-deleted officers return 404.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -1904,10 +1912,12 @@ paths:
       tags: [ Districts ]
       summary: Create a district
       description: >-
-        Create a district row. Only authenticated active managers may create,
-        update, or delete districts. District CRUD manages district records only;
-        actor assignments use district_ids endpoints and issue district
-        references are not reassigned.
+        Create a district row. Only an authenticated, active main manager
+        (`is_main_manager=true`) may create, update, or delete districts. Users,
+        officers, ordinary managers, inactive managers, and unauthenticated
+        requests receive **403** (`This action is unauthorized.`). District CRUD
+        manages district records only; actor assignments use district_ids
+        endpoints and issue district references are not reassigned.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -1963,7 +1973,10 @@ paths:
     patch:
       tags: [ Districts ]
       summary: Update a district
-      description: Only authenticated active managers may update districts.
+      description: >-
+        Only an authenticated, active main manager may update districts. Users,
+        officers, ordinary managers, inactive managers, and unauthenticated
+        requests receive **403**.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -1993,7 +2006,10 @@ paths:
     put:
       tags: [ Districts ]
       summary: Replace/update a district
-      description: Same behavior and validation as PATCH /api/districts/{districtId}.
+      description: >-
+        Same behavior and validation as PATCH /api/districts/{districtId}.
+        Only an authenticated, active main manager may call district writes;
+        others receive **403**.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -2021,9 +2037,11 @@ paths:
       tags: [ Districts ]
       summary: Delete an eligible district
       description: >-
-        Only authenticated active managers may delete districts. Deletion returns
-        409 Conflict when the district is still assigned to any manager, assigned
-        to any officer, or referenced by any issue through issues.district_id.
+        Only an authenticated, active main manager may delete districts. Users,
+        officers, ordinary managers, inactive managers, and unauthenticated
+        requests receive **403**. Deletion returns **409 Conflict** when the
+        district is still assigned to any manager, assigned to any officer, or
+        referenced by any issue through issues.district_id.
       security:
         - bearerAuth: [ ]
       responses:
@@ -2046,8 +2064,10 @@ components:
       bearerFormat: Sanctum
       description: >-
         Laravel Sanctum personal access token sent as `Authorization: Bearer
-        {token}`. Required on all `/api/*` routes except public auth registration
-        and login. After the token resolves to a user, officer, or manager, the
+        {token}`. Tokens expire after 7 days (10080 minutes;
+        `SANCTUM_TOKEN_EXPIRATION`). Required on all `/api/*` routes except public
+        auth registration and login. After the token resolves to a user, officer, or
+        manager, the
         `actor.active` middleware returns **403** with message
         `This account is inactive.` when `is_active` is false, except on
         whitelisted routes: GET `/api/auth/me`, POST `/api/auth/logout`, and
@@ -2224,7 +2244,9 @@ components:
           type: array
           minItems: 1
           uniqueItems: true
-          description: Existing department IDs. Managers must have one or more departments.
+          description: >-
+            Existing active department IDs (`is_active=true`). Managers must have
+            one or more departments; inactive or unknown IDs return 422.
           items:
             type: integer
         district_ids:
@@ -2606,12 +2628,11 @@ components:
           type: array
           uniqueItems: true
           description: >-
-            Full replacement set of department IDs from the departments table.
-            The key must be present. Use an empty array to clear all actor
-            department assignments (valid for PATCH; differs from create/register
-            flows that require at least one department). Duplicate IDs and
-            unknown department IDs return validation errors. Department active
-            status is not filtered on assignment (matches create/register).
+            Full replacement set of active department IDs (`is_active=true`) from
+            the departments table. The key must be present. Use an empty array to
+            clear all actor department assignments (valid for PATCH; differs from
+            create/register flows that require at least one department). Duplicate,
+            inactive, and unknown department IDs return **422**.
           items:
             type: integer
 

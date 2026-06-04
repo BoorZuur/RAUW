@@ -79,7 +79,7 @@
                 "officer"
               ]
             },
-            "description": "Register a backend API-only officer account with username, email, password, confirm_password, badge_number, department_ids, and optional district_ids. department_ids is required, must contain at least one existing department ID, and cannot contain duplicates; officers must have one or more departments. district_ids may be omitted or empty, must contain active existing district IDs when present, and cannot contain duplicates; assignments are stored through district_officer. The 201 response includes token_type, access_token, actor_type, and a cleaned safe officer profile with departments and districts as compact arrays. The test script stores access_token in collection and active environment variables. Change username, email, and badge_number before rerunning because username and badge_number must be unique within officers and email must be unique across users, officers, and managers."
+            "description": "Register a backend API-only officer account with username, email, password, confirm_password, badge_number, department_ids, and optional district_ids. department_ids is required, must contain at least one active department ID (is_active=true), and cannot contain duplicates; inactive or unknown department IDs return 422. district_ids may be omitted or empty, must contain active existing district IDs when present, and cannot contain duplicates; assignments are stored through district_officer. The 201 response includes token_type, access_token, actor_type, and a cleaned safe officer profile with departments and districts as compact arrays. The test script stores access_token in collection and active environment variables. Change username, email, and badge_number before rerunning because username and badge_number must be unique within officers and email must be unique across users, officers, and managers."
           },
           "response": []
         },
@@ -576,7 +576,7 @@
                 "logout"
               ]
             },
-            "description": "Revoke the bearer token used by this request. Requires Authorization: Bearer <token>."
+            "description": "Invalidate all Sanctum personal access tokens for the authenticated actor (every session ends, not only the bearer token on this request). Requires Authorization: Bearer <token>. Inactive actors may still call logout (whitelisted). After 200, previously issued tokens—including tokens stored in other clients—no longer authenticate."
           },
           "response": []
         }
@@ -835,7 +835,7 @@
                 "managers"
               ]
             },
-            "description": "Create an ordinary manager as the authenticated main manager. Requires Authorization: Bearer <token> from an active manager with is_main_manager=true. department_ids is required, must contain at least one existing department ID, and cannot contain duplicates; manager department assignments are stored through the department_manager pivot. Optional district_ids must contain active existing districts and are stored through district_manager. The 201 response returns the created manager profile only, including departments and districts as compact arrays, and does not include or store an access_token. The new manager must log in separately through Auth / Login. Change username and email before rerunning because username must be unique within managers and email must be unique across users, officers, and managers."
+            "description": "Create an ordinary manager as the authenticated main manager. Requires Authorization: Bearer <token> from an active manager with is_main_manager=true. department_ids is required, must contain at least one active department ID (is_active=true), and cannot contain duplicates; inactive or unknown department IDs return 422. Manager department assignments are stored through the department_manager pivot. Optional district_ids must contain active existing districts and are stored through district_manager. The 201 response returns the created manager profile only, including departments and districts as compact arrays, and does not include or store an access_token. The new manager must log in separately through Auth / Login. Change username and email before rerunning because username must be unique within managers and email must be unique across users, officers, and managers."
           },
           "response": []
         },
@@ -953,7 +953,7 @@
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
             "body": { "mode": "raw", "raw": "{\n  \"department_ids\": [1, 2]\n}", "options": { "raw": { "language": "json" } } },
             "url": { "raw": "{{base_url}}/api/officers/1/departments", "host": [ "{{base_url}}" ], "path": [ "api", "officers", "1", "departments" ] },
-            "description": "Main-manager-only department assignment endpoint. Replace an officer's department assignments as an authenticated active main manager (is_main_manager=true). Users, officers, ordinary managers, inactive managers, inactive main managers, and unauthenticated requests receive 403. Unlike Update Officer Districts, non-main managers cannot call this endpoint. department_ids must be present, may be an empty array to clear assignments, must reference existing department IDs from the departments table, and cannot contain duplicates. Returns the officer's refreshed auth profile (actor_type + profile) with departments. Soft-deleted officers return 404. This only updates department_officer."
+            "description": "Main-manager-only department assignment endpoint. Replace an officer's department assignments as an authenticated active main manager (is_main_manager=true). Users, officers, ordinary managers, inactive managers, inactive main managers, and unauthenticated requests receive 403. Unlike Update Officer Districts, non-main managers cannot call this endpoint. department_ids must be present, may be an empty array to clear assignments, must reference active department IDs (is_active=true), and cannot contain duplicates; inactive or unknown IDs return 422. Returns the officer's refreshed auth profile (actor_type + profile) with departments. Soft-deleted officers return 404. This only updates department_officer."
           },
           "response": []
         },
@@ -965,7 +965,7 @@
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
             "body": { "mode": "raw", "raw": "{\n  \"department_ids\": [1]\n}", "options": { "raw": { "language": "json" } } },
             "url": { "raw": "{{base_url}}/api/managers/{{manager_id}}/departments", "host": [ "{{base_url}}" ], "path": [ "api", "managers", "{{manager_id}}", "departments" ] },
-            "description": "Main-manager-only department assignment endpoint. Replace a manager's department assignments as an authenticated active main manager. department_ids must be present, may be [] to clear all assignments, must reference existing department IDs, and cannot contain duplicates. Returns the refreshed Manager resource (flat manager profile with departments and districts). Soft-deleted managers return 404. Use the main manager token from Auth / Login (demo.manager@example.com locally)."
+            "description": "Main-manager-only department assignment endpoint. Replace a manager's department assignments as an authenticated active main manager. department_ids must be present, may be [] to clear all assignments, must reference active department IDs (is_active=true), and cannot contain duplicates; inactive or unknown IDs return 422. Returns the refreshed Manager resource (flat manager profile with departments and districts). Soft-deleted managers return 404. Use the main manager token from Auth / Login (demo.manager@example.com locally). Ordinary managers receive 403."
           },
           "response": []
         }
@@ -1109,7 +1109,7 @@
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
             "body": { "mode": "raw", "raw": "{\n  \"name\": \"Nieuwe Wijk\",\n  \"postal_prefix\": \"3248\",\n  \"center_lat\": 51.75,\n  \"center_lng\": 4.16,\n  \"radius_meters\": 2500,\n  \"is_active\": true\n}", "options": { "raw": { "language": "json" } } },
             "url": { "raw": "{{base_url}}/api/districts", "host": [ "{{base_url}}" ], "path": [ "api", "districts" ] },
-            "description": "Create a district as an authenticated active manager. Users, officers, inactive managers, and unauthenticated requests cannot create districts."
+            "description": "Create a district as an authenticated active main manager (is_main_manager=true). Users, officers, ordinary managers, inactive managers, and unauthenticated requests receive 403. Use main_manager_access_token; manager_access_token from a non-main manager should fail with 403."
           },
           "response": []
         },
@@ -1121,7 +1121,7 @@
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
             "body": { "mode": "raw", "raw": "{\n  \"name\": \"Nieuwe Wijk bijgewerkt\",\n  \"is_active\": true\n}", "options": { "raw": { "language": "json" } } },
             "url": { "raw": "{{base_url}}/api/districts/1", "host": [ "{{base_url}}" ], "path": [ "api", "districts", "1" ] },
-            "description": "Update a district as an authenticated active manager. Supports partial updates for name, postal_prefix, center_lat, center_lng, radius_meters, and is_active."
+            "description": "Update a district as an authenticated active main manager. Ordinary managers receive 403. Supports partial updates for name, postal_prefix, center_lat, center_lng, radius_meters, and is_active."
           },
           "response": []
         },
@@ -1132,12 +1132,12 @@
             "method": "DELETE",
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
             "url": { "raw": "{{base_url}}/api/districts/1", "host": [ "{{base_url}}" ], "path": [ "api", "districts", "1" ] },
-            "description": "Delete an eligible district as an authenticated active manager. Returns 409 Conflict while the district is assigned to managers, assigned to officers, or referenced by issues through issues.district_id."
+            "description": "Delete an eligible district as an authenticated active main manager. Ordinary managers receive 403. Returns 409 Conflict while the district is assigned to managers, assigned to officers, or referenced by issues through issues.district_id."
           },
           "response": []
         }
       ],
-      "description": "District CRUD requests. Reads require authentication; mutations require an authenticated active manager. Actor district assignments are many-to-many through district_manager and district_officer. Issue district handling is out of scope: issues.district_id remains singular."
+      "description": "District CRUD requests. Reads require authentication; POST/PATCH/PUT/DELETE require an authenticated active main manager (is_main_manager=true). Ordinary managers receive 403 on district writes. Actor district assignments are many-to-many through district_manager and district_officer. Issue district handling is out of scope: issues.district_id remains singular."
     },
     {
       "name": "Issues",
