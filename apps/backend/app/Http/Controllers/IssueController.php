@@ -34,8 +34,8 @@ class IssueController extends Controller
      * Results are visibility-scoped per actor type before optional filters:
      * users see visible issues or their own issues (any visibility); officers
      * and managers see all issues including hidden. A single Eloquent query
-     * applies the optional `district_id`, `department`, and `category_id`
-     * filters conditionally and cumulatively (AND with visibility), so any
+     * applies the optional `district_id`, `department`, `category_id`, and
+     * `mine` filters conditionally and cumulatively (AND with visibility), so any
      * subset (or all) of the filters may be combined to narrow the result set.
      * The `department` filter is resolved through the issue departments
      * relationship with any-match semantics. Results are eager loaded, ordered
@@ -62,6 +62,15 @@ class IssueController extends Controller
             ->when(
                 $request->filled('category_id'),
                 fn ($query) => $query->where('category_id', $request->integer('category_id')),
+            )
+            ->when(
+                $request->wantsMine(),
+                function ($query) use ($request): void {
+                    /** @var User $actor */
+                    $actor = $request->user();
+
+                    $query->where('user_id', $actor->getKey());
+                },
             )
             ->orderByDesc('created_at')
             ->orderByDesc('id')

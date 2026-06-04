@@ -785,8 +785,10 @@ paths:
         their own hidden issues; other users' hidden issues are excluded. Active
         officers and active managers receive all issues, including hidden issues from
         any user. Filters are optional and composable (AND with visibility): district_id,
-        department, and category_id may be combined in a single request to narrow the
-        result set. Query param department accepts a department code from the departments
+        department, category_id, and mine may be combined in a single request to narrow the
+        result set. Query param mine (`mine=1` or equivalent truthy values) restricts
+        active users to issues they own (`issues.user_id`); officers and managers sending
+        mine receive 422. Query param department accepts a department code from the departments
         table and matches through department_issue with any-match semantics, so a
         multi-department issue is included when any pivot assignment has the requested
         code. Pagination is backend-driven using page and per_page, with a default
@@ -814,6 +816,17 @@ paths:
           description: Optional composable district filter.
           schema:
             type: integer
+        - name: mine
+          in: query
+          description: >-
+            Optional filter for active users only. When set to a truthy value (`1`,
+            `true`), returns only issues owned by the authenticated user (`issues.user_id`),
+            including the user's own hidden issues. Composes with default user visibility
+            scoping (AND). Officers and managers cannot use this filter (422).
+          schema:
+            type: string
+            enum: [ '1', 'true' ]
+            example: '1'
       responses:
         '200':
           description: Backend-paginated list of issues

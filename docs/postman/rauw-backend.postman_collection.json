@@ -689,6 +689,26 @@
           "response": []
         },
         {
+          "name": "List My Issues",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "GET",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+            "url": {
+              "raw": "{{base_url}}/api/issues?mine=1&page={{page}}&per_page={{per_page}}",
+              "host": [ "{{base_url}}" ],
+              "path": [ "api", "issues" ],
+              "query": [
+                { "key": "mine", "value": "1", "description": "Active users only: restrict to issues owned by the authenticated user (issues.user_id), including own hidden issues" },
+                { "key": "page", "value": "{{page}}" },
+                { "key": "per_page", "value": "{{per_page}}" }
+              ]
+            },
+            "description": "List only issues owned by the authenticated active user. Requires a user bearer token; officers and managers receive 422 when mine is set. Composes with default user visibility scoping and optional district_id, department, and category_id filters."
+          },
+          "response": []
+        },
+        {
           "name": "Show Issue",
           "request": {
             "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
