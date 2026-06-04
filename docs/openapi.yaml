@@ -2043,12 +2043,24 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+          example:
+            message: Resource not found.
     ConflictError:
       description: Request conflicts with current resource state
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ConflictError'
+    ServerError:
+      description: >-
+        Unexpected server error. With APP_DEBUG=false, responses use a safe
+        generic message and never include SQL, bindings, or stack traces.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: Server error.
 
   schemas:
     Error:
