@@ -2487,6 +2487,13 @@ components:
             $ref: '#/components/schemas/AuthDepartmentProfile'
         status:
           type: string
+        visibility:
+          type: string
+          enum: [visible, hidden]
+          description: >-
+            Read-only issue visibility. Visible issues appear in public-scoped
+            lists; hidden issues are visible only to officers, managers, and the
+            owning user. Not accepted on create or update requests.
         priority:
           type: integer
           nullable: true

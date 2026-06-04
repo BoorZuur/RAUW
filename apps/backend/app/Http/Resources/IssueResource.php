@@ -40,6 +40,11 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * main-category priority (lower number = higher urgency) and is read-only in
  * API responses.
  *
+ * Visibility
+ * ----------
+ * The string `visibility` (`visible` or `hidden`) is read-only in API responses.
+ * Clients cannot set or change it through create or update requests.
+ *
  * @mixin Issue
  */
 class IssueResource extends JsonResource
@@ -68,6 +73,7 @@ class IssueResource extends JsonResource
             'district_id' => $issue->district_id,
             'departments' => $this->compactDepartments($issue),
             'status' => $issue->status,
+            'visibility' => $issue->visibility->value,
             'priority' => $issue->priority,
             'postal_code' => $issue->postal_code,
             'address' => $issue->address,
