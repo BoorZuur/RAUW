@@ -12,6 +12,7 @@ use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\DistrictController;
 use App\Http\Controllers\IssueAttachmentController;
 use App\Http\Controllers\IssueController;
+use App\Http\Controllers\MainManagerController;
 use App\Http\Controllers\ManagerController;
 use App\Http\Controllers\ManagerDepartmentController;
 use App\Http\Controllers\OfficerDepartmentController;
@@ -74,6 +75,13 @@ Route::middleware(['auth:sanctum', 'actor.active'])->prefix('auth')->group(funct
 // rate-limited to mitigate abuse. No login token is issued for the created
 // manager, who must authenticate via `POST /api/auth/login`.
 Route::middleware(['auth:sanctum', 'actor.active', 'throttle:30,1'])->group(function (): void {
+    // Main-manager-protected main manager listing. Authorization is narrowed
+    // inside IndexMainManagerRequest to an authenticated, active main manager
+    // only; users, officers, non-main managers, and inactive managers all
+    // receive a 403. Results include only rows with `is_main_manager = true`,
+    // ordered by username ascending, with departments and districts eager loaded.
+    Route::get('main-managers', [MainManagerController::class, 'index'])->name('main-managers.index');
+
     Route::post('managers', [ManagerController::class, 'store'])->name('managers.store');
 
     // Manager-protected officer district assignment. Authorization is narrowed

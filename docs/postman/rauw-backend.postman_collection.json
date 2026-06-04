@@ -337,6 +337,51 @@
       "name": "Managers",
       "item": [
         {
+          "name": "List Main Managers",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/main-managers?page=1&per_page=20",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "main-managers"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "per_page",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "List managers with is_main_manager=true as an authenticated active main manager (is_main_manager=true). Requires Authorization: Bearer <token> from Auth / Login with the demo main manager locally (demo.manager@example.com). Results are ordered by username ascending and include departments and districts compact arrays. Pagination uses page and per_page (default 20, max 100). Users, officers, ordinary managers, inactive managers, and unauthenticated requests receive 403."
+          },
+          "response": []
+        },
+        {
           "name": "Create Manager",
           "event": [
             {
@@ -460,7 +505,7 @@
           "response": []
         }
       ],
-      "description": "Protected manager administration requests. Manager creation is restricted to authenticated active main managers. District assignment requests include manager self-service updates and manager-admin officer district updates. Department assignment PATCH requests require an active main manager token."
+      "description": "Protected manager administration requests. List Main Managers and Create Manager require an authenticated active main manager token. District assignment requests include manager self-service updates and manager-admin officer district updates. Department assignment PATCH requests require an active main manager token."
     },
     {
       "name": "Officers",

@@ -68,7 +68,7 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 2. Run **Auth / Current Profile** to inspect the actor attached to the stored token.
 3. Run **Districts / List Districts** and **Departments / List Departments** to find local IDs for assignment examples.
 4. To test manager creation, district assignment, or district/department mutations locally, run **Auth / Login** with `demo.manager@example.com` and password `password`. This stores a main-manager token.
-5. Run **Managers / Create Manager**. This creates an ordinary manager but does not replace the stored `access_token`.
+5. Run **Managers / List Main Managers** to verify main-manager listing, then **Managers / Create Manager**. Create Manager returns only the created manager profile and does not replace the stored `access_token`.
 6. Run **Managers / Update My Districts** or **Officers / Update My Districts** for implemented self-service district assignments, or **Managers / Update Officer Districts** for manager-admin officer assignments.
 7. Run **Districts / Create District**, **Update District**, and **Delete District** with an active manager token. District deletion returns `409 Conflict` while the district is assigned to managers/officers or referenced by issues.
 8. Run **Categories / List Categories** to find existing category IDs. Category reads work for any authenticated actor; create/update/disable/delete require an active manager token.
@@ -326,6 +326,14 @@ Request body:
 ```
 
 The request replaces the authenticated officer's full district assignment set through the `district_officer` pivot and returns the refreshed auth profile with `districts`. It does not reassign issues or modify `issues.district_id`.
+
+### List Main Managers
+
+`GET {{base_url}}/api/main-managers`
+
+Requires `Authorization: Bearer <token>` for an authenticated, active manager whose profile has `is_main_manager: true`. Users, officers, ordinary managers, inactive managers, and unauthenticated requests receive `403`.
+
+Optional query params: `page` (default `1`), `per_page` (default `20`, max `100`). Results include only managers with `is_main_manager: true`, ordered by username ascending, with `departments` and `districts` compact arrays. The response uses Laravel pagination (`data`, `links`, `meta`).
 
 ### Create Manager
 

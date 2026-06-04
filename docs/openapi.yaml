@@ -462,6 +462,82 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
 
+  /api/main-managers:
+    get:
+      tags: [ Managers ]
+      summary: List main managers
+      description: >-
+        List managers with `is_main_manager = true` for an authenticated active
+        main manager. Results are ordered by username ascending and include each
+        manager's departments and districts as compact arrays. Users, officers,
+        ordinary managers, inactive managers, inactive main managers, and
+        unauthenticated requests receive 403. Pagination is backend-driven using
+        page and per_page, with a default per_page of 20 and maximum of 100.
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Backend-paginated list of main managers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Manager'
+                  links:
+                    type: object
+                    additionalProperties: true
+                  meta:
+                    type: object
+                    properties:
+                      current_page:
+                        type: integer
+                      per_page:
+                        type: integer
+                      total:
+                        type: integer
+                      last_page:
+                        type: integer
+              example:
+                data:
+                  - actor_type: manager
+                    id: 1
+                    username: demo-manager
+                    email: demo.manager@example.com
+                    is_active: true
+                    is_main_manager: true
+                    created_by_manager_id: null
+                    departments:
+                      - id: 1
+                        code: wijkbeheer
+                        name: Wijkbeheer
+                    districts:
+                      - id: 1
+                        name: Middelharnis
+                        postal_prefix: '3241'
+                links:
+                  first: /api/main-managers?page=1
+                  last: /api/main-managers?page=1
+                  prev: null
+                  next: null
+                meta:
+                  current_page: 1
+                  per_page: 20
+                  total: 1
+                  last_page: 1
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
   /api/managers:
     post:
       tags: [ Managers ]
