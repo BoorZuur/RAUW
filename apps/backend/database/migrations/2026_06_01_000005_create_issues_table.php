@@ -33,7 +33,6 @@ return new class extends Migration
             $table->unsignedTinyInteger('priority')->nullable();
             $table->integer('duplicate_count')->default(0);
             $table->integer('participant_count')->default(0);
-            $table->integer('vote_count')->default(0);
             $table->boolean('is_flagged')->default(false);
             $table->enum('visibility', Visibility::values())->default(Visibility::Visible->value);
             $table->boolean('is_anonymous')->default(false);
