@@ -48,8 +48,11 @@ Table managers {
   password_hash    varchar(255) [not null]
   // Afdelingen via department_manager; een manager kan aan meerdere afdelingen gekoppeld zijn.
   // Wijken via district_manager; een manager kan aan meerdere wijken gekoppeld zijn.
-  is_main_manager  boolean      [not null, default: false]
-  created_by_manager_id int     [ref: > managers.id]
+  // is_main_manager: alleen via seeding/admin; nooit via publieke API. Route-niveau (geen extra kolommen):
+  //   GET/PATCH/PATCH disable /api/main-managers — alleen actieve main manager; binding op is_main_manager = true.
+  //   GET/POST/PATCH/PATCH disable /api/managers — alleen actieve main manager; binding op is_main_manager = false.
+  is_main_manager  boolean      [not null, default: false, note: 'Hiërarchievlag; API mag niet wijzigen; route binding filtert main vs gewone managers']
+  created_by_manager_id int     [ref: > managers.id, note: 'Optioneel; wie deze manager heeft aangemaakt']
   is_active        tinyint(1)   [not null, default: 1]
   deleted_at       datetime
   created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
@@ -187,8 +190,7 @@ Table issues {
   latitude             decimal(10,8)
   longitude            decimal(11,8)
   status               varchar(20)  [not null, default: 'open', note: 'open | in_behandeling | afgerond | afgewezen | gedupliceerd']
-  priority             varchar(10)  [not null, default: 'laag', note: 'laag | midden | zwaar']
-  department           varchar(20)  [not null, note: 'Legacy compatibility/cache column derived from category departments (wijkbeheer | boa_jeugd | beide indien ondersteund); clients must not write it. Source of truth is department_issue.']
+  priority             tinyint      [note: 'unsigned nullable; server-afgeleid uit hoofdcategorie priority (lager getal = hogere urgentie); client mag niet schrijven']
   duplicate_count      int          [not null, default: 0]
   participant_count    int          [not null, default: 0, note: 'Direct opgehoogd, nachtelijks gereconcilieerd']
   vote_count           int          [not null, default: 0, note: 'Direct opgehoogd, nachtelijks gereconcilieerd']
