@@ -142,6 +142,8 @@ Route::middleware(['auth:sanctum', 'actor.active', 'throttle:30,1'])->group(func
     // foreign-key cascade to remove the issue's attachments.
     Route::get('issues', [IssueController::class, 'index'])->name('issues.index');
     Route::post('issues', [IssueController::class, 'store'])->name('issues.store');
+    // Show returns 404 when the issue is not visible to the actor (e.g. hidden
+    // and not owned by an active user); officers and managers may view all issues.
     Route::get('issues/{issue}', [IssueController::class, 'show'])->name('issues.show');
     Route::match(['put', 'patch'], 'issues/{issue}', [IssueController::class, 'update'])->name('issues.update');
     Route::delete('issues/{issue}', [IssueController::class, 'destroy'])->name('issues.destroy');

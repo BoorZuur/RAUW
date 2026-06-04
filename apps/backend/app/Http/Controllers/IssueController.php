@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Issues\DeleteIssueRequest;
 use App\Http\Requests\Issues\IndexIssueRequest;
+use App\Http\Requests\Issues\ShowIssueRequest;
 use App\Http\Requests\Issues\StoreIssueRequest;
 use App\Http\Requests\Issues\UpdateIssueRequest;
+use App\Support\IssueVisibilityQuery;
 use App\Http\Resources\IssueResource;
 use App\Models\Category;
 use App\Models\Issue;
@@ -124,9 +126,17 @@ class IssueController extends Controller
 
     /**
      * Show a single issue with its eager-loaded relations.
+     *
+     * Visibility is enforced after route binding: users may view visible issues
+     * or their own issues (any visibility); officers and managers may view any
+     * issue. Unauthorized or invisible issues return 404 to avoid leaking existence.
      */
-    public function show(Issue $issue): IssueResource
+    public function show(ShowIssueRequest $request, Issue $issue): IssueResource
     {
+        if (! IssueVisibilityQuery::canViewIssue($issue, $request->user())) {
+            abort(404);
+        }
+
         $issue->load(self::ISSUE_RELATIONS);
 
         return new IssueResource($issue);
