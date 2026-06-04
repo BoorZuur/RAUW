@@ -30,17 +30,11 @@ class RegisterUserRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
-            'username' => ['required', 'string', 'max:255', Rule::unique('users', 'username')],
+            'username' => ['required', 'string', 'max:50', Rule::unique('users', 'username')],
             'email' => ['required', 'email', new UniqueActorEmail()],
             'password' => ['required', 'string', Password::min(8)],
             'confirm_password' => ['required', 'string', 'same:password'],
         ];
-    }
-
-    public function name(): string
-    {
-        return (string) $this->input('name');
     }
 
     public function username(): string
