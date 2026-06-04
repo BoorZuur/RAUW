@@ -450,7 +450,7 @@
                 "me"
               ]
             },
-            "description": "Self-service identity PATCH for users, officers, and managers. Send only fields to change (username, email, password; officers may send badge_number). Inactive actors may still call this route for recovery. Privileged and assignment fields are rejected with 422. When password is present, confirm_password must match."
+            "description": "Self-service identity PATCH for users, officers, and managers. Send only fields to change. Active: username, email, password; officers may also send badge_number. Inactive: username and password only (email and badge_number return 422). Privileged and assignment fields are rejected with 422. When password is present, confirm_password must match."
           },
           "response": []
         },

@@ -19,7 +19,8 @@ info:
     Login already returns generic **401** (`Invalid credentials.`) for inactive
     credentials as well as unknown email or wrong password. While inactive,
     actors may still call **GET** `/api/auth/me`, **POST** `/api/auth/logout`,
-    and **PATCH** `/api/auth/me` (self-service identity only). All other
+    and **PATCH** `/api/auth/me` (inactive: username and password only; active:
+    full identity fields). All other
     protected routes, including **PATCH** `/api/auth/me/districts`, return
     **403** from inactive-actor middleware.
 
@@ -308,13 +309,15 @@ paths:
       summary: Update my profile identity fields
       description: >-
         Self-service identity update for users, officers, and managers.
-        Inactive accounts may call this route to recover profile fields
-        (whitelisted by global inactive-actor middleware). Accepts a partial
-        PATCH body: send only the fields to change. Users and managers may
-        update username, email, and password; officers may also update
+        Inactive accounts may call this route for profile recovery
+        (whitelisted by global inactive-actor middleware) but may only change
+        username and password. Active accounts accept a partial PATCH body:
+        send only the fields to change. Active users and managers may update
+        username, email, and password; active officers may also update
         badge_number. When password is present, confirm_password must match.
-        Department, district, and privileged fields are rejected with 422
-        validation errors and must not be sent on this path.
+        Inactive requests that include email or badge_number receive 422
+        validation errors. Department, district, and privileged fields are
+        rejected with 422 validation errors and must not be sent on this path.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -2353,10 +2356,12 @@ components:
       type: object
       description: >-
         Partial self-service identity update. All fields are optional; send only
-        fields to change. Officers may include badge_number; users and managers
-        must not send badge_number (422). When password is present,
-        confirm_password is required and must match. Department, district, and
-        privileged fields are not accepted on this path.
+        fields to change. Active actors: users and managers may send username,
+        email, and password; officers may also send badge_number. Inactive actors
+        may only send username and password (email and badge_number are
+        prohibited with 422). When password is present, confirm_password is
+        required and must match. Department, district, and privileged fields are
+        not accepted on this path.
       properties:
         username:
           type: string

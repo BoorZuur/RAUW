@@ -13,27 +13,27 @@ use Illuminate\Validation\Rules\Password;
 class UpdateProfileRequest extends FormRequest
 {
     /**
-     * Only an authenticated, active user, officer, or manager may update their
-     * own identity fields through this endpoint.
-     *
-     * Inactive actors cannot authenticate, but the active flag is asserted here
-     * as a defence-in-depth guard.
+     * Any authenticated user, officer, or manager may update their own profile.
+     * Active actors may change username, email, and password (officers also
+     * badge_number). Inactive actors may only change username and password for
+     * account recovery; {@see EnsureActorIsActive} whitelists this route.
      */
     public function authorize(): bool
     {
         $actor = $this->user();
 
-        return ($actor instanceof User || $actor instanceof Officer || $actor instanceof Manager)
-            && (bool) $actor->is_active === true;
+        return $actor instanceof User
+            || $actor instanceof Officer
+            || $actor instanceof Manager;
     }
 
     /**
      * Partial PATCH validation for self-service profile identity updates.
      *
      * Username uniqueness is checked against the actor's own table column so
-     * that soft-deleted rows still reserve their identifiers. Email must remain
-     * unique across all actor tables so shared login credentials cannot become
-     * ambiguous, ignoring the current actor's row when checking their table.
+     * that soft-deleted rows still reserve their identifiers. Active actors may
+     * update email (unique across all actor tables) and officers may update
+     * badge_number. Inactive actors may only update username and password.
      * System-managed fields (is_active, flag_count, is_under_review,
      * email_verified_at, remember_token, deleted_at, department_ids,
      * district_ids, is_main_manager, created_by_manager_id, and tokens) are
@@ -49,7 +49,6 @@ class UpdateProfileRequest extends FormRequest
 
         $rules = [
             'username' => ['sometimes', 'string', 'max:50', Rule::unique($table, 'username')->ignore($id)],
-            'email' => ['sometimes', 'email', new UniqueActorEmail($table, $id)],
             'password' => ['sometimes', 'string', Password::min(8)],
             'confirm_password' => ['required_with:password', 'string', 'same:password'],
             'department_ids' => ['prohibited'],
@@ -63,13 +62,25 @@ class UpdateProfileRequest extends FormRequest
             'created_by_manager_id' => ['prohibited'],
         ];
 
-        if ($actor instanceof Officer) {
-            $rules['badge_number'] = ['sometimes', 'string', 'max:20', Rule::unique('officers', 'badge_number')->ignore($id)];
+        if ($this->isActorActive()) {
+            $rules['email'] = ['sometimes', 'email', new UniqueActorEmail($table, $id)];
+
+            if ($actor instanceof Officer) {
+                $rules['badge_number'] = ['sometimes', 'string', 'max:20', Rule::unique('officers', 'badge_number')->ignore($id)];
+            } else {
+                $rules['badge_number'] = ['prohibited'];
+            }
         } else {
+            $rules['email'] = ['prohibited'];
             $rules['badge_number'] = ['prohibited'];
         }
 
         return $rules;
+    }
+
+    private function isActorActive(): bool
+    {
+        return (bool) $this->user()->is_active;
     }
 
     /**

@@ -18,11 +18,12 @@ class ProfileUpdateController extends Controller
      * refreshed canonical auth profile payload.
      *
      * Authorization is enforced by {@see UpdateProfileRequest}, which restricts
-     * this action to an authenticated, active user, officer, or manager.
-     * Only username, email, password, and (for officers) badge_number may be
-     * changed; department, district, and privileged fields are rejected with
-     * validation errors. The response reuses the same {@see AuthProfileResource}
-     * shape as `GET /api/auth/me`, with `actor_type` on the wrapper.
+     * this action to an authenticated user, officer, or manager. Active actors
+     * may change username, email, password, and (for officers) badge_number;
+     * inactive actors may only change username and password for recovery.
+     * Department, district, and privileged fields are rejected with validation
+     * errors. The response reuses the same {@see AuthProfileResource} shape as
+     * `GET /api/auth/me`, with `actor_type` on the wrapper.
      */
     public function __invoke(UpdateProfileRequest $request): JsonResponse
     {

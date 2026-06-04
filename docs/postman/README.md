@@ -270,7 +270,7 @@ Common error response:
 
 `PATCH {{base_url}}/api/auth/me`
 
-Self-service identity update for users, officers, and managers. Send only fields to change (`username`, `email`, `password`; officers may send `badge_number`). When `password` is present, `confirm_password` must match. Inactive actors may call this route for recovery. Department, district, and privileged fields are rejected with `422`.
+Self-service identity update for users, officers, and managers. Send only fields to change. **Active:** `username`, `email`, `password`; officers may also send `badge_number`. **Inactive:** `username` and `password` only (`email` and `badge_number` return `422`). When `password` is present, `confirm_password` must match. Department, district, and privileged fields are rejected with `422`.
 
 ### Inactive actor middleware
 
