@@ -785,10 +785,12 @@ paths:
         their own hidden issues; other users' hidden issues are excluded. Active
         officers and active managers receive all issues, including hidden issues from
         any user. Filters are optional and composable (AND with visibility): district_id,
-        department, category_id, and mine may be combined in a single request to narrow the
+        department, category_id, mine, and visibility may be combined in a single request to narrow the
         result set. Query param mine (`mine=1` or equivalent truthy values) restricts
         active users to issues they own (`issues.user_id`); officers and managers sending
-        mine receive 422. Query param department accepts a department code from the departments
+        mine receive 422. Query param visibility (`visible` or `hidden`) narrows officer/manager
+        lists to that visibility value; when omitted officers and managers see all issues.
+        Users sending visibility receive 422. Query param department accepts a department code from the departments
         table and matches through department_issue with any-match semantics, so a
         multi-department issue is included when any pivot assignment has the requested
         code. Pagination is backend-driven using page and per_page, with a default
@@ -827,6 +829,17 @@ paths:
             type: string
             enum: [ '1', 'true' ]
             example: '1'
+        - name: visibility
+          in: query
+          description: >-
+            Optional filter for active officers and managers only. When set to `hidden`,
+            returns only hidden issues; when set to `visible`, returns only visible issues.
+            When omitted, officers and managers receive all issues (visible and hidden).
+            Composes with other filters (AND). Users cannot use this filter (422).
+          schema:
+            type: string
+            enum: [ visible, hidden ]
+            example: hidden
       responses:
         '200':
           description: Backend-paginated list of issues

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Issues;
 
+use App\Enums\Visibility;
 use App\Models\Manager;
 use App\Models\Officer;
 use Illuminate\Contracts\Validation\Validator;
@@ -38,10 +39,13 @@ class IndexIssueRequest extends FormRequest
      * List results are visibility-scoped per actor type before these filters
      * (users: visible issues or own issues; officers/managers: all issues).
      * Filters are optional and composable: `district_id`, `department`,
-     * `category_id`, and `mine` may be combined to narrow the scoped result set
-     * (AND semantics). The `mine` filter (`mine=1` or equivalent truthy query
-     * values) restricts active users to issues they own (`issues.user_id`);
-     * officers and managers cannot use `mine` and receive 422. The `department`
+     * `category_id`, `mine`, and `visibility` may be combined to narrow the scoped
+     * result set (AND semantics). The `mine` filter (`mine=1` or equivalent truthy
+     * query values) restricts active users to issues they own (`issues.user_id`);
+     * officers and managers cannot use `mine` and receive 422. The `visibility`
+     * filter (`visible` or `hidden`) narrows officer/manager lists to one visibility
+     * value; when omitted they see all issues. Users cannot use `visibility` and
+     * receive 422. The `department`
      * filter accepts a real department code and
      * is applied against the issue departments relationship with any-match
      * semantics. Pagination is bounded so `per_page` can never exceed a safe
@@ -56,6 +60,7 @@ class IndexIssueRequest extends FormRequest
             'department' => ['sometimes', 'string', Rule::exists('departments', 'code')],
             'category_id' => ['sometimes', 'integer', Rule::exists('categories', 'id')],
             'mine' => ['sometimes', Rule::in(['1', 'true', true, 1])],
+            'visibility' => ['sometimes', Rule::enum(Visibility::class)],
             'page' => ['sometimes', 'integer', 'min:1'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:'.self::MAX_PER_PAGE],
         ];
@@ -74,21 +79,25 @@ class IndexIssueRequest extends FormRequest
     }
 
     /**
-     * Reject `mine` for officers and managers; only active users may narrow to owned issues.
+     * Reject role-incompatible list filters: `mine` for officers/managers;
+     * `visibility` for users.
      */
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            if (! $this->wantsMine()) {
-                return;
-            }
-
             $actor = $this->user();
 
-            if ($actor instanceof Officer || $actor instanceof Manager) {
+            if ($this->wantsMine() && ($actor instanceof Officer || $actor instanceof Manager)) {
                 $validator->errors()->add(
                     'mine',
                     'The mine filter is only available to users.',
+                );
+            }
+
+            if ($this->filled('visibility') && ! ($actor instanceof Officer || $actor instanceof Manager)) {
+                $validator->errors()->add(
+                    'visibility',
+                    'The visibility filter is only available to officers and managers.',
                 );
             }
         });
