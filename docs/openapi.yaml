@@ -2963,8 +2963,6 @@ components:
           type: boolean
         author:
           $ref: '#/components/schemas/IssueAuthor'
-        vote_count:
-          type: integer
         participant_count:
           type: integer
         duplicate_count:
