@@ -10,17 +10,18 @@ use Illuminate\Validation\Rule;
 class UpdateDistrictRequest extends FormRequest
 {
     /**
-     * Only an authenticated, active manager may update districts.
+     * Only an authenticated, active main manager may update districts.
      *
-     * Mirrors StoreDistrictRequest: users, officers, and inactive managers are
-     * all rejected with a 403 response.
+     * Mirrors StoreDistrictRequest: users, officers, non-main managers, and
+     * inactive managers are all rejected with a 403 response.
      */
     public function authorize(): bool
     {
         $actor = $this->user();
 
         return $actor instanceof Manager
-            && (bool) $actor->is_active === true;
+            && (bool) $actor->is_active === true
+            && (bool) $actor->is_main_manager === true;
     }
 
     /**

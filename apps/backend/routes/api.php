@@ -156,7 +156,8 @@ Route::middleware(['auth:sanctum', 'actor.active', 'throttle:30,1'])->group(func
 
     // District management. Reads preserve the documented district list/show
     // contract, while writes are authorized inside the district FormRequests to
-    // authenticated, active managers only. Deleting a district is blocked when
+    // an authenticated, active main manager; users, officers, non-main managers,
+    // and inactive managers all receive a 403. Deleting a district is blocked when
     // manager/officer assignments or issue references still exist; district CRUD
     // never reassigns or rewrites `issues.district_id`.
     Route::get('districts', [DistrictController::class, 'index'])->name('districts.index');
