@@ -34,7 +34,7 @@ export default function SectorSettings() {
                         <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-313-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
                     </span>
                     <p>
-                        <strong id="selected-count">0</strong> van 73 Rotterdamse wijken geselecteerd als jouw zorggebied
+                        <strong id="selected-count">0</strong> van 74 Rotterdamse wijken geselecteerd als jouw zorggebied
                     </p>
                 </div>
 
@@ -83,6 +83,8 @@ export default function SectorSettings() {
                         <button className="wijk-item">Lombardijen</button>
                         <button className="wijk-item">Middelland</button>
                         <button className="wijk-item">Molenlaankwartier</button>
+
+                        button.wijk-item*
                     </div>
                 </section>
             </main>

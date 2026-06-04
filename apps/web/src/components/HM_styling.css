@@ -1,4 +1,7 @@
-/**/
+@theme{
+
+}
+
 :root {
     /*Light Mode --------------*/
     --sidebar-bg: #223c2b;
@@ -9,8 +12,9 @@
     --active-bg: rgba(255, 255, 255, 0.08);
 
     --accent-gold: #dfb15b;
+}
 
-    /*Dark Mode ------------------*/
+.dark{
 
 }
 

@@ -1,5 +1,18 @@
+@theme{
+    --main-bg: var(--main-bg);
+    --header-bg: var(--header-bg);
+    --card-bg: var(--card-bg);
+    --text-dark: var(--text-dark);
+    --text-muted: var(--text-muted);
+    --primary-green: var(--primary-green);
+    --accent-gold: var(--accent-gold);
+    --banner-bg: var(--banner-bg);
+    --border-color: var(--border-color);
+}
+
 :root {
     --main-bg: #f7f6f0;
+    --header-bg: #e9e8e0;
     --card-bg: #ffffff;
     --text-dark: #1c2b1f;
     --text-muted: #707a71;
@@ -9,16 +22,19 @@
     --border-color: #e3e5e2;
 }
 
+.dark{
+
+}
+
 .main-content {
     position: relative;
-    margin-left: 260px;
-    width: calc(100% - 260px);
-    max-width: 100%;
+    margin-left: 180px;
     padding: 40px;
     background-color: var(--main-bg);
     min-height: 100vh;
     box-sizing: border-box;
     overflow-x: hidden;
+    width: 93%;
 }
 
 /* Header elements */
@@ -36,7 +52,7 @@
 }
 
 .header-icon {
-    background-color: #e9e8e0;
+    background-color: var(--header-bg);
     color: var(--text-dark);
     width: 46px;
     height: 46px;
@@ -61,7 +77,7 @@
 
 .btn-save {
     background-color: var(--primary-green);
-    color: #ffffff;
+    color: var(--card-bg);
     border: none;
     padding: 12px 24px;
     font-size: 14px;
@@ -163,11 +179,21 @@
 }
 
 @media (max-width: 1200px) {
+
+    .main-content {
+        margin-left: 220px;
+    }
+
     .wijken-grid {
         grid-template-columns: repeat(3, 1fr);
     }
 }
 @media (max-width: 900px) {
+
+    .main-content {
+        margin-left: 260px;
+    }
+
     .wijken-grid {
         grid-template-columns: repeat(2, 1fr);
     }
