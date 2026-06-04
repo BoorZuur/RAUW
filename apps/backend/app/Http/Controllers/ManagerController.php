@@ -55,8 +55,9 @@ class ManagerController extends Controller
             'username' => $request->username(),
             'email' => $request->email(),
             'password' => $request->password(),
-            'created_by_manager_id' => $creator->id,
         ]);
+
+        $manager->forceFill(['created_by_manager_id' => $creator->id])->save();
 
         // Persist the manager's one-or-more department assignments in the pivot.
         $manager->departments()->sync($request->departmentIds());
