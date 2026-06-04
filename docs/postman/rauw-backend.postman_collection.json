@@ -464,6 +464,51 @@
           "response": []
         },
         {
+          "name": "List Managers",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/managers?page=1&per_page=20",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "managers"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "per_page",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "List managers with is_main_manager=false as an authenticated active main manager (is_main_manager=true). Requires Authorization: Bearer <token> from Auth / Login with the demo main manager locally (demo.manager@example.com). Results are ordered by username ascending and include departments and districts compact arrays. Pagination uses page and per_page (default 20, max 100). Users, officers, ordinary managers, inactive managers, and unauthenticated requests receive 403."
+          },
+          "response": []
+        },
+        {
           "name": "Create Manager",
           "event": [
             {

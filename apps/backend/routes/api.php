@@ -90,6 +90,12 @@ Route::middleware(['auth:sanctum', 'actor.active', 'throttle:30,1'])->group(func
     Route::patch('main-managers/{manager}', [MainManagerController::class, 'update'])->name('main-managers.update');
     Route::patch('main-managers/{manager}/disable', [MainManagerController::class, 'disable'])->name('main-managers.disable');
 
+    // Main-manager-protected ordinary manager listing. Authorization is narrowed
+    // inside IndexManagerRequest to an authenticated, active main manager only;
+    // users, officers, non-main managers, and inactive managers all receive a
+    // 403. Results include only rows with `is_main_manager = false`, ordered by
+    // username ascending, with departments and districts eager loaded.
+    Route::get('managers', [ManagerController::class, 'index'])->name('managers.index');
     Route::post('managers', [ManagerController::class, 'store'])->name('managers.store');
 
     // Manager-protected officer district assignment. Authorization is narrowed

@@ -2,14 +2,37 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Managers\IndexManagerRequest;
 use App\Http\Requests\Managers\StoreManagerRequest;
 use App\Http\Resources\ManagerResource;
 use App\Models\Manager;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 
 class ManagerController extends Controller
 {
+    /**
+     * List ordinary managers with pagination.
+     *
+     * Authorization is enforced by IndexManagerRequest, which restricts
+     * this action to an authenticated, active, main manager. Results include
+     * only managers with `is_main_manager = false`, eager-loaded departments
+     * and districts, ordered by username ascending. Pagination is bounded so
+     * `per_page` can never exceed a safe maximum.
+     */
+    public function index(IndexManagerRequest $request): AnonymousResourceCollection
+    {
+        $managers = Manager::query()
+            ->where('is_main_manager', false)
+            ->with(['departments', 'districts'])
+            ->orderBy('username')
+            ->paginate($request->perPage())
+            ->withQueryString();
+
+        return ManagerResource::collection($managers);
+    }
+
     /**
      * Create a new manager on behalf of the authenticated main manager.
      *

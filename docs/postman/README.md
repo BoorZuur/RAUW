@@ -360,6 +360,14 @@ Request body (send only fields to change):
 
 Requires the same main-manager authorization as update. Sets `is_active` to `false` on the target main manager and returns the updated `Manager` resource. Returns `409` when the target is the last active main manager. Ordinary manager IDs return `404`.
 
+### List Managers
+
+`GET {{base_url}}/api/managers`
+
+Requires `Authorization: Bearer <token>` for an authenticated, active manager whose profile has `is_main_manager: true`. Users, officers, ordinary managers, inactive managers, and unauthenticated requests receive `403`.
+
+Optional query params: `page` (default `1`), `per_page` (default `20`, max `100`). Results include only managers with `is_main_manager: false`, ordered by username ascending, with `departments` and `districts` compact arrays. The response uses Laravel pagination (`data`, `links`, `meta`).
+
 ### Create Manager
 
 `POST {{base_url}}/api/managers`
