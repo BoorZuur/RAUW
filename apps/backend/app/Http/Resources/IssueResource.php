@@ -81,7 +81,6 @@ class IssueResource extends JsonResource
             'longitude' => $issue->longitude,
             'is_anonymous' => (bool) $issue->is_anonymous,
             'author' => $this->compactAuthor($issue),
-            'vote_count' => (int) $issue->vote_count,
             'participant_count' => (int) $issue->participant_count,
             'duplicate_count' => (int) $issue->duplicate_count,
             'category' => $this->compactCategory($issue),

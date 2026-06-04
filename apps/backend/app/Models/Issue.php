@@ -47,7 +47,6 @@ class Issue extends Model
         'chat_status' => ChatStatus::Closed->value,
         'duplicate_count' => 0,
         'participant_count' => 0,
-        'vote_count' => 0,
         'is_flagged' => false,
         'visibility' => Visibility::Visible->value,
         'is_anonymous' => false,
@@ -68,7 +67,6 @@ class Issue extends Model
             'longitude' => 'decimal:8',
             'duplicate_count' => 'integer',
             'participant_count' => 'integer',
-            'vote_count' => 'integer',
             'is_flagged' => 'boolean',
             'visibility' => Visibility::class,
             'is_anonymous' => 'boolean',
@@ -147,11 +145,6 @@ class Issue extends Model
     public function participants(): HasMany
     {
         return $this->hasMany(IssueParticipant::class);
-    }
-
-    public function votes(): HasMany
-    {
-        return $this->hasMany(IssueVote::class);
     }
 
     public function comments(): HasMany

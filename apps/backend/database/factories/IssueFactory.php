@@ -44,7 +44,6 @@ class IssueFactory extends Factory
             'priority' => fake()->optional()->numberBetween(1, 40),
             'duplicate_count' => 0,
             'participant_count' => 0,
-            'vote_count' => 0,
             'is_flagged' => false,
             'visibility' => Visibility::Visible,
             'is_anonymous' => false,
