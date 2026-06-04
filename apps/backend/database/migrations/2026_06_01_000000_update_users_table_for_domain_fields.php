@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('username')->unique()->after('name');
+            $table->string('username', 50)->unique()->after('id');
             $table->boolean('is_active')->default(true)->after('remember_token');
             $table->unsignedInteger('flag_count')->default(0)->after('is_active');
             $table->boolean('is_under_review')->default(false)->after('flag_count');
