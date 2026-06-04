@@ -1,5 +1,5 @@
 import './App.css';
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import {createBrowserRouter, RouterProvider, Navigate, Outlet} from "react-router-dom";
 
 // Imports
 import Onboarding from "./user/Onboarding.jsx";
@@ -14,7 +14,7 @@ import Account from "./user/Account.jsx";
 
 // import CommandCenter from "./handhaver/CommandCenter.jsx";
 // import SectorSettings from "./handhaver/SectorSettings.jsx";
-// import ServiceProfile from "./handhaver/ServiceProfile.jsx";
+import ServiceProfile from "./handhaver/ServiceProfile.jsx";
 // import H_ReportsOverview from "./handhaver/H_ReportsOverview.jsx";
 import HandhaverLogin from "./handhaver/H_Login.jsx";
 import HandhaverRegister from "./handhaver/H_Register.jsx";
@@ -97,7 +97,7 @@ function App() {
         // }
     ]);
 
-    return <RouterProvider router={router} />;
+    return <RouterProvider router={router}/>;
 }
 
 export default App;
