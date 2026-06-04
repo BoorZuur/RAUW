@@ -1,101 +1,75 @@
 @import "tailwindcss";
 
-:root{
+@theme {
+    --color-primary-text: var(--primary-text);
+    --color-secondary-text: var(--secondary-text);
+
+    --color-primary-bg: var(--primary-bg);
+    --color-primary-bg-cards: var(--primary-bg-cards);
+
+    --color-primary-border: var(--primary-border-cards);
+
+    --color-primary-accent: var(--primary-accent);
+    --color-secondary-accent: var(--secondary-accent);
+
+    --font-headline: "Roboto Flex", serif;
+    --font-body: "Literata", serif;
+    --font-label: "Work Sans", sans-serif;
+}
+
+:root {
     --font-family-headline: Roboto Flex;
     --font-family-body: Literata;
     --font-family-label: Work Sans;
 
-    /*Light Mode --------------*/
     --primary-text: #1A2530;
     --secondary-text: #657381;
 
-    --primary-accent: #2c3e50;
+    --primary-accent: #2D483E;
     --secondary-accent: #26a059;
 
     --primary-bg: #f8f6f1;
 
-    /*cards*/
-    --primary-bg-cards:#f9f8f5;
+    --primary-bg-cards: #f9f8f5;
     --primary-border-cards: #e4e1dc;
-
-    /*Dark Mode ------------------*/
-    --primary-text-d: #F5f7fa;
-    --secondary-text-d: #a0aec0;
-
-    --primary-accent-d: #56799c;
-    --secondary-accent-d: #4ade80;
-
-    --primary-bg-d: #121820;
-
-    /*cards*/
-    --primary-bg-cards-d:#364559;
-    --primary-border-cards-d: #e4e1dc;
 }
 
-h1{
-    font-family: var(--font-family-headline), serif;
+.dark {
+    --primary-text: #e6e4df;
+    --secondary-text: #a8a39d;
+
+    --primary-accent: #4ade80;
+    --secondary-accent: #D4AF37;
+
+    --primary-bg: #0d1210;
+
+    --primary-bg-cards: #1a221f;
+    --primary-border-cards: #2d3833;
 }
 
-h2 {
-    font-family: var(--font-family-body), serif;
-
-}
-
-h3, h4, p{
+body {
+    background-color: var(--primary-bg);
+    color: var(--primary-text);
+    transition: background-color 0.3s, color 0.3s;
     font-family: var(--font-family-label), serif;
 }
 
-body{
-    background-color: var(--primary-bg);
-}
+h1 { font-family: var(--font-family-headline), serif; }
+h2 { font-family: var(--font-family-body), serif; color: #1A2530; }
+h3, h4, p { font-family: var(--font-family-label), serif; }
 
-.data-collection{
+.data-collection {
     display: flex;
     flex-direction: row;
     width: 80vw;
 }
 
-/*card component css*/
-.card1{
-    background-color: var(--primary-bg-cards);
-    width: 25vw;
-    height: 15vh;
-    border: solid var(--primary-border-cards) 2px;
-    border-radius: 15px;
-    display: flex;
-    justify-content: space-around;
-}
 
-.card1 > p {
-    color: var(--secondary-text);
-    font-size: 0.2rem;
-}
-
-.data-card1 {
-    color: black;
-    text-transform: uppercase;
-    font-weight: bold;
-    font-size: 2rem;
-    margin-top: 1vh;
-}
-
-.card1 > div {
-    text-align: left;
-    align-self: center;
-    text-transform: uppercase;
-    width: 10vw;
-    height: 10vh;
-}
-
-.icon{
+.icon {
     width: 3vw;
     height: 7vh;
     background-color: var(--primary-border-cards);
     padding: 2%;
     border-radius: 10px;
     align-self: center;
-}
-
-@media only screen and (max-width: 1058px){
-
 }
