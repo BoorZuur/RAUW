@@ -14,6 +14,8 @@ use App\Models\Issue;
 use App\Models\User;
 use App\Support\IssuePriorityResolver;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\QueryException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
@@ -120,7 +122,6 @@ class IssueController extends Controller
 
         $isAnonymous = (bool) ($attributes['is_anonymous'] ?? false);
         $attributes['is_anonymous'] = $isAnonymous;
-        $attributes['anonymous_alias'] = $isAnonymous ? $this->generateAnonymousAlias() : null;
 
         $category = Category::query()
             ->with('departments')
@@ -128,7 +129,11 @@ class IssueController extends Controller
 
         $attributes['priority'] = IssuePriorityResolver::fromCategory($category);
 
-        $issue = Issue::create($attributes);
+        $issue = $isAnonymous
+            ? $this->withUniqueAnonymousAlias(
+                fn (string $alias): Issue => Issue::create([...$attributes, 'anonymous_alias' => $alias]),
+            )
+            : Issue::create([...$attributes, 'anonymous_alias' => null]);
 
         $issue->syncDepartments($category->departmentIds());
 
@@ -204,15 +209,25 @@ class IssueController extends Controller
                 // Preserve an already-assigned stable alias; only mint a new one
                 // when the issue is transitioning into the anonymous state.
                 if ($issue->anonymous_alias === null) {
-                    $attributes['anonymous_alias'] = $this->generateAnonymousAlias();
+                    unset($attributes['anonymous_alias']);
                 }
             } else {
                 $attributes['anonymous_alias'] = null;
             }
         }
 
+        $needsNewAnonymousAlias = array_key_exists('is_anonymous', $attributes)
+            && (bool) $attributes['is_anonymous']
+            && $issue->anonymous_alias === null;
+
         if ($attributes !== []) {
             $issue->update($attributes);
+        }
+
+        if ($needsNewAnonymousAlias) {
+            $this->withUniqueAnonymousAlias(
+                fn (string $alias): bool => $issue->update(['anonymous_alias' => $alias]),
+            );
         }
 
         if ($category !== null) {
@@ -240,19 +255,64 @@ class IssueController extends Controller
     }
 
     /**
-     * Generate a stable, unique anonymous alias such as `Melder#1234`.
+     * Generate a candidate anonymous alias such as `Melder#AB12CD34`.
      *
-     * The alias is intentionally long enough to make collisions vanishingly
-     * unlikely, and a database uniqueness check guards against the rare clash so
-     * two concurrent anonymous reports can never share a display name. The value
-     * fits within the `anonymous_alias` column (20 characters).
+     * Uniqueness is enforced by the database unique index on `anonymous_alias`;
+     * callers persist through {@see withUniqueAnonymousAlias()} so rare
+     * collisions retry with a fresh candidate instead of pre-check queries.
+     * The value fits within the `anonymous_alias` column (20 characters).
      */
     private function generateAnonymousAlias(): string
     {
-        do {
-            $alias = 'Melder#'.Str::upper(Str::random(8));
-        } while (Issue::query()->where('anonymous_alias', $alias)->exists());
+        return 'Melder#'.Str::upper(Str::random(8));
+    }
 
-        return $alias;
+    /**
+     * Persist issue data that includes a new `anonymous_alias`, retrying on
+     * unique-index collisions up to a fixed attempt limit.
+     *
+     * @template T
+     *
+     * @param  callable(string): T  $persistUsingAlias
+     * @return T
+     */
+    private function withUniqueAnonymousAlias(callable $persistUsingAlias): mixed
+    {
+        $maxAttempts = 5;
+
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            try {
+                return $persistUsingAlias($this->generateAnonymousAlias());
+            } catch (UniqueConstraintViolationException) {
+                if ($attempt >= $maxAttempts) {
+                    abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'Server error.');
+                }
+            } catch (QueryException $exception) {
+                if (! $this->isAnonymousAliasIntegrityViolation($exception)) {
+                    throw $exception;
+                }
+
+                if ($attempt >= $maxAttempts) {
+                    abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'Server error.');
+                }
+            }
+        }
+
+        abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'Server error.');
+    }
+
+    /**
+     * Whether a query exception reflects an `anonymous_alias` unique violation.
+     */
+    private function isAnonymousAliasIntegrityViolation(QueryException $exception): bool
+    {
+        if ($exception instanceof UniqueConstraintViolationException) {
+            return true;
+        }
+
+        $message = strtolower($exception->getMessage());
+
+        return str_contains($message, 'issues_anonymous_alias_unique')
+            || str_contains($message, 'anonymous_alias');
     }
 }
