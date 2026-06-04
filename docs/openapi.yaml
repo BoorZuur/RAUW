@@ -9,11 +9,16 @@ info:
 
     Inactive accounts: after `auth:sanctum` resolves a bearer token, global
     middleware rejects deactivated users, officers, and managers with **403**
-    (`InactiveAccount`) on protected routes. Login already returns generic
-    **401** for inactive credentials. While inactive, actors may still call
-    **GET** `/api/auth/me`, **POST** `/api/auth/logout`, and **PATCH**
-    `/api/auth/me` (self-service identity only). All other protected routes,
-    including **PATCH** `/api/auth/me/districts`, return **403**.
+    (`InactiveAccount`, message `This account is inactive.`) on protected routes.
+    Login already returns generic **401** (`Invalid credentials.`) for inactive
+    credentials as well as unknown email or wrong password. While inactive,
+    actors may still call **GET** `/api/auth/me`, **POST** `/api/auth/logout`,
+    and **PATCH** `/api/auth/me` (self-service identity only). All other
+    protected routes, including **PATCH** `/api/auth/me/districts`, return
+    **403** from inactive-actor middleware.
+
+    Health check **GET** `/up` (Laravel bootstrap) is intentionally omitted
+    from this spec; it is not part of the JSON API contract under `/api`.
   version: '1.0.0'
 servers:
   - url: /
@@ -161,9 +166,11 @@ paths:
           description: >-
             Validation failed. Returned when required fields are missing,
             email is invalid, password is shorter than 8 characters,
-            confirm_password does not match password, or username already exists
-            in the users table, or email already exists for any user, officer,
-            or manager.
+            confirm_password does not match password, or username/email is
+            already registered. Duplicate username or email (including email
+            used by an officer or manager) returns the generic message
+            `The provided credentials could not be registered.` on the
+            offending fields without revealing which actor table holds the email.
           content:
             application/json:
               schema:
@@ -194,7 +201,7 @@ paths:
                       confirm_password:
                         - The confirm password field must match password.
                 duplicateIdentifiers:
-                  summary: Duplicate user identifiers
+                  summary: Duplicate user identifiers (generic message)
                   value:
                     message: The provided credentials could not be registered. (and 1 more error)
                     errors:
@@ -207,6 +214,13 @@ paths:
     post:
       tags: [ Auth ]
       summary: Login and receive tokens
+      description: >-
+        Authenticate a user, officer, or manager with shared email/password
+        credentials. Returns a Sanctum bearer token and the canonical safe
+        profile payload. Unknown email, wrong password, inactive accounts, and
+        ambiguous email matches across actor tables all return the same generic
+        **401** with message `Invalid credentials.` so callers cannot infer
+        account state.
       requestBody:
         required: true
         content:
@@ -351,8 +365,6 @@ paths:
                           postal_prefix: '3241'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
         '422':
           $ref: '#/components/responses/ValidationError'
 
@@ -392,8 +404,9 @@ paths:
         Self-service district assignment endpoint for active managers and active
         officers. Replaces the authenticated actor's district assignments with
         the supplied district_ids array and returns the refreshed auth profile.
-        Users receive 403 because they do not have district assignments.
-        Inactive accounts receive 403 from global inactive-actor middleware
+        Users receive **403** (`This action is unauthorized.`) because they do
+        not have district assignments. Inactive accounts receive **403**
+        (`This account is inactive.`) from global inactive-actor middleware
         (not whitelisted). The request updates only actor district pivots and
         never modifies the singular issues.district_id issue location/reference
         field.
@@ -458,7 +471,22 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          $ref: '#/components/responses/Forbidden'
+          description: >-
+            Users without district assignments (Forbidden) or deactivated
+            accounts (InactiveAccount).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                userForbidden:
+                  summary: User actor
+                  value:
+                    message: This action is unauthorized.
+                inactiveAccount:
+                  summary: Inactive bearer token
+                  value:
+                    message: This account is inactive.
         '422':
           $ref: '#/components/responses/ValidationError'
 
@@ -1039,13 +1067,14 @@ paths:
       tags: [ Issues ]
       summary: Create a new issue
       description: >-
-        Create an issue as an authenticated active user. The request requires
-        category_id, district_id, title, and content. The issue's departments are
-        derived server-side from the selected category's department assignments,
-        synced to the department_issue pivot, and returned as a read-only
-        departments array. Clients must not send department values. The database
-        no longer stores issues.department; pivot rows are the only persistence.
-        Location
+        Create an issue as an authenticated active regular user only. Officers,
+        managers, inactive users, and unauthenticated requests receive **403**
+        (`This action is unauthorized.`). The request requires category_id,
+        district_id, title, and content. The issue's departments are derived
+        server-side from the selected category's department assignments, synced
+        to the department_issue pivot, and returned as a read-only departments
+        array. Clients must not send department values. The database no longer
+        stores issues.department; pivot rows are the only persistence. Location
         fields are optional. When is_anonymous is true the backend still stores
         user_id ownership, but generates and persists a stable anonymous alias
         such as Melder#A1B2C3D4 for public display; clients cannot submit the
@@ -1080,7 +1109,23 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          $ref: '#/components/responses/Forbidden'
+          description: >-
+            Forbidden. Deactivated accounts receive `This account is inactive.`
+            (InactiveAccount). Officers, managers, and other non-user actors
+            receive `This action is unauthorized.` (FormRequest authorize).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                inactiveAccount:
+                  summary: Inactive bearer token (middleware)
+                  value:
+                    message: This account is inactive.
+                unauthorizedRole:
+                  summary: Officer or manager (authorize)
+                  value:
+                    message: This action is unauthorized.
         '422':
           $ref: '#/components/responses/ValidationError'
 
@@ -1211,6 +1256,8 @@ paths:
                 $ref: '#/components/schemas/Issue'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InactiveAccount'
         '404':
           $ref: '#/components/responses/NotFound'
 
@@ -1383,8 +1430,10 @@ paths:
       summary: Delete an issue attachment
       description: >-
         Hard delete one attachment from an issue owned by the authenticated active
-        user. Officers, managers, inactive users, unauthenticated requests, and
-        non-owner users receive 403. The attachment must belong to the issue in
+        user only. Officers, managers, non-owner users, and unauthenticated
+        requests receive **403** (`This action is unauthorized.`). Deactivated
+        accounts receive **403** (`This account is inactive.`). The attachment must
+        belong to the issue in
         the route; otherwise the backend returns 404. Deletion removes the backing
         file from non-public local storage when present and deletes the attachment
         row, enabling replace workflows before uploading new files.
@@ -1418,8 +1467,10 @@ paths:
       description: >-
         Stream an attachment from non-public local development storage. Allowed for
         the authenticated active user who owns the issue, any active officer, or
-        any active manager. Non-owner users, inactive actors, and unauthenticated
-        requests receive 403. The attachment must belong to the issue in the route
+        any active manager. Non-owner users receive **403** (`This action is
+        unauthorized.`). Deactivated accounts receive **403** (`This account is
+        inactive.`). Unauthenticated requests receive **401**. The attachment must
+        belong to the issue in the route
         and the backing local file must still exist; otherwise the backend returns
         404.
       security:
@@ -1446,8 +1497,9 @@ paths:
       description: >-
         Returns main categories ordered by priority, with children ordered by
         weight. Lower numeric priority/weight values sort first and therefore
-        mean higher priority. Any authenticated Sanctum actor (User, Officer, or
-        Manager) may call this endpoint.
+        mean higher priority. Any authenticated active actor (User, Officer, or
+        Manager) may call this endpoint. Inactive accounts receive **403**
+        (InactiveAccount) from global middleware.
       security:
         - bearerAuth: [ ]
       responses:
@@ -1461,6 +1513,8 @@ paths:
                   $ref: '#/components/schemas/Category'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InactiveAccount'
     post:
       tags: [ Categories ]
       summary: Create a category
@@ -1504,8 +1558,9 @@ paths:
       summary: Show a category
       description: >-
         Returns a single category with departments, parent, and children. Any
-        authenticated Sanctum actor (User, Officer, or Manager) may call this
-        endpoint.
+        authenticated active actor (User, Officer, or Manager) may call this
+        endpoint. Inactive accounts receive **403** (InactiveAccount) from global
+        middleware.
       security:
         - bearerAuth: [ ]
       responses:
@@ -1517,6 +1572,8 @@ paths:
                 $ref: '#/components/schemas/Category'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InactiveAccount'
         '404':
           $ref: '#/components/responses/NotFound'
     patch:
@@ -1987,6 +2044,16 @@ components:
       type: http
       scheme: bearer
       bearerFormat: Sanctum
+      description: >-
+        Laravel Sanctum personal access token sent as `Authorization: Bearer
+        {token}`. Required on all `/api/*` routes except public auth registration
+        and login. After the token resolves to a user, officer, or manager, the
+        `actor.active` middleware returns **403** with message
+        `This account is inactive.` when `is_active` is false, except on
+        whitelisted routes: GET `/api/auth/me`, POST `/api/auth/logout`, and
+        PATCH `/api/auth/me`. Other **403** responses on protected routes use
+        `This action is unauthorized.` when FormRequest authorization fails.
+        See `#/components/responses/InactiveAccount` and `#/components/responses/Forbidden`.
 
   parameters:
     page:
@@ -2019,11 +2086,16 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
     Forbidden:
-      description: Insufficient permissions
+      description: >-
+        FormRequest authorization failed on a protected route (`This action is
+        unauthorized.`). Not used for deactivated accounts; those receive
+        InactiveAccount from global middleware instead.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+          example:
+            message: This action is unauthorized.
     InactiveAccount:
       description: >-
         Authenticated account is inactive. Returned by global middleware on
@@ -2749,11 +2821,13 @@ components:
     IssueCreate:
       type: object
       description: >-
-        Client payload for creating an issue. district_id is required and must
-        reference an active district. Departments are derived server-side from
-        the selected category's department assignments and are not accepted in
-        the request. The integer priority is derived server-side from the
-        selected category's main-category priority and must not be sent.
+        Client payload for creating an issue (active regular users only).
+        district_id is required and must reference an active district.
+        Departments are derived server-side from the selected category's
+        department assignments and are not accepted in the request. The integer
+        priority (unsigned tinyint scale, lower = higher urgency) is derived
+        server-side from the selected category's main-category priority and must
+        not be sent; legacy string priorities (laag/midden/zwaar) are not accepted.
         Removed legacy locality fields are not accepted. Anonymous aliases are
         generated server-side; anonymous issues remain owned by the authenticated
         user via user_id.
