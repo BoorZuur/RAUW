@@ -2513,20 +2513,22 @@ components:
         Ownership-safe author summary. For anonymous issues this contains only
         is_anonymous=true and display_name with the stable alias; user_id is not
         returned even though the database keeps ownership via issues.user_id.
+        For non-anonymous issues with the user relation loaded, id and username
+        are exposed and display_name equals username.
       properties:
         is_anonymous:
           type: boolean
         id:
           type: integer
           nullable: true
-        name:
-          type: string
-          nullable: true
         username:
           type: string
           nullable: true
         display_name:
           type: string
+          description: >-
+            Username for non-anonymous authors when the user relation is loaded;
+            stable anonymous alias (e.g. Melder#A1B2C3D4) for anonymous issues.
           example: Melder#A1B2C3D4
 
     IssueAttachment:

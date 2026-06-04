@@ -20,7 +20,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * report. When `is_anonymous` is true the author is presented through the
  * stable, server-generated `anonymous_alias` (e.g. `Melder#1234`) and the
  * `user_id` is omitted entirely. Only when the report is not anonymous and the
- * `user` relation has been eager-loaded is the real author identity exposed.
+ * `user` relation has been eager-loaded is the real author identity exposed as
+ * `id` and `username` (with `display_name` equal to `username`).
  *
  * Relation summaries (`category`, `district`, `attachments`) and relation
  * counts are emitted only when the controller has loaded them, so the resource
@@ -90,9 +91,9 @@ class IssueResource extends JsonResource
      * Return an ownership-safe author summary.
      *
      * Anonymous reports expose only the stable alias and never the owning
-     * user's identity or id. Non-anonymous reports expose the real author only
-     * when the `user` relation is loaded; otherwise a minimal id reference is
-     * returned to avoid an implicit query.
+     * user's identity or id. Non-anonymous reports expose id and username
+     * (display_name equals username) only when the `user` relation is loaded;
+     * otherwise a minimal id reference is returned to avoid an implicit query.
      *
      * @return array<string, mixed>
      */
@@ -112,9 +113,8 @@ class IssueResource extends JsonResource
                 return [
                     'is_anonymous' => false,
                     'id' => $user->id,
-                    'name' => $user->name,
                     'username' => $user->username,
-                    'display_name' => $user->name,
+                    'display_name' => $user->username,
                 ];
             }
         }
