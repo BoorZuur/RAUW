@@ -9,6 +9,8 @@ use Illuminate\Validation\Rules\Password;
 
 class RegisterOfficerRequest extends FormRequest
 {
+    private const REGISTRATION_FAILURE_MESSAGE = 'The provided credentials could not be registered.';
+
     public function authorize(): bool
     {
         return true;
@@ -37,7 +39,7 @@ class RegisterOfficerRequest extends FormRequest
     {
         return [
             'username' => ['required', 'string', 'max:50', Rule::unique('officers', 'username')],
-            'email' => ['required', 'email', new UniqueActorEmail()],
+            'email' => ['required', 'email', new UniqueActorEmail(failureMessage: self::REGISTRATION_FAILURE_MESSAGE)],
             'password' => ['required', 'string', Password::min(8)],
             'confirm_password' => ['required', 'string', 'same:password'],
             'badge_number' => ['required', 'string', 'max:20', Rule::unique('officers', 'badge_number')],
@@ -45,6 +47,17 @@ class RegisterOfficerRequest extends FormRequest
             'department_ids.*' => ['integer', 'distinct', Rule::exists('departments', 'id')],
             'district_ids' => ['sometimes', 'array'],
             'district_ids.*' => ['integer', 'distinct', Rule::exists('districts', 'id')->where('is_active', true)],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'username.unique' => self::REGISTRATION_FAILURE_MESSAGE,
+            'badge_number.unique' => self::REGISTRATION_FAILURE_MESSAGE,
         ];
     }
 

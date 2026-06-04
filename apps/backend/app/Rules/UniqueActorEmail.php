@@ -29,9 +29,12 @@ class UniqueActorEmail implements ValidationRule
      */
     private const ACTOR_TABLES = ['users', 'officers', 'managers'];
 
+    private const DEFAULT_FAILURE_MESSAGE = 'The provided credentials could not be registered.';
+
     public function __construct(
         private ?string $ignoreTable = null,
         private ?int $ignoreId = null,
+        private ?string $failureMessage = null,
     ) {}
 
     /**
@@ -51,7 +54,7 @@ class UniqueActorEmail implements ValidationRule
             }
 
             if ($query->exists()) {
-                $fail('The :attribute has already been taken.');
+                $fail($this->failureMessage ?? self::DEFAULT_FAILURE_MESSAGE);
 
                 return;
             }

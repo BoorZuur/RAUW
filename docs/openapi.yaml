@@ -112,14 +112,14 @@ paths:
                 duplicateIdentifiers:
                   summary: Duplicate officer identifiers
                   value:
-                    message: The username has already been taken. (and 2 more errors)
+                    message: The provided credentials could not be registered. (and 2 more errors)
                     errors:
                       username:
-                        - The username has already been taken.
+                        - The provided credentials could not be registered.
                       email:
-                        - The email has already been taken.
+                        - The provided credentials could not be registered.
                       badge_number:
-                        - The badge number has already been taken.
+                        - The provided credentials could not be registered.
 
   /api/auth/register/user:
     post:
@@ -195,12 +195,12 @@ paths:
                 duplicateIdentifiers:
                   summary: Duplicate user identifiers
                   value:
-                    message: The username has already been taken. (and 1 more error)
+                    message: The provided credentials could not be registered. (and 1 more error)
                     errors:
                       username:
-                        - The username has already been taken.
+                        - The provided credentials could not be registered.
                       email:
-                        - The email has already been taken.
+                        - The provided credentials could not be registered.
 
   /api/auth/login:
     post:
