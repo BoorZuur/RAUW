@@ -584,6 +584,88 @@
           "response": []
         },
         {
+          "name": "Update Manager",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"updated.manager@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/managers/2",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "managers",
+                "2"
+              ]
+            },
+            "description": "Update another ordinary manager's username, email, and/or password as an authenticated active main manager. Send only fields to change. When password is present, confirm_password must match. Privileged fields (is_main_manager, is_active, created_by_manager_id, department_ids, district_ids) are rejected with 422. Path target must have is_main_manager=false; main manager IDs and unknown ids return 404. Users, officers, ordinary managers, inactive managers, and unauthenticated requests receive 403."
+          },
+          "response": []
+        },
+        {
+          "name": "Disable Manager",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/managers/2/disable",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "managers",
+                "2",
+                "disable"
+              ]
+            },
+            "description": "Deactivate an ordinary manager (is_active=false) as an authenticated active main manager. Path target must have is_main_manager=false; main manager IDs and unknown ids return 404. Users, officers, ordinary managers, inactive managers, and unauthenticated requests receive 403."
+          },
+          "response": []
+        },
+        {
           "name": "Update My Districts",
           "request": {
             "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
@@ -632,7 +714,7 @@
           "response": []
         }
       ],
-      "description": "Protected manager administration requests. List Main Managers and Create Manager require an authenticated active main manager token. District assignment requests include manager self-service updates and manager-admin officer district updates. Department assignment PATCH requests require an active main manager token."
+      "description": "Protected manager administration requests. List Main Managers, Create Manager, Update Manager, and Disable Manager require an authenticated active main manager token. District assignment requests include manager self-service updates and manager-admin officer district updates. Department assignment PATCH requests require an active main manager token."
     },
     {
       "name": "Officers",

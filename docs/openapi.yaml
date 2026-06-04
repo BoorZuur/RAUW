@@ -749,6 +749,84 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
 
+  /api/managers/{managerId}:
+    parameters:
+      - name: managerId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Managers ]
+      summary: Update an ordinary manager
+      description: >-
+        Update another ordinary manager's username, email, and/or password as an
+        authenticated active main manager. Send only fields to change. When
+        password is present, confirm_password must match. Email must remain
+        unique across users, officers, and managers. Privileged fields
+        (is_main_manager, is_active, created_by_manager_id, department_ids, and
+        district_ids) are not accepted. The path target must have
+        is_main_manager=false; main managers and unknown ids return 404.
+        Users, officers, ordinary managers, inactive managers, and
+        unauthenticated requests receive 403.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MainManagerUpdate'
+            example:
+              email: updated.manager@example.com
+      responses:
+        '200':
+          description: Updated ordinary manager profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manager'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/managers/{managerId}/disable:
+    parameters:
+      - name: managerId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Managers ]
+      summary: Disable an ordinary manager
+      description: >-
+        Deactivate an ordinary manager as an authenticated active main manager by
+        setting is_active to false while preserving the row and associations.
+        The path target must have is_main_manager=false; main managers and
+        unknown ids return 404. Users, officers, ordinary managers, inactive
+        managers, and unauthenticated requests receive 403.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Ordinary manager disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manager'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /api/managers/{managerId}/departments:
     parameters:
       - name: managerId

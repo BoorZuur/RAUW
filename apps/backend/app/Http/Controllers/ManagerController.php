@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Managers\DisableManagerRequest;
 use App\Http\Requests\Managers\IndexManagerRequest;
 use App\Http\Requests\Managers\StoreManagerRequest;
+use App\Http\Requests\Managers\UpdateManagerRequest;
 use App\Http\Resources\ManagerResource;
 use App\Models\Manager;
 use Illuminate\Http\JsonResponse;
@@ -71,5 +73,44 @@ class ManagerController extends Controller
         return (new ManagerResource($manager))
             ->response()
             ->setStatusCode(Response::HTTP_CREATED);
+    }
+
+    /**
+     * Update another ordinary manager's identity fields.
+     *
+     * Authorization is enforced by UpdateManagerRequest, which restricts
+     * this action to an authenticated, active, main manager. Only username,
+     * email, and password may be changed; privileged fields are rejected with
+     * validation errors. The route binding limits the target to rows with
+     * `is_main_manager = false`.
+     */
+    public function update(UpdateManagerRequest $request, Manager $manager): ManagerResource
+    {
+        $attributes = $request->changedAttributes();
+
+        if ($attributes !== []) {
+            $manager->fill($attributes);
+            $manager->save();
+        }
+
+        $manager->load(['departments', 'districts']);
+
+        return new ManagerResource($manager);
+    }
+
+    /**
+     * Disable an ordinary manager without removing the row.
+     *
+     * Authorization is enforced by DisableManagerRequest. Setting
+     * `is_active = false` preserves the manager record and historical
+     * associations.
+     */
+    public function disable(DisableManagerRequest $request, Manager $manager): ManagerResource
+    {
+        $manager->update(['is_active' => false]);
+
+        $manager->load(['departments', 'districts']);
+
+        return new ManagerResource($manager);
     }
 }

@@ -427,6 +427,31 @@ Common error responses:
 - `403 Forbidden` when the authenticated actor is not an active main manager.
 - `422 Unprocessable Entity` with validation errors when required fields are missing, `email` is invalid, `password` is shorter than 8 characters, `confirm_password` does not match `password`, `department_ids` is missing, empty, duplicated, or references unknown departments, `district_ids` is duplicated or references inactive/unknown districts, `username` already exists in the managers table, or `email` already exists for any user, officer, or manager.
 
+### Update Manager
+
+`PATCH {{base_url}}/api/managers/{managerId}`
+
+Requires `Authorization: Bearer <token>` for an authenticated, active manager whose profile has `is_main_manager: true`. The path target must be an ordinary manager (`is_main_manager: false`); main manager IDs return `404`.
+
+Request body (send only fields to change):
+
+```json
+{
+  "username": "updated-manager",
+  "email": "updated.manager@example.com",
+  "password": "newpassword123",
+  "confirm_password": "newpassword123"
+}
+```
+
+`is_main_manager`, `is_active`, `created_by_manager_id`, `department_ids`, and `district_ids` are rejected with `422`. Returns the updated `Manager` resource (no token fields).
+
+### Disable Manager
+
+`PATCH {{base_url}}/api/managers/{managerId}/disable`
+
+Requires the same main-manager authorization as update. Sets `is_active` to `false` on the target ordinary manager and returns the updated `Manager` resource. Main manager IDs return `404`. There is no last-manager guard for ordinary managers.
+
 #### Update Officer Districts
 
 `PATCH {{base_url}}/api/officers/{officer}/districts`

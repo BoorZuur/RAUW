@@ -97,6 +97,14 @@ Route::middleware(['auth:sanctum', 'actor.active', 'throttle:30,1'])->group(func
     // username ascending, with departments and districts eager loaded.
     Route::get('managers', [ManagerController::class, 'index'])->name('managers.index');
     Route::post('managers', [ManagerController::class, 'store'])->name('managers.store');
+    // Main-manager-protected ordinary manager update and disable. Authorization is
+    // narrowed inside the manager FormRequests to an authenticated, active main
+    // manager only. Route binding limits `{manager}` to rows with
+    // `is_main_manager = false` (main managers and unknown ids return 404). Update
+    // accepts partial username, email, and password only; disable sets
+    // `is_active = false`.
+    Route::patch('managers/{manager}', [ManagerController::class, 'update'])->name('managers.update');
+    Route::patch('managers/{manager}/disable', [ManagerController::class, 'disable'])->name('managers.disable');
 
     // Manager-protected officer district assignment. Authorization is narrowed
     // inside UpdateOfficerDistrictsRequest to an authenticated, active manager;
