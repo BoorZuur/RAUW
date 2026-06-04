@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Enums\Department;
 use App\Models\AuditLog;
 use App\Models\BlockedKeyword;
 use App\Models\Category;
@@ -17,7 +16,6 @@ use App\Models\IssueMessage;
 use App\Models\IssueParticipant;
 use App\Models\IssueResolution;
 use App\Models\IssueStatusHistory;
-use App\Models\IssueVote;
 use App\Models\Manager;
 use App\Models\Officer;
 use App\Models\OfficerSession;
@@ -37,13 +35,12 @@ class DomainFactoryTest extends TestCase
         // than a `department` enum column.
         $department = DepartmentModel::factory()->create();
         $category = Category::factory()->withDepartments($department)->create();
-        $officer = Officer::factory()->create(['district_id' => $district->id]);
-        $manager = Manager::factory()->create(['district_id' => $district->id]);
+        $officer = Officer::factory()->withDistricts([$district])->create();
+        $manager = Manager::factory()->withDistricts([$district])->create();
         $issue = Issue::factory()->create([
             'category_id' => $category->id,
             'district_id' => $district->id,
             'assigned_officer_id' => $officer->id,
-            'department' => Department::DistrictManagement,
         ]);
 
         $models = [
@@ -54,7 +51,6 @@ class DomainFactoryTest extends TestCase
             $issue,
             IssueComment::factory()->create(['issue_id' => $issue->id]),
             IssueMessage::factory()->create(['issue_id' => $issue->id]),
-            IssueVote::factory()->create(['issue_id' => $issue->id]),
             IssueParticipant::factory()->create(['issue_id' => $issue->id]),
             IssueStatusHistory::factory()->create(['issue_id' => $issue->id, 'changed_by_officer_id' => $officer->id]),
             IssueResolution::factory()->create(['issue_id' => $issue->id]),
