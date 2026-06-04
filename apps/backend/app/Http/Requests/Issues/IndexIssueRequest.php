@@ -19,9 +19,10 @@ class IndexIssueRequest extends FormRequest
     public const MAX_PER_PAGE = 100;
 
     /**
-     * Listing issues is available to any authenticated actor; route middleware
-     * enforces authentication, so no additional actor restriction is applied
-     * here.
+     * Listing issues is available to any authenticated active actor; route
+     * middleware enforces authentication. Results are visibility-scoped in the
+     * controller: users see visible issues or their own issues (any visibility);
+     * officers and managers see all issues including hidden.
      */
     public function authorize(): bool
     {
@@ -31,12 +32,14 @@ class IndexIssueRequest extends FormRequest
     /**
      * Validation rules for the composable issue list filters and pagination.
      *
+     * List results are visibility-scoped per actor type before these filters
+     * (users: visible issues or own issues; officers/managers: all issues).
      * Filters are optional and composable: `district_id`, `department`, and
-     * `category_id` may be combined to narrow the result set. The `department`
-     * filter accepts a real department code and is applied against the issue
-     * departments relationship with any-match semantics, so an issue assigned
-     * to multiple departments is returned whenever any one of them matches.
-     * Pagination is bounded so `per_page` can never exceed a safe maximum.
+     * `category_id` may be combined to narrow the scoped result set (AND
+     * semantics). The `department` filter accepts a real department code and
+     * is applied against the issue departments relationship with any-match
+     * semantics. Pagination is bounded so `per_page` can never exceed a safe
+     * maximum.
      *
      * @return array<string, array<int, mixed>>
      */

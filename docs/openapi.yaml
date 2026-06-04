@@ -778,15 +778,18 @@ paths:
       tags: [ Issues ]
       summary: List issues with filters and pagination
       description: >-
-        List issues for any authenticated actor. Filters are optional and
-        composable: district_id, department, and category_id may be combined in a
-        single request to narrow the result set. Query param department accepts a
-        department code from the departments table and matches through
-        department_issue with any-match semantics, so a multi-department issue is
-        included when any pivot assignment has the requested code. Pagination is
-        backend-driven using page and per_page,
-        with a default per_page of 20 and maximum of 100. Results are ordered
-        newest first.
+        List issues for any authenticated active actor. Results are visibility-scoped
+        by actor type before optional filters: active users receive issues with
+        `visibility = visible` or issues they own (`issues.user_id` match), including
+        their own hidden issues; other users' hidden issues are excluded. Active
+        officers and active managers receive all issues, including hidden issues from
+        any user. Filters are optional and composable (AND with visibility): district_id,
+        department, and category_id may be combined in a single request to narrow the
+        result set. Query param department accepts a department code from the departments
+        table and matches through department_issue with any-match semantics, so a
+        multi-department issue is included when any pivot assignment has the requested
+        code. Pagination is backend-driven using page and per_page, with a default
+        per_page of 20 and maximum of 100. Results are ordered newest first.
       security:
         - bearerAuth: [ ]
       parameters:

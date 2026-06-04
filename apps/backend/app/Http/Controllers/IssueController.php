@@ -29,23 +29,25 @@ class IssueController extends Controller
     private const ISSUE_RELATIONS = ['user', 'category', 'district', 'departments', 'attachments'];
 
     /**
-     * List issues with composable filters and bounded pagination.
+     * List issues with composable filters, visibility scoping, and pagination.
      *
-     * A single Eloquent query is built and the optional `district_id`,
-     * `department`, and `category_id` filters are applied conditionally and
-     * cumulatively, so any subset (or all) of the filters may be combined to
-     * narrow the result set. The `department` filter is resolved through the
-     * issue departments relationship with any-match semantics, so an issue
-     * assigned to multiple departments is returned whenever any one of them
-     * matches the requested code. Results are eager loaded, ordered
-     * newest-first by `created_at` then `id` for a stable, deterministic sort,
-     * and paginated using Laravel's length-aware paginator metadata with a safe
-     * default `per_page`.
+     * Results are visibility-scoped per actor type before optional filters:
+     * users see visible issues or their own issues (any visibility); officers
+     * and managers see all issues including hidden. A single Eloquent query
+     * applies the optional `district_id`, `department`, and `category_id`
+     * filters conditionally and cumulatively (AND with visibility), so any
+     * subset (or all) of the filters may be combined to narrow the result set.
+     * The `department` filter is resolved through the issue departments
+     * relationship with any-match semantics. Results are eager loaded, ordered
+     * newest-first by `created_at` then `id`, and paginated with a safe default
+     * `per_page`.
      */
     public function index(IndexIssueRequest $request): AnonymousResourceCollection
     {
-        $issues = Issue::query()
-            ->with(self::ISSUE_RELATIONS)
+        $issues = IssueVisibilityQuery::applyVisibilityScope(
+            Issue::query()->with(self::ISSUE_RELATIONS),
+            $request->user(),
+        )
             ->when(
                 $request->filled('district_id'),
                 fn ($query) => $query->where('district_id', $request->integer('district_id')),
