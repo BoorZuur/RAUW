@@ -1,5 +1,5 @@
 import './App.css';
-import { createBrowserRouter, RouterProvider, Navigate, Outlet } from "react-router-dom";
+import {createBrowserRouter, RouterProvider, Navigate, Outlet} from "react-router-dom";
 
 // Imports
 import Onboarding from "./user/Onboarding.jsx";
@@ -14,7 +14,7 @@ import Register from "./user/U_Register.jsx";
 
 // import CommandCenter from "./handhaver/CommandCenter.jsx";
 // import SectorSettings from "./handhaver/SectorSettings.jsx";
-// import ServiceProfile from "./handhaver/ServiceProfile.jsx";
+import ServiceProfile from "./handhaver/ServiceProfile.jsx";
 // import H_ReportsOverview from "./handhaver/H_ReportsOverview.jsx";
 import HandhaverLogin from "./handhaver/H_Login.jsx";
 import HandhaverRegister from "./handhaver/H_Register.jsx";
@@ -37,12 +37,12 @@ import ManagerLogin from "./manager/M_Login.jsx";
 function App() {
     const router = createBrowserRouter([
         // 1. Publieke routes
-        { path: "/", element: <Onboarding /> },
-        { path: "/login", element: <Login /> },
-        { path: "/register", element: <Register /> },
-        { path: "/handhaver_login", element: <HandhaverLogin /> },
-        { path: "/handhaver_register", element: <HandhaverRegister /> },
-        { path: "/manager_login", element: <ManagerLogin /> },
+        {path: "/", element: <Onboarding/>},
+        {path: "/login", element: <Login/>},
+        {path: "/register", element: <Register/>},
+        {path: "/handhaver_login", element: <HandhaverLogin/>},
+        {path: "/handhaver_register", element: <HandhaverRegister/>},
+        {path: "/manager_login", element: <ManagerLogin/>},
 
         // { path: "/map", element: <Map /> },
         // { path: "/feed", element: <Feed /> },
@@ -52,7 +52,7 @@ function App() {
         // { path: "/account_instellingen", element: <AccountSettings /> },
         //
         // { path: "/commando_centrum", element: <CommandCenter /> },
-        // { path: "/dienstprofiel", element: <ServiceProfile /> },
+        {path: "/dienstprofiel", element: <ServiceProfile/>},
         // { path: "/handhaver_rapport", element: <H_ReportsOverview /> },
         // { path: "/sector_instellingen", element: <SectorSettings /> },
         //
@@ -97,7 +97,7 @@ function App() {
         // }
     ]);
 
-    return <RouterProvider router={router} />;
+    return <RouterProvider router={router}/>;
 }
 
 export default App;
