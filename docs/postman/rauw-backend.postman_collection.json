@@ -714,6 +714,43 @@
           "response": []
         },
         {
+          "name": "Enable Main Manager",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{main_manager_access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/main-managers/1/enable",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "main-managers",
+                "1",
+                "enable"
+              ]
+            },
+            "description": "Reactivate a main manager (is_active=true) as an authenticated active main manager. Path target must have is_main_manager=true; ordinary managers and unknown ids return 404. Re-enabling an already active main manager is idempotent and returns 200. Unlike disable, no last-active-main-manager guard applies. Users, officers, ordinary managers, inactive managers, and unauthenticated requests receive 403."
+          },
+          "response": []
+        },
+        {
           "name": "List Managers",
           "request": {
             "auth": {
@@ -922,6 +959,43 @@
           "response": []
         },
         {
+          "name": "Enable Manager",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{main_manager_access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/managers/{{manager_id}}/enable",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "managers",
+                "{{manager_id}}",
+                "enable"
+              ]
+            },
+            "description": "Reactivate an ordinary manager (is_active=true) as an authenticated active main manager. Path target must have is_main_manager=false; main manager IDs and unknown ids return 404. Re-enabling an already active manager is idempotent and returns 200. Users, officers, ordinary managers, inactive managers, and unauthenticated requests receive 403."
+          },
+          "response": []
+        },
+        {
           "name": "Update My Districts",
           "request": {
             "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
@@ -982,7 +1056,7 @@
           "response": []
         }
       ],
-      "description": "Protected manager administration requests. Run Auth / Login as Main Manager first so main_manager_access_token is set. List/create/update/disable main managers and ordinary managers use main_manager_access_token. Update Officer Districts accepts any active manager token (access_token after Login). Update Officer Departments, Update Manager Departments, and Sync manager districts require main_manager_access_token. manager_id defaults to 2 locally and is overwritten by Create Manager."
+      "description": "Protected manager administration requests. Run Auth / Login as Main Manager first so main_manager_access_token is set. List/create/update/disable/enable main managers and ordinary managers use main_manager_access_token. Update Officer Districts accepts any active manager token (access_token after Login). Update Officer Departments, Update Manager Departments, and Sync manager districts require main_manager_access_token. manager_id defaults to 2 locally and is overwritten by Create Manager."
     },
     {
       "name": "Officers",

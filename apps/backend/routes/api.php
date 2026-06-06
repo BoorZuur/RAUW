@@ -83,14 +83,16 @@ Route::middleware(['auth:sanctum', 'actor.active', 'throttle:30,1'])->group(func
     // receive a 403. Results include only rows with `is_main_manager = true`,
     // ordered by username ascending, with departments and districts eager loaded.
     Route::get('main-managers', [MainManagerController::class, 'index'])->name('main-managers.index');
-    // Main-manager-protected main manager update and disable. Authorization is
-    // narrowed inside the main-manager FormRequests to an authenticated, active
+    // Main-manager-protected main manager update, disable, and enable. Authorization
+    // is narrowed inside the main-manager FormRequests to an authenticated, active
     // main manager only. Route binding limits `{manager}` to rows with
     // `is_main_manager = true` (non-main or unknown ids return 404). Update
     // accepts partial username, email, and password only; disable sets
-    // `is_active = false` and rejects deactivating the last active main manager.
+    // `is_active = false` and rejects deactivating the last active main manager;
+    // enable sets `is_active = true` and is idempotent.
     Route::patch('main-managers/{manager}', [MainManagerController::class, 'update'])->name('main-managers.update');
     Route::patch('main-managers/{manager}/disable', [MainManagerController::class, 'disable'])->name('main-managers.disable');
+    Route::patch('main-managers/{manager}/enable', [MainManagerController::class, 'enable'])->name('main-managers.enable');
 
     // Main-manager-protected ordinary manager listing. Authorization is narrowed
     // inside IndexManagerRequest to an authenticated, active main manager only;
@@ -99,14 +101,16 @@ Route::middleware(['auth:sanctum', 'actor.active', 'throttle:30,1'])->group(func
     // username ascending, with departments and districts eager loaded.
     Route::get('managers', [ManagerController::class, 'index'])->name('managers.index');
     Route::post('managers', [ManagerController::class, 'store'])->name('managers.store');
-    // Main-manager-protected ordinary manager update and disable. Authorization is
-    // narrowed inside the manager FormRequests to an authenticated, active main
-    // manager only. Route binding limits `{manager}` to rows with
-    // `is_main_manager = false` (main managers and unknown ids return 404). Update
-    // accepts partial username, email, and password only; disable sets
-    // `is_active = false`.
+    // Main-manager-protected ordinary manager update, disable, and enable.
+    // Authorization is narrowed inside the manager FormRequests to an
+    // authenticated, active main manager only. Route binding limits `{manager}`
+    // to rows with `is_main_manager = false` (main managers and unknown ids
+    // return 404). Update accepts partial username, email, and password only;
+    // disable sets `is_active = false`; enable sets `is_active = true` and is
+    // idempotent.
     Route::patch('managers/{manager}', [ManagerController::class, 'update'])->name('managers.update');
     Route::patch('managers/{manager}/disable', [ManagerController::class, 'disable'])->name('managers.disable');
+    Route::patch('managers/{manager}/enable', [ManagerController::class, 'enable'])->name('managers.enable');
 
     // Officer listing. Authorization is narrowed inside IndexOfficerRequest to
     // an authenticated, active officer or manager; users and inactive actors

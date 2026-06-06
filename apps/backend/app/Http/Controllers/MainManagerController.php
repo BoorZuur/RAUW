@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Managers\DisableMainManagerRequest;
+use App\Http\Requests\Managers\EnableMainManagerRequest;
 use App\Http\Requests\Managers\IndexMainManagerRequest;
 use App\Http\Requests\Managers\UpdateMainManagerRequest;
 use App\Http\Resources\ManagerResource;
@@ -81,7 +82,24 @@ class MainManagerController extends Controller
     }
 
     /**
-     * Whether disabling the given manager would leave no active main managers.
+     * Enable a main manager without restoring a soft-deleted row.
+     *
+     * Authorization is enforced by EnableMainManagerRequest. Setting
+     * `is_active = true` reactivates the main manager. Re-enabling an already
+     * active main manager is idempotent and returns 200. Unlike disable, no
+     * last-active-main-manager guard applies.
+     */
+    public function enable(EnableMainManagerRequest $request, Manager $manager): ManagerResource
+    {
+        $manager->update(['is_active' => true]);
+
+        $manager->load(['departments', 'districts']);
+
+        return new ManagerResource($manager);
+    }
+
+    /**
+     * Whether disabling the given manager would leave no active main manager.
      */
     private function isLastActiveMainManager(Manager $manager): bool
     {

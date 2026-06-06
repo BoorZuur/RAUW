@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Managers\DisableManagerRequest;
+use App\Http\Requests\Managers\EnableManagerRequest;
 use App\Http\Requests\Managers\IndexManagerRequest;
 use App\Http\Requests\Managers\StoreManagerRequest;
 use App\Http\Requests\Managers\UpdateManagerRequest;
@@ -109,6 +110,22 @@ class ManagerController extends Controller
     public function disable(DisableManagerRequest $request, Manager $manager): ManagerResource
     {
         $manager->update(['is_active' => false]);
+
+        $manager->load(['departments', 'districts']);
+
+        return new ManagerResource($manager);
+    }
+
+    /**
+     * Enable an ordinary manager without restoring a soft-deleted row.
+     *
+     * Authorization is enforced by EnableManagerRequest. Setting
+     * `is_active = true` reactivates the manager. Re-enabling an already
+     * active manager is idempotent and returns 200.
+     */
+    public function enable(EnableManagerRequest $request, Manager $manager): ManagerResource
+    {
+        $manager->update(['is_active' => true]);
 
         $manager->load(['departments', 'districts']);
 
