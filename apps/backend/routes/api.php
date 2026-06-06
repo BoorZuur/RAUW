@@ -126,8 +126,8 @@ Route::middleware(['auth:sanctum', 'actor.active', 'throttle:30,1'])->group(func
 
     // Manager-protected category management. Authorization is narrowed inside
     // the category FormRequests to an authenticated, active manager; users,
-    // officers, and inactive managers receive a 403. Disabling (PATCH
-    // `/categories/{category}/disable`) is the standard safe removal path,
+    // officers, and inactive managers receive a 403. Deactivation and
+    // reactivation use generic PATCH with `is_active` (same as districts),
     // while hard delete (DELETE `/categories/{category}`) is guarded against
     // main categories that still have subcategories and against rows still
     // referenced by existing issues.
@@ -135,23 +135,20 @@ Route::middleware(['auth:sanctum', 'actor.active', 'throttle:30,1'])->group(func
     Route::post('categories', [CategoryController::class, 'store'])->name('categories.store');
     Route::get('categories/{category}', [CategoryController::class, 'show'])->name('categories.show');
     Route::match(['put', 'patch'], 'categories/{category}', [CategoryController::class, 'update'])->name('categories.update');
-    Route::patch('categories/{category}/disable', [CategoryController::class, 'disable'])->name('categories.disable');
     Route::delete('categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
 
     // Main-manager-protected department management. Authorization is narrowed
     // inside the department FormRequests to an authenticated, active main
     // manager; users, officers, non-main managers, and inactive managers all
-    // receive a 403. Disabling (PATCH `/departments/{department}/disable`) sets
-    // `is_active = false` and is the standard safe removal path. Deleting a
-    // department (DELETE `/departments/{department}`) hard deletes the row and
-    // relies on the `category_department` pivot's foreign-key cascade to remove
-    // category assignments automatically, leaving the category records
-    // themselves intact.
+    // receive a 403. Activate and deactivate use generic PATCH with `is_active`
+    // only. Deleting a department (DELETE `/departments/{department}`) hard
+    // deletes the row and relies on the `category_department` pivot's
+    // foreign-key cascade to remove category assignments automatically, leaving
+    // the category records themselves intact.
     Route::get('departments', [DepartmentController::class, 'index'])->name('departments.index');
     Route::post('departments', [DepartmentController::class, 'store'])->name('departments.store');
     Route::get('departments/{department}', [DepartmentController::class, 'show'])->name('departments.show');
     Route::match(['put', 'patch'], 'departments/{department}', [DepartmentController::class, 'update'])->name('departments.update');
-    Route::patch('departments/{department}/disable', [DepartmentController::class, 'disable'])->name('departments.disable');
     Route::delete('departments/{department}', [DepartmentController::class, 'destroy'])->name('departments.destroy');
 
     // District management. Reads preserve the documented district list/show

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Categories\DeleteCategoryRequest;
-use App\Http\Requests\Categories\DisableCategoryRequest;
 use App\Http\Requests\Categories\StoreCategoryRequest;
 use App\Http\Requests\Categories\UpdateCategoryRequest;
 use App\Http\Resources\CategoryResource;
@@ -121,22 +120,6 @@ class CategoryController extends Controller
         });
 
         $category->refresh()->load(['departments', 'parent']);
-
-        return new CategoryResource($category);
-    }
-
-    /**
-     * Disable a category without removing it (the standard safe removal path).
-     *
-     * Setting `is_active = false` keeps the row and its department/issue
-     * associations intact, so historical entries never lose their category
-     * context. This is preferred over hard deletion.
-     */
-    public function disable(DisableCategoryRequest $request, Category $category): CategoryResource
-    {
-        $category->update(['is_active' => false]);
-
-        $category->load(['departments', 'parent']);
 
         return new CategoryResource($category);
     }

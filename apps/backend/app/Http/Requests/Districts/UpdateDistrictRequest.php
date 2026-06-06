@@ -28,8 +28,10 @@ class UpdateDistrictRequest extends FormRequest
      * Validation rules for district updates.
      *
      * All fields use `sometimes` so a partial update only validates and applies
-     * the provided keys. The `name` uniqueness check ignores the district being
-     * updated so re-submitting its own name is not flagged as a conflict.
+     * the provided keys. Active main managers may set `is_active` to true or
+     * false on this request only; there is no dedicated `/disable` route. The
+     * `name` uniqueness check ignores the district being updated so re-submitting
+     * its own name is not flagged as a conflict.
      *
      * @return array<string, array<int, mixed>>
      */

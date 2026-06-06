@@ -1047,18 +1047,31 @@
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
             "body": { "mode": "raw", "raw": "{\n  \"name\": \"Openbare ruimte bijgewerkt\",\n  \"department_ids\": [1, 2],\n  \"priority\": 1\n}", "options": { "raw": { "language": "json" } } },
             "url": { "raw": "{{base_url}}/api/categories/1", "host": [ "{{base_url}}" ], "path": [ "api", "categories", "1" ] },
-            "description": "Partially update a category as an authenticated active manager. If department_ids is present, it replaces the category's pivot assignments."
+            "description": "Partially update a category as an authenticated active manager. If department_ids is present, it replaces the category's pivot assignments. parent_id may only reference a main category; subcategories cannot have children."
           },
           "response": []
         },
         {
-          "name": "Disable Category",
+          "name": "Deactivate Category",
           "request": {
             "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
             "method": "PATCH",
-            "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
-            "url": { "raw": "{{base_url}}/api/categories/1/disable", "host": [ "{{base_url}}" ], "path": [ "api", "categories", "1", "disable" ] },
-            "description": "Standard safe removal path. Sets is_active=false while keeping the category row, department assignments, and historical issue references intact."
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"is_active\": false\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/categories/1", "host": [ "{{base_url}}" ], "path": [ "api", "categories", "1" ] },
+            "description": "Standard safe removal path via generic PATCH. Sets is_active=false while keeping the category row, department assignments, and historical issue references intact."
+          },
+          "response": []
+        },
+        {
+          "name": "Reactivate Category",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "PATCH",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"is_active\": true\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/categories/1", "host": [ "{{base_url}}" ], "path": [ "api", "categories", "1" ] },
+            "description": "Reactivate an inactive category via generic PATCH with is_active=true."
           },
           "response": []
         },
@@ -1069,12 +1082,23 @@
             "method": "DELETE",
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
             "url": { "raw": "{{base_url}}/api/categories/1", "host": [ "{{base_url}}" ], "path": [ "api", "categories", "1" ] },
-            "description": "Guarded hard delete for eligible categories only. Prefer Disable Category. A main category with subcategories returns 409, and categories referenced by existing issues also return 409."
+            "description": "Guarded hard delete for eligible categories only. Prefer Deactivate Category (PATCH is_active=false). A main category with subcategories returns 409 with message about subcategories; categories referenced by existing issues also return 409."
+          },
+          "response": []
+        },
+        {
+          "name": "Hard Delete Main Category With Subcategories (409)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "DELETE",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+            "url": { "raw": "{{base_url}}/api/categories/1", "host": [ "{{base_url}}" ], "path": [ "api", "categories", "1" ] },
+            "description": "Negative example. DELETE a main category that still has subcategories returns 409: Cannot delete a main category while it still has subcategories."
           },
           "response": []
         }
       ],
-      "description": "Category management requests. Requires an authenticated active manager. Categories are assigned to departments through a many-to-many pivot. Disable is the standard removal path; hard delete is guarded."
+      "description": "Category management requests. Requires an authenticated active manager. Categories use a two-level hierarchy (main + subcategory only). Activation and deactivation use generic PATCH with is_active; hard delete is guarded."
     },
     {
       "name": "Districts",
@@ -1119,9 +1143,33 @@
             "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
             "method": "PATCH",
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
-            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Nieuwe Wijk bijgewerkt\",\n  \"is_active\": true\n}", "options": { "raw": { "language": "json" } } },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Nieuwe Wijk bijgewerkt\"\n}", "options": { "raw": { "language": "json" } } },
             "url": { "raw": "{{base_url}}/api/districts/1", "host": [ "{{base_url}}" ], "path": [ "api", "districts", "1" ] },
-            "description": "Update a district as an authenticated active main manager. Ordinary managers receive 403. Supports partial updates for name, postal_prefix, center_lat, center_lng, radius_meters, and is_active."
+            "description": "Update a district as an authenticated active main manager. Ordinary managers receive 403. Supports partial updates for name, postal_prefix, center_lat, center_lng, and radius_meters."
+          },
+          "response": []
+        },
+        {
+          "name": "Deactivate District",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{main_manager_access_token}}", "type": "string" } ] },
+            "method": "PATCH",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"is_active\": false\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/districts/1", "host": [ "{{base_url}}" ], "path": [ "api", "districts", "1" ] },
+            "description": "Deactivate a district via generic PATCH with is_active=false. Requires main_manager_access_token. No dedicated /disable route exists."
+          },
+          "response": []
+        },
+        {
+          "name": "Reactivate District",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{main_manager_access_token}}", "type": "string" } ] },
+            "method": "PATCH",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"is_active\": true\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/districts/1", "host": [ "{{base_url}}" ], "path": [ "api", "districts", "1" ] },
+            "description": "Reactivate an inactive district via generic PATCH with is_active=true. Requires main_manager_access_token."
           },
           "response": []
         },
@@ -1137,7 +1185,7 @@
           "response": []
         }
       ],
-      "description": "District CRUD requests. Reads require authentication; POST/PATCH/PUT/DELETE require an authenticated active main manager (is_main_manager=true). Ordinary managers receive 403 on district writes. Actor district assignments are many-to-many through district_manager and district_officer. Issue district handling is out of scope: issues.district_id remains singular."
+      "description": "District CRUD requests. Reads require authentication; POST/PATCH/PUT/DELETE require an authenticated active main manager (is_main_manager=true). Ordinary managers receive 403 on district writes. Activation and deactivation use generic PATCH with is_active only (no /disable route). Actor district assignments are many-to-many through district_manager and district_officer. Issue district handling is out of scope: issues.district_id remains singular."
     },
     {
       "name": "Issues",
@@ -1382,20 +1430,45 @@
             "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{main_manager_access_token}}", "type": "string" } ] },
             "method": "PATCH",
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
-            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Groenbeheer bijgewerkt\",\n  \"is_active\": true\n}", "options": { "raw": { "language": "json" } } },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Groenbeheer bijgewerkt\"\n}", "options": { "raw": { "language": "json" } } },
             "url": { "raw": "{{base_url}}/api/departments/{{department_id}}", "host": [ "{{base_url}}" ], "path": [ "api", "departments", "{{department_id}}" ] },
-            "description": "Update a department. Requires an authenticated active main manager."
+            "description": "Update department code or name. Requires an authenticated active main manager."
           },
           "response": []
         },
         {
-          "name": "Disable Department",
+          "name": "Deactivate Department",
           "request": {
             "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{main_manager_access_token}}", "type": "string" } ] },
             "method": "PATCH",
-            "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
-            "url": { "raw": "{{base_url}}/api/departments/{{department_id}}/disable", "host": [ "{{base_url}}" ], "path": [ "api", "departments", "{{department_id}}", "disable" ] },
-            "description": "Safe department removal path: sets is_active=false. Requires main_manager_access_token (Auth / Login as Main Manager). Prefer this over hard delete when historical category/issue context must remain."
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"is_active\": false\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/departments/{{department_id}}", "host": [ "{{base_url}}" ], "path": [ "api", "departments", "{{department_id}}" ] },
+            "description": "Safe department removal path via generic PATCH with is_active=false. Requires main_manager_access_token. Prefer this over hard delete when historical category/issue context must remain."
+          },
+          "response": []
+        },
+        {
+          "name": "Reactivate Department",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{main_manager_access_token}}", "type": "string" } ] },
+            "method": "PATCH",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"is_active\": true\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/departments/{{department_id}}", "host": [ "{{base_url}}" ], "path": [ "api", "departments", "{{department_id}}" ] },
+            "description": "Reactivate an inactive department via generic PATCH with is_active=true. Requires main_manager_access_token."
+          },
+          "response": []
+        },
+        {
+          "name": "Deactivate Referenced Department (409)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{main_manager_access_token}}", "type": "string" } ] },
+            "method": "PATCH",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"is_active\": false\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/departments/{{department_id}}", "host": [ "{{base_url}}" ], "path": [ "api", "departments", "{{department_id}}" ] },
+            "description": "Negative example. PATCH is_active=false returns 409 when the department is still referenced by existing records: Cannot disable this department because it is still referenced by existing records."
           },
           "response": []
         },
@@ -1411,7 +1484,7 @@
           "response": []
         }
       ],
-      "description": "Department CRUD requests. Department mutations require an authenticated active main manager (main_manager_access_token). Disable sets is_active=false; hard delete is guarded when managers/officers still reference the row. Managers use department_ids through the department_manager pivot and must have one or more departments; officers use department_ids through the department_officer pivot and must have one or more departments. Deleting a department is blocked while assigned to managers or officers; otherwise it removes category_department and department_issue pivot assignments automatically but does not delete categories or issues. Issue departments are derived from categories and exposed to clients as read-only departments arrays."
+      "description": "Department CRUD requests. Department mutations require an authenticated active main manager (main_manager_access_token). Activation and deactivation use generic PATCH with is_active only; hard delete is guarded when managers/officers still reference the row. Managers use department_ids through the department_manager pivot and must have one or more departments; officers use department_ids through the department_officer pivot and must have one or more departments. Deleting a department is blocked while assigned to managers or officers; otherwise it removes category_department and department_issue pivot assignments automatically but does not delete categories or issues. Issue departments are derived from categories and exposed to clients as read-only departments arrays."
     }
   ],
   "auth": {

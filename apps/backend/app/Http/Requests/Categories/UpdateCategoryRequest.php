@@ -31,7 +31,9 @@ class UpdateCategoryRequest extends FormRequest
      * applies the provided keys. Hierarchy, priority/weight, and department
      * rules match StoreCategoryRequest, with the additional guards that a
      * category cannot become its own parent and a category that already has
-     * subcategories cannot be demoted into a subcategory itself.
+     * subcategories cannot be demoted into a subcategory itself. Activation and
+     * deactivation use `is_active` on this request only; there is no dedicated
+     * `/disable` route.
      *
      * @return array<string, array<int, mixed>>
      */

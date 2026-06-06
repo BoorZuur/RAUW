@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\Departments\DisableDepartmentRequest;
 use App\Http\Requests\Departments\StoreDepartmentRequest;
 use App\Http\Requests\Departments\UpdateDepartmentRequest;
 use App\Http\Resources\DepartmentResource;
@@ -69,38 +68,26 @@ class DepartmentController extends Controller
      * Only the validated keys present in the request are applied, so partial
      * updates leave untouched fields intact.
      */
-    public function update(UpdateDepartmentRequest $request, Department $department): DepartmentResource
+    public function update(UpdateDepartmentRequest $request, Department $department): DepartmentResource|JsonResponse
     {
         $attributes = $request->safe()->only([
             'code',
             'name',
+            'is_active',
         ]);
 
         if ($attributes !== []) {
-            $department->update($attributes);
-        }
-
-        $department->refresh()->loadCount('categories');
-
-        return new DepartmentResource($department);
-    }
-
-    /**
-     * Disable a department without removing it (the standard safe removal path).
-     *
-     * Setting `is_active = false` keeps the row and its category, manager,
-     * officer, and issue pivot associations intact so historical context is
-     * preserved. Prefer this over hard deletion when the department should
-     * remain referencable but no longer accept new assignments.
-     */
-    public function disable(DisableDepartmentRequest $request, Department $department): DepartmentResource|JsonResponse
-    {
-        try {
-            $department->update(['is_active' => false]);
-        } catch (QueryException $exception) {
-            return response()->json([
-                'message' => 'Cannot disable this department because it is still referenced by existing records.',
-            ], Response::HTTP_CONFLICT);
+            if (array_key_exists('is_active', $attributes) && $attributes['is_active'] === false) {
+                try {
+                    $department->update($attributes);
+                } catch (QueryException $exception) {
+                    return response()->json([
+                        'message' => 'Cannot disable this department because it is still referenced by existing records.',
+                    ], Response::HTTP_CONFLICT);
+                }
+            } else {
+                $department->update($attributes);
+            }
         }
 
         $department->refresh()->loadCount('categories');
