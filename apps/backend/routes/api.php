@@ -16,6 +16,7 @@ use App\Http\Controllers\MainManagerController;
 use App\Http\Controllers\ManagerController;
 use App\Http\Controllers\ManagerDepartmentController;
 use App\Http\Controllers\ManagerDistrictController;
+use App\Http\Controllers\OfficerController;
 use App\Http\Controllers\OfficerDepartmentController;
 use App\Http\Controllers\OfficerDistrictController;
 use Illuminate\Support\Facades\Route;
@@ -106,6 +107,13 @@ Route::middleware(['auth:sanctum', 'actor.active', 'throttle:30,1'])->group(func
     // `is_active = false`.
     Route::patch('managers/{manager}', [ManagerController::class, 'update'])->name('managers.update');
     Route::patch('managers/{manager}/disable', [ManagerController::class, 'disable'])->name('managers.disable');
+
+    // Officer listing. Authorization is narrowed inside IndexOfficerRequest to
+    // an authenticated, active officer or manager; users and inactive actors
+    // receive a 403. Results exclude soft-deleted officers and default to active
+    // officers only when `is_active` is omitted. Optional district_id and
+    // department_id filters narrow the result set through officer pivots.
+    Route::get('officers', [OfficerController::class, 'index'])->name('officers.index');
 
     // Manager-protected officer district assignment. Authorization is narrowed
     // inside UpdateOfficerDistrictsRequest to an authenticated, active manager;

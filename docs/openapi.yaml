@@ -1013,6 +1013,104 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
 
+  /api/officers:
+    get:
+      tags: [ Officers ]
+      summary: List officers
+      description: >-
+        List officers for an authenticated active officer or manager. Results are
+        ordered by username ascending and include each officer's departments and
+        districts as compact arrays. Soft-deleted officers are always excluded.
+        When `is_active` is omitted, only active officers are returned. Use
+        `is_active=true` or `is_active=1` to request active officers explicitly,
+        or `is_active=false` or `is_active=0` to request inactive officers only.
+        Optional `district_id` and `department_id` filters narrow results through
+        the officer's district_officer and department_officer pivots. Users and
+        inactive actors receive 403. Pagination is backend-driven using page and
+        per_page, with a default per_page of 20 and maximum of 100.
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: district_id
+          in: query
+          description: Filter to officers assigned to this district.
+          schema:
+            type: integer
+        - name: department_id
+          in: query
+          description: Filter to officers assigned to this department.
+          schema:
+            type: integer
+        - name: is_active
+          in: query
+          description: >-
+            Active-state filter. Truthy values (`true`, `1`) return active officers
+            only; falsy values (`false`, `0`) return inactive officers only. When
+            omitted, the list defaults to active officers only.
+          schema:
+            type: string
+            enum: [ 'true', 'false', '1', '0' ]
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Backend-paginated list of officers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Officer'
+                  links:
+                    type: object
+                    additionalProperties: true
+                  meta:
+                    type: object
+                    properties:
+                      current_page:
+                        type: integer
+                      per_page:
+                        type: integer
+                      total:
+                        type: integer
+                      last_page:
+                        type: integer
+              example:
+                data:
+                  - actor_type: officer
+                    id: 1
+                    username: demo-officer
+                    email: demo.officer@example.com
+                    badge_number: BOA-0001
+                    is_active: true
+                    departments:
+                      - id: 1
+                        code: wijkbeheer
+                        name: Wijkbeheer
+                    districts:
+                      - id: 1
+                        name: Middelharnis
+                        postal_prefix: '3241'
+                links:
+                  first: /api/officers?page=1
+                  last: /api/officers?page=1
+                  prev: null
+                  next: null
+                meta:
+                  current_page: 1
+                  per_page: 20
+                  total: 1
+                  last_page: 1
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
   /api/officers/{officerId}/districts:
     parameters:
       - name: officerId
@@ -2363,6 +2461,35 @@ components:
           description: Optional active district IDs to attach through the district_manager pivot.
           items:
             type: integer
+
+    Officer:
+      type: object
+      description: Officer resource returned by officer list and administration endpoints.
+      properties:
+        actor_type:
+          type: string
+          enum: [ officer ]
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        badge_number:
+          type: string
+        is_active:
+          type: boolean
+        departments:
+          type: array
+          description: Compact department objects. Officers must have one or more departments.
+          items:
+            $ref: '#/components/schemas/AuthDepartmentProfile'
+        districts:
+          type: array
+          description: Compact district objects assigned through the district_officer pivot.
+          items:
+            $ref: '#/components/schemas/AuthDistrictProfile'
 
     Manager:
       type: object

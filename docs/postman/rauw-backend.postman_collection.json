@@ -988,6 +988,28 @@
       "name": "Officers",
       "item": [
         {
+          "name": "List officers",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "GET",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+            "url": {
+              "raw": "{{base_url}}/api/officers?page=1&per_page=20",
+              "host": [ "{{base_url}}" ],
+              "path": [ "api", "officers" ],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "per_page", "value": "20" },
+                { "key": "district_id", "value": "1", "disabled": true },
+                { "key": "department_id", "value": "1", "disabled": true },
+                { "key": "is_active", "value": "0", "disabled": true, "description": "Use true/1 for active-only or false/0 for inactive-only; omit for default active-only." }
+              ]
+            },
+            "description": "List officers as an authenticated active officer or manager. Requires Authorization: Bearer <token> from Auth / Login with demo.officer@example.com or a manager account locally. Results are ordered by username ascending and include departments and districts as compact arrays. Soft-deleted officers are excluded. When is_active is omitted, only active officers are returned; use is_active=0 or is_active=false for inactive officers only. Optional district_id and department_id filters narrow results through officer pivots. Pagination uses page and per_page (default 20, max 100). Users and inactive actors receive 403."
+          },
+          "response": []
+        },
+        {
           "name": "Update My Districts",
           "request": {
             "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
@@ -1000,7 +1022,7 @@
           "response": []
         }
       ],
-      "description": "Officer-focused request examples. The district self-service update entry is implemented for active officers."
+      "description": "Officer-focused request examples. List officers is available to active officers and managers. The district self-service update entry is implemented for active officers."
     },
     {
       "name": "Categories",
