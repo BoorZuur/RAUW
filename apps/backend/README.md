@@ -91,7 +91,7 @@ Issue district handling is intentionally unchanged. `issues.district_id` remains
 
 Department deletion is blocked while a department is assigned to any manager or officer. Reassign those actors first; category pivot rows are still cleaned up automatically when an otherwise unused department is deleted.
 
-Categories are readable by any authenticated actor (`GET /api/categories`, `GET /api/categories/{category}`). Create, update, disable, and hard delete require an authenticated active manager; users, officers, and inactive managers receive `403`.
+Categories are readable by any authenticated actor (`GET /api/categories`, `GET /api/categories/{category}`). Create, update, deactivate or reactivate via `PATCH` with `is_active`, and hard delete require an authenticated active manager; users, officers, and inactive managers receive `403`. There is no dedicated `/disable` route.
 
 Issues are listed and shown to any authenticated actor. Create, update, and delete require the authenticated active user who owns the issue (`issues.user_id`). Issue departments are derived server-side from the selected category and returned as a read-only `departments` array; clients must not send department values in create or update bodies. Issue `priority` is a nullable unsigned integer on the same scale as category `priority` (lower number = higher urgency). The server copies the main category's `priority` on create and whenever `category_id` changes; subcategory issues use the parent category's `priority`, not subcategory `weight`. Clients must not POST or PATCH `priority`.
 

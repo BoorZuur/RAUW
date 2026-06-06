@@ -68,11 +68,11 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 |----------|-------------|-------|
 | `base_url` | `http://127.0.0.1:8001` | Change this to point at another backend without editing each request. |
 | `access_token` | blank | Filled automatically after **Auth / Login**, **Register User**, or **Register Officer**. Default token for users, officers, and general protected routes. |
-| `main_manager_access_token` | blank | Filled by **Auth / Login as Main Manager** (`demo.manager@example.com` locally). Required for **Managers** folder and department create/update/disable/delete. |
+| `main_manager_access_token` | blank | Filled by **Auth / Login as Main Manager** (`demo.manager@example.com` locally). Required for **Managers** folder and department create/update/deactivate/delete. |
 | `manager_access_token` | blank | Set manually after logging in as an ordinary manager (`is_main_manager: false`). Use for category mutations and officer district assignment; district CRUD writes return **403** for non-main managers. |
 | `inactive_access_token` | blank | Copy a token before deactivating an actor in the database; used by **Auth / Inactive Actor - List Issues (403 Smoke)**. |
 | `manager_id` | `2` | Ordinary manager path ID; overwritten by **Managers / Create Manager**. |
-| `department_id` | `1` | Department path ID for update, disable, and delete examples. |
+| `department_id` | `1` | Department path ID for update, deactivate (PATCH `is_active`), and delete examples. |
 | `issue_id` | `1` | Filled automatically after **Issues / Create Issue**. Used by show, update, attachment, and delete examples. |
 | `attachment_id` | `1` | Filled automatically after **Issues / Upload Attachments**. Used by authenticated download and delete. |
 | `attachment_download_url` | blank | Filled automatically after **Issues / Upload Attachments** for reference. |
@@ -92,7 +92,7 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 6. Run **Managers / List Main Managers**, then **Managers / Create Manager** (stores `manager_id`). Create Manager does not issue a login token for the new manager.
 7. For inactive-actor middleware: log in, copy the token to `inactive_access_token`, deactivate the actor in the database, then run **Auth / Current Profile** (200) and **Auth / Inactive Actor - List Issues (403 Smoke)** (403).
 8. As a user, run **Issues / List My Issues** (`mine=1`). As an officer or manager, run **Issues / List Issues - Hidden Filter** (`visibility=hidden`).
-9. Run **Departments / Disable Department** (main manager token) before hard delete when testing department lifecycle.
+9. Run **Departments / Deactivate Department** (main manager token, `PATCH` with `is_active: false`) before hard delete when testing department lifecycle.
 10. Run **Managers / Update My Districts** or **Officers / Update My Districts** for self-service district assignments, or **Managers / Update Officer Districts** for manager-admin officer assignments.
 11. Run **Districts / Create District**, **Update District**, and **Delete District** with **Auth / Login as Main Manager** (`main_manager_access_token`). Ordinary managers receive `403` on district writes. District deletion returns `409 Conflict` while the district is assigned to managers/officers or referenced by issues.
 12. Run **Categories / List Categories** to find existing category IDs. Category reads work for any authenticated actor; mutations require an active manager (not necessarily main).
@@ -396,6 +396,12 @@ Request body (send only fields to change):
 
 Requires the same main-manager authorization as update. Sets `is_active` to `false` on the target main manager and returns the updated `Manager` resource. Returns `409` when the target is the last active main manager. Ordinary manager IDs return `404`.
 
+### Enable Main Manager
+
+`PATCH {{base_url}}/api/main-managers/{managerId}/enable`
+
+Requires the same main-manager authorization as disable. Sets `is_active` to `true` on the target main manager and returns the updated `Manager` resource. Re-enabling an already active main manager is idempotent. Ordinary manager IDs return `404`.
+
 ### List Managers
 
 `GET {{base_url}}/api/managers`
@@ -488,6 +494,12 @@ Request body (send only fields to change):
 
 Requires the same main-manager authorization as update. Sets `is_active` to `false` on the target ordinary manager and returns the updated `Manager` resource. Main manager IDs return `404`. There is no last-manager guard for ordinary managers.
 
+### Enable Manager
+
+`PATCH {{base_url}}/api/managers/{managerId}/enable`
+
+Requires the same main-manager authorization as disable. Sets `is_active` to `true` on the target ordinary manager and returns the updated `Manager` resource. Re-enabling an already active manager is idempotent. Main manager IDs return `404`.
+
 #### Update Officer Districts
 
 `PATCH {{base_url}}/api/officers/{officer}/districts`
@@ -564,6 +576,22 @@ Returns the flat `Manager` resource shape (same as **Create Manager**), includin
 
 Common error responses match officer department PATCH: `401`, `403` (not active main manager), `404`, `422`.
 
+#### Sync Manager Districts
+
+`PATCH {{base_url}}/api/managers/{manager}/districts`
+
+Requires `Authorization: Bearer <token>` for an authenticated **active main manager**. The path target must be an ordinary manager (`is_main_manager: false`); main manager IDs return `404`.
+
+Request body example:
+
+```json
+{
+  "district_ids": [1, 2]
+}
+```
+
+Use `"district_ids": []` to clear all manager district assignments. IDs must reference active districts; duplicates, inactive, and unknown IDs return `422`. Returns the flat `Manager` resource with refreshed `districts`. This only updates `district_manager` and never modifies `issues.district_id`.
+
 ### Districts
 
 District endpoints use the `districts` table. Managers are assigned to districts through the `district_manager` pivot and officers through the `district_officer` pivot. Issue district handling is separate: `issues.district_id` remains a singular issue location/reference field.
@@ -575,7 +603,7 @@ Common requests:
 - `GET {{base_url}}/api/districts` — list districts with manager/officer assignment counts and issue reference counts.
 - `GET {{base_url}}/api/districts/{id}` — show one district.
 - `POST {{base_url}}/api/districts` — create a district as an active main manager.
-- `PATCH {{base_url}}/api/districts/{id}` — update a district as an active main manager.
+- `PATCH {{base_url}}/api/districts/{id}` — update a district as an active main manager; send `{"is_active": false}` to deactivate or `{"is_active": true}` to reactivate (no `/disable` route).
 - `DELETE {{base_url}}/api/districts/{id}` — hard delete an eligible district as an active main manager.
 
 Create body example:
@@ -602,7 +630,7 @@ Common error responses:
 
 ### Categories
 
-Category reads (`GET /api/categories`, `GET /api/categories/{id}`) require `Authorization: Bearer <token>` for any authenticated actor (user, officer, or manager). Category mutations require an authenticated, active manager. Ordinary managers may create, update, disable, and hard delete eligible categories. Users, officers, inactive managers, and unauthenticated requests receive `403` on mutations.
+Category reads (`GET /api/categories`, `GET /api/categories/{id}`) require `Authorization: Bearer <token>` for any authenticated actor (user, officer, or manager). Category mutations require an authenticated, active manager. Ordinary managers may create, update, deactivate or reactivate via `PATCH` with `is_active`, and hard delete eligible categories. Users, officers, inactive managers, and unauthenticated requests receive `403` on mutations.
 
 Categories belong to one or more departments through the `category_department` many-to-many pivot. Use `department_ids` in create/update requests to attach existing departments.
 
@@ -613,8 +641,7 @@ Common requests:
 - `GET {{base_url}}/api/categories` — list main categories with children and departments.
 - `GET {{base_url}}/api/categories/{id}` — show one category.
 - `POST {{base_url}}/api/categories` — create a main category or subcategory.
-- `PATCH {{base_url}}/api/categories/{id}` — update fields and, when `department_ids` is present, replace department assignments.
-- `PATCH {{base_url}}/api/categories/{id}/disable` — standard safe removal path. Sets `is_active` to `false` without deleting the row or removing historical issue context.
+- `PATCH {{base_url}}/api/categories/{id}` — update fields and, when `department_ids` is present, replace department assignments; send `{"is_active": false}` to deactivate or `{"is_active": true}` to reactivate (no `/disable` route).
 - `DELETE {{base_url}}/api/categories/{id}` — guarded hard delete for eligible records only.
 
 Main category body example:
@@ -662,8 +689,7 @@ Common requests:
 - `GET {{base_url}}/api/departments` — list departments with `categories_count`.
 - `GET {{base_url}}/api/departments/{id}` — show one department.
 - `POST {{base_url}}/api/departments` — create a department as a main manager.
-- `PATCH {{base_url}}/api/departments/{id}` — update a department as a main manager.
-- `PATCH {{base_url}}/api/departments/{id}/disable` — standard safe removal; sets `is_active` to `false` (main manager only).
+- `PATCH {{base_url}}/api/departments/{id}` — update a department as a main manager; send `{"is_active": false}` to deactivate or `{"is_active": true}` to reactivate (no `/disable` route). Deactivation returns `409` when the department is still referenced by existing records.
 - `DELETE {{base_url}}/api/departments/{id}` — hard delete a department as a main manager.
 
 Create body example:
@@ -686,6 +712,44 @@ Common error responses:
 - `403 Forbidden` when the authenticated actor is not an active main manager.
 - `422 Unprocessable Entity` for validation failures, including duplicate department `code` values.
 - `409 Conflict` when deleting a department that is still assigned to one or more managers or officers.
+
+### Officers
+
+Officer listing and enable/disable require an authenticated active officer or manager (list) or an authenticated active manager (disable/enable).
+
+Common requests:
+
+- `GET {{base_url}}/api/officers` — list officers ordered by username. Optional filters: `district_id`, `department_id`, `is_active` (omit for active-only default). Pagination: `page`, `per_page` (max 100).
+- `PATCH {{base_url}}/api/officers/{officer}/disable` — deactivate an officer (`is_active=false`). Manager only.
+- `PATCH {{base_url}}/api/officers/{officer}/enable` — reactivate an officer (`is_active=true`). Manager only; idempotent when already active.
+- `PATCH {{base_url}}/api/auth/me/districts` — officer self-service district sync (see **Officer District Assignment Updates**).
+
+### Issues
+
+Issue CRUD is owner-only for writes (active user who owns `issues.user_id`). Listing and show are available to any authenticated actor with visibility scoping.
+
+List query params (composable, AND semantics):
+
+- `district_id`, `department` (code), `category_id` — all actors.
+- `status` — `open`, `in_behandeling`, `opgelost`, or `gesloten`; all actors.
+- `mine` — users only; restricts to owned issues.
+- `visibility` — officers and managers only; `visible` or `hidden`.
+- `assigned_officer_id` — officers and managers only.
+- `unassigned` — officers and managers only (`unassigned=1`); mutually exclusive with `assigned_officer_id`.
+
+Visibility write (officers and managers only):
+
+`PATCH {{base_url}}/api/issues/{issue}/visibility`
+
+```json
+{
+  "visibility": "hidden"
+}
+```
+
+Returns `404` when the issue is not viewable by the caller (same rules as show). User-owned `PATCH /api/issues/{issue}` cannot change visibility.
+
+Issue responses include read-only `status`, `assigned_officer_id`, and `visibility` fields.
 
 ### Issue Attachments
 
