@@ -42,9 +42,10 @@ class UpdateIssueRequest extends FormRequest
      * integer `priority` server-side from the new category's main-category
      * priority, so departments and priority are never accepted from the client.
      * Ownership (`user_id`), triage state (`status`, assignment, counters),
-     * the server-generated `anonymous_alias`, and the removed `neighborhood`
-     * field are intentionally excluded and can never be set through this
-     * request.
+     * visibility, the server-generated `anonymous_alias`, and the removed
+     * `neighborhood` field are intentionally excluded and can never be set
+     * through this request. Officers and managers change visibility through
+     * PATCH /issues/{issue}/visibility instead.
      *
      * @return array<string, array<int, mixed>>
      */
@@ -61,6 +62,7 @@ class UpdateIssueRequest extends FormRequest
             'longitude' => ['sometimes', 'nullable', 'numeric', 'between:-180,180'],
             'is_anonymous' => ['sometimes', 'boolean'],
             'priority' => ['prohibited'],
+            'visibility' => ['prohibited'],
         ];
     }
 }

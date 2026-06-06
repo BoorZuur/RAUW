@@ -7,6 +7,7 @@ use App\Http\Requests\Issues\IndexIssueRequest;
 use App\Http\Requests\Issues\ShowIssueRequest;
 use App\Http\Requests\Issues\StoreIssueRequest;
 use App\Http\Requests\Issues\UpdateIssueRequest;
+use App\Http\Requests\Issues\UpdateIssueVisibilityRequest;
 use App\Support\IssueVisibilityQuery;
 use App\Http\Resources\IssueResource;
 use App\Models\Category;
@@ -246,6 +247,29 @@ class IssueController extends Controller
         if ($category !== null) {
             $issue->syncDepartments($category->departmentIds());
         }
+
+        $issue->refresh()->load(self::ISSUE_RELATIONS);
+
+        return new IssueResource($issue);
+    }
+
+    /**
+     * Set an issue's visibility to visible or hidden.
+     *
+     * Authorization is enforced by UpdateIssueVisibilityRequest (active officer or
+     * manager only). Visibility scope is enforced after route binding via
+     * IssueVisibilityQuery::canViewIssue(), matching show behavior: issues the
+     * actor cannot view return 404. Only the visibility field is updated.
+     */
+    public function updateVisibility(UpdateIssueVisibilityRequest $request, Issue $issue): IssueResource
+    {
+        if (! IssueVisibilityQuery::canViewIssue($issue, $request->user())) {
+            abort(404);
+        }
+
+        $issue->update([
+            'visibility' => $request->enum('visibility'),
+        ]);
 
         $issue->refresh()->load(self::ISSUE_RELATIONS);
 

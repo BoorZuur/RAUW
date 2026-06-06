@@ -1370,6 +1370,18 @@
           "response": []
         },
         {
+          "name": "Patch issue visibility",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "PATCH",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"visibility\": \"hidden\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/visibility", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "visibility" ] },
+            "description": "Set issue visibility to visible or hidden. Active officers and managers only; users receive 403. The issue must be viewable by the caller (same rules as Show Issue); otherwise the API returns 404. Log in as demo.officer@example.com or a manager before running. User-owned PATCH /api/issues/{issue_id} cannot change visibility."
+          },
+          "response": []
+        },
+        {
           "name": "Upload Attachments",
           "event": [
             {

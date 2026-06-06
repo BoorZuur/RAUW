@@ -177,6 +177,10 @@ Route::middleware(['auth:sanctum', 'actor.active', 'throttle:30,1'])->group(func
     // and not owned by an active user); officers and managers may view all issues.
     Route::get('issues/{issue}', [IssueController::class, 'show'])->name('issues.show');
     Route::match(['put', 'patch'], 'issues/{issue}', [IssueController::class, 'update'])->name('issues.update');
+    // Visibility writes are officer/manager-only and authorized inside
+    // UpdateIssueVisibilityRequest; the controller enforces visibility scope
+    // (404 when the issue is not viewable, matching show).
+    Route::patch('issues/{issue}/visibility', [IssueController::class, 'updateVisibility'])->name('issues.visibility.update');
     Route::delete('issues/{issue}', [IssueController::class, 'destroy'])->name('issues.destroy');
 
     // Issue attachments. Uploads are authorized inside StoreIssueAttachmentRequest

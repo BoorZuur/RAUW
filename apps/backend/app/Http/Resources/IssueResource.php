@@ -42,8 +42,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *
  * Visibility
  * ----------
- * The string `visibility` (`visible` or `hidden`) is read-only in API responses.
- * Clients cannot set or change it through create or update requests.
+ * The string `visibility` (`visible` or `hidden`) is read-only in user-facing
+ * create and update requests. Active officers and managers may change it through
+ * PATCH /issues/{issue}/visibility.
  *
  * Assignee
  * --------

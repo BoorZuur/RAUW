@@ -1352,8 +1352,9 @@ paths:
         location fields, and is_anonymous. When category_id changes, departments
         and integer priority are re-derived from the selected category's
         main-category priority and returned as read-only fields. user_id, status,
-        priority, counters, department assignments, and anonymous_alias are
-        server-owned; clients must not send priority.
+        priority, counters, department assignments, visibility, and anonymous_alias are
+        server-owned; clients must not send priority or visibility. Officers and
+        managers change visibility through PATCH /api/issues/{issueId}/visibility.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -1402,6 +1403,48 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /api/issues/{issueId}/visibility:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Issues ]
+      summary: Set issue visibility
+      description: >-
+        Set an issue's visibility to `visible` or `hidden`. Active officers and
+        active managers only; users receive 403. The issue must be viewable by
+        the caller (same rules as GET /api/issues/{issueId}); otherwise the
+        backend returns 404. Only the visibility field is updated; user-owned
+        PATCH /api/issues/{issueId} cannot change visibility.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueVisibilityUpdate'
+            example:
+              visibility: hidden
+      responses:
+        '200':
+          description: Updated issue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
 
   /api/issues/{issueId}/attachments:
     parameters:
@@ -2899,11 +2942,13 @@ components:
       description: >-
         Owner-editable issue fields. All fields are optional for PATCH/PUT and
         only supplied fields are changed. user_id, status, priority,
-        anonymous_alias, department assignments, and counters are server-owned;
-        priority must not be sent. When category_id is supplied, departments and
-        integer priority are re-derived from that category's main-category
-        priority. The public API no longer accepts removed legacy locality fields
-        or client-supplied department values.
+        visibility, anonymous_alias, department assignments, and counters are
+        server-owned; priority and visibility must not be sent. When category_id
+        is supplied, departments and integer priority are re-derived from that
+        category's main-category priority. Officers and managers change
+        visibility through PATCH /api/issues/{issueId}/visibility. The public
+        API no longer accepts removed legacy locality fields or client-supplied
+        department values.
       properties:
         title:
           type: string
@@ -2930,6 +2975,19 @@ components:
           nullable: true
         is_anonymous:
           type: boolean
+
+    IssueVisibilityUpdate:
+      type: object
+      required: [ visibility ]
+      description: >-
+        Officer/manager visibility write payload. Active officers and active
+        managers may set an issue to visible or hidden when they can view the
+        issue.
+      properties:
+        visibility:
+          type: string
+          enum: [ visible, hidden ]
+          description: Target visibility for the issue.
 
     Issue:
       type: object
@@ -2989,9 +3047,10 @@ components:
           type: string
           enum: [visible, hidden]
           description: >-
-            Read-only issue visibility. Visible issues appear in public-scoped
-            lists; hidden issues are visible only to officers, managers, and the
-            owning user. Not accepted on create or update requests.
+            Issue visibility. Visible issues appear in public-scoped lists; hidden
+            issues are visible only to officers, managers, and the owning user.
+            Not accepted on user-owned create or update requests. Active officers
+            and managers may change it through PATCH /api/issues/{issueId}/visibility.
         priority:
           type: integer
           nullable: true
