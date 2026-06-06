@@ -1010,6 +1010,28 @@
           "response": []
         },
         {
+          "name": "Disable officer",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "PATCH",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+            "url": { "raw": "{{base_url}}/api/officers/1/disable", "host": [ "{{base_url}}" ], "path": [ "api", "officers", "1", "disable" ] },
+            "description": "Deactivate an officer (is_active=false) as an authenticated active manager. Users, officers, inactive managers, and unauthenticated requests receive 403. Returns the refreshed Officer resource with departments and districts. Does not soft-delete the row. Soft-deleted officers return 404. Use any active manager token from Auth / Login."
+          },
+          "response": []
+        },
+        {
+          "name": "Enable officer",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "PATCH",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+            "url": { "raw": "{{base_url}}/api/officers/1/enable", "host": [ "{{base_url}}" ], "path": [ "api", "officers", "1", "enable" ] },
+            "description": "Reactivate an officer (is_active=true) as an authenticated active manager. Users, officers, inactive managers, and unauthenticated requests receive 403. Re-enabling an already active officer is idempotent and returns 200. Does not restore soft-deleted officers (404). Returns the refreshed Officer resource with departments and districts. Use any active manager token from Auth / Login."
+          },
+          "response": []
+        },
+        {
           "name": "Update My Districts",
           "request": {
             "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
@@ -1022,7 +1044,7 @@
           "response": []
         }
       ],
-      "description": "Officer-focused request examples. List officers is available to active officers and managers. The district self-service update entry is implemented for active officers."
+      "description": "Officer-focused request examples. List officers is available to active officers and managers. Disable and enable officer require an active manager token (access_token after Login as a manager). The district self-service update entry is implemented for active officers."
     },
     {
       "name": "Categories",

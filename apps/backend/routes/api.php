@@ -115,6 +115,14 @@ Route::middleware(['auth:sanctum', 'actor.active', 'throttle:30,1'])->group(func
     // department_id filters narrow the result set through officer pivots.
     Route::get('officers', [OfficerController::class, 'index'])->name('officers.index');
 
+    // Manager-protected officer disable and enable. Authorization is narrowed
+    // inside DisableOfficerRequest and EnableOfficerRequest to an authenticated,
+    // active manager; users, officers, and inactive managers receive a 403. Any
+    // active manager may toggle the target officer's is_active flag without
+    // soft-deleting or restoring the row. Soft-deleted officers return 404.
+    Route::patch('officers/{officer}/disable', [OfficerController::class, 'disable'])->name('officers.disable');
+    Route::patch('officers/{officer}/enable', [OfficerController::class, 'enable'])->name('officers.enable');
+
     // Manager-protected officer district assignment. Authorization is narrowed
     // inside UpdateOfficerDistrictsRequest to an authenticated, active manager;
     // users, officers, and inactive managers receive a 403. Any active manager

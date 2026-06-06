@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Officers\DisableOfficerRequest;
+use App\Http\Requests\Officers\EnableOfficerRequest;
 use App\Http\Requests\Officers\IndexOfficerRequest;
 use App\Http\Resources\OfficerResource;
 use App\Models\Officer;
@@ -51,5 +53,39 @@ class OfficerController extends Controller
             ->withQueryString();
 
         return OfficerResource::collection($officers);
+    }
+
+    /**
+     * Disable an officer without removing the row.
+     *
+     * Authorization is enforced by DisableOfficerRequest, which restricts this
+     * action to an authenticated, active manager. Setting `is_active = false`
+     * preserves the officer record and historical associations without
+     * soft-deleting the row.
+     */
+    public function disable(DisableOfficerRequest $request, Officer $officer): OfficerResource
+    {
+        $officer->update(['is_active' => false]);
+
+        $officer->load(['departments', 'districts']);
+
+        return new OfficerResource($officer);
+    }
+
+    /**
+     * Enable an officer without restoring a soft-deleted row.
+     *
+     * Authorization is enforced by EnableOfficerRequest, which restricts this
+     * action to an authenticated, active manager. Setting `is_active = true`
+     * reactivates the officer. Re-enabling an already active officer is
+     * idempotent and returns 200.
+     */
+    public function enable(EnableOfficerRequest $request, Officer $officer): OfficerResource
+    {
+        $officer->update(['is_active' => true]);
+
+        $officer->load(['departments', 'districts']);
+
+        return new OfficerResource($officer);
     }
 }

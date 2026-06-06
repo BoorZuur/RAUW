@@ -1111,6 +1111,71 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
 
+  /api/officers/{officerId}/disable:
+    parameters:
+      - name: officerId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Officers ]
+      summary: Disable an officer
+      description: >-
+        Deactivate an officer as an authenticated active manager by setting
+        is_active to false while preserving the row and associations. This does
+        not soft-delete the officer. Only an authenticated active manager may
+        call this endpoint. Users, officers, inactive managers, and
+        unauthenticated requests receive 403. Soft-deleted officers return 404.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Officer disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Officer'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/officers/{officerId}/enable:
+    parameters:
+      - name: officerId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Officers ]
+      summary: Enable an officer
+      description: >-
+        Reactivate an officer as an authenticated active manager by setting
+        is_active to true. This does not restore a soft-deleted officer. Only an
+        authenticated active manager may call this endpoint. Users, officers,
+        inactive managers, and unauthenticated requests receive 403.
+        Re-enabling an already active officer is idempotent and returns 200.
+        Soft-deleted officers return 404.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Officer enabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Officer'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /api/officers/{officerId}/districts:
     parameters:
       - name: officerId
