@@ -939,6 +939,80 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
 
+  /api/managers/{managerId}/districts:
+    parameters:
+      - name: managerId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Managers ]
+      summary: Update a manager's district assignments
+      description: >-
+        Main-manager-only district assignment endpoint. Replaces the target manager's district
+        assignments with the supplied district_ids array and returns that
+        manager's refreshed Manager resource. Only an authenticated active main
+        manager (is_main_manager=true) may call this endpoint. Users, officers,
+        ordinary managers, inactive managers, inactive main managers, and
+        unauthenticated requests receive 403. The path target must have
+        is_main_manager=false; main managers and unknown ids return 404. The endpoint
+        updates only the district_manager pivot and never modifies issues.district_id
+        or officer district pivots. district_ids must be present and may be an
+        empty array to clear all assignments. Inactive (`is_active=false`), unknown
+        district IDs, and duplicates return **422**. Soft-deleted managers return 404.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DistrictAssignmentUpdate'
+            examples:
+              assignDistricts:
+                summary: Replace with two districts
+                value:
+                  district_ids: [1, 2]
+              clearDistricts:
+                summary: Clear all district assignments
+                value:
+                  district_ids: []
+      responses:
+        '200':
+          description: Refreshed manager profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manager'
+              example:
+                actor_type: manager
+                id: 2
+                username: new-manager
+                email: new.manager@example.com
+                is_active: true
+                is_main_manager: false
+                created_by_manager_id: 1
+                departments:
+                  - id: 1
+                    code: wijkbeheer
+                    name: Wijkbeheer
+                districts:
+                  - id: 1
+                    name: Middelharnis
+                    postal_prefix: '3241'
+                  - id: 2
+                    name: Sommelsdijk
+                    postal_prefix: '3245'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
   /api/officers/{officerId}/districts:
     parameters:
       - name: officerId

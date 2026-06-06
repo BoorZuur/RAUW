@@ -15,6 +15,7 @@ use App\Http\Controllers\IssueController;
 use App\Http\Controllers\MainManagerController;
 use App\Http\Controllers\ManagerController;
 use App\Http\Controllers\ManagerDepartmentController;
+use App\Http\Controllers\ManagerDistrictController;
 use App\Http\Controllers\OfficerDepartmentController;
 use App\Http\Controllers\OfficerDistrictController;
 use Illuminate\Support\Facades\Route;
@@ -123,6 +124,17 @@ Route::middleware(['auth:sanctum', 'actor.active', 'throttle:30,1'])->group(func
     // the department_officer / department_manager pivots.
     Route::patch('officers/{officer}/departments', [OfficerDepartmentController::class, 'update'])->name('officers.departments.update');
     Route::patch('managers/{manager}/departments', [ManagerDepartmentController::class, 'update'])->name('managers.departments.update');
+
+    // Main-manager-protected manager district assignment. Authorization is narrowed
+    // inside UpdateManagerDistrictsRequest to an authenticated, active main manager
+    // only; users, officers, non-main managers, and inactive managers receive a
+    // 403. Any active main manager may sync the target manager's districts wholesale
+    // from the validated `district_ids` array, including an empty array to clear
+    // all assignments. Route binding limits `{manager}` to rows with
+    // `is_main_manager = false` (main managers and unknown ids return 404). This
+    // endpoint only touches the district_manager pivot and never modifies
+    // issues.district_id or officer district pivots.
+    Route::patch('managers/{manager}/districts', [ManagerDistrictController::class, 'update'])->name('managers.districts.update');
 
     // Manager-protected category management. Authorization is narrowed inside
     // the category FormRequests to an authenticated, active manager; users,

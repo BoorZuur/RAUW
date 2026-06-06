@@ -968,9 +968,21 @@
             "description": "Main-manager-only department assignment endpoint. Replace a manager's department assignments as an authenticated active main manager. department_ids must be present, may be [] to clear all assignments, must reference active department IDs (is_active=true), and cannot contain duplicates; inactive or unknown IDs return 422. Returns the refreshed Manager resource (flat manager profile with departments and districts). Soft-deleted managers return 404. Use the main manager token from Auth / Login (demo.manager@example.com locally). Ordinary managers receive 403."
           },
           "response": []
+        },
+        {
+          "name": "Sync manager districts",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{main_manager_access_token}}", "type": "string" } ] },
+            "method": "PATCH",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"district_ids\": [1, 2]\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/managers/{{manager_id}}/districts", "host": [ "{{base_url}}" ], "path": [ "api", "managers", "{{manager_id}}", "districts" ] },
+            "description": "Main-manager-only district assignment endpoint. Replace a manager's district assignments as an authenticated active main manager. district_ids must be present, may be [] to clear all assignments, must reference active district IDs (is_active=true), and cannot contain duplicates; inactive or unknown IDs return 422. Returns the refreshed Manager resource (flat manager profile with departments and districts). The path target must have is_main_manager=false; main managers and unknown ids return 404. Soft-deleted managers return 404. This only updates district_manager and never modifies issues.district_id or officer district pivots. Use the main manager token from Auth / Login (demo.manager@example.com locally). Ordinary managers receive 403."
+          },
+          "response": []
         }
       ],
-      "description": "Protected manager administration requests. Run Auth / Login as Main Manager first so main_manager_access_token is set. List/create/update/disable main managers and ordinary managers use main_manager_access_token. Update Officer Districts accepts any active manager token (access_token after Login). Update Officer Departments and Update Manager Departments require main_manager_access_token. manager_id defaults to 2 locally and is overwritten by Create Manager."
+      "description": "Protected manager administration requests. Run Auth / Login as Main Manager first so main_manager_access_token is set. List/create/update/disable main managers and ordinary managers use main_manager_access_token. Update Officer Districts accepts any active manager token (access_token after Login). Update Officer Departments, Update Manager Departments, and Sync manager districts require main_manager_access_token. manager_id defaults to 2 locally and is overwritten by Create Manager."
     },
     {
       "name": "Officers",
