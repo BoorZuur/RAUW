@@ -1287,6 +1287,66 @@
           "response": []
         },
         {
+          "name": "List Issues - Status Filter",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "GET",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+            "url": {
+              "raw": "{{base_url}}/api/issues?status=open&page={{page}}&per_page={{per_page}}",
+              "host": [ "{{base_url}}" ],
+              "path": [ "api", "issues" ],
+              "query": [
+                { "key": "status", "value": "open", "description": "Composable status filter for any active actor. Valid values: open, in_behandeling, opgelost, gesloten. Invalid values return 422." },
+                { "key": "page", "value": "{{page}}" },
+                { "key": "per_page", "value": "{{per_page}}" }
+              ]
+            },
+            "description": "Filter issues by status. Available to users, officers, and managers. Composes with default visibility scoping and optional district_id, department, category_id, mine, and visibility filters."
+          },
+          "response": []
+        },
+        {
+          "name": "List Issues - Assigned Officer Filter",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "GET",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+            "url": {
+              "raw": "{{base_url}}/api/issues?assigned_officer_id=1&page={{page}}&per_page={{per_page}}",
+              "host": [ "{{base_url}}" ],
+              "path": [ "api", "issues" ],
+              "query": [
+                { "key": "assigned_officer_id", "value": "1", "description": "Officers and managers only: restrict to issues assigned to this officer id. Users receive 422. Mutually exclusive with unassigned." },
+                { "key": "page", "value": "{{page}}" },
+                { "key": "per_page", "value": "{{per_page}}" }
+              ]
+            },
+            "description": "Officer/manager assignee filter smoke test. Log in as demo.officer@example.com or a manager before running. Replace assigned_officer_id=1 with a real officer id from your database. Composes with status, visibility, district_id, department, and category_id filters."
+          },
+          "response": []
+        },
+        {
+          "name": "List Issues - Unassigned Filter",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "GET",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+            "url": {
+              "raw": "{{base_url}}/api/issues?unassigned=1&page={{page}}&per_page={{per_page}}",
+              "host": [ "{{base_url}}" ],
+              "path": [ "api", "issues" ],
+              "query": [
+                { "key": "unassigned", "value": "1", "description": "Officers and managers only: restrict to issues with no assigned officer (assigned_officer_id is null). Users receive 422. Mutually exclusive with assigned_officer_id." },
+                { "key": "page", "value": "{{page}}" },
+                { "key": "per_page", "value": "{{per_page}}" }
+              ]
+            },
+            "description": "Officer/manager unassigned filter smoke test. Log in as demo.officer@example.com or a manager before running. Query param unassigned=1 returns only issues without an assigned officer. Composes with status, visibility, district_id, department, and category_id filters."
+          },
+          "response": []
+        },
+        {
           "name": "Show Issue",
           "request": {
             "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },

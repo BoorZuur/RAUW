@@ -1149,9 +1149,16 @@ paths:
         `visibility = visible` or issues they own (`issues.user_id` match), including
         their own hidden issues; other users' hidden issues are excluded. Active
         officers and active managers receive all issues, including hidden issues from
-        any user. Filters are optional and composable (AND with visibility): district_id,
-        department, category_id, mine, and visibility may be combined in a single request to narrow the
-        result set. Query param mine (`mine=1` or equivalent truthy values) restricts
+        any user.         Filters are optional and composable (AND with visibility): district_id,
+        department, category_id, status, assigned_officer_id, unassigned, mine, and visibility
+        may be combined in a single request to narrow the result set. Query param status
+        accepts any IssueStatus enum value (`open`, `in_behandeling`, `opgelost`, `gesloten`)
+        and is available to all active actors; invalid values receive 422. Query param
+        assigned_officer_id filters issues assigned to that officer; query param unassigned
+        (`unassigned=1` or equivalent truthy values) returns only issues with no assigned
+        officer. Assignee filters are available to officers and managers only; users receive
+        422. assigned_officer_id and unassigned are mutually exclusive (422 when both are set).
+        Query param mine (`mine=1` or equivalent truthy values) restricts
         active users to issues they own (`issues.user_id`); officers and managers sending
         mine receive 422. Query param visibility (`visible` or `hidden`) narrows officer/manager
         lists to that visibility value; when omitted officers and managers see all issues.
@@ -1205,6 +1212,35 @@ paths:
             type: string
             enum: [ visible, hidden ]
             example: hidden
+        - name: status
+          in: query
+          description: >-
+            Optional composable status filter available to all active actors. Matches
+            issues where status equals the provided IssueStatus enum value.
+          schema:
+            type: string
+            enum: [ open, in_behandeling, opgelost, gesloten ]
+            example: open
+        - name: assigned_officer_id
+          in: query
+          description: >-
+            Optional filter for active officers and managers only. Returns issues
+            assigned to the given officer id. Composes with other filters (AND).
+            Users cannot use this filter (422). Mutually exclusive with unassigned (422).
+          schema:
+            type: integer
+            example: 1
+        - name: unassigned
+          in: query
+          description: >-
+            Optional filter for active officers and managers only. When set to a truthy
+            value (`1`, `true`), returns only issues with no assigned officer
+            (`assigned_officer_id` is null). Composes with other filters (AND).
+            Users cannot use this filter (422). Mutually exclusive with assigned_officer_id (422).
+          schema:
+            type: string
+            enum: [ '1', 'true' ]
+            example: '1'
       responses:
         '200':
           description: Backend-paginated list of issues
@@ -2942,6 +2978,13 @@ components:
             $ref: '#/components/schemas/AuthDepartmentProfile'
         status:
           type: string
+          enum: [ open, in_behandeling, opgelost, gesloten ]
+        assigned_officer_id:
+          type: integer
+          nullable: true
+          description: >-
+            Read-only nullable officer assignee id. Not accepted on user-owned create
+            or update requests.
         visibility:
           type: string
           enum: [visible, hidden]

@@ -45,6 +45,11 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * The string `visibility` (`visible` or `hidden`) is read-only in API responses.
  * Clients cannot set or change it through create or update requests.
  *
+ * Assignee
+ * --------
+ * The nullable integer `assigned_officer_id` is read-only in API responses.
+ * Clients cannot set or change it through user-owned create or update requests.
+ *
  * @mixin Issue
  */
 class IssueResource extends JsonResource
@@ -73,6 +78,7 @@ class IssueResource extends JsonResource
             'district_id' => $issue->district_id,
             'departments' => $this->compactDepartments($issue),
             'status' => $issue->status,
+            'assigned_officer_id' => $issue->assigned_officer_id,
             'visibility' => $issue->visibility->value,
             'priority' => $issue->priority,
             'postal_code' => $issue->postal_code,

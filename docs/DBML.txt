@@ -189,7 +189,7 @@ Table issues {
   address              varchar(255)
   latitude             decimal(10,8)
   longitude            decimal(11,8)
-  status               varchar(20)  [not null, default: 'open', note: 'open | in_behandeling | afgerond | afgewezen | gedupliceerd']
+  status               varchar(20)  [not null, default: 'open', note: 'open | in_behandeling | opgelost | gesloten']
   priority             tinyint      [note: 'unsigned nullable; server-afgeleid uit hoofdcategorie priority (lager getal = hogere urgentie); client mag niet schrijven']
   duplicate_count      int          [not null, default: 0]
   participant_count    int          [not null, default: 0, note: 'Direct opgehoogd, nachtelijks gereconcilieerd']
