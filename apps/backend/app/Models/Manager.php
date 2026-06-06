@@ -107,8 +107,11 @@ class Manager extends Authenticatable
     /**
      * Resolve the manager for implicit route model binding.
      *
-     * Main-manager routes require `is_main_manager = true` on the target row.
-     * Ordinary manager update/disable routes require `is_main_manager = false`.
+     * - `main-managers.*` routes require `is_main_manager = true` on the target row.
+     * - `managers.*` routes with a `{manager}` parameter require `is_main_manager = false`,
+     *   except `managers.departments.update`, where a main manager may assign departments
+     *   to any manager including other main managers.
+     * - Unscoped routes (e.g. `managers.index`) never invoke this binding.
      */
     public function resolveRouteBinding($value, $field = null): ?static
     {
@@ -118,7 +121,10 @@ class Manager extends Authenticatable
 
         if (request()->routeIs('main-managers.*')) {
             $query->where('is_main_manager', true);
-        } elseif (request()->routeIs('managers.update', 'managers.disable')) {
+        } elseif (
+            request()->routeIs('managers.*')
+            && ! request()->routeIs('managers.departments.update')
+        ) {
             $query->where('is_main_manager', false);
         }
 
