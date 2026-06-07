@@ -1916,8 +1916,10 @@ paths:
       summary: Create a category
       description: >-
         Create a main category or subcategory and assign it to one or more
-        departments through the category_department pivot. Active managers may
-        manage categories; main-manager status is not required. Categories use
+        departments through the category_department pivot. Restricted to
+        authenticated active main managers only. Users, officers, ordinary
+        managers, inactive managers, and unauthenticated requests receive
+        **403**. Categories use
         a two-level hierarchy: `parent_id` null creates a main category;
         `parent_id` must reference an active main category for subcategories.
         Subcategories cannot have children (no sub-under-sub). Main categories
@@ -1985,6 +1987,9 @@ paths:
         `parent_id` may only reference a main category; subcategories cannot
         have children. Set `is_active` to false to deactivate or true to
         reactivate; this is the sole activation path (no `/disable` route).
+        Restricted to authenticated active main managers only. Users, officers,
+        ordinary managers, inactive managers, and unauthenticated requests
+        receive **403**.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -2011,7 +2016,9 @@ paths:
     put:
       tags: [ Categories ]
       summary: Replace/update a category
-      description: Same behavior and validation as PATCH /api/categories/{categoryId}.
+      description: >-
+        Same behavior and validation as PATCH /api/categories/{categoryId}.
+        Restricted to authenticated active main managers only.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -2039,9 +2046,11 @@ paths:
       tags: [ Categories ]
       summary: Hard delete an eligible category
       description: >-
-        Only authenticated active managers may hard delete categories. Hard
-        deletion is guarded and is not the standard removal path. Prefer PATCH
-        with `is_active: false` so historical issues keep their category context.
+        Only authenticated active main managers may hard delete categories.
+        Users, officers, ordinary managers, inactive managers, and
+        unauthenticated requests receive **403**. Hard deletion is guarded and
+        is not the standard removal path. Prefer PATCH with `is_active: false`
+        so historical issues keep their category context.
         A main category cannot be hard deleted while it still has subcategories
         (returns **409** with message `Cannot delete a main category while it
         still has subcategories.`). Categories referenced by existing issues also

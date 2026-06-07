@@ -69,7 +69,7 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 | `base_url` | `http://127.0.0.1:8001` | Change this to point at another backend without editing each request. |
 | `access_token` | blank | Filled automatically after **Auth / Login**, **Register User**, or **Register Officer**. Default token for users, officers, and general protected routes. |
 | `main_manager_access_token` | blank | Filled by **Auth / Login as Main Manager** (`demo.manager@example.com` locally). Required for **Managers** folder and department create/update/deactivate/delete. |
-| `manager_access_token` | blank | Set manually after logging in as an ordinary manager (`is_main_manager: false`). Use for category mutations and officer district assignment; district CRUD writes return **403** for non-main managers. |
+| `manager_access_token` | blank | Set manually after logging in as an ordinary manager (`is_main_manager: false`). Use for officer district assignment and to verify category/district/department mutations return **403** for non-main managers. |
 | `inactive_access_token` | blank | Copy a token before deactivating an actor in the database; used by **Auth / Inactive Actor - List Issues (403 Smoke)**. |
 | `manager_id` | `2` | Ordinary manager path ID; overwritten by **Managers / Create Manager**. |
 | `department_id` | `1` | Department path ID for update, deactivate (PATCH `is_active`), and delete examples. |
@@ -95,10 +95,10 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 9. Run **Departments / Deactivate Department** (main manager token, `PATCH` with `is_active: false`) before hard delete when testing department lifecycle.
 10. Run **Managers / Update My Districts** or **Officers / Update My Districts** for self-service district assignments, or **Managers / Update Officer Districts** for manager-admin officer assignments.
 11. Run **Districts / Create District**, **Update District**, and **Delete District** with **Auth / Login as Main Manager** (`main_manager_access_token`). Ordinary managers receive `403` on district writes. District deletion returns `409 Conflict` while the district is assigned to managers/officers or referenced by issues.
-12. Run **Categories / List Categories** to find existing category IDs. Category reads work for any authenticated actor; mutations require an active manager (not necessarily main).
+12. Run **Categories / List Categories** to find existing category IDs. Category reads work for any authenticated actor; mutations require an active main manager (`main_manager_access_token`).
 13. Run **Auth / Login** with `demo.user@example.com` and password `password`, then **Issues / Create Issue** (stores `issue_id`).
 14. Use **Issues / List Issues - Filtered Paginated** to combine `district_id`, `department` (env `department_filter`), and `category_id`.
-15. To test ordinary-manager privileges, log in as a created manager and copy the token to `manager_access_token` before category mutations or **Managers / Update Officer Districts** (not district CRUD).
+15. To test ordinary-manager privileges, log in as a created manager and copy the token to `manager_access_token` before **Managers / Update Officer Districts** or to confirm category/district/department mutations return **403** (not for successful category writes).
 16. Run **Auth / Logout** when finished.
 
 The collection stores the returned `access_token` automatically after a successful login, user registration, or officer registration. Manager creation intentionally does not update `access_token` because it returns only the created manager profile. If you disable collection scripts or the token is not stored, copy the `access_token` value from the auth response into the active Postman environment's `access_token` variable before calling protected endpoints.
@@ -630,7 +630,7 @@ Common error responses:
 
 ### Categories
 
-Category reads (`GET /api/categories`, `GET /api/categories/{id}`) require `Authorization: Bearer <token>` for any authenticated actor (user, officer, or manager). Category mutations require an authenticated, active manager. Ordinary managers may create, update, deactivate or reactivate via `PATCH` with `is_active`, and hard delete eligible categories. Users, officers, inactive managers, and unauthenticated requests receive `403` on mutations.
+Category reads (`GET /api/categories`, `GET /api/categories/{id}`) require `Authorization: Bearer <token>` for any authenticated actor (user, officer, or manager). Category mutations require an authenticated, active main manager (`is_main_manager: true`). Users, officers, ordinary managers, inactive managers, and unauthenticated requests receive `403` on mutations.
 
 Categories belong to one or more departments through the `category_department` many-to-many pivot. Use `department_ids` in create/update requests to attach existing departments.
 

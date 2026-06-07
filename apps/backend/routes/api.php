@@ -156,9 +156,10 @@ Route::middleware(['auth:sanctum', 'actor.active', 'throttle:30,1'])->group(func
     // issues.district_id or officer district pivots.
     Route::patch('managers/{manager}/districts', [ManagerDistrictController::class, 'update'])->name('managers.districts.update');
 
-    // Manager-protected category management. Authorization is narrowed inside
-    // the category FormRequests to an authenticated, active manager; users,
-    // officers, and inactive managers receive a 403. Deactivation and
+    // Main-manager-protected category management. Authorization is narrowed
+    // inside the category FormRequests to an authenticated, active main
+    // manager; users, officers, non-main managers, and inactive managers all
+    // receive a 403. Deactivation and
     // reactivation use generic PATCH with `is_active` (same as districts),
     // while hard delete (DELETE `/categories/{category}`) is guarded against
     // main categories that still have subcategories and against rows still
