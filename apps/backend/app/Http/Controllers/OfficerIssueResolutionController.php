@@ -238,7 +238,7 @@ class OfficerIssueResolutionController extends Controller
             try {
                 $resolution->attachments()->create([
                     'file_path' => $path,
-                    'file_url' => $path,
+                    'file_url' => null,
                     'original_name' => $file->getClientOriginalName(),
                     'file_type' => UploadedFileValidator::detectMimeType($file),
                     'file_size' => $file->getSize(),

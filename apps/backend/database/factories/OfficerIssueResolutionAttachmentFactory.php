@@ -21,7 +21,7 @@ class OfficerIssueResolutionAttachmentFactory extends Factory
         return [
             'officer_issue_resolution_id' => OfficerIssueResolution::factory(),
             'file_path' => 'officer-issue-resolutions/'.fake()->uuid().'.jpg',
-            'file_url' => fake()->imageUrl(),
+            'file_url' => null,
             'original_name' => fake()->word().'.jpg',
             'file_type' => fake()->randomElement(['image/jpeg', 'image/png', 'application/pdf']),
             'file_size' => fake()->numberBetween(1024, 5 * 1024 * 1024),
