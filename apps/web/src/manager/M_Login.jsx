@@ -16,7 +16,10 @@ export default function Login() {
         e.preventDefault();
         try {
             const response = await axios.post('http://localhost:8001/api/auth/login', { email, password });
-            if (response.data.token) localStorage.setItem('auth_token', response.data.token);
+            if (response.data.access_token) {
+                localStorage.setItem('auth_token', response.data.access_token);
+            }
+            localStorage.setItem('user_type', 'manager');
             navigate('/feed');
         } catch (err) { setError('Inloggen mislukt.'); }
     };

@@ -19,7 +19,10 @@ export default function Register() {
         if (password !== confirmPassword) { setError('Wachtwoorden komen niet overeen.'); return; }
         try {
             const response = await axios.post('http://localhost:8001/api/auth/register/user', { username, email, password, confirm_password: confirmPassword });
-            if (response.data.token) localStorage.setItem('auth_token', response.data.token);
+            if (response.data.access_token) {
+                localStorage.setItem('auth_token', response.data.access_token);
+            }
+            localStorage.setItem('user_type', 'user');
             navigate('/feed');
         } catch (err) { setError('Registratie mislukt.'); }
     };
