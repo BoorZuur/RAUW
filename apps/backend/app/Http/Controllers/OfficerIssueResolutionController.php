@@ -14,7 +14,6 @@ use App\Support\OfficerIssueConflict;
 use App\Support\OfficerIssueDistrictAccess;
 use App\Support\OfficerIssueRowLock;
 use App\Support\UploadedFileValidator;
-use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\UploadedFile;
@@ -85,18 +84,8 @@ class OfficerIssueResolutionController extends Controller
                     'content' => $validated['content'],
                 ]);
             });
-        } catch (UniqueConstraintViolationException $exception) {
-            if (self::isOfficerResolutionIssueIdViolation($exception)) {
-                throw OfficerIssueConflict::officerResolutionExists();
-            }
-
-            throw $exception;
-        } catch (QueryException $exception) {
-            if (self::isOfficerResolutionIssueIdViolation($exception)) {
-                throw OfficerIssueConflict::officerResolutionExists();
-            }
-
-            throw $exception;
+        } catch (UniqueConstraintViolationException) {
+            throw OfficerIssueConflict::officerResolutionExists();
         }
 
         try {
@@ -320,20 +309,5 @@ class OfficerIssueResolutionController extends Controller
         }
 
         self::deleteDiskFiles($paths);
-    }
-
-    /**
-     * Whether a query exception reflects an officer_issue_resolutions.issue_id unique violation.
-     */
-    private static function isOfficerResolutionIssueIdViolation(QueryException $exception): bool
-    {
-        $message = strtolower($exception->getMessage());
-
-        if (str_contains($message, 'officer_issue_resolutions_issue_id_unique')) {
-            return true;
-        }
-
-        return str_contains($message, 'officer_issue_resolutions')
-            && str_contains($message, 'issue_id');
     }
 }
