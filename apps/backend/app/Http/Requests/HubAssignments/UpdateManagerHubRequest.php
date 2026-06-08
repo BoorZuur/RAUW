@@ -27,7 +27,7 @@ class UpdateManagerHubRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'hub_id' => ['required', 'integer', Rule::exists('hubs', 'id')],
+            'hub_id' => ['required', 'integer', Rule::exists('hubs', 'id')->where('is_active', true)],
         ];
     }
 }
