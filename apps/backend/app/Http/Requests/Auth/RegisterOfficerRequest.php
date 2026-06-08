@@ -48,6 +48,8 @@ class RegisterOfficerRequest extends FormRequest
             'department_ids.*' => ['integer', 'distinct', Rule::exists('departments', 'id')->where('is_active', true)],
             'district_ids' => ['sometimes', 'array'],
             'district_ids.*' => ['integer', 'distinct', Rule::exists('districts', 'id')->where('is_active', true)],
+            'latitude' => ['required', 'numeric', 'between:-90,90'],
+            'longitude' => ['required', 'numeric', 'between:-180,180'],
         ];
     }
 
@@ -108,5 +110,15 @@ class RegisterOfficerRequest extends FormRequest
     public function districtIds(): array
     {
         return array_values(array_unique(array_map('intval', $this->input('district_ids', []))));
+    }
+
+    public function latitude(): float
+    {
+        return (float) $this->input('latitude');
+    }
+
+    public function longitude(): float
+    {
+        return (float) $this->input('longitude');
     }
 }

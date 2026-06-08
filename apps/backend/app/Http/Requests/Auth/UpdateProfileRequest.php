@@ -36,8 +36,8 @@ class UpdateProfileRequest extends FormRequest
      * badge_number. Inactive actors may only update username and password.
      * System-managed fields (is_active, flag_count, is_under_review,
      * email_verified_at, remember_token, deleted_at, department_ids,
-     * district_ids, is_main_manager, created_by_manager_id, and tokens) are
-     * never accepted from the client.
+     * district_ids, hub_id, hub_active_until, is_main_manager,
+     * created_by_manager_id, and tokens) are never accepted from the client.
      *
      * @return array<string, array<int, mixed>>
      */
@@ -53,6 +53,8 @@ class UpdateProfileRequest extends FormRequest
             'confirm_password' => ['required_with:password', 'string', 'same:password'],
             'department_ids' => ['prohibited'],
             'district_ids' => ['prohibited'],
+            'hub_id' => ['prohibited'],
+            'hub_active_until' => ['prohibited'],
             'is_main_manager' => ['prohibited'],
             'is_active' => ['prohibited'],
             'flag_count' => ['prohibited'],

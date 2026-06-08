@@ -2,14 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Auth\BuildOfficerAuthProfile;
+use App\Actions\Auth\EndOfficerShift;
 use App\Enums\ActorType;
 use App\Http\Requests\HubAssignments\UpdateOfficerHubRequest;
-use App\Http\Resources\AuthProfileResource;
 use App\Models\Officer;
 use Illuminate\Http\JsonResponse;
 
 class OfficerHubController extends Controller
 {
+    public function __construct(
+        private readonly BuildOfficerAuthProfile $buildOfficerAuthProfile,
+        private readonly EndOfficerShift $endOfficerShift,
+    ) {
+    }
+
     /**
      * Set an officer's hub and clear their district assignments.
      *
@@ -22,11 +29,13 @@ class OfficerHubController extends Controller
         $officer->update(['hub_id' => $request->integer('hub_id')]);
         $officer->districts()->sync([]);
 
+        $this->endOfficerShift->end($officer);
+
         $officer->load(['departments', 'districts', 'hub']);
 
         return response()->json([
             'actor_type' => ActorType::Officer->value,
-            'profile' => (new AuthProfileResource($officer))->toArray($request),
+            'profile' => $this->buildOfficerAuthProfile->build($officer, $request),
         ]);
     }
 }

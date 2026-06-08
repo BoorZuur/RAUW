@@ -19,6 +19,7 @@ return new class extends Migration
             $table->rememberToken();
             $table->string('badge_number', 20)->unique();
             $table->boolean('is_active')->default(true);
+            $table->dateTime('hub_active_until')->nullable();
             $table->softDeletes();
             $table->timestamps();
         });

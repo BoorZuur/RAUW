@@ -39,6 +39,7 @@ class HubResource extends JsonResource
             'postal_code' => $hub->postal_code,
             'latitude' => $hub->latitude,
             'longitude' => $hub->longitude,
+            'radius_meters' => $hub->radius_meters,
             'is_active' => $hub->is_active,
             'districts_count' => $this->compactCount($hub, 'districts'),
             'officers_count' => $this->compactCount($hub, 'officers'),

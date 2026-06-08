@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'address', 'postal_code', 'latitude', 'longitude', 'is_active'])]
+#[Fillable(['name', 'address', 'postal_code', 'latitude', 'longitude', 'is_active', 'radius_meters'])]
 class Hub extends Model
 {
     use HasFactory;
@@ -17,6 +17,7 @@ class Hub extends Model
      */
     protected $attributes = [
         'is_active' => false,
+        'radius_meters' => 100,
     ];
 
     /**
@@ -30,6 +31,7 @@ class Hub extends Model
             'latitude' => 'decimal:8',
             'longitude' => 'decimal:8',
             'is_active' => 'boolean',
+            'radius_meters' => 'integer',
         ];
     }
 

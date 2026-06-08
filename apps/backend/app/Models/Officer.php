@@ -38,6 +38,7 @@ class Officer extends Authenticatable
         return [
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'hub_active_until' => 'datetime',
         ];
     }
 

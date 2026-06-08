@@ -23,7 +23,56 @@ The backend uses bearer token authentication for API consumers. Officer registra
 | `GET` | `/api/auth/me` | `Authorization: Bearer <token>` | Return the current actor type and profile. |
 | `PATCH` | `/api/auth/me` | `Authorization: Bearer <token>` | Update own username, email, and password; officers may also update badge number. Returns refreshed profile. Departments are not self-service on this path. |
 | `PATCH` | `/api/auth/me/districts` | `Authorization: Bearer <token>` | Replace district assignments for the current active manager or active officer. Users receive `403`. |
-| `POST` | `/api/auth/logout` | `Authorization: Bearer <token>` | Revoke the current bearer token. |
+| `POST` | `/api/auth/start-shift` | `Authorization: Bearer <token>` | Start the officer's shared shift when at the assigned hub (requires `latitude`/`longitude`). |
+| `POST` | `/api/auth/logout` | `Authorization: Bearer <token>` | Revoke the current bearer token and close its `officer_sessions` row; shared shift is preserved. |
+
+Managers may end an officer's shared shift via `PATCH /api/officers/{officer}/end-shift` (active manager only; does not revoke tokens).
+
+### Officer Shared Shift
+
+Officers share one shift clock across all devices via `officers.hub_active_until`. Workflow access (Tier C) is gated on **`is_active` and a future `hub_active_until`**, not on the bearer token's Sanctum `hub-active` ability (audit-only). Officers authenticate through `POST /api/auth/login` with device GPS coordinates (`latitude`, `longitude`). Users and managers ignore these fields.
+
+| Scenario | Login response | Shared shift (`hub_active_until`) | Workflow (Tier C) |
+|----------|----------------|-----------------------------------|-------------------|
+| Hub login, no active shift | `hub_active: true`, `hub_active_until` ~now+10h | Started | Enabled |
+| Hub login, shift already active | `hub_active: true`, existing `hub_active_until` (not extended) | Unchanged | Enabled |
+| Outside login, active shift | `hub_active: true` (shared shift) | Unchanged | Enabled |
+| Outside login, no shift | `hub_active: false` | Unchanged (null) | Blocked |
+| No `hub_id` assigned | **403** `hub_not_assigned` | — | Login blocked |
+| Inactive hub or missing hub coordinates | Login succeeds; shift not started remotely | Unchanged unless hub-eligible | Blocked without shift |
+
+**Start shift:** `POST /api/auth/start-shift` with `latitude`/`longitude` starts the shared shift when the officer is at the assigned hub and no shift is active. Returns **422** `shift_already_active` when a shift is already active; **403** `outside_hub_radius` when coordinates are outside the hub; **403** `hub_not_assigned` when `hub_id` is null.
+
+**Registration** (`POST /api/auth/register/officer`) requires `latitude`/`longitude` for validation and audit session rows but **does not start a shift** — response is always `hub_active: false`, `hub_active_until: null`. Registration does not require `hub_id`; officers without a hub cannot log in until a manager assigns one via `PATCH /api/officers/{officer}/hub`.
+
+**Logout:** revokes only the current token and closes that token's open `officer_sessions` row; other devices and the shared shift remain valid.
+
+**Hub reassignment / manager end-shift:** `PATCH /api/officers/{officer}/hub` and `PATCH /api/officers/{officer}/end-shift` clear `hub_active_until` without revoking tokens. **Officer disable** revokes all tokens, closes all sessions, and ends the shift.
+
+**Middleware:** `officer.hub-active` gates Tier C routes by reading `hub_active_until` on the officer row. Whitelisted without an active shift: profile/auth (`GET/PATCH /api/auth/me`, logout, `POST /api/auth/start-shift`, district self-service), reference reads (hubs, districts, departments, categories), and `GET /api/officer-sessions` (authorization still requires an active manager).
+
+**Error codes** (`message` + `code`):
+
+| Code | HTTP | When |
+|------|------|------|
+| `hub_active_required` | 403 | Officer on Tier C without active shared shift (`hub_active_until` null or past) |
+| `hub_not_assigned` | 403 | Officer login or start-shift when `hub_id` is null |
+| `outside_hub_radius` | 403 | `POST /api/auth/start-shift` when coords outside hub radius / ineligible hub |
+| `shift_already_active` | 422 | `POST /api/auth/start-shift` when `hub_active_until` is already in the future |
+| `account_inactive` | 403 | Authenticated inactive actor on a non-whitelisted route |
+
+**Environment:**
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `OFFICER_HUB_ACTIVE_TTL_HOURS` | `10` | Shared shift TTL after hub-radius login or start-shift |
+| `SANCTUM_TOKEN_EXPIRATION` | `10080` | Sanctum token lifetime in minutes (7 days) |
+
+Configure in `apps/backend/.env`; see `config/officer.php` and `config/sanctum.php`.
+
+**GPS trust (v1):** Coordinates are client-reported only. There is no mock-location detection, no background geofence, and no per-request re-check. Hub-active is operational policy, not cryptographic proof of presence. Consumer GPS accuracy (±5–20 m) is absorbed by the default 100 m hub radius; main managers may adjust per-hub `radius_meters` (10–5000) on hub create/update. Login coordinates are audited on `officer_sessions` (`start_lat`, `start_lng`, `distance_meters_at_login`).
+
+**Managers** may list officer login sessions via `GET /api/officer-sessions` (paginated, filters: `officer_id`, `hub_id`, `is_hub_active`).
 
 ### Manual Token Flow
 
@@ -33,16 +82,25 @@ The backend uses bearer token authentication for API consumers. Officer registra
    curl -X POST http://127.0.0.1:8001/api/auth/register/officer \
      -H "Accept: application/json" \
      -H "Content-Type: application/json" \
-     -d '{"username":"new-officer","email":"new.officer@example.com","password":"password123","confirm_password":"password123","badge_number":"BOA-1234","department_ids":[1]}'
+     -d '{"username":"new-officer","email":"new.officer@example.com","password":"password123","confirm_password":"password123","badge_number":"BOA-1234","department_ids":[1],"latitude":51.9106846,"longitude":4.4814932}'
    ```
 
-   Or send a JSON login request with `email` and `password` only:
+   Or send a JSON login request. Users and managers use `email` and `password` only:
 
    ```bash
    curl -X POST http://127.0.0.1:8001/api/auth/login \
      -H "Accept: application/json" \
      -H "Content-Type: application/json" \
      -d '{"email":"demo.user@example.com","password":"password"}'
+   ```
+
+   Officers must include device coordinates:
+
+   ```bash
+   curl -X POST http://127.0.0.1:8001/api/auth/login \
+     -H "Accept: application/json" \
+     -H "Content-Type: application/json" \
+     -d '{"email":"demo.officer@example.com","password":"password","latitude":51.9106846,"longitude":4.4814932}'
    ```
 
 2. Copy the `access_token` from the successful response.
@@ -77,15 +135,15 @@ Successful registration and login responses include:
 }
 ```
 
-Supported `actor_type` values are `user`, `officer`, and `manager`.
+Supported `actor_type` values are `user`, `officer`, and `manager`. Officer login and registration responses also include `hub_active` and `hub_active_until` at the top level and inside `profile`.
 
-Officer registration always returns `actor_type: "officer"` and uses the same safe officer profile serializer as login, including fields such as `username`, `email`, `badge_number`, `departments`, and a `districts` array of compact district objects when assignments are loaded. `department_ids` is required during registration, must contain at least one existing department ID, and cannot contain duplicates. Optional `district_ids` may be supplied to attach one or more active districts through the `district_officer` pivot. Passwords and secrets are never returned. Registration validates `username` and `badge_number` uniqueness within the officers table and validates `email` uniqueness across users, officers, and managers.
+Officer registration always returns `actor_type: "officer"` and uses the same safe officer profile serializer as login, including fields such as `username`, `email`, `badge_number`, `departments`, `hub_active`, `hub_active_until`, and a `districts` array of compact district objects when assignments are loaded. `department_ids` is required during registration, must contain at least one existing department ID, and cannot contain duplicates. `latitude` and `longitude` are required. Optional `district_ids` may be supplied to attach one or more active districts through the `district_officer` pivot. Passwords and secrets are never returned. Registration validates `username` and `badge_number` uniqueness within the officers table and validates `email` uniqueness across users, officers, and managers.
 
-Manager creation uses the `departments` table through `department_ids`. Each manager must have at least one valid department, assignments are stored in the `department_manager` pivot table, and manager auth profiles return a `departments` array of compact objects (`id`, `code`, `name`). Officers keep the same `department_ids` / `department_officer` behavior and auth profiles also return departments in a `departments` array.
+Hubs are Rotterdam BOA cluster locations. Each hub has a `radius_meters` column (default 100) for officer hub-active login evaluation — distinct from `districts.radius_meters` used for district auto-assignment. Officers and managers have a home hub via `hub_id` and return `hub_id` plus a compact `hub` object (including `radius_meters`) in profile and list responses when the relation is loaded. Hub reads (`GET /api/hubs`, `GET /api/hubs/{hub}`) are available to any authenticated actor. Hub mutations require an authenticated active main manager. Hub create requires `latitude` and `longitude` (not geocoded server-side). Optional `radius_meters` (10–5000) may be set on create/update.
 
-Hubs are Rotterdam BOA cluster locations. Officers and managers have a home hub via `hub_id` and return `hub_id` plus a compact `hub` object in profile and list responses when the relation is loaded. Hub reads (`GET /api/hubs`, `GET /api/hubs/{hub}`) are available to any authenticated actor. Hub mutations require an authenticated active main manager. Hub create requires `latitude` and `longitude` (not geocoded server-side). New hubs default to inactive on create (`is_active=false`); the seeder activates the four Rotterdam cluster hubs. Deactivate or reactivate hubs via `PATCH` with `is_active`; there is no dedicated `/disable` route. Deactivation returns `422` when active districts or active officers remain assigned (managers assigned to the hub do not block deactivation). Deleting a hub is blocked with `409 Conflict` while districts, officers, or managers still reference it. Setting an actor's hub via `PATCH /api/officers/{officer}/hub`, `PATCH /api/managers/{manager}/hub`, or `PATCH /api/main-managers/{manager}/hub` requires an active hub (`is_active=true`) and clears their district pivot so assignments can be re-established within the new hub.
+New hubs default to inactive on create (`is_active=false`); the seeder activates the four Rotterdam cluster hubs. Deactivate or reactivate hubs via `PATCH` with `is_active`; there is no dedicated `/disable` route. Deactivation returns `422` when active districts or active officers remain assigned (managers assigned to the hub do not block deactivation). Deleting a hub is blocked with `409 Conflict` while districts, officers, or managers still reference it. Setting an actor's hub via `PATCH /api/officers/{officer}/hub`, `PATCH /api/managers/{manager}/hub`, or `PATCH /api/main-managers/{manager}/hub` requires an active hub (`is_active=true`) and clears their district pivot so assignments can be re-established within the new hub. Officer hub reassignment also ends the shared shift without revoking tokens.
 
-Manager and officer district assignments are many-to-many. Managers use the `district_manager` pivot, officers use the `district_officer` pivot, and both actor profile types return `districts` arrays of compact objects (`id`, `name`, `postal_prefix`) instead of a singular actor-side `district_id` or `district` object. When an actor has `hub_id`, manager-driven district assignment endpoints only accept districts in that hub; cross-hub IDs return `422`. Active managers and active officers can replace their own district assignments with `PATCH /api/auth/me/districts` and a JSON body such as `{"district_ids":[1,2]}`; an empty array clears all assignments. Active managers can also replace any officer's assignments with `PATCH /api/officers/{officer}/districts` using the same request body. Users do not have district assignments and receive `403 Forbidden` for self-service district updates. Department assignments are not self-service; use manager-protected department assignment endpoints instead.
+Manager creation uses the `departments` table through `department_ids`. Each manager must have at least one valid department, assignments are stored in the `department_manager` pivot table, and manager auth profiles return a `departments` array of compact objects (`id`, `code`, `name`). Officers keep the same `department_ids` / `department_officer` behavior and auth profiles also return departments in a `departments` array. Managers use the `district_manager` pivot, officers use the `district_officer` pivot, and both actor profile types return `districts` arrays of compact objects (`id`, `name`, `postal_prefix`) instead of a singular actor-side `district_id` or `district` object. When an actor has `hub_id`, manager-driven district assignment endpoints only accept districts in that hub; cross-hub IDs return `422`. Active managers and active officers can replace their own district assignments with `PATCH /api/auth/me/districts` and a JSON body such as `{"district_ids":[1,2]}`; an empty array clears all assignments. Active managers can also replace any officer's assignments with `PATCH /api/officers/{officer}/districts` using the same request body. Users do not have district assignments and receive `403 Forbidden` for self-service district updates. Department assignments are not self-service; use manager-protected department assignment endpoints instead.
 
 District records are managed through `/api/districts`. Each district belongs to one hub (`hub_id` required on create and must reference an active hub). District create requires `center_lat` and `center_lng` (not geocoded server-side). Authenticated actors can list and show districts. Only active main managers can create, update, or delete districts. Deactivate or reactivate districts via `PATCH` with `is_active` (no `/disable` route). Deleting a district is blocked with `409 Conflict` while it is assigned to managers, assigned to officers, or referenced by issues.
 
@@ -103,9 +161,29 @@ Common auth status codes are:
 
 - `201 Created` for successful officer registration.
 - `200 OK` for successful login, profile read/update, district self-service, and logout requests.
-- `403 Forbidden` when an authenticated actor is not permitted (for example, users on district self-service, inactive actors on profile PATCH, non-managers on category mutations, non-owners on issue writes).
+- `403 Forbidden` when an authenticated actor is not permitted (for example, users on district self-service, inactive actors on profile PATCH with `code: account_inactive`, non-managers on category mutations, non-owners on issue writes, officers without an active shared shift on workflow routes with `code: hub_active_required`, officers without `hub_id` on login or start-shift with `code: hub_not_assigned`, start-shift outside hub radius with `code: outside_hub_radius`).
 - `401 Unauthorized` for invalid credentials, inactive or ambiguous accounts, missing tokens, invalid tokens, and revoked tokens.
-- `422 Unprocessable Entity` when auth validation fails, including missing or invalid login fields, missing or invalid registration fields, password confirmation mismatch, invalid or missing officer or manager `department_ids`, or duplicate officer username/email/badge number.
+- `422 Unprocessable Entity` when auth validation fails, including missing or invalid login fields, missing officer coordinates, missing or invalid registration fields, password confirmation mismatch, invalid or missing officer or manager `department_ids`, duplicate officer username/email/badge number, prohibited `hub_id`/`hub_active_until` on profile PATCH, or `shift_already_active` on start-shift.
+
+### Manual Shared Shift Test Checklist
+
+After `php artisan migrate:fresh --seed` and starting the server on port 8001:
+
+1. **Hub login starts shift** — Login as `demo.officer@example.com` at Cluster Centrum coords. Expect `hub_active: true`, `hub_active_until` ~10h ahead. `GET /api/issues` → 200.
+2. **Re-login at hub does not extend** — Note `hub_active_until`. Hub login again immediately. Expect same `hub_active_until` (not extended).
+3. **Outside login preserves shift** — With active shift, login from distant coords. Expect `hub_active: true` (shared shift). `GET /api/issues` → 200. `GET /api/auth/me` → `hub_active: true`.
+4. **Outside login without shift** — Officer with expired/null shift, remote login. Expect `hub_active: false`. `GET /api/issues` → 403 `hub_active_required`.
+5. **Registration does not start shift** — `POST /api/auth/register/officer` at hub coords. Expect `hub_active: false`, `hub_active_until: null`.
+6. **Start shift route** — Authenticated officer at hub, no active shift: `POST /api/auth/start-shift` with coords → 200. Repeat → 422 `shift_already_active`. Remote coords → 403 `outside_hub_radius`. Officer with no `hub_id` → 403 `hub_not_assigned`.
+7. **Logout preserves shift** — Device A starts shift. Device B logs in (any coords). Logout device B. Device A `GET /api/issues` still 200 until TTL.
+8. **Logout scope** — Logout revokes only that token; `officer_sessions` row for that token closed; other sessions remain open.
+9. **Hub reassignment ends shift** — Manager `PATCH /api/officers/{id}/hub`. Expect `hub_active_until` cleared; existing tokens still authenticate but Tier C → 403 until new shift started.
+10. **Manager end-shift** — `PATCH /api/officers/{id}/end-shift`. Shift cleared; tokens not revoked; Tier C blocked.
+11. **Disable full revoke** — Manager disables officer. All tokens invalid; shift cleared; all sessions closed.
+12. **Hub deactivated mid-shift** — Deactivate hub while shift active. Officer workflows still work until `hub_active_until` expires.
+13. **Manager session list** — `GET /api/officer-sessions` still works; audit fields populated; response does **not** include `personal_access_token_id`.
+14. **Inactive actor structured 403** — Disable an officer but retain a stale token. `GET /api/issues` → 403 with `code: account_inactive`. Whitelisted `GET /api/auth/me` still works.
+15. **Profile PATCH hub fields rejected** — `PATCH /api/auth/me` with `hub_id` or `hub_active_until` → 422 (prohibited).
 
 For manual API testing, import the Postman collection and local environment from [`../../docs/postman`](../../docs/postman/README.md):
 

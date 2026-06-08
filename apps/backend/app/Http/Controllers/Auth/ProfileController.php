@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Actions\Auth\BuildOfficerAuthProfile;
 use App\Enums\ActorType;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AuthProfileResource;
@@ -14,6 +15,11 @@ use Illuminate\Http\Response;
 
 class ProfileController extends Controller
 {
+    public function __construct(
+        private readonly BuildOfficerAuthProfile $buildOfficerAuthProfile,
+    ) {
+    }
+
     /**
      * Return the authenticated actor's canonical profile payload using the
      * same shape as the shared login/register responses, minus the token
@@ -60,7 +66,9 @@ class ProfileController extends Controller
 
         return response()->json([
             'actor_type' => $type->value,
-            'profile' => (new AuthProfileResource($actor))->toArray($request),
+            'profile' => $actor instanceof Officer
+                ? $this->buildOfficerAuthProfile->build($actor, $request)
+                : (new AuthProfileResource($actor))->toArray($request),
         ]);
     }
 }

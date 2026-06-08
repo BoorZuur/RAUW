@@ -34,7 +34,8 @@ use InvalidArgumentException;
  *
  * Profile shape by actor type:
  *   - User:    id, username, email
- *   - Officer: id, username, email, badge_number, hub_id, hub, departments, districts
+ *   - Officer: id, username, email, badge_number, hub_id, hub, departments,
+ *     districts (hub_active fields merged by {@see \App\Actions\Auth\BuildOfficerAuthProfile})
  *   - Manager: id, username, email, hub_id, hub, departments, is_main_manager, districts
  *
  * Retained fields with tradeoffs (kept intentionally, covered by tests):

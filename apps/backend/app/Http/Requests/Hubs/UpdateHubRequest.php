@@ -50,6 +50,7 @@ class UpdateHubRequest extends FormRequest
             'latitude' => ['sometimes', 'required', 'numeric', 'between:-90,90'],
             'longitude' => ['sometimes', 'required', 'numeric', 'between:-180,180'],
             'is_active' => ['sometimes', 'boolean'],
+            'radius_meters' => ['sometimes', 'integer', 'min:10', 'max:5000'],
         ];
     }
 

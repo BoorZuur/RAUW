@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Auth\CloseOfficerSessions;
+use App\Actions\Auth\RevokeOfficerHubActive;
 use App\Http\Requests\Officers\DisableOfficerRequest;
 use App\Http\Requests\Officers\EnableOfficerRequest;
 use App\Http\Requests\Officers\IndexOfficerRequest;
@@ -11,6 +13,12 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class OfficerController extends Controller
 {
+    public function __construct(
+        private readonly RevokeOfficerHubActive $revokeOfficerHubActive,
+        private readonly CloseOfficerSessions $closeOfficerSessions,
+    ) {
+    }
+
     /**
      * List officers with pagination.
      *
@@ -66,6 +74,9 @@ class OfficerController extends Controller
     public function disable(DisableOfficerRequest $request, Officer $officer): OfficerResource
     {
         $officer->update(['is_active' => false]);
+
+        $this->revokeOfficerHubActive->revoke($officer);
+        $this->closeOfficerSessions->closeAllFor($officer);
 
         $officer->load(['departments', 'districts', 'hub']);
 

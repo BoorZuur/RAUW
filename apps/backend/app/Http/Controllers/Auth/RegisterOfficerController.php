@@ -2,16 +2,26 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Actions\Auth\BuildOfficerAuthProfile;
+use App\Actions\Auth\EvaluateOfficerHubLogin;
+use App\Actions\Auth\IssueOfficerAuthToken;
+use App\Actions\Auth\OfficerAuthTokenResult;
 use App\Enums\ActorType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\RegisterOfficerRequest;
-use App\Http\Resources\AuthProfileResource;
 use App\Models\Officer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 
 class RegisterOfficerController extends Controller
 {
+    public function __construct(
+        private readonly EvaluateOfficerHubLogin $evaluateOfficerHubLogin,
+        private readonly IssueOfficerAuthToken $issueOfficerAuthToken,
+        private readonly BuildOfficerAuthProfile $buildOfficerAuthProfile,
+    ) {
+    }
+
     /**
      * Register a new officer and immediately authenticate them, returning a
      * Sanctum bearer token alongside the canonical safe profile payload.
@@ -48,13 +58,41 @@ class RegisterOfficerController extends Controller
         // AuthProfileResource embeds the same keys as login without lazy queries.
         $officer->loadMissing('departments', 'districts', 'hub');
 
-        $token = $officer->createToken('api-login')->plainTextToken;
+        $evaluation = $this->evaluateOfficerHubLogin->evaluate(
+            $officer,
+            $request->latitude(),
+            $request->longitude(),
+        );
 
-        return response()->json([
+        $authToken = $this->issueOfficerAuthToken->issue(
+            $officer,
+            $evaluation,
+            $request->latitude(),
+            $request->longitude(),
+            startShift: false,
+        );
+
+        return response()->json(
+            $this->officerAuthResponse($request, $officer, $authToken),
+            Response::HTTP_CREATED,
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function officerAuthResponse(
+        RegisterOfficerRequest $request,
+        Officer $officer,
+        OfficerAuthTokenResult $authToken,
+    ): array {
+        return [
             'token_type' => 'Bearer',
-            'access_token' => $token,
+            'access_token' => $authToken->plainTextToken,
             'actor_type' => ActorType::Officer->value,
-            'profile' => (new AuthProfileResource($officer))->toArray($request),
-        ], Response::HTTP_CREATED);
+            'hub_active' => $authToken->hubActive,
+            'hub_active_until' => $authToken->hubActiveUntil?->toIso8601String(),
+            'profile' => $this->buildOfficerAuthProfile->build($officer, $request),
+        ];
     }
 }
