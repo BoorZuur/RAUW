@@ -17,6 +17,7 @@ use App\Http\Controllers\ManagerHubController;
 use App\Http\Controllers\OfficerHubController;
 use App\Http\Controllers\IssueAttachmentController;
 use App\Http\Controllers\IssueController;
+use App\Http\Controllers\IssueOfficerAssignmentController;
 use App\Http\Controllers\MainManagerController;
 use App\Http\Controllers\ManagerController;
 use App\Http\Controllers\ManagerDepartmentController;
@@ -261,6 +262,19 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     // UpdateIssueVisibilityRequest; the controller enforces visibility scope
     // (404 when the issue is not viewable, matching show).
     Route::patch('issues/{issue}/visibility', [IssueController::class, 'updateVisibility'])->name('issues.visibility.update');
+    // Officer self-assign and unassign (Tier C: hub-active required). Authorization
+    // is narrowed inside AssignIssueToOfficerRequest and UnassignIssueFromOfficerRequest
+    // to active officers only; users, managers, and inactive officers receive 403.
+    // The controller enforces visibility scope (404 when not viewable), district
+    // scoping via OfficerIssueDistrictAccess (403 officer_not_in_district), and
+    // assignment rules: self-assign is idempotent when already assigned to the
+    // requesting officer, returns 409 issue_already_assigned when assigned to
+    // another officer (no takeover), and open issues transition to in_behandeling
+    // with one status history row. Unassign clears assigned_officer_id only;
+    // status is unchanged. Only the current assignee may unassign (403
+    // not_assigned_officer otherwise); already-unassigned is idempotent.
+    Route::post('issues/{issue}/assign-self', [IssueOfficerAssignmentController::class, 'store'])->name('issues.assign-self');
+    Route::post('issues/{issue}/unassign-self', [IssueOfficerAssignmentController::class, 'destroy'])->name('issues.unassign-self');
     Route::delete('issues/{issue}', [IssueController::class, 'destroy'])->name('issues.destroy');
 
     // Issue attachments. Uploads are authorized inside StoreIssueAttachmentRequest
