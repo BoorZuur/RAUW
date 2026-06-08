@@ -26,7 +26,7 @@ class OfficerDepartmentController extends Controller
     {
         $officer->departments()->sync($request->departmentIds());
 
-        $officer->load('departments', 'districts');
+        $officer->load('departments', 'districts', 'hub');
 
         return response()->json([
             'actor_type' => ActorType::Officer->value,

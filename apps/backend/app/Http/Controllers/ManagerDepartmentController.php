@@ -25,7 +25,7 @@ class ManagerDepartmentController extends Controller
     {
         $manager->departments()->sync($request->departmentIds());
 
-        $manager->loadMissing('departments', 'districts');
+        $manager->loadMissing('departments', 'districts', 'hub');
 
         return (new ManagerResource($manager))->response();
     }

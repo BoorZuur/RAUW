@@ -41,6 +41,7 @@ class UpdateDistrictRequest extends FormRequest
         $districtId = $district instanceof District ? $district->getKey() : null;
 
         return [
+            'hub_id' => ['sometimes', 'required', 'integer', Rule::exists('hubs', 'id')],
             'name' => [
                 'sometimes',
                 'required',

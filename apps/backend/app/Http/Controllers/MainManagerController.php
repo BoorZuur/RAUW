@@ -27,7 +27,7 @@ class MainManagerController extends Controller
     {
         $managers = Manager::query()
             ->where('is_main_manager', true)
-            ->with(['departments', 'districts'])
+            ->with(['departments', 'districts', 'hub'])
             ->orderBy('username')
             ->paginate($request->perPage())
             ->withQueryString();
@@ -53,7 +53,7 @@ class MainManagerController extends Controller
             $manager->save();
         }
 
-        $manager->load(['departments', 'districts']);
+        $manager->load(['departments', 'districts', 'hub']);
 
         return new ManagerResource($manager);
     }
@@ -76,7 +76,7 @@ class MainManagerController extends Controller
 
         $manager->update(['is_active' => false]);
 
-        $manager->load(['departments', 'districts']);
+        $manager->load(['departments', 'districts', 'hub']);
 
         return new ManagerResource($manager);
     }
@@ -93,7 +93,7 @@ class MainManagerController extends Controller
     {
         $manager->update(['is_active' => true]);
 
-        $manager->load(['departments', 'districts']);
+        $manager->load(['departments', 'districts', 'hub']);
 
         return new ManagerResource($manager);
     }

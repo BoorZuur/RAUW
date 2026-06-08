@@ -31,6 +31,7 @@ class StoreDistrictRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'hub_id' => ['required', 'integer', Rule::exists('hubs', 'id')],
             'name' => ['required', 'string', 'max:100', Rule::unique('districts', 'name')],
             'postal_prefix' => ['nullable', 'string', 'max:10'],
             'center_lat' => ['nullable', 'numeric', 'between:-90,90'],

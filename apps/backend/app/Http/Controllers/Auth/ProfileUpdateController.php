@@ -38,7 +38,7 @@ class ProfileUpdateController extends Controller
         }
 
         if ($actor instanceof Officer || $actor instanceof Manager) {
-            $actor->load('departments', 'districts');
+            $actor->load('departments', 'districts', 'hub');
         }
 
         $type = match (true) {
