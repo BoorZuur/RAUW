@@ -18,6 +18,7 @@ use App\Http\Controllers\OfficerHubController;
 use App\Http\Controllers\IssueAttachmentController;
 use App\Http\Controllers\IssueController;
 use App\Http\Controllers\IssueOfficerAssignmentController;
+use App\Http\Controllers\IssueOfficerStatusController;
 use App\Http\Controllers\MainManagerController;
 use App\Http\Controllers\ManagerController;
 use App\Http\Controllers\ManagerDepartmentController;
@@ -275,6 +276,14 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     // not_assigned_officer otherwise); already-unassigned is idempotent.
     Route::post('issues/{issue}/assign-self', [IssueOfficerAssignmentController::class, 'store'])->name('issues.assign-self');
     Route::post('issues/{issue}/unassign-self', [IssueOfficerAssignmentController::class, 'destroy'])->name('issues.unassign-self');
+    // Officer status updates (Tier C: hub-active required). Authorization is
+    // narrowed inside UpdateIssueStatusRequest to active officers only; district
+    // access (403 officer_not_in_district), assignee checks (403
+    // not_assigned_officer), and directed transitions (422) are enforced in the
+    // request. The controller enforces visibility scope (404 when not viewable),
+    // persists one status history row per change without coordinates, and sets
+    // resolved_at on the first transition to opgelost.
+    Route::patch('issues/{issue}/status', [IssueOfficerStatusController::class, 'update'])->name('issues.status.update');
     Route::delete('issues/{issue}', [IssueController::class, 'destroy'])->name('issues.destroy');
 
     // Issue attachments. Uploads are authorized inside StoreIssueAttachmentRequest

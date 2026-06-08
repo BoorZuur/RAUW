@@ -12,6 +12,8 @@ use App\Support\IssueVisibilityQuery;
 use App\Http\Resources\IssueResource;
 use App\Models\Category;
 use App\Models\Issue;
+use App\Models\Manager;
+use App\Models\Officer;
 use App\Models\User;
 use App\Support\IssuePriorityResolver;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -171,7 +173,16 @@ class IssueController extends Controller
             abort(404);
         }
 
+        $actor = $request->user();
         $issue->load(self::ISSUE_RELATIONS);
+
+        if ($actor instanceof Officer || $actor instanceof Manager) {
+            $issue->load([
+                'statusHistory' => fn ($query) => $query
+                    ->with('changedByOfficer')
+                    ->orderByDesc('changed_at'),
+            ]);
+        }
 
         return new IssueResource($issue);
     }
