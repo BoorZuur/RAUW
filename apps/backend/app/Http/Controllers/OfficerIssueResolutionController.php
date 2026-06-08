@@ -72,26 +72,36 @@ class OfficerIssueResolutionController extends Controller
 
         $validated = $request->validated();
         $files = $request->file('files', []);
+        $pathsWrittenDuringRequest = [];
 
         try {
-            $resolution = OfficerIssueRowLock::withLockedIssue($issue, function (Issue $lockedIssue) use ($officer, $validated) {
+            $resolution = OfficerIssueRowLock::withLockedIssue($issue, function (Issue $lockedIssue) use (
+                $officer,
+                $validated,
+                $files,
+                &$pathsWrittenDuringRequest,
+            ) {
                 OfficerIssueRowLock::assertAssignee($officer, $lockedIssue, self::RESOLUTION_ASSIGNEE_MESSAGE);
                 OfficerIssueRowLock::assertNoResolution($lockedIssue);
 
-                return $lockedIssue->officerResolution()->create([
+                $resolution = $lockedIssue->officerResolution()->create([
                     'officer_id' => $officer->getKey(),
                     'title' => $validated['title'],
                     'content' => $validated['content'],
                 ]);
+
+                if ($files !== []) {
+                    $pathsWrittenDuringRequest = self::attachUploadedFiles($resolution, $files);
+                }
+
+                return $resolution;
             });
         } catch (UniqueConstraintViolationException) {
-            throw OfficerIssueConflict::officerResolutionExists();
-        }
+            self::deleteDiskFiles($pathsWrittenDuringRequest);
 
-        try {
-            self::attachUploadedFiles($resolution, $files);
+            throw OfficerIssueConflict::officerResolutionExists();
         } catch (Throwable $exception) {
-            self::compensatingDeleteResolutionIfNoAttachments($resolution);
+            self::deleteDiskFiles($pathsWrittenDuringRequest);
 
             throw $exception;
         }
@@ -121,64 +131,62 @@ class OfficerIssueResolutionController extends Controller
         $files = $request->file('files', []);
         $removeIds = $validated['remove_attachment_ids'] ?? [];
         $pathsToDelete = [];
+        $pathsWrittenDuringRequest = [];
 
-        OfficerIssueRowLock::withLockedIssue($issue, function (Issue $lockedIssue) use (
-            $officer,
-            $validated,
-            $removeIds,
-            $files,
-            &$pathsToDelete,
-        ): void {
-            OfficerIssueRowLock::assertAssignee($officer, $lockedIssue, self::RESOLUTION_ASSIGNEE_MESSAGE);
+        try {
+            OfficerIssueRowLock::withLockedIssue($issue, function (Issue $lockedIssue) use (
+                $officer,
+                $validated,
+                $removeIds,
+                $files,
+                &$pathsToDelete,
+                &$pathsWrittenDuringRequest,
+            ): void {
+                OfficerIssueRowLock::assertAssignee($officer, $lockedIssue, self::RESOLUTION_ASSIGNEE_MESSAGE);
 
-            $resolution = $lockedIssue->officerResolution;
+                $resolution = $lockedIssue->officerResolution;
 
-            if ($resolution === null) {
-                abort(404);
-            }
-
-            self::assertAttachmentCapUnderLock($resolution, $removeIds, count($files));
-
-            $resolution->update([
-                'title' => $validated['title'],
-                'content' => $validated['content'],
-                'officer_id' => $officer->getKey(),
-            ]);
-
-            if ($removeIds !== []) {
-                $attachmentsToRemove = $resolution->attachments()
-                    ->whereIn('id', $removeIds)
-                    ->get();
-
-                $pathsToDelete = $attachmentsToRemove
-                    ->pluck('file_path')
-                    ->all();
-
-                foreach ($attachmentsToRemove as $attachment) {
-                    $attachment->delete();
+                if ($resolution === null) {
+                    abort(404);
                 }
-            }
-        });
+
+                self::assertAttachmentCapUnderLock($resolution, $removeIds, count($files));
+
+                $resolution->update([
+                    'title' => $validated['title'],
+                    'content' => $validated['content'],
+                    'officer_id' => $officer->getKey(),
+                ]);
+
+                if ($removeIds !== []) {
+                    $attachmentsToRemove = $resolution->attachments()
+                        ->whereIn('id', $removeIds)
+                        ->get();
+
+                    $pathsToDelete = $attachmentsToRemove
+                        ->pluck('file_path')
+                        ->all();
+
+                    foreach ($attachmentsToRemove as $attachment) {
+                        $attachment->delete();
+                    }
+                }
+
+                if ($files !== []) {
+                    $pathsWrittenDuringRequest = self::attachUploadedFiles($resolution, $files);
+                }
+            });
+        } catch (Throwable $exception) {
+            self::deleteDiskFiles($pathsWrittenDuringRequest);
+
+            throw $exception;
+        }
 
         self::deleteDiskFiles($pathsToDelete);
 
         $resolution = $issue->officerResolution()
             ->with(self::RESOLUTION_RELATIONS)
             ->firstOrFail();
-
-        if ($files !== []) {
-            $attachmentIdsBefore = $resolution->attachments()->pluck('id')->all();
-
-            try {
-                self::attachUploadedFiles($resolution, $files);
-            } catch (Throwable $exception) {
-                self::compensatingDeleteNewAttachments($resolution, $attachmentIdsBefore);
-
-                throw $exception;
-            }
-        }
-
-        $resolution->load(self::RESOLUTION_RELATIONS);
 
         return new OfficerIssueResolutionResource($resolution);
     }
@@ -225,14 +233,20 @@ class OfficerIssueResolutionController extends Controller
     }
 
     /**
-     * Store uploaded files to disk and create attachment rows (after transaction commit).
+     * Store uploaded files to disk and create attachment rows inside the locked transaction.
+     *
+     * Lock duration includes disk I/O; this prevents concurrent requests from exceeding the attachment cap.
      *
      * @param  array<int, UploadedFile>  $files
+     * @return array<int, string> Disk paths written during this batch (for rollback cleanup)
      */
-    private static function attachUploadedFiles(OfficerIssueResolution $resolution, array $files): void
+    private static function attachUploadedFiles(OfficerIssueResolution $resolution, array $files): array
     {
+        $writtenPaths = [];
+
         foreach ($files as $file) {
             $path = $file->store(self::DIRECTORY.'/'.$resolution->getKey(), self::DISK);
+            $writtenPaths[] = $path;
 
             try {
                 $resolution->attachments()->create([
@@ -244,11 +258,13 @@ class OfficerIssueResolutionController extends Controller
                     'uploaded_at' => Carbon::now(),
                 ]);
             } catch (Throwable $exception) {
-                self::deleteDiskFiles([$path]);
+                self::deleteDiskFiles($writtenPaths);
 
                 throw $exception;
             }
         }
+
+        return $writtenPaths;
     }
 
     /**
@@ -267,47 +283,5 @@ class OfficerIssueResolutionController extends Controller
                 $disk->delete($path);
             }
         }
-    }
-
-    /**
-     * Remove a resolution row left without attachments after a failed create upload.
-     */
-    private static function compensatingDeleteResolutionIfNoAttachments(OfficerIssueResolution $resolution): void
-    {
-        if ($resolution->attachments()->exists()) {
-            return;
-        }
-
-        $resolution->delete();
-    }
-
-    /**
-     * Remove attachment rows (and disk files) created during a failed post-commit upload batch.
-     *
-     * @param  array<int, int|string>  $existingIds
-     */
-    private static function compensatingDeleteNewAttachments(
-        OfficerIssueResolution $resolution,
-        array $existingIds,
-    ): void {
-        $query = $resolution->attachments();
-
-        if ($existingIds !== []) {
-            $query->whereNotIn('id', $existingIds);
-        }
-
-        $newAttachments = $query->get();
-
-        if ($newAttachments->isEmpty()) {
-            return;
-        }
-
-        $paths = $newAttachments->pluck('file_path')->all();
-
-        foreach ($newAttachments as $attachment) {
-            $attachment->delete();
-        }
-
-        self::deleteDiskFiles($paths);
     }
 }
