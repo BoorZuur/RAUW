@@ -41,6 +41,10 @@ Postman and server-side clients are not subject to CORS. Browser-based frontends
 
 Personal access tokens expire after **7 days** (10080 minutes). Configure via `SANCTUM_TOKEN_EXPIRATION` in `.env` (see `config/sanctum.php`).
 
+### Officer hub-active session TTL
+
+Hub-active workflow access lasts **10 hours** by default after a successful hub-radius login. Configure via `OFFICER_HUB_ACTIVE_TTL_HOURS` in `.env` (see `config/officer.php`). This is separate from the 7-day Sanctum token expiry: a token may remain valid for 7 days while workflow routes are blocked once the hub-active window expires.
+
 Local seeders may create deterministic demo accounts for manual testing. These credentials are local development fixtures only and are not production behavior.
 
 | Actor type | Email | Password |
@@ -68,7 +72,9 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 |----------|-------------|-------|
 | `base_url` | `http://127.0.0.1:8001` | Change this to point at another backend without editing each request. |
 | `access_token` | blank | Filled automatically after **Auth / Login**, **Register User**, or **Register Officer**. Default token for users, officers, and general protected routes. |
-| `main_manager_access_token` | blank | Filled by **Auth / Login as Main Manager** (`demo.manager@example.com` locally). Required for **Managers** folder and department create/update/deactivate/delete. |
+| `officer_hub_active_token` | blank | Filled by **Auth / Login Officer at Hub** when `hub_active: true`. |
+| `officer_remote_token` | blank | Filled by **Auth / Login Officer Remote** when `hub_active: false`. Used by **Officer Workflow Blocked (403 Smoke)**. |
+| `main_manager_access_token` | blank | Filled by **Auth / Login as Main Manager** (`demo.manager@example.com` locally). Required for **Managers** folder, **Officers / List Officer Sessions**, and department create/update/deactivate/delete. |
 | `manager_access_token` | blank | Set manually after logging in as an ordinary manager (`is_main_manager: false`). Use for officer district assignment and to verify category/district/department mutations return **403** for non-main managers. |
 | `inactive_access_token` | blank | Copy a token before deactivating an actor in the database; used by **Auth / Inactive Actor - List Issues (403 Smoke)**. |
 | `manager_id` | `2` | Ordinary manager path ID; overwritten by **Managers / Create Manager**. |
@@ -85,22 +91,24 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 
 ## Recommended Request Order
 
-1. Run **Auth / Register User** or **Auth / Register Officer** to create a public actor and auto-login, or run **Auth / Login** with an existing demo account. Officer registration requires at least one existing department ID; local seeded departments normally include IDs `1` and `2`.
+1. Run **Auth / Register User** or **Auth / Register Officer** to create a public actor and auto-login, or run **Auth / Login** with an existing demo account. Officer registration requires at least one existing department ID, **latitude**, and **longitude**; local seeded departments normally include IDs `1` and `2`.
 2. Run **Auth / Current Profile** to inspect the actor attached to the stored token.
-3. Run **Hubs / List Hubs**, **Districts / List Districts**, and **Departments / List Departments** to find local IDs for assignment examples.
-4. Run **Auth / Login as Main Manager** (`demo.manager@example.com` / `password`) to populate `main_manager_access_token` and `access_token` for manager administration.
-5. Run **Auth / Register User - Duplicate Email (Generic 422)** to confirm duplicate registration returns the generic message (not Laravel “already been taken” wording).
-6. Run **Managers / List Main Managers**, then **Managers / Create Manager** (stores `manager_id`). Create Manager does not issue a login token for the new manager.
-7. For inactive-actor middleware: log in, copy the token to `inactive_access_token`, deactivate the actor in the database, then run **Auth / Current Profile** (200) and **Auth / Inactive Actor - List Issues (403 Smoke)** (403).
-8. As a user, run **Issues / List My Issues** (`mine=1`). As an officer or manager, run **Issues / List Issues - Hidden Filter** (`visibility=hidden`).
-9. Run **Departments / Deactivate Department** (main manager token, `PATCH` with `is_active: false`) before hard delete when testing department lifecycle.
-10. Run **Managers / Update My Districts** or **Officers / Update My Districts** for self-service district assignments, or **Managers / Update Officer Districts** for manager-admin officer assignments.
-11. Run **Districts / Create District**, **Update District**, and **Delete District** with **Auth / Login as Main Manager** (`main_manager_access_token`). Ordinary managers receive `403` on district writes. District deletion returns `409 Conflict` while the district is assigned to managers/officers or referenced by issues.
-12. Run **Categories / List Categories** to find existing category IDs. Category reads work for any authenticated actor; mutations require an active main manager (`main_manager_access_token`).
-13. Run **Auth / Login** with `demo.user@example.com` and password `password`, then **Issues / Create Issue** (stores `issue_id`).
-14. Use **Issues / List Issues - Filtered Paginated** to combine `district_id`, `department` (env `department_filter`), and `category_id`.
-15. To test ordinary-manager privileges, log in as a created manager and copy the token to `manager_access_token` before **Managers / Update Officer Districts** or to confirm category/district/department mutations return **403** (not for successful category writes).
-16. Run **Auth / Logout** when finished.
+3. **Officer hub-active flow:** Run **Auth / Login Officer at Hub** (`demo.officer@example.com` with Cluster Centrum coordinates) to get `hub_active: true`, then **Officers / List officers** or **Issues / List Issues - Hidden Filter** (workflow access). Run **Auth / Login Officer Remote** (Amsterdam coordinates), then **Auth / Officer Workflow Blocked (403 Smoke)** to confirm `code: hub_active_required` on Tier C routes. Profile and reference reads (`GET /api/auth/me`, **Hubs / List Hubs**) work without hub-active.
+4. Run **Hubs / List Hubs**, **Districts / List Districts**, and **Departments / List Departments** to find local IDs for assignment examples.
+5. Run **Auth / Login as Main Manager** (`demo.manager@example.com` / `password`) to populate `main_manager_access_token` and `access_token` for manager administration.
+6. Run **Officers / List Officer Sessions** to inspect login audit rows (manager only).
+7. Run **Auth / Register User - Duplicate Email (Generic 422)** to confirm duplicate registration returns the generic message (not Laravel “already been taken” wording).
+8. Run **Managers / List Main Managers**, then **Managers / Create Manager** (stores `manager_id`). Create Manager does not issue a login token for the new manager.
+9. For inactive-actor middleware: log in, copy the token to `inactive_access_token`, deactivate the actor in the database, then run **Auth / Current Profile** (200) and **Auth / Inactive Actor - List Issues (403 Smoke)** (403).
+10. As a user, run **Issues / List My Issues** (`mine=1`). As an officer or manager, run **Issues / List Issues - Hidden Filter** (`visibility=hidden`).
+11. Run **Departments / Deactivate Department** (main manager token, `PATCH` with `is_active: false`) before hard delete when testing department lifecycle.
+12. Run **Managers / Update My Districts** or **Officers / Update My Districts** for self-service district assignments, or **Managers / Update Officer Districts** for manager-admin officer assignments.
+13. Run **Districts / Create District**, **Update District**, and **Delete District** with **Auth / Login as Main Manager** (`main_manager_access_token`). Ordinary managers receive `403` on district writes. District deletion returns `409 Conflict` while the district is assigned to managers/officers or referenced by issues.
+14. Run **Categories / List Categories** to find existing category IDs. Category reads work for any authenticated actor; mutations require an active main manager (`main_manager_access_token`).
+15. Run **Auth / Login** with `demo.user@example.com` and password `password`, then **Issues / Create Issue** (stores `issue_id`).
+16. Use **Issues / List Issues - Filtered Paginated** to combine `district_id`, `department` (env `department_filter`), and `category_id`.
+17. To test ordinary-manager privileges, log in as a created manager and copy the token to `manager_access_token` before **Managers / Update Officer Districts** or to confirm category/district/department mutations return **403** (not for successful category writes).
+18. Run **Auth / Logout** when finished.
 
 The collection stores the returned `access_token` automatically after a successful login, user registration, or officer registration. Manager creation intentionally does not update `access_token` because it returns only the created manager profile. If you disable collection scripts or the token is not stored, copy the `access_token` value from the auth response into the active Postman environment's `access_token` variable before calling protected endpoints.
 
@@ -130,9 +138,13 @@ Request body:
   "confirm_password": "password123",
   "badge_number": "BOA-1234",
   "department_ids": [1],
-  "district_ids": [1]
+  "district_ids": [1],
+  "latitude": 51.9106846,
+  "longitude": 4.4814932
 }
 ```
+
+`latitude` and `longitude` are **required** device GPS coordinates. The server evaluates hub-radius using Haversine against the officer's assigned hub `radius_meters` (default 100 m locally). Within radius → `hub_active: true` and a token with the `hub-active` Sanctum ability; outside → standard token without workflow access. Registration does not require `hub_id`; officers without a hub cannot use login until a manager assigns one.
 
 `department_ids` is required, must contain at least one **active** department ID (`is_active=true`), and cannot contain duplicates; inactive or unknown IDs return `422`. `district_ids` is optional, may be empty or omitted, must contain active existing district IDs when present, and cannot contain duplicates. Use **Departments / List Departments** and **Districts / List Districts** while authenticated to inspect available IDs.
 
@@ -143,11 +155,16 @@ Successful response shape:
   "token_type": "Bearer",
   "access_token": "<token>",
   "actor_type": "officer",
+  "hub_active": true,
+  "hub_active_until": "2026-06-08T22:00:00+00:00",
   "profile": {
     "id": 1,
     "username": "new-officer",
     "email": "new.officer@example.com",
     "badge_number": "BOA-1234",
+    "hub_id": 3,
+    "hub_active": true,
+    "hub_active_until": "2026-06-08T22:00:00+00:00",
     "departments": [
       {
         "id": 1,
@@ -168,7 +185,7 @@ Successful response shape:
 
 Common error response:
 
-- `422 Unprocessable Entity` with validation errors when required fields are missing, `email` is invalid, `password` is shorter than 8 characters, `confirm_password` does not match `password`, `department_ids` is missing, empty, duplicated, or references inactive/unknown departments, `district_ids` is duplicated or references inactive/unknown districts, `username` or `badge_number` already exists in the officers table, or `email` already exists for any user, officer, or manager.
+- `422 Unprocessable Entity` with validation errors when required fields are missing, `email` is invalid, `password` is shorter than 8 characters, `confirm_password` does not match `password`, `department_ids` is missing, empty, duplicated, or references inactive/unknown departments, `latitude`/`longitude` is missing or invalid, `district_ids` is duplicated or references inactive/unknown districts, `username` or `badge_number` already exists in the officers table, or `email` already exists for any user, officer, or manager.
 
 ### Register User
 
@@ -211,7 +228,7 @@ Common error responses:
 
 `POST {{base_url}}/api/auth/login`
 
-Request body uses email and password only:
+Request body for users and managers uses email and password only:
 
 ```json
 {
@@ -220,17 +237,37 @@ Request body uses email and password only:
 }
 ```
 
+**Officers** must also send device GPS coordinates:
+
+```json
+{
+  "email": "demo.officer@example.com",
+  "password": "password",
+  "latitude": 51.9106846,
+  "longitude": 4.4814932
+}
+```
+
+Missing or invalid officer coordinates return `422`. Officers without `hub_id` receive `403` with `code: hub_not_assigned`. Within the assigned active hub's `radius_meters`, the response includes `hub_active: true`, `hub_active_until`, and a token with the `hub-active` ability. Outside the radius, login succeeds with `hub_active: false` and workflow routes return `403` with `code: hub_active_required`.
+
 Successful response shape:
 
 ```json
 {
   "token_type": "Bearer",
   "access_token": "<token>",
-  "actor_type": "user",
+  "actor_type": "officer",
+  "hub_active": true,
+  "hub_active_until": "2026-06-08T22:00:00+00:00",
   "profile": {
     "id": 1,
-    "username": "demo.user",
-    "email": "demo.user@example.com"
+    "username": "demo-officer",
+    "email": "demo.officer@example.com",
+    "badge_number": "BOA-0001",
+    "hub_active": true,
+    "hub_active_until": "2026-06-08T22:00:00+00:00",
+    "departments": [],
+    "districts": []
   }
 }
 ```
@@ -240,7 +277,9 @@ Auth response metadata lives on the top-level wrapper. `actor_type` is not dupli
 Common error responses:
 
 - `401 Unauthorized` with `{"message":"Invalid credentials."}` for invalid, inactive, ambiguous, or unknown accounts.
-- `422 Unprocessable Entity` with validation errors when `email` or `password` is missing or invalid.
+- `403 Forbidden` with `{"message":"Officer hub assignment required before login.","code":"hub_not_assigned"}` when an officer has no `hub_id`.
+- `403 Forbidden` with `{"message":"Hub-active session required.","code":"hub_active_required"}` on Tier C routes when the officer token lacks hub-active access.
+- `422 Unprocessable Entity` with validation errors when `email` or `password` is missing or invalid, or when officer `latitude`/`longitude` is missing or out of range.
 
 ### Current Profile
 
@@ -735,6 +774,14 @@ Common error responses:
 ### Officers
 
 Officer listing and enable/disable require an authenticated active officer or manager (list) or an authenticated active manager (disable/enable).
+
+#### List Officer Sessions
+
+`GET {{base_url}}/api/officer-sessions`
+
+Requires `Authorization: Bearer <token>` for an authenticated, active manager. Users, officers, and inactive managers receive `403`.
+
+Optional query params: `officer_id`, `hub_id`, `is_hub_active` (truthy/falsy), `page` (default `1`), `per_page` (default `20`, max `100`). Returns paginated login audit rows ordered newest-first by `shift_start`, including compact `officer` and `hub` summaries, login coordinates (`start_lat`, `start_lng`), `distance_meters_at_login`, `is_hub_active`, and `hub_active_until`.
 
 Common requests:
 

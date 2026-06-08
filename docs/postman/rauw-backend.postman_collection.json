@@ -60,7 +60,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"new-officer\",\n  \"email\": \"new.officer@example.com\",\n  \"password\": \"password123\",\n  \"confirm_password\": \"password123\",\n  \"badge_number\": \"BOA-1234\",\n  \"department_ids\": [1],\n  \"district_ids\": [1]\n}",
+              "raw": "{\n  \"username\": \"new-officer\",\n  \"email\": \"new.officer@example.com\",\n  \"password\": \"password123\",\n  \"confirm_password\": \"password123\",\n  \"badge_number\": \"BOA-1234\",\n  \"department_ids\": [1],\n  \"district_ids\": [1],\n  \"latitude\": 51.9106846,\n  \"longitude\": 4.4814932\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -79,7 +79,7 @@
                 "officer"
               ]
             },
-            "description": "Register a backend API-only officer account with username, email, password, confirm_password, badge_number, department_ids, and optional district_ids. department_ids is required, must contain at least one active department ID (is_active=true), and cannot contain duplicates; inactive or unknown department IDs return 422. district_ids may be omitted or empty, must contain active existing district IDs when present, and cannot contain duplicates; assignments are stored through district_officer. The 201 response includes token_type, access_token, actor_type, and a cleaned safe officer profile with departments and districts as compact arrays. The test script stores access_token in collection and active environment variables. Change username, email, and badge_number before rerunning because username and badge_number must be unique within officers and email must be unique across users, officers, and managers."
+            "description": "Register a backend API-only officer account with username, email, password, confirm_password, badge_number, department_ids, latitude, longitude, and optional district_ids. latitude and longitude are required device GPS coordinates used for hub-radius evaluation. department_ids is required, must contain at least one active department ID (is_active=true), and cannot contain duplicates; inactive or unknown department IDs return 422. district_ids may be omitted or empty, must contain active existing district IDs when present, and cannot contain duplicates; assignments are stored through district_officer. Within the assigned hub radius the 201 response includes hub_active: true and a token with the hub-active ability; outside the radius login succeeds with hub_active: false. Registration does not require hub_id; officers without a hub cannot use POST /api/auth/login until a manager assigns one. The 201 response includes token_type, access_token, actor_type, hub_active, hub_active_until, and a cleaned safe officer profile. The test script stores access_token in collection and active environment variables. Change username, email, and badge_number before rerunning because username and badge_number must be unique within officers and email must be unique across users, officers, and managers."
           },
           "response": []
         },
@@ -365,6 +365,160 @@
               ]
             },
             "description": "Log in as the seeded main manager (demo.manager@example.com / password locally). Stores access_token and main_manager_access_token for main-manager-only folders (Managers, department mutations). Ordinary manager flows use manager_access_token after a separate login."
+          },
+          "response": []
+        },
+        {
+          "name": "Login Officer at Hub",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Officer hub login succeeded', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Officer received hub-active session', function () {",
+                  "    pm.expect(response.actor_type).to.eql('officer');",
+                  "    pm.expect(response.hub_active).to.eql(true);",
+                  "    pm.expect(response.hub_active_until).to.be.a('string').and.not.empty;",
+                  "    pm.expect(response.profile.hub_active).to.eql(true);",
+                  "});",
+                  "",
+                  "if (response.access_token) {",
+                  "    pm.collectionVariables.set('access_token', response.access_token);",
+                  "    pm.collectionVariables.set('officer_hub_active_token', response.access_token);",
+                  "",
+                  "    if (pm.environment.name) {",
+                  "        pm.environment.set('access_token', response.access_token);",
+                  "        pm.environment.set('officer_hub_active_token', response.access_token);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"demo.officer@example.com\",\n  \"password\": \"password\",\n  \"latitude\": 51.9106846,\n  \"longitude\": 4.4814932\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": [ "{{base_url}}" ],
+              "path": [ "api", "auth", "login" ]
+            },
+            "description": "Log in as the seeded demo officer with GPS coordinates at Cluster Centrum hub (Zalmstraat 7). Locally demo.officer@example.com belongs to hub_id 3. Expect hub_active: true, hub_active_until, and a Sanctum token with the hub-active ability. Stores access_token and officer_hub_active_token."
+          },
+          "response": []
+        },
+        {
+          "name": "Login Officer Remote",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Officer remote login succeeded', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Officer did not receive hub-active session', function () {",
+                  "    pm.expect(response.actor_type).to.eql('officer');",
+                  "    pm.expect(response.hub_active).to.eql(false);",
+                  "    pm.expect(response.hub_active_until).to.be.oneOf([null, undefined]);",
+                  "    pm.expect(response.profile.hub_active).to.eql(false);",
+                  "});",
+                  "",
+                  "if (response.access_token) {",
+                  "    pm.collectionVariables.set('access_token', response.access_token);",
+                  "    pm.collectionVariables.set('officer_remote_token', response.access_token);",
+                  "",
+                  "    if (pm.environment.name) {",
+                  "        pm.environment.set('access_token', response.access_token);",
+                  "        pm.environment.set('officer_remote_token', response.access_token);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"demo.officer@example.com\",\n  \"password\": \"password\",\n  \"latitude\": 52.3676,\n  \"longitude\": 4.9041\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": [ "{{base_url}}" ],
+              "path": [ "api", "auth", "login" ]
+            },
+            "description": "Log in as demo.officer@example.com with coordinates far outside the assigned hub radius (Amsterdam). Login succeeds but hub_active is false and workflow routes return 403 hub_active_required. Stores access_token and officer_remote_token for the workflow smoke test."
+          },
+          "response": []
+        },
+        {
+          "name": "Officer Workflow Blocked (403 Smoke)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Workflow blocked without hub-active', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "",
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Response includes hub_active_required code', function () {",
+                  "    pm.expect(response.code).to.eql('hub_active_required');",
+                  "    pm.expect(response.message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{officer_remote_token}}", "type": "string" }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/issues?page=1&per_page=20",
+              "host": [ "{{base_url}}" ],
+              "path": [ "api", "issues" ],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "per_page", "value": "20" }
+              ]
+            },
+            "description": "Smoke test for officer.hub-active middleware. Run Auth / Login Officer Remote first so officer_remote_token is set. Expects 403 with code hub_active_required on Tier C routes such as GET /api/issues. Profile and reference reads (GET /api/auth/me, GET /api/hubs) remain available without hub-active."
           },
           "response": []
         },
@@ -1098,6 +1252,35 @@
       "name": "Officers",
       "item": [
         {
+          "name": "List Officer Sessions",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{main_manager_access_token}}", "type": "string" }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/officer-sessions?page=1&per_page=20",
+              "host": [ "{{base_url}}" ],
+              "path": [ "api", "officer-sessions" ],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "per_page", "value": "20" },
+                { "key": "officer_id", "value": "1", "disabled": true },
+                { "key": "hub_id", "value": "3", "disabled": true },
+                { "key": "is_hub_active", "value": "1", "disabled": true, "description": "Filter hub-active sessions only when enabled." }
+              ]
+            },
+            "description": "List officer login sessions as an authenticated active manager. Run Auth / Login as Main Manager first. Returns paginated audit rows with officer/hub summaries, login coordinates, distance_meters_at_login, is_hub_active, and hub_active_until. Optional filters: officer_id, hub_id, is_hub_active. Users and officers receive 403."
+          },
+          "response": []
+        },
+        {
           "name": "List officers",
           "request": {
             "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
@@ -1154,7 +1337,7 @@
           "response": []
         }
       ],
-      "description": "Officer-focused request examples. List officers is available to active officers and managers. Disable and enable officer require an active manager token (access_token after Login as a manager). The district self-service update entry is implemented for active officers."
+      "description": "Officer-focused request examples. List Officer Sessions requires main_manager_access_token. List officers is available to active officers and managers. Disable and enable officer require an active manager token (access_token after Login as a manager). The district self-service update entry is implemented for active officers."
     },
     {
       "name": "Categories",
@@ -1895,6 +2078,16 @@
     {
       "key": "department_id",
       "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "officer_hub_active_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "officer_remote_token",
+      "value": "",
       "type": "string"
     }
   ]
