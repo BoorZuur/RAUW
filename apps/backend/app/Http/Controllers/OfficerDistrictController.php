@@ -30,7 +30,7 @@ class OfficerDistrictController extends Controller
 
         // Reload the relations the profile resource embeds so the response
         // reflects the freshly synced districts without lazy queries.
-        $officer->load('departments', 'districts');
+        $officer->load('departments', 'districts', 'hub');
 
         return response()->json([
             'actor_type' => ActorType::Officer->value,

@@ -10,6 +10,10 @@ use App\Http\Controllers\Auth\RegisterUserController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\DistrictController;
+use App\Http\Controllers\HubController;
+use App\Http\Controllers\MainManagerHubController;
+use App\Http\Controllers\ManagerHubController;
+use App\Http\Controllers\OfficerHubController;
 use App\Http\Controllers\IssueAttachmentController;
 use App\Http\Controllers\IssueController;
 use App\Http\Controllers\MainManagerController;
@@ -93,6 +97,11 @@ Route::middleware(['auth:sanctum', 'actor.active', 'throttle:30,1'])->group(func
     Route::patch('main-managers/{manager}', [MainManagerController::class, 'update'])->name('main-managers.update');
     Route::patch('main-managers/{manager}/disable', [MainManagerController::class, 'disable'])->name('main-managers.disable');
     Route::patch('main-managers/{manager}/enable', [MainManagerController::class, 'enable'])->name('main-managers.enable');
+    // Main-manager-protected main manager hub assignment. Authorization is narrowed
+    // inside UpdateManagerHubRequest to an authenticated, active main manager only.
+    // Setting a main manager's hub clears their district_manager pivot so district
+    // assignments can be re-established within the new hub.
+    Route::patch('main-managers/{manager}/hub', [MainManagerHubController::class, 'update'])->name('main-managers.hub.update');
 
     // Main-manager-protected ordinary manager listing. Authorization is narrowed
     // inside IndexManagerRequest to an authenticated, active main manager only;
@@ -111,6 +120,10 @@ Route::middleware(['auth:sanctum', 'actor.active', 'throttle:30,1'])->group(func
     Route::patch('managers/{manager}', [ManagerController::class, 'update'])->name('managers.update');
     Route::patch('managers/{manager}/disable', [ManagerController::class, 'disable'])->name('managers.disable');
     Route::patch('managers/{manager}/enable', [ManagerController::class, 'enable'])->name('managers.enable');
+    // Main-manager-protected ordinary manager hub assignment. Authorization is
+    // narrowed inside UpdateManagerHubRequest to an authenticated, active main
+    // manager only. Setting a manager's hub clears their district_manager pivot.
+    Route::patch('managers/{manager}/hub', [ManagerHubController::class, 'update'])->name('managers.hub.update');
 
     // Officer listing. Authorization is narrowed inside IndexOfficerRequest to
     // an authenticated, active officer or manager; users and inactive actors
@@ -134,6 +147,10 @@ Route::middleware(['auth:sanctum', 'actor.active', 'throttle:30,1'])->group(func
     // `district_ids` array. The endpoint only touches the officer-side district
     // pivot and never reassigns `issues.district_id`.
     Route::patch('officers/{officer}/districts', [OfficerDistrictController::class, 'update'])->name('officers.districts.update');
+    // Manager-protected officer hub assignment. Authorization is narrowed inside
+    // UpdateOfficerHubRequest to an authenticated, active manager. Setting an
+    // officer's hub clears their district_officer pivot.
+    Route::patch('officers/{officer}/hub', [OfficerHubController::class, 'update'])->name('officers.hub.update');
 
     // Main-manager-protected actor department assignment. Authorization is narrowed
     // inside the department assignment FormRequests to an authenticated, active
@@ -183,6 +200,16 @@ Route::middleware(['auth:sanctum', 'actor.active', 'throttle:30,1'])->group(func
     Route::get('departments/{department}', [DepartmentController::class, 'show'])->name('departments.show');
     Route::match(['put', 'patch'], 'departments/{department}', [DepartmentController::class, 'update'])->name('departments.update');
     Route::delete('departments/{department}', [DepartmentController::class, 'destroy'])->name('departments.destroy');
+
+    // Hub management. Reads are available to any authenticated actor; writes are
+    // authorized inside the hub FormRequests to an authenticated, active main
+    // manager. Deleting a hub is blocked when districts, officers, or managers
+    // still reference it.
+    Route::get('hubs', [HubController::class, 'index'])->name('hubs.index');
+    Route::post('hubs', [HubController::class, 'store'])->name('hubs.store');
+    Route::get('hubs/{hub}', [HubController::class, 'show'])->name('hubs.show');
+    Route::match(['put', 'patch'], 'hubs/{hub}', [HubController::class, 'update'])->name('hubs.update');
+    Route::delete('hubs/{hub}', [HubController::class, 'destroy'])->name('hubs.destroy');
 
     // District management. Reads preserve the documented district list/show
     // contract, while writes are authorized inside the district FormRequests to

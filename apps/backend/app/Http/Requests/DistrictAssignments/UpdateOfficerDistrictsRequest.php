@@ -3,6 +3,7 @@
 namespace App\Http\Requests\DistrictAssignments;
 
 use App\Models\Manager;
+use App\Models\Officer;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -36,9 +37,18 @@ class UpdateOfficerDistrictsRequest extends FormRequest
      */
     public function rules(): array
     {
+        $officer = $this->route('officer');
+        $hubId = $officer instanceof Officer ? $officer->hub_id : null;
+
+        $districtExists = Rule::exists('districts', 'id')->where('is_active', true);
+
+        if ($hubId !== null) {
+            $districtExists = $districtExists->where('hub_id', $hubId);
+        }
+
         return [
             'district_ids' => ['present', 'array'],
-            'district_ids.*' => ['integer', 'distinct', Rule::exists('districts', 'id')->where('is_active', true)],
+            'district_ids.*' => ['integer', 'distinct', $districtExists],
         ];
     }
 

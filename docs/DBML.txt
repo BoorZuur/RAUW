@@ -15,12 +15,25 @@ Table users {
   updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
 }
 
+Table hubs {
+  id               int          [pk, increment]
+  name             varchar(100) [not null, unique, note: 'Bv. Cluster Centrum, Cluster Noord']
+  address          varchar(255) [not null]
+  postal_code      varchar(10)  [not null]
+  latitude         decimal(10,8) [not null]
+  longitude        decimal(11,8) [not null]
+  is_active        tinyint(1)   [not null, default: 0, note: 'Nieuwe hubs standaard inactief; vier geseede clusters worden in HubSeeder geactiveerd. Veilige deactivatie via PATCH /api/hubs/{id} met is_active=false (main manager); geen /disable route']
+  created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+}
+
 Table districts {
   id               int          [pk, increment]
+  hub_id           int          [not null, ref: > hubs.id, note: 'Elke wijk behoort tot precies één cluster-hub']
   name             varchar(100) [not null, unique]
-  postal_prefix    varchar(10)  [note: 'Bv. 3241 voor Middelharnis']
-  center_lat       decimal(10,8)
-  center_lng       decimal(11,8)
+  postal_prefix    varchar(10)  [note: 'Bv. 3012 voor Cool (Rotterdam)']
+  center_lat       decimal(10,8) [not null]
+  center_lng       decimal(11,8) [not null]
   radius_meters    int          [note: 'Straal voor automatische toewijzing']
   is_active        tinyint(1)   [not null, default: 1]
   created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
@@ -33,7 +46,8 @@ Table officers {
   email            varchar(255) [not null, unique]
   password_hash    varchar(255) [not null]
   badge_number     varchar(20)  [not null, unique]
-  // Wijken via district_officer; een BOA kan aan meerdere wijken gekoppeld zijn.
+  hub_id           int          [ref: > hubs.id, note: 'Thuishub (cluster); wijken via district_officer binnen dezelfde hub']
+  // Wijken via district_officer; een BOA kan aan meerdere wijken gekoppeld zijn (zelfde hub als hub_id).
   // Afdelingen via department_officer; een BOA kan aan meerdere afdelingen gekoppeld zijn.
   is_active        tinyint(1)   [not null, default: 1]
   deleted_at       datetime
@@ -46,8 +60,9 @@ Table managers {
   username         varchar(50)  [not null, unique]
   email            varchar(255) [not null, unique]
   password_hash    varchar(255) [not null]
+  hub_id           int          [ref: > hubs.id, note: 'Thuishub (cluster); wijken via district_manager binnen dezelfde hub']
   // Afdelingen via department_manager; een manager kan aan meerdere afdelingen gekoppeld zijn.
-  // Wijken via district_manager; een manager kan aan meerdere wijken gekoppeld zijn.
+  // Wijken via district_manager; een manager kan aan meerdere wijken gekoppeld zijn (zelfde hub als hub_id).
   // is_main_manager: alleen via seeding/admin; nooit via publieke API. Route-niveau (geen extra kolommen):
   //   GET/PATCH/PATCH disable /api/main-managers — alleen actieve main manager; binding op is_main_manager = true.
   //   GET/POST/PATCH/PATCH disable /api/managers — alleen actieve main manager; binding op is_main_manager = false.
@@ -140,8 +155,7 @@ Table officer_sessions {
 Table categories {
   id               int          [pk, increment]
   name             varchar(100) [not null]
-  weight           tinyint      [note: 'Subcategorie-volgorde; lager getal = hogere prioriteit; NULL voor hoofdcategorie']
-  priority         tinyint      [note: 'Hoofdcategorie-volgorde; lager getal = hogere prioriteit; NULL voor subcategorie']
+  priority         tinyint      [note: 'Hoofdcategorie-volgorde; lager getal = hogere prioriteit; NULL voor subcategorie. Subcategorieën sorteren alfabetisch op name.']
   parent_id        int          [ref: > categories.id, note: 'NULL = hoofdcategorie; subcategorie verwijst naar een hoofdcategorie. Hoofdcategorie kan pas hard deleted worden als er geen subcategorieën meer zijn.']
   is_active        tinyint(1)   [not null, default: 1]
   created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]

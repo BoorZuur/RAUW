@@ -81,8 +81,8 @@ paths:
                       name: Wijkbeheer
                   districts:
                     - id: 1
-                      name: Middelharnis
-                      postal_prefix: '3241'
+                      name: Cool
+                      postal_prefix: '3012'
         '422':
           description: >-
             Validation failed. Returned when required fields are missing,
@@ -260,8 +260,8 @@ paths:
                       is_main_manager: true
                       districts:
                         - id: 1
-                          name: Middelharnis
-                          postal_prefix: '3241'
+                          name: Cool
+                          postal_prefix: '3012'
         '401':
           $ref: '#/components/responses/Unauthorized'
 
@@ -299,8 +299,8 @@ paths:
                       is_main_manager: true
                       districts:
                         - id: 1
-                          name: Middelharnis
-                          postal_prefix: '3241'
+                          name: Cool
+                          postal_prefix: '3012'
         '401':
           $ref: '#/components/responses/Unauthorized'
 
@@ -371,8 +371,8 @@ paths:
                           name: Wijkbeheer
                       districts:
                         - id: 1
-                          name: Middelharnis
-                          postal_prefix: '3241'
+                          name: Cool
+                          postal_prefix: '3012'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '422':
@@ -453,11 +453,11 @@ paths:
                       is_main_manager: true
                       districts:
                         - id: 1
-                          name: Middelharnis
-                          postal_prefix: '3241'
+                          name: Cool
+                          postal_prefix: '3012'
                         - id: 2
-                          name: Sommelsdijk
-                          postal_prefix: '3245'
+                          name: Oude Westen
+                          postal_prefix: '3014'
                 officerProfile:
                   summary: Implemented officer self-service response
                   value:
@@ -473,11 +473,11 @@ paths:
                           name: Wijkbeheer
                       districts:
                         - id: 1
-                          name: Middelharnis
-                          postal_prefix: '3241'
+                          name: Cool
+                          postal_prefix: '3012'
                         - id: 2
-                          name: Sommelsdijk
-                          postal_prefix: '3245'
+                          name: Oude Westen
+                          postal_prefix: '3014'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -557,8 +557,8 @@ paths:
                         name: Wijkbeheer
                     districts:
                       - id: 1
-                        name: Middelharnis
-                        postal_prefix: '3241'
+                        name: Cool
+                        postal_prefix: '3012'
                 links:
                   first: /api/main-managers?page=1
                   last: /api/main-managers?page=1
@@ -690,6 +690,49 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/main-managers/{managerId}/hub:
+    parameters:
+      - name: managerId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Managers ]
+      summary: Set a main manager's hub
+      description: >-
+        Assign an active hub to a main manager and clear their district_manager
+        pivot so district assignments can be re-established within the new
+        hub. `hub_id` must reference an active hub (`is_active=true`); inactive
+        or unknown hub IDs return **422**. Only an authenticated active main
+        manager may call this endpoint. The path target must have
+        `is_main_manager=true`; ordinary managers and unknown ids return 404.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HubAssignmentUpdate'
+            example:
+              hub_id: 3
+      responses:
+        '200':
+          description: Refreshed main manager profile with cleared districts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manager'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
   /api/managers:
     get:
       tags: [ Managers ]
@@ -747,8 +790,8 @@ paths:
                         name: Wijkbeheer
                     districts:
                       - id: 1
-                        name: Middelharnis
-                        postal_prefix: '3241'
+                        name: Cool
+                        postal_prefix: '3012'
                 links:
                   first: /api/managers?page=1
                   last: /api/managers?page=1
@@ -812,8 +855,8 @@ paths:
                     name: Wijkbeheer
                 districts:
                   - id: 1
-                    name: Middelharnis
-                    postal_prefix: '3241'
+                    name: Cool
+                    postal_prefix: '3012'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -932,6 +975,50 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/managers/{managerId}/hub:
+    parameters:
+      - name: managerId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Managers ]
+      summary: Set an ordinary manager's hub
+      description: >-
+        Assign an active hub to an ordinary manager and clear their
+        district_manager pivot so district assignments can be re-established
+        within the new hub. `hub_id` must reference an active hub
+        (`is_active=true`); inactive or unknown hub IDs return **422**. Only an
+        authenticated active main manager may call this endpoint. The path
+        target must have `is_main_manager=false`; main managers and unknown
+        ids return 404.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HubAssignmentUpdate'
+            example:
+              hub_id: 3
+      responses:
+        '200':
+          description: Refreshed manager profile with cleared districts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manager'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
   /api/managers/{managerId}/departments:
     parameters:
       - name: managerId
@@ -994,8 +1081,8 @@ paths:
                     name: BOA Jeugd
                 districts:
                   - id: 1
-                    name: Middelharnis
-                    postal_prefix: '3241'
+                    name: Cool
+                    postal_prefix: '3012'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1025,8 +1112,10 @@ paths:
         is_main_manager=false; main managers and unknown ids return 404. The endpoint
         updates only the district_manager pivot and never modifies issues.district_id
         or officer district pivots. district_ids must be present and may be an
-        empty array to clear all assignments. Inactive (`is_active=false`), unknown
-        district IDs, and duplicates return **422**. Soft-deleted managers return 404.
+        empty array to clear all assignments. When the target manager has a
+        `hub_id`, every district ID must belong to that hub; cross-hub districts
+        return **422**. Inactive (`is_active=false`), unknown district IDs, and
+        duplicates return **422**. Soft-deleted managers return 404.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -1065,11 +1154,11 @@ paths:
                     name: Wijkbeheer
                 districts:
                   - id: 1
-                    name: Middelharnis
-                    postal_prefix: '3241'
+                    name: Cool
+                    postal_prefix: '3012'
                   - id: 2
-                    name: Sommelsdijk
-                    postal_prefix: '3245'
+                    name: Oude Westen
+                    postal_prefix: '3014'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1158,8 +1247,8 @@ paths:
                         name: Wijkbeheer
                     districts:
                       - id: 1
-                        name: Middelharnis
-                        postal_prefix: '3241'
+                        name: Cool
+                        postal_prefix: '3012'
                 links:
                   first: /api/officers?page=1
                   last: /api/officers?page=1
@@ -1242,6 +1331,49 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/officers/{officerId}/hub:
+    parameters:
+      - name: officerId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Officers ]
+      summary: Set an officer's hub
+      description: >-
+        Assign an active hub to an officer and clear their district_officer
+        pivot so district assignments can be re-established within the new
+        hub. `hub_id` must reference an active hub (`is_active=true`); inactive
+        or unknown hub IDs return **422**. Only an authenticated active manager
+        may call this endpoint. Users, officers, inactive managers, and
+        unauthenticated requests receive **403**.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HubAssignmentUpdate'
+            example:
+              hub_id: 3
+      responses:
+        '200':
+          description: Refreshed officer auth profile with cleared districts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthCurrentProfileResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
   /api/officers/{officerId}/districts:
     parameters:
       - name: officerId
@@ -1257,8 +1389,10 @@ paths:
         district assignments with the supplied district_ids array and returns that
         officer's refreshed profile. Only an authenticated active manager may
         call this endpoint. Users, officers, inactive managers, and unauthenticated
-        requests cannot update officer districts. The endpoint updates only the
-        district_officer pivot and never modifies issues.district_id.
+        requests cannot update officer districts. When the target officer has a
+        `hub_id`, every district ID must belong to that hub; cross-hub districts
+        return **422**. The endpoint updates only the district_officer pivot and
+        never modifies issues.district_id.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -1289,11 +1423,11 @@ paths:
                       name: Wijkbeheer
                   districts:
                     - id: 1
-                      name: Middelharnis
-                      postal_prefix: '3241'
+                      name: Cool
+                      postal_prefix: '3012'
                     - id: 2
-                      name: Sommelsdijk
-                      postal_prefix: '3245'
+                      name: Oude Westen
+                      postal_prefix: '3014'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1365,8 +1499,8 @@ paths:
                       name: BOA Jeugd
                   districts:
                     - id: 1
-                      name: Middelharnis
-                      postal_prefix: '3241'
+                      name: Cool
+                      postal_prefix: '3012'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1404,14 +1538,14 @@ paths:
             schema:
               $ref: '#/components/schemas/IssueCreate'
             example:
-              title: Losliggende stoeptegel
-              content: Er ligt een stoeptegel los bij de bushalte.
+              title: Parkeren op stoep
+              content: Er staat een auto op de stoep bij Coolsingel.
               category_id: 1
               district_id: 1
-              postal_code: '3241AB'
-              address: Voorstraat 1, Middelharnis
-              latitude: 51.75750000
-              longitude: 4.16500000
+              postal_code: '3012AB'
+              address: Coolsingel 1, Rotterdam
+              latitude: 51.91712000
+              longitude: 4.47834000
               is_anonymous: true
       responses:
         '201':
@@ -1888,9 +2022,9 @@ paths:
       tags: [ Categories ]
       summary: List categories
       description: >-
-        Returns main categories ordered by priority, with children ordered by
-        weight. Lower numeric priority/weight values sort first and therefore
-        mean higher priority. Categories use a two-level hierarchy: main
+        Returns main categories ordered by priority (lower number = higher
+        urgency), with children ordered alphabetically by name. Categories use a
+        two-level hierarchy: main
         categories have `parent_id` null; subcategories reference an active main
         category through `parent_id` and cannot have children themselves (no
         sub-under-sub). Any authenticated active actor (User, Officer, or
@@ -1923,8 +2057,8 @@ paths:
         a two-level hierarchy: `parent_id` null creates a main category;
         `parent_id` must reference an active main category for subcategories.
         Subcategories cannot have children (no sub-under-sub). Main categories
-        use priority, subcategories use weight, and lower numbers mean higher
-        priority.
+        use priority (lower number = higher urgency). Subcategories order
+        alphabetically by name. The legacy weight field is rejected with 422.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -1982,9 +2116,10 @@ paths:
       summary: Update a category
       description: >-
         Partially update a category. Include department_ids to replace the
-        category's department assignments. Main categories use priority;
-        subcategories use weight. Lower numbers mean higher priority.
-        `parent_id` may only reference a main category; subcategories cannot
+        category's department assignments. Main categories use priority (lower
+        number = higher urgency). Subcategories order alphabetically by name.
+        The legacy weight field is rejected with 422. `parent_id` may only
+        reference a main category; subcategories cannot
         have children. Set `is_active` to false to deactivate or true to
         reactivate; this is the sole activation path (no `/disable` route).
         Restricted to authenticated active main managers only. Users, officers,
@@ -2229,13 +2364,212 @@ paths:
         '409':
           $ref: '#/components/responses/ConflictError'
 
+  /api/hubs:
+    get:
+      tags: [ Hubs ]
+      summary: List hubs
+      description: >-
+        List Rotterdam cluster hubs ordered by name, including district,
+        officer, and manager reference counts. Any authenticated active actor
+        may call this endpoint.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Hub list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Hub'
+              example:
+                - id: 3
+                  name: Cluster Centrum
+                  address: Zalmstraat 7
+                  postal_code: '3016 DS'
+                  latitude: 51.9106846
+                  longitude: 4.4814932
+                  is_active: true
+                  districts_count: 6
+                  officers_count: 1
+                  managers_count: 1
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InactiveAccount'
+    post:
+      tags: [ Hubs ]
+      summary: Create a hub
+      description: >-
+        Create a hub row. `latitude` and `longitude` are required and are not
+        geocoded server-side. New hubs default to `is_active=false` when the
+        field is omitted; send `is_active: true` to create an already-active
+        hub. Only an authenticated, active main manager may create hubs.
+        Users, officers, ordinary managers, inactive managers, and
+        unauthenticated requests receive **403**.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HubCreate'
+            example:
+              name: Cluster Test
+              address: Teststraat 1
+              postal_code: '3011 AA'
+              latitude: 51.92000000
+              longitude: 4.48000000
+      responses:
+        '201':
+          description: Hub created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Hub'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/hubs/{hubId}:
+    parameters:
+      - name: hubId
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags: [ Hubs ]
+      summary: Show a hub
+      description: >-
+        Returns a single hub with district, officer, and manager reference
+        counts. Any authenticated active actor may call this endpoint.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Hub resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Hub'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InactiveAccount'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [ Hubs ]
+      summary: Update a hub
+      description: >-
+        Partially update a hub. Set `is_active` to false to deactivate or true
+        to reactivate; this is the sole activation path (no `/disable` route).
+        Deactivation returns **422** when the hub still has active districts or
+        active officers assigned. Managers assigned to the hub do not block
+        deactivation. Only an authenticated, active main manager may update
+        hubs. Users, officers, ordinary managers, inactive managers, and
+        unauthenticated requests receive **403**.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HubUpdate'
+            example:
+              is_active: false
+      responses:
+        '200':
+          description: Hub updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Hub'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: >-
+            Validation failed. Returned when field values are invalid or when
+            `is_active: false` is rejected because active districts or active
+            officers remain assigned to the hub.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              examples:
+                deactivateBlocked:
+                  summary: Deactivation blocked by active assignments
+                  value:
+                    message: Cannot deactivate hub while active districts are assigned.
+                    errors:
+                      is_active:
+                        - Cannot deactivate hub while active districts are assigned.
+    put:
+      tags: [ Hubs ]
+      summary: Replace/update a hub
+      description: Same behavior and validation as PATCH /api/hubs/{hubId}.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HubUpdate'
+      responses:
+        '200':
+          description: Hub updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Hub'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [ Hubs ]
+      summary: Delete an eligible hub
+      description: >-
+        Hard delete a hub. Only an authenticated, active main manager may delete
+        hubs. Deletion returns **409 Conflict** when districts, officers, or
+        managers still reference the hub.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '204':
+          description: Hub deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+
   /api/districts:
     get:
       tags: [ Districts ]
       summary: List districts
       description: >-
-        List districts ordered by name, including manager/officer assignment
-        counts and issue reference counts when available. Requires
+        List districts ordered by name, each with hub metadata, manager/officer
+        assignment counts, and issue reference counts when available. Requires
         authentication in the protected API group. District records are separate
         from actor assignments: managers and officers are assigned through
         district_manager and district_officer pivots, while issues.district_id
@@ -2257,7 +2591,10 @@ paths:
       tags: [ Districts ]
       summary: Create a district
       description: >-
-        Create a district row. Only an authenticated, active main manager
+        Create a district row. `hub_id`, `center_lat`, and `center_lng` are
+        required; coordinates are not geocoded server-side. `hub_id` must
+        reference an existing active hub (`is_active=true`); inactive or
+        unknown hub IDs return **422**. Only an authenticated, active main manager
         (`is_main_manager=true`) may create, update, or delete districts. Users,
         officers, ordinary managers, inactive managers, and unauthenticated
         requests receive **403** (`This action is unauthorized.`). District CRUD
@@ -2273,10 +2610,11 @@ paths:
               $ref: '#/components/schemas/DistrictCreate'
             example:
               name: Nieuwe Wijk
-              postal_prefix: '3248'
-              center_lat: 51.75000000
-              center_lng: 4.16000000
-              radius_meters: 2500
+              hub_id: 3
+              postal_prefix: '3017'
+              center_lat: 51.91000000
+              center_lng: 4.48000000
+              radius_meters: 1200
               is_active: true
       responses:
         '201':
@@ -2620,6 +2958,13 @@ components:
           type: string
         is_active:
           type: boolean
+        hub_id:
+          type: integer
+          nullable: true
+        hub:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Hub'
         departments:
           type: array
           description: Compact department objects. Officers must have one or more departments.
@@ -2652,6 +2997,13 @@ components:
         created_by_manager_id:
           type: integer
           nullable: true
+        hub_id:
+          type: integer
+          nullable: true
+        hub:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Hub'
         departments:
           type: array
           description: Compact department objects. Managers must have one or more departments.
@@ -2824,6 +3176,13 @@ components:
           format: email
         badge_number:
           type: string
+        hub_id:
+          type: integer
+          nullable: true
+        hub:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Hub'
         departments:
           type: array
           description: Compact department objects. Officers must have one or more departments.
@@ -2853,6 +3212,13 @@ components:
             $ref: '#/components/schemas/AuthDepartmentProfile'
         is_main_manager:
           type: boolean
+        hub_id:
+          type: integer
+          nullable: true
+        hub:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Hub'
         districts:
           type: array
           description: Compact district objects assigned through the district_manager pivot.
@@ -2882,16 +3248,137 @@ components:
         postal_prefix:
           type: string
 
+    Hub:
+      type: object
+      description: >-
+        Rotterdam BOA cluster hub. Districts belong to exactly one hub. Officers
+        and managers have a home hub via hub_id; their district pivots must stay
+        within that hub. New hubs are inactive by default until activated.
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          example: Cluster Centrum
+        address:
+          type: string
+          example: Zalmstraat 7
+        postal_code:
+          type: string
+          example: '3016 DS'
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        is_active:
+          type: boolean
+          example: true
+        districts_count:
+          type: integer
+          nullable: true
+        officers_count:
+          type: integer
+          nullable: true
+        managers_count:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    HubCreate:
+      type: object
+      required: [ name, address, postal_code, latitude, longitude ]
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        address:
+          type: string
+          maxLength: 255
+        postal_code:
+          type: string
+          maxLength: 10
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+        is_active:
+          type: boolean
+          default: false
+          description: >-
+            Optional. Defaults to false when omitted; send true to create an
+            already-active hub.
+
+    HubUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        address:
+          type: string
+          maxLength: 255
+        postal_code:
+          type: string
+          maxLength: 10
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+        is_active:
+          type: boolean
+          description: >-
+            Set to false to deactivate or true to reactivate. Sole activation
+            path for hubs (no `/disable` route). Deactivation returns **422**
+            when active districts or active officers remain assigned to the hub.
+            Managers assigned to the hub do not block deactivation.
+
+    HubAssignmentUpdate:
+      type: object
+      required: [ hub_id ]
+      properties:
+        hub_id:
+          type: integer
+          description: >-
+            Existing active hub ID (`is_active=true`). Inactive or unknown hub
+            IDs return **422**. Changing hub clears the actor's district pivot
+            so assignments can be re-established within the new hub.
+
     District:
       type: object
       description: >-
-        District record. Managers and officers are assigned to districts through
-        district_manager and district_officer many-to-many pivots. The
+        District record (Rotterdam wijk). Each district belongs to one hub.
+        Managers and officers are assigned to districts through district_manager
+        and district_officer many-to-many pivots within their home hub. The
         issues.district_id field remains a singular issue location/reference and
         is not changed by actor district assignment endpoints.
       properties:
         id:
           type: integer
+        hub_id:
+          type: integer
+        hub:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Hub'
         name:
           type: string
         postal_prefix:
@@ -2925,11 +3412,14 @@ components:
 
     DistrictCreate:
       type: object
-      required: [ name ]
+      required: [ name, hub_id, center_lat, center_lng ]
       properties:
         name:
           type: string
           maxLength: 100
+        hub_id:
+          type: integer
+          description: Existing active hub ID (`is_active=true`) the district belongs to.
         postal_prefix:
           type: string
           maxLength: 10
@@ -2939,13 +3429,11 @@ components:
           format: double
           minimum: -90
           maximum: 90
-          nullable: true
         center_lng:
           type: number
           format: double
           minimum: -180
           maximum: 180
-          nullable: true
         radius_meters:
           type: integer
           minimum: 1
@@ -2960,6 +3448,11 @@ components:
         name:
           type: string
           maxLength: 100
+        hub_id:
+          type: integer
+          description: >-
+            Existing active hub ID (`is_active=true`) when reassigning a
+            district to another hub.
         postal_prefix:
           type: string
           maxLength: 10
@@ -2969,13 +3462,11 @@ components:
           format: double
           minimum: -90
           maximum: 90
-          nullable: true
         center_lng:
           type: number
           format: double
           minimum: -180
           maximum: 180
-          nullable: true
         radius_meters:
           type: integer
           minimum: 1
@@ -2995,8 +3486,10 @@ components:
           uniqueItems: true
           description: >-
             Full replacement set of active district IDs. Use an empty array to
-            clear all actor district assignments. Duplicate IDs and inactive or
-            unknown districts return validation errors.
+            clear all actor district assignments. When the target officer or
+            manager has a hub_id, every district must belong to that hub;
+            cross-hub IDs return **422**. Duplicate IDs and inactive or unknown
+            districts return validation errors.
           items:
             type: integer
 
@@ -3022,10 +3515,9 @@ components:
         Category resource. Categories are assigned to departments through the
         category_department many-to-many pivot. Categories use a two-level
         hierarchy: main categories have parent_id null and use priority for
-        ordering; subcategories reference a main category through parent_id, use
-        weight for ordering, and cannot have children (no sub-under-sub). For
-        both priority and weight, lower numbers mean higher priority and sort
-        first.
+        ordering (lower number = higher urgency); subcategories reference a main
+        category through parent_id, order alphabetically by name, and cannot
+        have children (no sub-under-sub).
       properties:
         id:
           type: integer
@@ -3041,11 +3533,7 @@ components:
         priority:
           type: integer
           nullable: true
-          description: Main-category ordering value; lower number means higher priority.
-        weight:
-          type: integer
-          nullable: true
-          description: Subcategory ordering value; lower number means higher priority.
+          description: Main-category ordering value; lower number means higher priority. Null for subcategories.
         parent:
           nullable: true
           allOf:
@@ -3123,12 +3611,6 @@ components:
           maximum: 255
           nullable: true
           description: Main categories only; lower number means higher priority.
-        weight:
-          type: integer
-          minimum: 0
-          maximum: 255
-          nullable: true
-          description: Subcategories only; lower number means higher priority.
         is_active:
           type: boolean
           default: true
@@ -3157,12 +3639,6 @@ components:
           maximum: 255
           nullable: true
           description: Main categories only; lower number means higher priority.
-        weight:
-          type: integer
-          minimum: 0
-          maximum: 255
-          nullable: true
-          description: Subcategories only; lower number means higher priority.
         is_active:
           type: boolean
           description: >-

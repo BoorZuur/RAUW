@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\Department;
 use App\Models\District;
+use App\Models\Hub;
 use App\Models\Manager;
 use App\Models\Officer;
 use App\Models\User;
@@ -33,8 +34,8 @@ use InvalidArgumentException;
  *
  * Profile shape by actor type:
  *   - User:    id, username, email
- *   - Officer: id, username, email, badge_number, departments, districts
- *   - Manager: id, username, email, departments, is_main_manager, districts
+ *   - Officer: id, username, email, badge_number, hub_id, hub, departments, districts
+ *   - Manager: id, username, email, hub_id, hub, departments, is_main_manager, districts
  *
  * Retained fields with tradeoffs (kept intentionally, covered by tests):
  *   - `badge_number` (Officer): the client displays officer identity.
@@ -95,6 +96,8 @@ class AuthProfileResource extends JsonResource
             'username' => $officer->username,
             'email' => $officer->email,
             'badge_number' => $officer->badge_number,
+            'hub_id' => $officer->hub_id,
+            'hub' => $this->compactHub($officer),
             'departments' => $this->compactDepartments($officer),
             'districts' => $this->compactDistricts($officer),
         ];
@@ -109,10 +112,26 @@ class AuthProfileResource extends JsonResource
             'id' => $manager->id,
             'username' => $manager->username,
             'email' => $manager->email,
+            'hub_id' => $manager->hub_id,
+            'hub' => $this->compactHub($manager),
             'departments' => $this->compactDepartments($manager),
             'is_main_manager' => (bool) $manager->is_main_manager,
             'districts' => $this->compactDistricts($manager),
         ];
+    }
+
+    /**
+     * Return the actor's hub when the relation has already been loaded.
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function compactHub(Officer|Manager $actor): ?array
+    {
+        if (! $actor->relationLoaded('hub') || ! $actor->hub instanceof Hub) {
+            return null;
+        }
+
+        return (new HubResource($actor->hub))->resolve();
     }
 
     /**

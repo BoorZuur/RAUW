@@ -19,6 +19,7 @@ class DistrictController extends Controller
     public function index(): AnonymousResourceCollection
     {
         $districts = District::query()
+            ->with('hub')
             ->withCount(['managers', 'officers', 'issues'])
             ->orderBy('name')
             ->get();
@@ -31,7 +32,7 @@ class DistrictController extends Controller
      */
     public function show(District $district): DistrictResource
     {
-        $district->loadCount(['managers', 'officers', 'issues']);
+        $district->load('hub')->loadCount(['managers', 'officers', 'issues']);
 
         return new DistrictResource($district);
     }
@@ -47,6 +48,7 @@ class DistrictController extends Controller
     public function store(StoreDistrictRequest $request): JsonResponse
     {
         $district = District::create($request->safe()->only([
+            'hub_id',
             'name',
             'postal_prefix',
             'center_lat',
@@ -55,7 +57,7 @@ class DistrictController extends Controller
             'is_active',
         ]));
 
-        $district->loadCount(['managers', 'officers', 'issues']);
+        $district->load('hub')->loadCount(['managers', 'officers', 'issues']);
 
         return (new DistrictResource($district))
             ->response()
@@ -72,6 +74,7 @@ class DistrictController extends Controller
     public function update(UpdateDistrictRequest $request, District $district): DistrictResource
     {
         $attributes = $request->safe()->only([
+            'hub_id',
             'name',
             'postal_prefix',
             'center_lat',
@@ -84,7 +87,7 @@ class DistrictController extends Controller
             $district->update($attributes);
         }
 
-        $district->refresh()->loadCount(['managers', 'officers', 'issues']);
+        $district->refresh()->load('hub')->loadCount(['managers', 'officers', 'issues']);
 
         return new DistrictResource($district);
     }

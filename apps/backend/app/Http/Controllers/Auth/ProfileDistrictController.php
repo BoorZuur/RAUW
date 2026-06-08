@@ -36,7 +36,7 @@ class ProfileDistrictController extends Controller
 
         // Reload the relations the profile resource embeds so the response
         // reflects the freshly synced districts without lazy queries.
-        $actor->load('departments', 'districts');
+        $actor->load('departments', 'districts', 'hub');
 
         $type = $actor instanceof Manager ? ActorType::Manager : ActorType::Officer;
 

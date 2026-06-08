@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\District;
+use App\Models\Hub;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -19,6 +20,7 @@ class DistrictFactory extends Factory
     {
         return [
             'name' => fake()->unique()->city(),
+            'hub_id' => Hub::factory(),
             'postal_prefix' => fake()->unique()->numberBetween(1000, 9999),
             'center_lat' => fake()->latitude(51.8, 52.5),
             'center_lng' => fake()->longitude(4.0, 5.5),

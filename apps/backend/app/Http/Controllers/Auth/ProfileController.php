@@ -43,8 +43,8 @@ class ProfileController extends Controller
 
         // Eager-load the compact districts relation for officers and managers
         // so the profile resource can embed them without triggering lazy queries.
-        if (($actor instanceof Officer || $actor instanceof Manager) && ! $actor->relationLoaded('districts')) {
-            $actor->loadMissing('districts');
+        if ($actor instanceof Officer || $actor instanceof Manager) {
+            $actor->loadMissing(['districts', 'hub']);
         }
 
         // Eager-load the actor's department relationships so the profile

@@ -46,7 +46,7 @@ class RegisterOfficerController extends Controller
 
         // Eager-load the compact district and department relations so
         // AuthProfileResource embeds the same keys as login without lazy queries.
-        $officer->loadMissing('departments', 'districts');
+        $officer->loadMissing('departments', 'districts', 'hub');
 
         $token = $officer->createToken('api-login')->plainTextToken;
 
