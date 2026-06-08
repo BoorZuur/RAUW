@@ -94,7 +94,7 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 
 1. Run **Auth / Register User** or **Auth / Register Officer** to create a public actor and auto-login, or run **Auth / Login** with an existing demo account. Officer registration requires at least one existing department ID, **latitude**, and **longitude**; local seeded departments normally include IDs `1` and `2`.
 2. Run **Auth / Current Profile** to inspect the actor attached to the stored token.
-3. **Officer shared shift flow:** Run **Auth / Login Officer at Hub** to start the shared shift, then **Issues / List Issues** (workflow access). Run **Auth / Start Shift** when logged in without an active shift. Run **Auth / Login Officer Remote** (no active shift) then **Auth / Officer Workflow Blocked (403 Smoke)** for `hub_active_required`. **Managers / End Officer Shift** clears the shift without revoking tokens. Profile, start-shift, and reference reads work without an active shift.
+3. **Officer shared shift flow:** Run **Auth / Login Officer at Hub** to start the shared shift, then **Issues / Officer workflows** writes (assign-self, status, resolution). **Tier B browse** (`GET /api/issues`, show, officer-resolution show, attachment downloads) works without an active shift. Run **Auth / Start Shift** when logged in without an active shift. Run **Auth / Login Officer Remote** (no active shift) then **Auth / Officer Workflow Blocked (403 Smoke)** — expects `hub_active_required` on **Tier C** `POST .../assign-self`, not on issue list. **Managers / End Officer Shift** clears the shift without revoking tokens. Profile, start-shift, and reference reads work without an active shift.
 4. Run **Hubs / List Hubs**, **Districts / List Districts**, and **Departments / List Departments** to find local IDs for assignment examples.
 5. Run **Auth / Login as Main Manager** (`demo.manager@example.com` / `password`) to populate `main_manager_access_token` and `access_token` for manager administration.
 6. Run **Officers / List Officer Sessions** to inspect login audit rows (manager only).
@@ -250,7 +250,7 @@ Request body for users and managers uses email and password only:
 }
 ```
 
-Missing or invalid officer coordinates return `422`. Officers without `hub_id` receive `403` with `code: hub_not_assigned`. Hub-eligible login starts or joins the shared shift (`hub_active: true`, `hub_active_until`); re-login at hub does not extend an existing shift. Outside-radius login preserves an active shared shift; without a shift, `hub_active: false` and Tier C routes return `403` `hub_active_required`. Use **Auth / Start Shift** to start a shift without re-login.
+Missing or invalid officer coordinates return `422`. Officers without `hub_id` receive `403` with `code: hub_not_assigned`. Hub-eligible login starts or joins the shared shift (`hub_active: true`, `hub_active_until`); re-login at hub does not extend an existing shift. Outside-radius login preserves an active shared shift; without a shift, `hub_active: false` and **Tier C** workflow writes return `403` `hub_active_required` while **Tier B** issue browse reads remain available. Use **Auth / Start Shift** to start a shift without re-login.
 
 Successful response shape:
 
@@ -280,7 +280,7 @@ Common error responses:
 
 - `401 Unauthorized` with `{"message":"Invalid credentials."}` for invalid, inactive, ambiguous, or unknown accounts.
 - `403 Forbidden` with `{"message":"Officer hub assignment required before login.","code":"hub_not_assigned"}` when an officer has no `hub_id`.
-- `403 Forbidden` with `{"message":"Hub-active session required.","code":"hub_active_required"}` on Tier C routes when the officer has no active shared shift.
+- `403 Forbidden` with `{"message":"Hub-active session required.","code":"hub_active_required"}` on Tier C workflow routes when the officer has no active shared shift (not on Tier B issue browse reads).
 - `403 Forbidden` with `code: outside_hub_radius` or `shift_already_active` (422) on start-shift.
 - `422 Unprocessable Entity` with validation errors when `email` or `password` is missing or invalid, or when officer `latitude`/`longitude` is missing or out of range.
 
@@ -818,15 +818,15 @@ Visibility write (officers and managers only):
 
 Returns `404` when the issue is not viewable by the caller (same rules as show). User-owned `PATCH /api/issues/{issue}` cannot change visibility.
 
-Issue responses include read-only `status`, `assigned_officer_id`, and `visibility` fields. Officers and managers receive `status_history` on show (no GPS coordinates). `officer_resolution` is embedded only when eager-loaded; use the dedicated GET path below.
+Issue responses include read-only `status`, `assigned_officer_id`, and `visibility` fields. Officers and managers receive `status_history` on show (no GPS coordinates) and embedded `officer_resolution` when a report exists.
 
 ### Officer issue workflows
 
-Tier C routes require an active officer shared shift (`hub_active_until` in the future) or officers receive **403** `hub_active_required`. District scoping: the officer must be assigned to the issue's district via `district_officer` or **403** `officer_not_in_district`.
+**Tier B** (browse without shift): `GET /api/issues`, `GET /api/issues/{issue}`, `GET .../officer-resolution`, and attachment downloads. **Tier C** (hub-active required): assign-self, unassign-self, status PATCH, resolution POST/PATCH. Tier C without shift → **403** `hub_active_required`. District scoping on workflow writes: officer must be in the issue's district via `district_officer` or **403** `officer_not_in_district`. Officer writes use validate-after-lock (mutable checks after `lockForUpdate`).
 
 **Self-assign / unassign**
 
-- `POST {{base_url}}/api/issues/{issue}/assign-self` — active officer; idempotent when already assigned to self; **409** `issue_already_assigned` when another officer owns it; open issues transition to `in_behandeling`.
+- `POST {{base_url}}/api/issues/{issue}/assign-self` — active officer; idempotent when already assigned to self; **409** `issue_already_assigned` when another officer owns it; **422** `issue_not_assignable` on `opgelost`/`gesloten`; open issues transition to `in_behandeling`.
 - `POST {{base_url}}/api/issues/{issue}/unassign-self` — current assignee only; **403** `not_assigned_officer` otherwise.
 
 **Status update**
@@ -848,12 +848,12 @@ Distinct from user satisfaction in `issue_resolutions`. One report per issue.
 
 - `GET {{base_url}}/api/issues/{issue}/officer-resolution` — any actor who can view the issue; **404** when none exists.
 - `POST {{base_url}}/api/issues/{issue}/officer-resolution` — multipart; current assignee only; **409** `officer_resolution_exists` on duplicate.
-- `PATCH {{base_url}}/api/issues/{issue}/officer-resolution` — multipart; optional `remove_attachment_ids` and new `files`.
-- `GET {{base_url}}/api/issues/{issue}/officer-resolution/attachments/{attachment}/download` — same visibility as show.
+- `PATCH {{base_url}}/api/issues/{issue}/officer-resolution` — multipart; optional `remove_attachment_ids` and new `files`; `officer_id` updated to last editor.
+- `GET {{base_url}}/api/issues/{issue}/officer-resolution/attachments/{attachment}/download` — visibility-only auth (any actor who can view the issue); Tier B.
 
-Up to **3** images (`jpg`, `jpeg`, `png`, `gif`, `webp`), **5 MB** each.
+Up to **3** images (`jpg`, `jpeg`, `png`, `gif`, `webp`), **5 MB** each. Uploads are content-sniffed after extension rules (issue user attachments also accept PDF via magic bytes).
 
-Postman folder: **Issues / Officer workflows**. Run **Auth / Login Officer at Hub** first; use an issue in the officer's district (demo: Cool / `district_id: 1`).
+Postman folder: **Issues / Officer workflows**. Run **Auth / Login Officer at Hub** before Tier C writes; browse requests work after **Auth / Login Officer Remote**. Use an issue in the officer's district (demo: Cool / `district_id: 1`).
 
 ### Issue Attachments
 
@@ -861,7 +861,7 @@ Attachment endpoints require `Authorization: Bearer <token>`. Upload and delete 
 
 Common requests:
 
-- `POST {{base_url}}/api/issues/{issue}/attachments` — upload 1-5 files. Each file must be 5 MB or smaller and one of `jpg`, `jpeg`, `png`, `gif`, `webp`, or `pdf`.
+- `POST {{base_url}}/api/issues/{issue}/attachments` — upload 1-5 files. Each file must be 5 MB or smaller and one of `jpg`, `jpeg`, `png`, `gif`, `webp`, or `pdf`. Server content-sniffs images and verifies PDF magic bytes (`%PDF-`).
 - `GET {{base_url}}/api/issues/{issue}/attachments/{attachment}/download` — stream the file from non-public local storage through the authenticated API route.
 - `DELETE {{base_url}}/api/issues/{issue}/attachments/{attachment}` — owner-only hard delete for one attachment. Use this before uploading replacement files.
 

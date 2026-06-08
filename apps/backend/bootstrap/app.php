@@ -76,6 +76,9 @@ return Application::configure(basePath: dirname(__DIR__))
             ], $exception->status);
         });
 
+        // Officer workflow conflicts (assignee, district, terminal assign, duplicate
+        // resolution) are thrown as OfficerIssueConflict and rendered above. Only
+        // integrity races on officer_issue_resolutions.issue_id are mapped here.
         $isOfficerResolutionIssueIdViolation = static function (QueryException $exception): bool {
             $message = strtolower($exception->getMessage());
 
@@ -92,6 +95,8 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null;
             }
 
+            // Map duplicate officer_issue_resolutions.issue_id to structured 409
+            // (OfficerIssueConflict also handles this; this covers race paths).
             if ($isIntegrityConstraint($exception) && $isOfficerResolutionIssueIdViolation($exception)) {
                 return response()->json([
                     'message' => 'An officer resolution already exists for this issue.',

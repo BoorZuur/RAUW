@@ -564,20 +564,16 @@
                 { "key": "token", "value": "{{officer_remote_token}}", "type": "string" }
               ]
             },
-            "method": "GET",
+            "method": "POST",
             "header": [
               { "key": "Accept", "value": "application/json", "type": "text" }
             ],
             "url": {
-              "raw": "{{base_url}}/api/issues?page=1&per_page=20",
+              "raw": "{{base_url}}/api/issues/{{issue_id}}/assign-self",
               "host": [ "{{base_url}}" ],
-              "path": [ "api", "issues" ],
-              "query": [
-                { "key": "page", "value": "1" },
-                { "key": "per_page", "value": "20" }
-              ]
+              "path": [ "api", "issues", "{{issue_id}}", "assign-self" ]
             },
-            "description": "Smoke test for shared-shift gate on Tier C routes. Run Auth / Login Officer Remote when the officer has no active shared shift (fresh seed or after end-shift). Expects 403 hub_active_required on GET /api/issues. Profile, start-shift, and reference reads remain available without an active shift."
+            "description": "Smoke test for shared-shift gate on Tier C workflow writes. Run Auth / Login Officer Remote when the officer has no active shared shift (fresh seed or after end-shift). Expects 403 hub_active_required on POST assign-self. Tier B browse (GET /api/issues, GET issue show, resolution show, downloads) still works without a shift. Profile, start-shift, and reference reads remain available."
           },
           "response": []
         },
@@ -1925,7 +1921,7 @@
               ]
             },
             "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/attachments", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "attachments" ] },
-            "description": "Upload attachments to an issue owned by the authenticated active user. Each issue may hold at most 5 attachments total. Each file is limited to 5 MB. Files are stored on local non-public development storage and are downloaded only through authenticated endpoints. The 201 response wraps attachments as data: [...]. The test stores attachment_id and attachment_download_url from response.data[0]."
+            "description": "Upload attachments to an issue owned by the authenticated active user. Each issue may hold at most 5 attachments total. Each file is limited to 5 MB and must be jpg/jpeg/png/gif/webp/pdf. Server content-sniffs images and verifies PDF magic bytes after extension rules. Files are stored on local non-public development storage and are downloaded only through authenticated endpoints. The 201 response wraps attachments as data: [...]. The test stores attachment_id and attachment_download_url from response.data[0]."
           },
           "response": []
         },
@@ -1947,7 +1943,7 @@
             "method": "GET",
             "header": [ { "key": "Accept", "value": "application/octet-stream", "type": "text" } ],
             "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/attachments/{{attachment_id}}/download", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "attachments", "{{attachment_id}}", "download" ] },
-            "description": "Authenticated attachment download. The attachment must belong to the issue in the route and the local backing file must exist. The API streams the original filename from non-public local storage."
+            "description": "Authenticated attachment download. Tier B for officers (no hub-active shift required). The attachment must belong to the issue in the route and the local backing file must exist. The API streams the original filename from non-public local storage."
           },
           "response": []
         },
@@ -1972,7 +1968,7 @@
                 "method": "POST",
                 "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
                 "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/assign-self", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "assign-self" ] },
-                "description": "Self-assign the authenticated active officer to an issue in one of their districts. Requires hub-active officer token (Auth / Login Officer at Hub). Open issues also transition to in_behandeling with one status history row. Idempotent when already assigned to self. Returns 409 issue_already_assigned when another officer owns the issue. Returns 403 officer_not_in_district when the issue district is outside the officer pivot. Use an unassigned issue in the officer's district (demo officer: Cool / district_id 1)."
+                "description": "Self-assign the authenticated active officer to an issue in one of their districts. Tier C: requires hub-active officer token (Auth / Login Officer at Hub). Open issues also transition to in_behandeling with one status history row. Idempotent when already assigned to self. Returns 409 issue_already_assigned when another officer owns the issue; 422 issue_not_assignable on opgelost/gesloten issues; 403 officer_not_in_district when the issue district is outside the officer pivot. Mutable checks run after row lock. Use an unassigned open issue in the officer's district (demo officer: Cool / district_id 1)."
               },
               "response": []
             },
@@ -1983,7 +1979,7 @@
                 "method": "POST",
                 "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
                 "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/unassign-self", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "unassign-self" ] },
-                "description": "Clear assigned_officer_id when the authenticated officer is the current assignee. Status is unchanged. Returns 403 not_assigned_officer for non-assignees. Hub-active officer token required."
+                "description": "Clear assigned_officer_id when the authenticated officer is the current assignee. Tier C: hub-active officer token required. Status is unchanged. Returns 403 not_assigned_officer for non-assignees. Assignee check runs after row lock."
               },
               "response": []
             },
@@ -1995,7 +1991,7 @@
                 "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
                 "body": { "mode": "raw", "raw": "{\n  \"status\": \"opgelost\",\n  \"note\": \"Tegel vervangen en stoep hersteld.\"\n}", "options": { "raw": { "language": "json" } } },
                 "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/status", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "status" ] },
-                "description": "Update assigned issue status along the directed officer workflow. Assigned active officer only. Allowed transitions: open to in_behandeling; in_behandeling to opgelost or gesloten; opgelost to gesloten. Sets resolved_at on first transition to opgelost and appends one status history row without coordinates. Invalid transitions return 422."
+                "description": "Update assigned issue status along the directed officer workflow. Tier C: hub-active required. Assigned active officer only. Allowed transitions: open to in_behandeling; in_behandeling to opgelost or gesloten; opgelost to gesloten. Sets resolved_at on first transition to opgelost and appends one status history row without coordinates. Invalid transitions return 422. Assignee and transition checks run after row lock."
               },
               "response": []
             },
@@ -2006,7 +2002,7 @@
                 "method": "GET",
                 "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
                 "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/officer-resolution", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "officer-resolution" ] },
-                "description": "Show the single officer field report for an issue. Any authenticated actor who can view the issue may read it. Returns 404 when no resolution exists or the issue is not visible. Officers need hub-active for Tier C routes."
+                "description": "Show the single officer field report for an issue. Tier B: any authenticated actor who can view the issue may read it without an active shared shift. Returns 404 when no resolution exists or the issue is not visible."
               },
               "response": []
             },
@@ -2042,7 +2038,7 @@
                   ]
                 },
                 "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/officer-resolution", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "officer-resolution" ] },
-                "description": "Create the officer field report (once per issue). Multipart. Current assignee only. Duplicate POST returns 409 officer_resolution_exists. Hub-active officer token required."
+                "description": "Create the officer field report (once per issue). Tier C: hub-active required. Multipart. Current assignee only. Duplicate POST returns 409 officer_resolution_exists. Image uploads are content-sniffed (Symfony MIME). Resolution row commits before attachment storage."
               },
               "response": []
             },
@@ -2062,7 +2058,7 @@
                   ]
                 },
                 "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/officer-resolution", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "officer-resolution" ] },
-                "description": "Update officer resolution title, content, and attachments. Current assignee only. Send remove_attachment_ids for owned attachments before uploading replacements."
+                "description": "Update officer resolution title, content, and attachments. Tier C: hub-active required. Current assignee only. officer_id is overwritten with the editing officer (last editor). Send remove_attachment_ids for owned attachments before uploading replacements. New files are content-sniffed."
               },
               "response": []
             },
@@ -2073,12 +2069,12 @@
                 "method": "GET",
                 "header": [ { "key": "Accept", "value": "application/octet-stream", "type": "text" } ],
                 "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/officer-resolution/attachments/{{officer_resolution_attachment_id}}/download", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "officer-resolution", "attachments", "{{officer_resolution_attachment_id}}", "download" ] },
-                "description": "Download a resolution attachment. Any actor who can view the issue. Run Create Officer Resolution first to populate officer_resolution_attachment_id."
+                "description": "Download a resolution attachment. Tier B: any actor who can view the issue (IssueVisibilityQuery) without an active shared shift. Run Create Officer Resolution first to populate officer_resolution_attachment_id."
               },
               "response": []
             }
           ],
-          "description": "Officer issue workflow requests (Tier C: hub-active required for officers). Log in with Auth / Login Officer at Hub before running. Use issue_id in the officer's assigned district (demo: Cool / district_id 1). Run Assign Self before status or resolution writes."
+          "description": "Officer issue workflow requests. Tier B browse (list/show, resolution show, downloads) works without a shift; Tier C writes (assign-self, unassign-self, status, resolution POST/PATCH) require hub-active. Log in with Auth / Login Officer at Hub before Tier C writes. Use issue_id in the officer's assigned district (demo: Cool / district_id 1). Run Assign Self before status or resolution writes."
         }
       ],
       "description": "Authenticated issue CRUD and attachment examples. Issue creation requires district_id and no longer accepts client-supplied department or removed legacy locality fields. Departments are derived from the selected category, stored in department_issue, and exposed as a read-only departments array. List filters are composable: district_id, department (code), category_id, mine (users only), and visibility (officers/managers only). Department filtering uses any-match semantics; pagination is backend-driven. Show returns 404 when the issue is not visible to the actor (e.g. another user's hidden issue). Anonymous issues retain user_id ownership while exposing only a stable alias. Attachment deletion is owner-only for replacement workflows. Issue deletion is hard delete and attachments cascade with the issue."

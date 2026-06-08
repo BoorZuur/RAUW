@@ -26,15 +26,22 @@ info:
     **403** from inactive-actor middleware.
 
     **Officer shared shift:** Officers share one shift clock via
-    `officers.hub_active_until`. Workflow access (Tier C) requires `is_active`
+    `officers.hub_active_until`. **Tier C** workflow writes require `is_active`
     and a future `hub_active_until` — not the bearer token's Sanctum `hub-active`
-    ability (audit-only). Officers must send `latitude` and `longitude` on
-    `POST /api/auth/login`; hub-eligible login or `POST /api/auth/start-shift`
-    starts the shift for **10 hours** (`OFFICER_HUB_ACTIVE_TTL_HOURS`, default
-    10). Outside-radius login does not clear an active shift. Registration does
-    not start a shift. Logout revokes only the current token; hub reassignment
-    and manager end-shift clear the shift without revoking tokens. Users and
-    managers ignore coordinate fields.
+    ability (audit-only). **Tier B** browse reads work without an active shift:
+    `GET /api/issues`, `GET /api/issues/{issueId}` (embeds `officer_resolution`
+    when present), `GET /api/issues/{issueId}/officer-resolution`, and
+    authenticated issue/resolution attachment downloads. Officers must send
+    `latitude` and `longitude` on `POST /api/auth/login`; hub-eligible login or
+    `POST /api/auth/start-shift` starts the shift for **10 hours**
+    (`OFFICER_HUB_ACTIVE_TTL_HOURS`, default 10). Outside-radius login does not
+    clear an active shift. Registration does not start a shift. Logout revokes
+    only the current token; hub reassignment and manager end-shift clear the
+    shift without revoking tokens. Users and managers ignore coordinate fields.
+
+    **Officer issue writes** use validate-after-lock: visibility and district
+    checks run before the transaction; assignee, transition, assignability, and
+    duplicate-resolution checks run on the locked issue row.
 
     **GPS trust (v1):** Coordinates are client-reported only. No mock-location
     detection, no per-request geofence re-check. Shared shift is operational
@@ -54,6 +61,7 @@ info:
     | `not_assigned_officer` | 403 | Officer status/unassign/resolution write without assignee ownership |
     | `issue_already_assigned` | 409 | Self-assign when another officer already owns the issue |
     | `officer_resolution_exists` | 409 | Duplicate POST on officer resolution (use PATCH to update) |
+    | `issue_not_assignable` | 422 | Self-assign when issue status is `opgelost` or `gesloten` |
     | `shift_already_active` | 422 | Start-shift when shift already active |
     | `account_inactive` | 403 | Inactive actor on a non-whitelisted route |
 
@@ -1912,9 +1920,10 @@ paths:
         code. Pagination is backend-driven using page and per_page, with a default
         per_page of 20 and maximum of 100. Results are ordered newest first.
 
-        **Officer shared shift:** Officers without an active shared shift
-        (`hub_active_until` null or past) receive **403** with
-        `code: hub_active_required` on this route (Tier C workflow).
+        **Officer shared shift:** Issue list is a **Tier B** browse read — officers
+        without an active shared shift may still call this endpoint. Tier C
+        workflow writes (assign-self, status, resolution POST/PATCH) require an
+        active shift.
       security:
         - bearerAuth: [ ]
       parameters:
@@ -2019,25 +2028,19 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           description: >-
-            Inactive account (`code: account_inactive`) or officer without active
-            shared shift (`code: hub_active_required`).
+            Inactive account (`code: account_inactive`).
           content:
             application/json:
               schema:
                 oneOf:
                   - $ref: '#/components/schemas/Error'
-                  - $ref: '#/components/schemas/HubError'
+                  - $ref: '#/components/schemas/AccountInactiveError'
               examples:
                 inactiveAccount:
                   summary: Inactive bearer token
                   value:
                     message: This account is inactive.
                     code: account_inactive
-                hubActiveRequired:
-                  summary: Officer without active shared shift
-                  value:
-                    message: Hub-active session required.
-                    code: hub_active_required
         '422':
           $ref: '#/components/responses/ValidationError'
 
@@ -2060,9 +2063,10 @@ paths:
         visible to the caller (for example a hidden issue owned by another user),
         the backend returns 404 rather than 403 to avoid leaking existence.
         Active officers and managers also receive `status_history` (newest first,
-        without coordinates) when loaded. `officer_resolution` is included only
-        when the relation is eager-loaded; use GET
-        `/api/issues/{issueId}/officer-resolution` as the primary read path.
+        without coordinates). `officer_resolution` is embedded with officer and
+        attachments when a report exists. **Tier B** browse: officers without an
+        active shared shift may still call this endpoint. Use GET
+        `/api/issues/{issueId}/officer-resolution` for resolution-only reads.
       security:
         - bearerAuth: [ ]
       responses:
@@ -2230,11 +2234,14 @@ paths:
       description: >-
         Upload attachments to an issue owned by the authenticated active user.
         Each issue may hold at most 5 attachments in total. Each uploaded file is
-        limited to 5 MB and must be jpg, jpeg, png, gif, webp, or pdf. In local
-        development files are stored on the non-public local disk and are served
-        only through the authenticated download endpoint; no public storage URL
-        is exposed. To replace files while editing an issue, delete existing
-        attachments first, then upload new files within the same total limit.
+        limited to 5 MB and must be jpg, jpeg, png, gif, webp, or pdf. After
+        extension/MIME rules pass, the server content-sniffs images (Symfony MIME)
+        and verifies PDFs via `%PDF-` magic bytes; mismatches return **422**. In
+        local development files are stored on the non-public local disk and are
+        served only through the authenticated download endpoint; no public
+        storage URL is exposed. To replace files while editing an issue, delete
+        existing attachments first, then upload new files within the same total
+        limit.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -2328,7 +2335,8 @@ paths:
       description: >-
         Stream an attachment from non-public local development storage. Allowed for
         the authenticated active user who owns the issue, any active officer, or
-        any active manager. Non-owner users receive **403** (`This action is
+        any active manager. **Tier B** for officers: no active shared shift
+        required. Non-owner users receive **403** (`This action is
         unauthorized.`). Deactivated accounts receive **403** (`This account is
         inactive.`). Unauthenticated requests receive **401**. The attachment must
         belong to the issue in the route
@@ -2369,10 +2377,12 @@ paths:
         the caller; otherwise **404**. When the officer is not assigned to the
         issue's district, **403** `officer_not_in_district`. Already assigned to
         the requesting officer is idempotent (**200**). When assigned to another
-        officer, **409** `issue_already_assigned` (no takeover). When the issue
-        status is `open`, self-assign also transitions it to `in_behandeling` and
-        appends one status history row. `assigned_officer_id` is read-only on
-        user-owned create/update; use this endpoint instead.
+        officer, **409** `issue_already_assigned` (no takeover). When status is
+        `opgelost` or `gesloten`, **422** `issue_not_assignable` (checked after
+        row lock). When the issue status is `open`, self-assign also transitions
+        it to `in_behandeling` and appends one status history row.
+        `assigned_officer_id` is read-only on user-owned create/update; use this
+        endpoint instead.
       security:
         - bearerAuth: [ ]
       responses:
@@ -2420,6 +2430,16 @@ paths:
               example:
                 message: Issue is already assigned to another officer.
                 code: issue_already_assigned
+        '422':
+          description: >-
+            Issue status does not allow assignment (`opgelost` or `gesloten`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueWorkflowUnprocessableError'
+              example:
+                message: Issues that are resolved or closed cannot be assigned.
+                code: issue_not_assignable
 
   /api/issues/{issueId}/unassign-self:
     parameters:
@@ -2488,7 +2508,9 @@ paths:
         (without coordinates) and sets `resolved_at` on the first transition to
         `opgelost`. Allowed transitions: `open` → `in_behandeling`;
         `in_behandeling` → `opgelost` or `gesloten`; `opgelost` → `gesloten`.
-        Same status or invalid transitions receive **422**.
+        Same status or invalid transitions receive **422** (Laravel validation
+        `errors` object). Assignee and transition checks run after `lockForUpdate`
+        (validate-after-lock).
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -2537,9 +2559,10 @@ paths:
       description: >-
         Return the single officer resolution report for an issue. Any
         authenticated actor who can view the issue may read it; hidden issues
-        return **404** when not visible. Officers without an active shared shift
-        receive **403** `hub_active_required`. Returns **404** when no resolution
-        exists yet. Distinct from user satisfaction feedback in `issue_resolutions`.
+        return **404** when not visible. **Tier B** browse: officers without an
+        active shared shift may still call this endpoint. Returns **404** when no
+        resolution exists yet. Distinct from user satisfaction feedback in
+        `issue_resolutions`.
       security:
         - bearerAuth: [ ]
       responses:
@@ -2552,7 +2575,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          $ref: '#/components/responses/HubActiveRequired'
+          $ref: '#/components/responses/InactiveAccount'
         '404':
           $ref: '#/components/responses/NotFound'
     post:
@@ -2566,8 +2589,10 @@ paths:
         `officer_not_in_district`). Duplicate POST returns **409**
         `officer_resolution_exists`; use PATCH to update an existing report.
         Up to **3** image attachments (`jpg`, `jpeg`, `png`, `gif`, `webp`), each
-        at most **5 MB**. Files are stored on non-public local storage and
-        served only through authenticated download endpoints.
+        at most **5 MB**. After extension rules pass, uploads are content-sniffed
+        as allowed images; mismatches return **422**. Files are stored on
+        non-public local storage and served only through authenticated download
+        endpoints.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -2616,9 +2641,11 @@ paths:
         resolution. Multipart upload. Only the authenticated active officer
         currently assigned to the issue may update it. Officers without an
         active shared shift receive **403** `hub_active_required`. District
-        scoping applies. Send `remove_attachment_ids` to delete owned attachments
+        scoping applies. `officer_id` is overwritten with the editing officer
+        (last editor). Send `remove_attachment_ids` to delete owned attachments
         before uploading replacements. Total attachments after removals plus new
-        files must not exceed **3**. Returns **404** when no resolution exists.
+        files must not exceed **3**. New uploads are content-sniffed as allowed
+        images. Returns **404** when no resolution exists.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -2668,10 +2695,11 @@ paths:
       summary: Download officer resolution attachment
       description: >-
         Stream a resolution attachment from non-public local development storage.
-        Any authenticated actor who can view the issue may download it. Officers
-        without an active shared shift receive **403** `hub_active_required`. The
-        attachment must belong to the issue's officer resolution and the backing
-        local file must still exist; otherwise **404**.
+        Visibility-only authorization: any authenticated actor who can view the
+        parent issue may download (D15). **Tier B** for officers: no active
+        shared shift required. Users probing hidden issues they do not own receive
+        **404**. The attachment must belong to the issue's officer resolution and
+        the backing local file must still exist; otherwise **404**.
       security:
         - bearerAuth: [ ]
       responses:
@@ -2685,7 +2713,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          $ref: '#/components/responses/HubActiveRequired'
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
 
@@ -3434,9 +3462,11 @@ components:
         **403** responses on protected routes use `This action is unauthorized.`
         when FormRequest authorization fails. Officers without an active shared
         shift (`hub_active_until` null or past) receive **403** with
-        `code: hub_active_required` on Tier C (workflow) routes; whitelisted
-        routes (profile, start-shift, reference reads) remain available. See
-        `#/components/responses/InactiveAccount`,
+        `code: hub_active_required` on Tier C (workflow write) routes. Tier B
+        browse routes remain available without a shift: issue list/show,
+        officer-resolution show, and issue/resolution attachment downloads.
+        Whitelisted routes also include profile, start-shift, and reference reads.
+        See `#/components/responses/InactiveAccount`,
         `#/components/responses/Forbidden`, and `#/components/responses/HubActiveRequired`.
 
   parameters:
@@ -3500,8 +3530,9 @@ components:
         `officer.hub-active` middleware on Tier C routes when the officer is
         inactive or `hub_active_until` is null or in the past. The middleware
         does not inspect the bearer token's Sanctum `hub-active` ability.
-        Whitelisted routes (profile, start-shift, reference reads) do not
-        require an active shift.
+        Tier B browse routes (issue list/show, officer-resolution show,
+        attachment downloads) and other whitelisted routes (profile, start-shift,
+        reference reads) do not require an active shift.
       content:
         application/json:
           schema:
@@ -3624,6 +3655,20 @@ components:
         code:
           type: string
           enum: [ issue_already_assigned, officer_resolution_exists ]
+
+    IssueWorkflowUnprocessableError:
+      type: object
+      description: >-
+        Officer issue workflow rejection with stable `code` and HTTP 422.
+        Distinct from Laravel field validation (`ValidationError`) used for
+        invalid status transitions.
+      required: [ message, code ]
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+          enum: [ issue_not_assignable ]
 
     StartOfficerShiftRequest:
       type: object
@@ -4871,9 +4916,10 @@ components:
           allOf:
             - $ref: '#/components/schemas/OfficerIssueResolution'
           description: >-
-            Optional embedded officer field report when the relation is
-            eager-loaded and the actor may view the issue. Use GET
-            `/api/issues/{issueId}/officer-resolution` as the primary read path.
+            Embedded officer field report (with officer and attachments) when
+            present and the actor may view the issue. Included on GET issue show.
+            Use GET `/api/issues/{issueId}/officer-resolution` for resolution-only
+            reads.
         created_at:
           type: string
           format: date-time
@@ -5006,6 +5052,9 @@ components:
         officer_id:
           type: integer
           nullable: true
+          description: >-
+            Officer who created or last edited the report. Overwritten on each
+            successful PATCH (last editor).
         title:
           type: string
         content:
@@ -5052,7 +5101,7 @@ components:
             format: binary
           description: >-
             Optional image attachments (jpg, jpeg, png, gif, webp). Up to 3
-            files, each at most 5 MB.
+            files, each at most 5 MB. Content-sniffed after extension rules.
 
     OfficerIssueResolutionUpdate:
       type: object
