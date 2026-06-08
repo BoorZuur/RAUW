@@ -43,6 +43,7 @@ function App() {
         {path: "/registreerhandhaver", element: <HandhaverRegister/>},
         {path: "/loginmanager", element: <ManagerLogin/>},
 
+        { path: "/account", element: <Account /> },
         // 2. User Routes
         {
             element: <PortalGuard allowedType="user" />,
@@ -78,7 +79,7 @@ function App() {
         // }
     ]);
 
-    return <RouterProvider router={router} />;
+    return <RouterProvider router={router}/>;
 }
 
 export default App;
