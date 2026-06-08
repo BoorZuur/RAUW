@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Issues\DownloadOfficerIssueResolutionAttachmentRequest;
 use App\Models\Issue;
 use App\Models\OfficerIssueResolutionAttachment;
-use App\Support\IssueVisibilityQuery;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -16,16 +15,19 @@ class OfficerIssueResolutionAttachmentController extends Controller
 
     /**
      * Stream a resolution attachment file back to an authorized actor.
+     *
+     * Download authorization is enforced by DownloadOfficerIssueResolutionAttachmentRequest
+     * via IssueVisibilityQuery (Q8 / D15-A visibility-only): users who may view the issue,
+     * and any active officer or manager. Hidden issues follow existing visibility rules
+     * (404 when not viewable). The attachment must belong to the issue's resolution —
+     * a mismatch yields 404 so attachment ids cannot be probed across issues — and the
+     * backing file must still exist on the non-public `local` disk.
      */
     public function download(
         DownloadOfficerIssueResolutionAttachmentRequest $request,
         Issue $issue,
         OfficerIssueResolutionAttachment $attachment,
     ): StreamedResponse {
-        if (! IssueVisibilityQuery::canViewIssue($issue, $request->user())) {
-            abort(404);
-        }
-
         $resolution = $issue->officerResolution;
 
         if ($resolution === null

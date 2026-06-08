@@ -2,21 +2,46 @@
 
 namespace App\Http\Requests\Issues;
 
+use App\Models\Issue;
+use App\Models\User;
+use App\Support\IssueVisibilityQuery;
 use Illuminate\Foundation\Http\FormRequest;
 
 class DownloadOfficerIssueResolutionAttachmentRequest extends FormRequest
 {
     /**
-     * Downloading a resolution attachment is available to any authenticated
-     * actor; route middleware enforces authentication and inactive actors are
-     * blocked globally. Whether the actor may view the parent issue is enforced
-     * in the controller via IssueVisibilityQuery (404 when not visible).
-     * Attachment ownership against the issue's resolution is also verified in
-     * the controller.
+     * Stream downloads use visibility-only authorization (Q8 / D15-A): any actor
+     * who may view the parent issue may download its resolution attachments.
+     *
+     * IssueVisibilityQuery::canViewIssue() mirrors show/index scoping — active users
+     * may download when the issue is visible or they own it; active officers and
+     * managers may download any issue attachment. This differs from
+     * DownloadIssueAttachmentRequest, which restricts users to issue-owner-only
+     * regardless of visibility.
+     *
+     * A user probing a hidden issue they do not own receives 404 (no enumeration).
+     * Other unauthorized actors receive 403 with a message. Whether the attachment
+     * belongs to the issue's resolution is enforced in the controller, which
+     * returns 404 on a mismatch.
      */
     public function authorize(): bool
     {
-        return true;
+        $actor = $this->user();
+        $issue = $this->route('issue');
+
+        if (! $issue instanceof Issue) {
+            return false;
+        }
+
+        if (IssueVisibilityQuery::canViewIssue($issue, $actor)) {
+            return true;
+        }
+
+        if ($actor instanceof User) {
+            abort(404);
+        }
+
+        return false;
     }
 
     /**
