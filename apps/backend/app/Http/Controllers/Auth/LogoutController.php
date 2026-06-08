@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Actions\Auth\CloseOfficerSessions;
-use App\Actions\Auth\RevokeOfficerHubActive;
+use App\Actions\Auth\RevokeCurrentOfficerToken;
 use App\Http\Controllers\Controller;
 use App\Models\Officer;
 use Illuminate\Http\JsonResponse;
@@ -13,13 +13,13 @@ use Illuminate\Http\Response;
 class LogoutController extends Controller
 {
     public function __construct(
-        private readonly RevokeOfficerHubActive $revokeOfficerHubActive,
+        private readonly RevokeCurrentOfficerToken $revokeCurrentOfficerToken,
         private readonly CloseOfficerSessions $closeOfficerSessions,
     ) {
     }
 
     /**
-     * Invalidate all Sanctum personal access tokens for the authenticated actor.
+     * Revoke the current bearer token for the authenticated actor.
      */
     public function __invoke(Request $request): JsonResponse
     {
@@ -31,11 +31,16 @@ class LogoutController extends Controller
             ], Response::HTTP_UNAUTHORIZED);
         }
 
+        $token = $actor->currentAccessToken();
+
+        if ($actor instanceof Officer && $token !== null) {
+            $this->closeOfficerSessions->closeForToken($actor, $token);
+        }
+
         if ($actor instanceof Officer) {
-            $this->revokeOfficerHubActive->revoke($actor);
-            $this->closeOfficerSessions->closeFor($actor);
+            $this->revokeCurrentOfficerToken->revoke($actor);
         } else {
-            $actor->tokens()->delete();
+            $token?->delete();
         }
 
         return response()->json([
