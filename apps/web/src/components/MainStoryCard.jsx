@@ -5,9 +5,9 @@ export default function MainStoryCard({title, description, location, district, d
         <button
             onClick={onClick}
             style={{fontFamily: "'Open Sans', sans-serif"}}
-            className="w-full max-w-[900px] text-left bg-[#fcfbfa] rounded-2xl border border-stone-200/60 shadow-sm hover:shadow-md active:scale-[0.998] transition-all cursor-pointer antialiased overflow-hidden flex flex-col sm:flex-row focus:outline-none focus:ring-2 focus:ring-stone-400/20"
+            className="w-full text-left bg-[#fcfbfa] rounded-2xl border border-stone-200/60 shadow-sm hover:shadow-md active:scale-[0.998] transition-all cursor-pointer antialiased overflow-hidden flex flex-col sm:flex-row focus:outline-none focus:ring-2 focus:ring-stone-400/20"
         >
-            {/* Linkerzijde: Afbeelding */}
+            {/* Image */}
             <div className="relative w-full sm:w-[35%] h-48 sm:h-auto min-h-[180px] bg-stone-100 flex-shrink-0">
                 {imageUrl ? (
                     <img
@@ -22,25 +22,21 @@ export default function MainStoryCard({title, description, location, district, d
                 )}
             </div>
 
-            {/* Rechterzijde: Content */}
             <div className="p-6 flex flex-col justify-between flex-1 min-w-0 bg-white">
                 <div>
-                    {/* Bovenste info & Badges */}
+                    {/* Location */}
                     <div className="flex flex-col gap-2 mb-3">
                         <div
-                            className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold tracking-wider text-stone-400 uppercase">
-                            <span>{location}</span>
-                            <span>—</span>
-                            <span className="text-stone-500">{district}</span>
+                            className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold tracking-wider uppercase">
+                            {location}
                         </div>
 
                         <div className="flex items-center gap-2">
-                            {/* In behandeling Badge */}
+                            {/* Badges */}
                             <span
                                 className="bg-[#ef7d14] text-white px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide">
                                 In behandeling
                             </span>
-                            {/* Overlast Badge */}
                             <span
                                 className="inline-flex items-center gap-1 bg-stone-50 text-stone-700 border border-stone-200 px-2.5 py-1 rounded-full text-[11px] font-medium">
                                 <svg className="w-3 h-3 text-stone-500" fill="none" viewBox="0 0 24 24"
@@ -53,22 +49,21 @@ export default function MainStoryCard({title, description, location, district, d
                         </div>
                     </div>
 
-                    {/* Titel */}
+                    {/* Title */}
                     <h3 className="font-bold text-xl sm:text-2xl text-stone-900 tracking-tight leading-snug mb-2 line-clamp-2">
                         {title}
                     </h3>
 
-                    {/* Beschrijving */}
+                    {/* Description */}
                     <p className="text-stone-500 text-sm sm:text-[15px] leading-relaxed line-clamp-2 mb-6">
                         {description}
                     </p>
                 </div>
 
-                {/* Onderste balk met statistieken */}
                 <div
                     className="flex items-center justify-between border-t border-stone-100 pt-4 text-xs sm:text-sm text-stone-500 font-medium mt-auto">
                     <div className="flex items-center gap-4">
-                        {/* Volgers */}
+                        {/* Followers */}
                         <span className="flex items-center gap-1">
                             <svg className="w-4 h-4 text-stone-400" fill="none" viewBox="0 0 24 24"
                                  stroke="currentColor" strokeWidth="2">
@@ -77,11 +72,11 @@ export default function MainStoryCard({title, description, location, district, d
                             </svg>
                             {followers} volgers
                         </span>
-                        {/* Datum */}
+                        {/* Date */}
                         <span className="text-stone-400 font-normal">{date}</span>
                     </div>
 
-                    {/* Lees Meer Actie */}
+                    {/* Read more */}
                     <span
                         className="text-stone-900 font-bold inline-flex items-center gap-1 hover:text-stone-600 transition-colors">
                         Lees meer
