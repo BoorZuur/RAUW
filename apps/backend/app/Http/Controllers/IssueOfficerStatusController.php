@@ -20,7 +20,15 @@ class IssueOfficerStatusController extends Controller
      *
      * @var array<int, string>
      */
-    private const ISSUE_RELATIONS = ['user', 'category', 'district', 'departments', 'attachments'];
+    private const ISSUE_RELATIONS = [
+        'user',
+        'category',
+        'district',
+        'departments',
+        'attachments',
+        'officerResolution.officer',
+        'officerResolution.attachments',
+    ];
 
     /**
      * Update an assigned issue's status along the directed officer workflow.

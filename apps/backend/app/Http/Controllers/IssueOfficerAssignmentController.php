@@ -21,7 +21,15 @@ class IssueOfficerAssignmentController extends Controller
      *
      * @var array<int, string>
      */
-    private const ISSUE_RELATIONS = ['user', 'category', 'district', 'departments', 'attachments'];
+    private const ISSUE_RELATIONS = [
+        'user',
+        'category',
+        'district',
+        'departments',
+        'attachments',
+        'officerResolution.officer',
+        'officerResolution.attachments',
+    ];
 
     /**
      * Self-assign the authenticated officer to an issue in their district.
