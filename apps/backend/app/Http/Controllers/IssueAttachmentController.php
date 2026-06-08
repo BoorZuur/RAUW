@@ -75,13 +75,14 @@ class IssueAttachmentController extends Controller
     /**
      * Stream an attachment file back to an authorized actor.
      *
-     * Download authorization is enforced by DownloadIssueAttachmentRequest: the
-     * authenticated, active issue owner, any active officer, or any active
-     * manager. The attachment must belong to the issue named in the route — a
-     * mismatch yields a 404 so attachment ids cannot be probed across issues —
-     * and the backing file must still exist on the non-public `local` disk. The
-     * file is returned as a streamed download under its original client filename
-     * rather than its hashed storage name.
+     * Download authorization is enforced by DownloadIssueAttachmentRequest
+     * via IssueVisibilityQuery (Q8 / D15-A visibility-only): users who may view the issue,
+     * and any active officer or manager. Hidden issues follow existing visibility rules
+     * (404 when not viewable). The attachment must belong to the issue named in the route —
+     * a mismatch yields 404 so attachment ids cannot be probed across issues — and the
+     * backing file must still exist on the non-public `local` disk. The file is returned
+     * as a streamed download under its original client filename rather than its hashed
+     * storage name.
      */
     public function download(DownloadIssueAttachmentRequest $request, Issue $issue, IssueAttachment $attachment): StreamedResponse
     {

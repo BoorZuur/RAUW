@@ -3,25 +3,24 @@
 namespace App\Http\Requests\Issues;
 
 use App\Models\Issue;
-use App\Models\Manager;
-use App\Models\Officer;
 use App\Models\User;
+use App\Support\IssueVisibilityQuery;
 use Illuminate\Foundation\Http\FormRequest;
 
 class DownloadIssueAttachmentRequest extends FormRequest
 {
     /**
-     * Stream downloads are allowed for the issue owner or any active officer or
-     * manager.
+     * Stream downloads use visibility-only authorization (Q8 / D15-A): any actor
+     * who may view the parent issue may download its attachments.
      *
-     * The authenticated actor is resolved from the Sanctum bearer token and may
-     * be a User, Officer, or Manager. Active users may download only when
-     * `issues.user_id` matches their id (issue owner). Active officers and
-     * active managers may download any issue attachment regardless of ownership
-     * or assignment. Inactive actors, unauthenticated requests, and non-owner
-     * users are rejected with a 403 response. Whether the attachment belongs to
-     * the route issue is enforced in the controller, which returns a 404 on a
-     * mismatch.
+     * IssueVisibilityQuery::canViewIssue() mirrors show/index scoping — active users
+     * may download when the issue is visible or they own it; active officers and
+     * managers may download any issue attachment.
+     *
+     * A user probing a hidden issue they do not own receives 404 (no enumeration).
+     * Other unauthorized actors receive 403 with a message. Whether the attachment
+     * belongs to the route issue is enforced in the controller, which returns 404
+     * on a mismatch.
      */
     public function authorize(): bool
     {
@@ -32,17 +31,15 @@ class DownloadIssueAttachmentRequest extends FormRequest
             return false;
         }
 
-        if ($actor instanceof User
-            && (bool) $actor->is_active === true
-            && $issue->user_id === $actor->getKey()) {
+        if (IssueVisibilityQuery::canViewIssue($issue, $actor)) {
             return true;
         }
 
-        if ($actor instanceof Officer && (bool) $actor->is_active === true) {
-            return true;
+        if ($actor instanceof User) {
+            abort(404);
         }
 
-        return $actor instanceof Manager && (bool) $actor->is_active === true;
+        return false;
     }
 
     /**
