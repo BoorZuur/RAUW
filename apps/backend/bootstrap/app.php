@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureActorIsActive;
+use App\Http\Middleware\EnsureOfficerHubActive;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -25,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'actor.active' => EnsureActorIsActive::class,
+            'officer.hub-active' => EnsureOfficerHubActive::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
