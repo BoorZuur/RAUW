@@ -822,7 +822,7 @@ Issue responses include read-only `status`, `assigned_officer_id`, and `visibili
 
 ### Officer issue workflows
 
-**Tier B** (browse without shift): `GET /api/issues`, `GET /api/issues/{issue}`, `GET .../officer-resolution`, and attachment downloads. **Tier C** (hub-active required): assign-self, unassign-self, status PATCH, resolution POST/PATCH. Tier C without shift → **403** `hub_active_required`. District scoping on workflow writes: officer must be in the issue's district via `district_officer` or **403** `officer_not_in_district`. Officer writes use validate-after-lock (mutable checks after `lockForUpdate`).
+**Tier B** (browse without shift): `GET /api/issues`, `GET /api/issues/{issue}`, `GET .../officer-resolution`, and attachment downloads. **Tier C** (hub-active required): assign-self, unassign-self, status PATCH, resolution POST/PATCH. Tier C without shift → **403** `hub_active_required`. District scoping on workflow writes: officer must be in the issue's district via `district_officer` or **403** `officer_not_in_district`. Officer writes use validate-after-lock (mutable checks after `lockForUpdate`). Resolution attachment uploads enforce the cumulative cap and perform disk I/O inside the same locked transaction.
 
 **Self-assign / unassign**
 
@@ -840,16 +840,16 @@ Issue responses include read-only `status`, `assigned_officer_id`, and `visibili
 }
 ```
 
-Directed transitions only: `open` → `in_behandeling`; `in_behandeling` → `opgelost`; `opgelost` → `gesloten`. Assigned officer only.
+Directed transitions only: `open` → `in_behandeling`; `in_behandeling` → `opgelost`; `opgelost` → `gesloten`. Assigned officer only. **403** `not_assigned_officer`, `officer_not_in_district`, or `hub_active_required` when applicable.
 
 **Officer resolution (field report)**
 
 Distinct from user satisfaction in `issue_resolutions`. One report per issue.
 
 - `GET {{base_url}}/api/issues/{issue}/officer-resolution` — any actor who can view the issue; **404** when none exists.
-- `POST {{base_url}}/api/issues/{issue}/officer-resolution` — multipart; current assignee only; **409** `officer_resolution_exists` on duplicate; **422** `issue_closed` when status is `gesloten` (`opgelost` remains writable).
-- `PATCH {{base_url}}/api/issues/{issue}/officer-resolution` — multipart; optional `remove_attachment_ids` and new `files` (max 3 total); `officer_id` updated to last editor; **422** `issue_closed` when status is `gesloten`.
-- `GET {{base_url}}/api/issues/{issue}/officer-resolution/attachments/{attachment}/download` — visibility-only auth (any actor who can view the issue); Tier B.
+- `POST {{base_url}}/api/issues/{issue}/officer-resolution` — multipart; current assignee only; **403** `hub_active_required`, `officer_not_in_district`, or `not_assigned_officer`; **409** `officer_resolution_exists` on duplicate; **422** `issue_closed` when status is `gesloten` (`opgelost` remains writable). Attachment cap and upload I/O run under row lock.
+- `PATCH {{base_url}}/api/issues/{issue}/officer-resolution` — multipart; optional `remove_attachment_ids` and new `files` (max 3 total); `officer_id` updated to last editor; **403** `hub_active_required`, `officer_not_in_district`, or `not_assigned_officer`; **422** `issue_closed` when status is `gesloten`; **422** on `remove_attachment_ids` when ids do not belong to the resolution. Cap enforcement and upload I/O run under row lock.
+- `GET {{base_url}}/api/issues/{issue}/officer-resolution/attachments/{attachment}/download` — visibility-only auth (`IssueVisibilityQuery::canViewIssue`, Q8 / D15-A); Tier B. Users probing hidden issues they do not own receive **404**; other unauthorized actors receive **403**. Attachment must belong to the route resolution; missing backing file → **404**.
 
 Up to **3** images (`jpg`, `jpeg`, `png`, `gif`, `webp`), **5 MB** each. Uploads are content-sniffed after extension rules (issue user attachments also accept PDF via magic bytes).
 

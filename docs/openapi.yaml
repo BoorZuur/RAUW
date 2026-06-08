@@ -41,7 +41,10 @@ info:
 
     **Officer issue writes** use validate-after-lock: visibility and district
     checks run before the transaction; assignee, transition, assignability, and
-    duplicate-resolution checks run on the locked issue row.
+    duplicate-resolution checks run on the locked issue row. Officer-resolution
+    attachment uploads (POST/PATCH) enforce the cumulative cap and perform disk
+    I/O inside the same `lockForUpdate` transaction so concurrent requests cannot
+    exceed the per-resolution limit.
 
     **GPS trust (v1):** Coordinates are client-reported only. No mock-location
     detection, no per-request geofence re-check. Shared shift is operational
@@ -2340,15 +2343,15 @@ paths:
       summary: Download an issue attachment
       description: >-
         Stream an attachment from non-public local development storage.
-        Visibility-only authorization: any authenticated actor who can view the
-        parent issue may download (`IssueVisibilityQuery::canViewIssue`). **Tier B**
-        for officers: no active shared shift required. Users probing hidden issues
-        they do not own receive **404** (no enumeration). Other unauthorized actors
-        receive **403** (`This action is unauthorized.`). Deactivated accounts
-        receive **403** (`This account is inactive.`). Unauthenticated requests
-        receive **401**. The attachment must belong to the issue in the route and
-        the backing local file must still exist; otherwise the backend returns
-        **404**.
+        Visibility-only authorization (Q8 / D15-A): any authenticated actor who
+        can view the parent issue may download
+        (`IssueVisibilityQuery::canViewIssue`). **Tier B** for officers: no active
+        shared shift required. Users probing hidden issues they do not own receive
+        **404** (no enumeration). Other unauthorized actors receive **403**
+        (`This action is unauthorized.`). Deactivated accounts receive **403**
+        (`This account is inactive.`). Unauthenticated requests receive **401**.
+        The attachment must belong to the issue in the route and the backing local
+        file must still exist; otherwise the backend returns **404**.
       security:
         - bearerAuth: [ ]
       responses:
@@ -2591,16 +2594,18 @@ paths:
       description: >-
         Create the officer field report for an issue (once per issue). Multipart
         upload. Only the authenticated active officer currently assigned to the
-        issue may create it. Officers without an active shared shift receive
-        **403** `hub_active_required`. District scoping applies (**403**
-        `officer_not_in_district`).         Duplicate POST returns **409**
-        `officer_resolution_exists`; use PATCH to update an existing report.
-        Blocked when issue status is `gesloten` (**422** `issue_closed`); issues in
-        `opgelost` remain writable. Up to **3** image attachments (`jpg`, `jpeg`,
-        `png`, `gif`, `webp`), each at most **5 MB**. After extension rules pass,
-        uploads are content-sniffed as allowed images; mismatches return **422**.
-        Files are stored on non-public local storage and served only through
-        authenticated download endpoints.
+        issue may create it (**403** `not_assigned_officer` otherwise). Officers
+        without an active shared shift receive **403** `hub_active_required`.
+        District scoping applies (**403** `officer_not_in_district`). Duplicate
+        POST returns **409** `officer_resolution_exists`; use PATCH to update an
+        existing report. Blocked when issue status is `gesloten` (**422**
+        `issue_closed`); issues in `opgelost` remain writable. Up to **3** image
+        attachments (`jpg`, `jpeg`, `png`, `gif`, `webp`), each at most **5 MB**.
+        After extension rules pass, uploads are content-sniffed as allowed images;
+        mismatches return **422**. Attachment cap enforcement and disk I/O run
+        inside the same `lockForUpdate` transaction as assignee and writability
+        checks. Files are stored on non-public local storage and served only
+        through authenticated download endpoints.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -2628,6 +2633,12 @@ paths:
                   - $ref: '#/components/schemas/HubError'
                   - $ref: '#/components/schemas/OfficerWorkflowError'
                   - $ref: '#/components/schemas/Error'
+              examples:
+                notAssignedOfficer:
+                  summary: Officer is not the current assignee
+                  value:
+                    message: Only the assigned officer may submit or update the resolution for this issue.
+                    code: not_assigned_officer
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -2659,15 +2670,19 @@ paths:
       description: >-
         Update title, content, and image attachments on an existing officer
         resolution. Multipart upload. Only the authenticated active officer
-        currently assigned to the issue may update it. Officers without an
-        active shared shift receive **403** `hub_active_required`. District
-        scoping applies. `officer_id` is overwritten with the editing officer
-        (last editor). Blocked when issue status is `gesloten` (**422**
-        `issue_closed`); issues in `opgelost` remain writable. Send
-        `remove_attachment_ids` to delete owned attachments before uploading
-        replacements. Total attachments after removals plus new files must not
-        exceed **3**. New uploads are content-sniffed as allowed images. Returns
-        **404** when no resolution exists.
+        currently assigned to the issue may update it (**403**
+        `not_assigned_officer` otherwise). Officers without an active shared
+        shift receive **403** `hub_active_required`. District scoping applies
+        (**403** `officer_not_in_district`). `officer_id` is overwritten with
+        the editing officer (last editor). Blocked when issue status is
+        `gesloten` (**422** `issue_closed`); issues in `opgelost` remain
+        writable. Send `remove_attachment_ids` to delete owned attachments
+        before uploading replacements; ids that do not belong to the resolution
+        return **422** on `remove_attachment_ids`. Total attachments after
+        removals plus new files must not exceed **3**. Attachment cap
+        enforcement, removals, and new upload disk I/O run inside the same
+        `lockForUpdate` transaction. New uploads are content-sniffed as allowed
+        images. Returns **404** when no resolution exists.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -2695,11 +2710,18 @@ paths:
                   - $ref: '#/components/schemas/HubError'
                   - $ref: '#/components/schemas/OfficerWorkflowError'
                   - $ref: '#/components/schemas/Error'
+              examples:
+                notAssignedOfficer:
+                  summary: Officer is not the current assignee
+                  value:
+                    message: Only the assigned officer may submit or update the resolution for this issue.
+                    code: not_assigned_officer
         '404':
           $ref: '#/components/responses/NotFound'
         '422':
           description: >-
-            Validation failure, or issue status is `gesloten` (`issue_closed`).
+            Validation failure, invalid `remove_attachment_ids`, or issue status
+            is `gesloten` (`issue_closed`).
           content:
             application/json:
               schema:
@@ -2711,6 +2733,13 @@ paths:
                   value:
                     message: Cannot create or update a resolution on a closed issue.
                     code: issue_closed
+                invalidRemoveAttachmentIds:
+                  summary: Attachment ids not owned by this resolution
+                  value:
+                    message: One or more attachment ids do not belong to this resolution.
+                    errors:
+                      remove_attachment_ids:
+                        - One or more attachment ids do not belong to this resolution.
 
   /api/issues/{issueId}/officer-resolution/attachments/{attachmentId}/download:
     parameters:
@@ -2729,11 +2758,16 @@ paths:
       summary: Download officer resolution attachment
       description: >-
         Stream a resolution attachment from non-public local development storage.
-        Visibility-only authorization: any authenticated actor who can view the
-        parent issue may download (D15). **Tier B** for officers: no active
+        Visibility-only authorization (Q8 / D15-A): any authenticated actor who
+        can view the parent issue may download
+        (`IssueVisibilityQuery::canViewIssue`). **Tier B** for officers: no active
         shared shift required. Users probing hidden issues they do not own receive
-        **404**. The attachment must belong to the issue's officer resolution and
-        the backing local file must still exist; otherwise **404**.
+        **404** (no enumeration). Other unauthorized actors receive **403**
+        (`This action is unauthorized.`). Deactivated accounts receive **403**
+        (`This account is inactive.`). Unauthenticated requests receive **401**.
+        The attachment must belong to the issue's officer resolution in the route
+        and the backing local file must still exist; otherwise the backend returns
+        **404**.
       security:
         - bearerAuth: [ ]
       responses:
@@ -5165,7 +5199,9 @@ components:
           type: array
           items:
             type: integer
-          description: Attachment ids owned by this resolution to delete before upload.
+          description: >-
+            Attachment ids owned by this resolution to delete before upload.
+            Ids that do not belong to the resolution return **422** on this field.
 
     OfficerIssueResolutionAttachment:
       type: object

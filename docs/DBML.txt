@@ -302,14 +302,20 @@ Table issue_attachments {
   }
 }
 
-Table issue_status_history {
+Table issue_status_histories {
   id                      int          [pk, increment]
   issue_id                int          [not null, ref: > issues.id]
-  changed_by_officer_id   int          [ref: > officers.id]
+  changed_by_officer_id   int          [ref: > officers.id, note: 'Nullable; nullOnDelete when officer is removed']
   old_status              varchar(20)
   new_status              varchar(20)  [not null]
   note                    text
   changed_at              datetime     [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (issue_id, changed_at)
+    (changed_by_officer_id, changed_at)
+    (new_status, changed_at)
+  }
 }
 
 Table issue_resolutions {
@@ -325,7 +331,7 @@ Table issue_resolutions {
 Table officer_issue_resolutions {
   id               int          [pk, increment]
   issue_id         int          [not null, unique, ref: > issues.id, note: 'Max one officer resolution per issue; cascade delete with issue']
-  officer_id       int          [ref: > officers.id, note: 'Officer who authored or last updated the report; nullOnDelete']
+  officer_id       int          [ref: > officers.id, note: 'Nullable; officer who authored or last updated the report; nullOnDelete on FK']
   title            varchar(255) [not null]
   content          text         [not null]
   created_at       datetime
