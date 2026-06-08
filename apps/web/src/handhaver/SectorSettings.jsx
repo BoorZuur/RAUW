@@ -84,7 +84,55 @@ export default function SectorSettings() {
                         <button className="wijk-item">Middelland</button>
                         <button className="wijk-item">Molenlaankwartier</button>
 
-                        button.wijk-item*
+                        <button className="wijk-item">Nesselande</button>
+                        <button className="wijk-item">Nieuw-Crooswijk</button>
+                        <button className="wijk-item">Nieuweland</button>
+                        <button className="wijk-item">Nieuwe Westen</button>
+
+                        <button className="wijk-item">Noordereiland</button>
+                        <button className="wijk-item">Ommoord</button>
+                        <button className="wijk-item">Oosterflank</button>
+                        <button className="wijk-item">Oud-Charlois</button>
+
+                        <button className="wijk-item">Oud-Crooswijk</button>
+                        <button className="wijk-item">Oudeland</button>
+                        <button className="wijk-item">Oude Noorden</button>
+                        <button className="wijk-item">Oud-IJsselmonde</button>
+
+                        <button className="wijk-item">Oude Westen</button>
+                        <button className="wijk-item">Overschie</button>
+                        <button className="wijk-item">Pendrecht</button>
+                        <button className="wijk-item">Pernis</button>
+
+                        <button className="wijk-item">Prinsenland</button>
+                        <button className="wijk-item">Provenierswijk</button>
+                        <button className="wijk-item">Reyeroord</button>
+                        <button className="wijk-item">Rozenburg</button>
+
+                        <button className="wijk-item">Rubroek</button>
+                        <button className="wijk-item">Ruigeplaatbos</button>
+                        <button className="wijk-item">Scheepvaartkwartier</button>
+                        <button className="wijk-item">Schiebroek</button>
+
+                        <button className="wijk-item">Schieveen</button>
+                        <button className="wijk-item">Schiemond</button>
+                        <button className="wijk-item">Spangen</button>
+                        <button className="wijk-item">Sportdorp</button>
+
+                        <button className="wijk-item">Stadsdriehoek</button>
+                        <button className="wijk-item">Struisenburg</button>
+                        <button className="wijk-item">Tarwewijk</button>
+                        <button className="wijk-item">Terbregge</button>
+
+                        <button className="wijk-item">Tussendijken</button>
+                        <button className="wijk-item">Tussenwater</button>
+                        <button className="wijk-item">Vreewijk</button>
+                        <button className="wijk-item">Westpunt</button>
+
+                        <button className="wijk-item">Zalmplaat</button>
+                        <button className="wijk-item">Zestienhoven</button>
+                        <button className="wijk-item">Zevenkamp</button>
+                        <button className="wijk-item">Zuidwijk</button>
                     </div>
                 </section>
             </main>
