@@ -10,7 +10,8 @@ use App\Models\IssueStatusHistory;
 use App\Models\Officer;
 use App\Support\IssueStatusTransition;
 use App\Support\IssueVisibilityQuery;
-use Illuminate\Support\Facades\DB;
+use App\Support\OfficerIssueDistrictAccess;
+use App\Support\OfficerIssueRowLock;
 
 class IssueOfficerStatusController extends Controller
 {
@@ -24,9 +25,9 @@ class IssueOfficerStatusController extends Controller
     /**
      * Update an assigned issue's status along the directed officer workflow.
      *
-     * Authorization, district access, assignee checks, and transition validation
-     * are enforced by UpdateIssueStatusRequest. Visibility scope returns 404
-     * when the issue is not viewable. Each successful change appends one
+     * District access is checked before locking. Assignee ownership and
+     * transition validation run on the locked row. Visibility scope returns
+     * 404 when the issue is not viewable. Each successful change appends one
      * status history row without coordinates and may set resolved_at on the
      * first transition to opgelost.
      */
@@ -39,15 +40,15 @@ class IssueOfficerStatusController extends Controller
             abort(404);
         }
 
+        OfficerIssueDistrictAccess::assertOfficerInIssueDistrict($officer, $issue);
+
         /** @var IssueStatus $newStatus */
         $newStatus = $request->enum('status', IssueStatus::class);
         $note = $request->validated('note');
 
-        DB::transaction(function () use ($officer, $issue, $newStatus, $note): void {
-            $lockedIssue = Issue::query()
-                ->whereKey($issue->getKey())
-                ->lockForUpdate()
-                ->firstOrFail();
+        OfficerIssueRowLock::withLockedIssue($issue, function (Issue $lockedIssue) use ($officer, $newStatus, $note): void {
+            OfficerIssueRowLock::assertAssignee($officer, $lockedIssue);
+            OfficerIssueRowLock::assertStatusTransition($lockedIssue, $newStatus);
 
             $oldStatus = $lockedIssue->status;
 
@@ -63,10 +64,10 @@ class IssueOfficerStatusController extends Controller
             IssueStatusHistory::query()->create([
                 'issue_id' => $lockedIssue->getKey(),
                 'changed_by_officer_id' => $officer->getKey(),
+                'changed_at' => now(),
                 'old_status' => $oldStatus,
                 'new_status' => $newStatus,
                 'note' => $note,
-                'changed_at' => now(),
             ]);
         });
 

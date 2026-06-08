@@ -9,8 +9,11 @@ use App\Http\Resources\OfficerIssueResolutionResource;
 use App\Models\Issue;
 use App\Models\Officer;
 use App\Support\IssueVisibilityQuery;
+use App\Support\OfficerIssueConflict;
 use App\Support\OfficerIssueDistrictAccess;
-use Illuminate\Http\Exceptions\HttpResponseException;
+use App\Support\OfficerIssueRowLock;
+use Illuminate\Database\QueryException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -62,40 +65,43 @@ class OfficerIssueResolutionController extends Controller
 
         OfficerIssueDistrictAccess::assertOfficerInIssueDistrict($officer, $issue);
 
-        if ($issue->officerResolution()->exists()) {
-            throw new HttpResponseException(
-                response()->json([
-                    'message' => 'An officer resolution already exists for this issue.',
-                    'code' => 'officer_resolution_exists',
-                ], Response::HTTP_CONFLICT)
-            );
-        }
-
         $validated = $request->validated();
         $files = $request->file('files', []);
 
-        $resolution = DB::transaction(function () use ($officer, $issue, $validated, $files) {
-            $resolution = $issue->officerResolution()->create([
-                'officer_id' => $officer->getKey(),
-                'title' => $validated['title'],
-                'content' => $validated['content'],
-            ]);
+        try {
+            $resolution = OfficerIssueRowLock::withLockedIssue($issue, function (Issue $lockedIssue) use ($officer, $validated, $files) {
+                OfficerIssueRowLock::assertNoResolution($lockedIssue);
 
-            foreach ($files as $file) {
-                $path = $file->store(self::DIRECTORY.'/'.$resolution->getKey(), self::DISK);
-
-                $resolution->attachments()->create([
-                    'file_path' => $path,
-                    'file_url' => $path,
-                    'original_name' => $file->getClientOriginalName(),
-                    'file_type' => $file->getClientMimeType(),
-                    'file_size' => $file->getSize(),
-                    'uploaded_at' => Carbon::now(),
+                $resolution = $lockedIssue->officerResolution()->create([
+                    'officer_id' => $officer->getKey(),
+                    'title' => $validated['title'],
+                    'content' => $validated['content'],
                 ]);
+
+                foreach ($files as $file) {
+                    $path = $file->store(self::DIRECTORY.'/'.$resolution->getKey(), self::DISK);
+
+                    $resolution->attachments()->create([
+                        'file_path' => $path,
+                        'file_url' => $path,
+                        'original_name' => $file->getClientOriginalName(),
+                        'file_type' => $file->getClientMimeType(),
+                        'file_size' => $file->getSize(),
+                        'uploaded_at' => Carbon::now(),
+                    ]);
+                }
+
+                return $resolution;
+            });
+        } catch (UniqueConstraintViolationException) {
+            throw OfficerIssueConflict::officerResolutionExists();
+        } catch (QueryException $exception) {
+            if (self::isOfficerResolutionIssueIdViolation($exception)) {
+                throw OfficerIssueConflict::officerResolutionExists();
             }
 
-            return $resolution;
-        });
+            throw $exception;
+        }
 
         $resolution->load(self::RESOLUTION_RELATIONS);
 
@@ -168,5 +174,20 @@ class OfficerIssueResolutionController extends Controller
         $resolution->refresh()->load(self::RESOLUTION_RELATIONS);
 
         return new OfficerIssueResolutionResource($resolution);
+    }
+
+    /**
+     * Whether a query exception reflects an officer_issue_resolutions.issue_id unique violation.
+     */
+    private static function isOfficerResolutionIssueIdViolation(QueryException $exception): bool
+    {
+        if ($exception instanceof UniqueConstraintViolationException) {
+            return true;
+        }
+
+        $message = strtolower($exception->getMessage());
+
+        return str_contains($message, 'officer_issue_resolutions')
+            && str_contains($message, 'issue_id');
     }
 }

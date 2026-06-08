@@ -10,10 +10,9 @@ use App\Models\Issue;
 use App\Models\IssueStatusHistory;
 use App\Models\Officer;
 use App\Support\IssueVisibilityQuery;
+use App\Support\OfficerIssueConflict;
 use App\Support\OfficerIssueDistrictAccess;
-use Illuminate\Http\Exceptions\HttpResponseException;
-use Illuminate\Support\Facades\DB;
-use Symfony\Component\HttpFoundation\Response;
+use App\Support\OfficerIssueRowLock;
 
 class IssueOfficerAssignmentController extends Controller
 {
@@ -48,32 +47,11 @@ class IssueOfficerAssignmentController extends Controller
             return new IssueResource($issue);
         }
 
-        if ($issue->assigned_officer_id !== null) {
-            throw new HttpResponseException(
-                response()->json([
-                    'message' => 'Issue is already assigned to another officer.',
-                    'code' => 'issue_already_assigned',
-                ], Response::HTTP_CONFLICT)
-            );
-        }
-
-        DB::transaction(function () use ($officer, $issue): void {
-            $lockedIssue = Issue::query()
-                ->whereKey($issue->getKey())
-                ->lockForUpdate()
-                ->firstOrFail();
+        OfficerIssueRowLock::withLockedIssue($issue, function (Issue $lockedIssue) use ($officer): void {
+            OfficerIssueRowLock::assertUnassignedOrSelf($officer, $lockedIssue);
 
             if ($lockedIssue->assigned_officer_id === $officer->getKey()) {
                 return;
-            }
-
-            if ($lockedIssue->assigned_officer_id !== null) {
-                throw new HttpResponseException(
-                    response()->json([
-                        'message' => 'Issue is already assigned to another officer.',
-                        'code' => 'issue_already_assigned',
-                    ], Response::HTTP_CONFLICT)
-                );
             }
 
             $updates = ['assigned_officer_id' => $officer->getKey()];
@@ -122,16 +100,19 @@ class IssueOfficerAssignmentController extends Controller
             return new IssueResource($issue);
         }
 
-        if ($issue->assigned_officer_id !== $officer->getKey()) {
-            throw new HttpResponseException(
-                response()->json([
-                    'message' => 'Only the assigned officer may unassign from this issue.',
-                    'code' => 'not_assigned_officer',
-                ], Response::HTTP_FORBIDDEN)
-            );
-        }
+        OfficerIssueRowLock::withLockedIssue($issue, function (Issue $lockedIssue) use ($officer): void {
+            if ($lockedIssue->assigned_officer_id === null) {
+                return;
+            }
 
-        $issue->update(['assigned_officer_id' => null]);
+            if ($lockedIssue->assigned_officer_id !== $officer->getKey()) {
+                throw OfficerIssueConflict::notAssignedOfficer(
+                    'Only the assigned officer may unassign from this issue.',
+                );
+            }
+
+            $lockedIssue->update(['assigned_officer_id' => null]);
+        });
 
         $issue->refresh()->load(self::ISSUE_RELATIONS);
 

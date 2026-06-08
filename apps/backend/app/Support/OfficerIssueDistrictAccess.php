@@ -25,6 +25,10 @@ class OfficerIssueDistrictAccess
 
     /**
      * Assert the officer is assigned to the issue's district or abort 403.
+     *
+     * Must be called outside row-lock transactions; district membership is
+     * immutable for the duration of an issue write and throws
+     * HttpResponseException, which must not run inside DB::transaction.
      */
     public static function assertOfficerInIssueDistrict(Officer $officer, Issue $issue): void
     {

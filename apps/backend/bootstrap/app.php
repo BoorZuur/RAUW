@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureActorIsActive;
 use App\Http\Middleware\EnsureOfficerHubActive;
+use App\Support\OfficerIssueConflict;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -64,9 +65,34 @@ return Application::configure(basePath: dirname(__DIR__))
             ], Response::HTTP_FORBIDDEN);
         });
 
-        $exceptions->render(function (QueryException $exception, Request $request) use ($isIntegrityConstraint) {
-            if (config('app.debug') || ! $request->is('api/*')) {
+        $exceptions->render(function (OfficerIssueConflict $exception, Request $request) use ($expectsApiJson) {
+            if (config('app.debug') || ! $expectsApiJson($request)) {
                 return null;
+            }
+
+            return response()->json([
+                'message' => $exception->getMessage(),
+                'code' => $exception->code,
+            ], $exception->status);
+        });
+
+        $isOfficerResolutionIssueIdViolation = static function (QueryException $exception): bool {
+            $message = strtolower($exception->getMessage());
+
+            return str_contains($message, 'officer_issue_resolutions')
+                && str_contains($message, 'issue_id');
+        };
+
+        $exceptions->render(function (QueryException $exception, Request $request) use ($expectsApiJson, $isIntegrityConstraint, $isOfficerResolutionIssueIdViolation) {
+            if (config('app.debug') || ! $expectsApiJson($request)) {
+                return null;
+            }
+
+            if ($isIntegrityConstraint($exception) && $isOfficerResolutionIssueIdViolation($exception)) {
+                return response()->json([
+                    'message' => 'An officer resolution already exists for this issue.',
+                    'code' => 'officer_resolution_exists',
+                ], Response::HTTP_CONFLICT);
             }
 
             Log::error('Database query exception on API route.', [
@@ -94,6 +120,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 || $exception instanceof AuthenticationException
                 || $exception instanceof ModelNotFoundException
                 || $exception instanceof AuthorizationException
+                || $exception instanceof OfficerIssueConflict
                 || $exception instanceof QueryException
                 || $exception instanceof HttpExceptionInterface
             ) {
