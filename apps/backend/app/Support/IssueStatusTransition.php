@@ -19,7 +19,7 @@ class IssueStatusTransition
 
         return match ($from) {
             IssueStatus::Open => $to === IssueStatus::InProgress,
-            IssueStatus::InProgress => in_array($to, [IssueStatus::Resolved, IssueStatus::Closed], true),
+            IssueStatus::InProgress => $to === IssueStatus::Resolved,
             IssueStatus::Resolved => $to === IssueStatus::Closed,
             IssueStatus::Closed => false,
         };

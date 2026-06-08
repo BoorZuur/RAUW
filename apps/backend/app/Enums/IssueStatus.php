@@ -2,6 +2,9 @@
 
 namespace App\Enums;
 
+/**
+ * Officer-directed status workflow: open → in_behandeling → opgelost → gesloten.
+ */
 enum IssueStatus: string
 {
     case Open = 'open';
