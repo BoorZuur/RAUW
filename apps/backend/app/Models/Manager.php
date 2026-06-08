@@ -18,7 +18,7 @@ use Laravel\Sanctum\HasApiTokens;
 // not mass-assignable. `is_main_manager` is intentionally omitted from
 // fillable: the initial main manager is provisioned only through trusted
 // operational seeding or direct administration, never via the public API.
-#[Fillable(['username', 'email', 'password'])]
+#[Fillable(['username', 'email', 'password', 'hub_id'])]
 #[Hidden(['password', 'remember_token'])]
 class Manager extends Authenticatable
 {
@@ -46,6 +46,16 @@ class Manager extends Authenticatable
             'is_active' => 'boolean',
             'is_main_manager' => 'boolean',
         ];
+    }
+
+    /**
+     * The hub this manager is assigned to.
+     *
+     * @return BelongsTo<Hub, $this>
+     */
+    public function hub(): BelongsTo
+    {
+        return $this->belongsTo(Hub::class);
     }
 
     /**
