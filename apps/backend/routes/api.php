@@ -248,8 +248,10 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     Route::delete('districts/{district}', [DistrictController::class, 'destroy'])->name('districts.destroy');
 
     // Issue management. Listing and reads are available to any authenticated
-    // actor, while writes are authorized inside the issue FormRequests to the
-    // authenticated, active regular user who owns the issue. Issues remain
+    // actor; officers may browse without a hub-active shift (Tier B whitelist
+    // in officer.hub-active). Writes are authorized inside the issue
+    // FormRequests to the authenticated, active regular user who owns the issue.
+    // Issues remain
     // user-owned through `issues.user_id` even when reported anonymously, so the
     // author can keep managing their own report; anonymous reports are displayed
     // through a stable, server-generated `anonymous_alias`. Deleting an issue
@@ -286,10 +288,12 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     // persists one status history row per change without coordinates, and sets
     // resolved_at on the first transition to opgelost.
     Route::patch('issues/{issue}/status', [IssueOfficerStatusController::class, 'update'])->name('issues.status.update');
-    // Officer resolution (Tier C: hub-active required). One resolution per issue;
-    // create is assignee-only with district scoping (403 officer_not_in_district),
-    // duplicate POST returns 409 officer_resolution_exists; update via PATCH.
-    // Show and attachment download use IssueVisibilityQuery (404 when not viewable).
+    // Officer resolution. Show and attachment download are Tier B (browse without
+    // shift); POST/PATCH are Tier C (hub-active required). One resolution per
+    // issue; create is assignee-only with district scoping (403
+    // officer_not_in_district), duplicate POST returns 409
+    // officer_resolution_exists; update via PATCH. Show and attachment download
+    // use IssueVisibilityQuery (404 when not viewable).
     Route::get('issues/{issue}/officer-resolution', [OfficerIssueResolutionController::class, 'show'])->name('issues.officer-resolution.show');
     Route::post('issues/{issue}/officer-resolution', [OfficerIssueResolutionController::class, 'store'])->name('issues.officer-resolution.store');
     Route::patch('issues/{issue}/officer-resolution', [OfficerIssueResolutionController::class, 'update'])->name('issues.officer-resolution.update');
@@ -302,9 +306,10 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     // managing their report. Files are stored on a non-public local disk for
     // development (never served from `public`), capped at 5 files of up to 5 MB
     // each, and an issue may hold at most 5 attachments in total. Downloads
-    // (GET `/issues/{issue}/attachments/{attachment}/download`) are authorized
-    // inside DownloadIssueAttachmentRequest to the issue owner (active user),
-    // any active officer, or any active manager; the controller confirms the
+    // (GET `/issues/{issue}/attachments/{attachment}/download`) are Tier B for
+    // officers (browse without shift). Authorized inside
+    // DownloadIssueAttachmentRequest to the issue owner (active user), any active
+    // officer, or any active manager; the controller confirms the
     // attachment belongs to the route issue (404 otherwise) and streams from
     // the non-public local disk, so files are never exposed through a public URL.
     // Deletes (DELETE `/issues/{issue}/attachments/{attachment}`) are authorized
