@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Actions\Auth\EvaluateOfficerHubLogin;
+use App\Actions\Auth\IssueOfficerAuthToken;
+use App\Actions\Auth\OfficerAuthTokenResult;
 use App\Actions\Auth\ResolveLoginActor;
 use App\Enums\ActorType;
 use App\Http\Controllers\Controller;
@@ -15,8 +18,11 @@ use Illuminate\Http\Response;
 
 class LoginController extends Controller
 {
-    public function __construct(private readonly ResolveLoginActor $resolver)
-    {
+    public function __construct(
+        private readonly ResolveLoginActor $resolver,
+        private readonly EvaluateOfficerHubLogin $evaluateOfficerHubLogin,
+        private readonly IssueOfficerAuthToken $issueOfficerAuthToken,
+    ) {
     }
 
     /**
@@ -62,6 +68,10 @@ class LoginController extends Controller
             $actor->loadMissing('departments');
         }
 
+        if ($actor instanceof Officer) {
+            return $this->loginOfficer($request, $actor, $type);
+        }
+
         $token = $actor->createToken('api-login')->plainTextToken;
 
         return response()->json([
@@ -70,5 +80,53 @@ class LoginController extends Controller
             'actor_type' => $type->value,
             'profile' => (new AuthProfileResource($actor))->toArray($request),
         ]);
+    }
+
+    private function loginOfficer(LoginRequest $request, Officer $officer, ActorType $type): JsonResponse
+    {
+        $request->validateOfficerCoordinates();
+
+        if ($officer->hub_id === null) {
+            return response()->json([
+                'message' => 'Officer hub assignment required before login.',
+                'code' => 'hub_not_assigned',
+            ], Response::HTTP_FORBIDDEN);
+        }
+
+        $evaluation = $this->evaluateOfficerHubLogin->evaluate(
+            $officer,
+            $request->latitude(),
+            $request->longitude(),
+        );
+
+        $authToken = $this->issueOfficerAuthToken->issue(
+            $officer,
+            $evaluation,
+            $request->latitude(),
+            $request->longitude(),
+        );
+
+        return response()->json(
+            $this->officerAuthResponse($request, $officer, $type, $authToken),
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function officerAuthResponse(
+        LoginRequest $request,
+        Officer $officer,
+        ActorType $type,
+        OfficerAuthTokenResult $authToken,
+    ): array {
+        return [
+            'token_type' => 'Bearer',
+            'access_token' => $authToken->plainTextToken,
+            'actor_type' => $type->value,
+            'hub_active' => $authToken->hubActive,
+            'hub_active_until' => $authToken->hubActiveUntil?->toIso8601String(),
+            'profile' => (new AuthProfileResource($officer))->toArray($request),
+        ];
     }
 }
