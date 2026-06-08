@@ -83,6 +83,7 @@ class OfficerIssueResolutionController extends Controller
                 &$pathsWrittenDuringRequest,
             ) {
                 OfficerIssueRowLock::assertAssignee($officer, $lockedIssue, self::RESOLUTION_ASSIGNEE_MESSAGE);
+                OfficerIssueRowLock::assertResolutionWritable($lockedIssue);
                 OfficerIssueRowLock::assertNoResolution($lockedIssue);
 
                 $resolution = $lockedIssue->officerResolution()->create([
@@ -144,6 +145,7 @@ class OfficerIssueResolutionController extends Controller
                 &$pathsWrittenDuringRequest,
             ): void {
                 OfficerIssueRowLock::assertAssignee($officer, $lockedIssue, self::RESOLUTION_ASSIGNEE_MESSAGE);
+                OfficerIssueRowLock::assertResolutionWritable($lockedIssue);
 
                 $resolution = $lockedIssue->officerResolution;
 

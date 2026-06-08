@@ -56,6 +56,16 @@ class OfficerIssueRowLock
     }
 
     /**
+     * Assert the issue status allows resolution writes or throw 422.
+     */
+    public static function assertResolutionWritable(Issue $locked): void
+    {
+        if (! $locked->status->isResolutionWritable()) {
+            throw OfficerIssueConflict::issueClosed();
+        }
+    }
+
+    /**
      * Assert the issue is unassigned or already assigned to this officer.
      *
      * Idempotent when assigned to self; throws 409 when assigned to another officer.

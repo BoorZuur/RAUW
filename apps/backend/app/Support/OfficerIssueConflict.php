@@ -50,4 +50,13 @@ class OfficerIssueConflict extends Exception
             status: Response::HTTP_UNPROCESSABLE_ENTITY,
         );
     }
+
+    public static function issueClosed(): self
+    {
+        return new self(
+            code: 'issue_closed',
+            message: 'Cannot create or update a resolution on a closed issue.',
+            status: Response::HTTP_UNPROCESSABLE_ENTITY,
+        );
+    }
 }
