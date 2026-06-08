@@ -150,10 +150,6 @@ class OfficerIssueResolutionController extends Controller
 
             self::assertAttachmentCapUnderLock($resolution, $removeIds, count($files));
 
-            if ($files !== []) {
-                self::attachUploadedFiles($resolution, $files);
-            }
-
             $resolution->update([
                 'title' => $validated['title'],
                 'content' => $validated['content'],
@@ -180,6 +176,20 @@ class OfficerIssueResolutionController extends Controller
         $resolution = $issue->officerResolution()
             ->with(self::RESOLUTION_RELATIONS)
             ->firstOrFail();
+
+        if ($files !== []) {
+            $attachmentIdsBefore = $resolution->attachments()->pluck('id')->all();
+
+            try {
+                self::attachUploadedFiles($resolution, $files);
+            } catch (Throwable $exception) {
+                self::compensatingDeleteNewAttachments($resolution, $attachmentIdsBefore);
+
+                throw $exception;
+            }
+        }
+
+        $resolution->load(self::RESOLUTION_RELATIONS);
 
         return new OfficerIssueResolutionResource($resolution);
     }
@@ -280,6 +290,36 @@ class OfficerIssueResolutionController extends Controller
         }
 
         $resolution->delete();
+    }
+
+    /**
+     * Remove attachment rows (and disk files) created during a failed post-commit upload batch.
+     *
+     * @param  array<int, int|string>  $existingIds
+     */
+    private static function compensatingDeleteNewAttachments(
+        OfficerIssueResolution $resolution,
+        array $existingIds,
+    ): void {
+        $query = $resolution->attachments();
+
+        if ($existingIds !== []) {
+            $query->whereNotIn('id', $existingIds);
+        }
+
+        $newAttachments = $query->get();
+
+        if ($newAttachments->isEmpty()) {
+            return;
+        }
+
+        $paths = $newAttachments->pluck('file_path')->all();
+
+        foreach ($newAttachments as $attachment) {
+            $attachment->delete();
+        }
+
+        self::deleteDiskFiles($paths);
     }
 
     /**
