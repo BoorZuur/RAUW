@@ -52,6 +52,7 @@ class HubController extends Controller
             'postal_code',
             'latitude',
             'longitude',
+            'radius_meters',
             'is_active',
         ]));
 
@@ -76,6 +77,7 @@ class HubController extends Controller
             'postal_code',
             'latitude',
             'longitude',
+            'radius_meters',
             'is_active',
         ]);
 
