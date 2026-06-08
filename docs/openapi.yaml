@@ -701,11 +701,12 @@ paths:
       tags: [ Managers ]
       summary: Set a main manager's hub
       description: >-
-        Assign a hub to a main manager and clear their district_manager pivot so
-        district assignments can be re-established within the new hub. Only an
-        authenticated active main manager may call this endpoint. The path
-        target must have `is_main_manager=true`; ordinary managers and unknown
-        ids return 404.
+        Assign an active hub to a main manager and clear their district_manager
+        pivot so district assignments can be re-established within the new
+        hub. `hub_id` must reference an active hub (`is_active=true`); inactive
+        or unknown hub IDs return **422**. Only an authenticated active main
+        manager may call this endpoint. The path target must have
+        `is_main_manager=true`; ordinary managers and unknown ids return 404.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -985,10 +986,12 @@ paths:
       tags: [ Managers ]
       summary: Set an ordinary manager's hub
       description: >-
-        Assign a hub to an ordinary manager and clear their district_manager
-        pivot so district assignments can be re-established within the new hub.
-        Only an authenticated active main manager may call this endpoint. The
-        path target must have `is_main_manager=false`; main managers and unknown
+        Assign an active hub to an ordinary manager and clear their
+        district_manager pivot so district assignments can be re-established
+        within the new hub. `hub_id` must reference an active hub
+        (`is_active=true`); inactive or unknown hub IDs return **422**. Only an
+        authenticated active main manager may call this endpoint. The path
+        target must have `is_main_manager=false`; main managers and unknown
         ids return 404.
       security:
         - bearerAuth: [ ]
@@ -1339,10 +1342,12 @@ paths:
       tags: [ Officers ]
       summary: Set an officer's hub
       description: >-
-        Assign a hub to an officer and clear their district_officer pivot so
-        district assignments can be re-established within the new hub. Only an
-        authenticated active manager may call this endpoint. Users, officers,
-        inactive managers, and unauthenticated requests receive **403**.
+        Assign an active hub to an officer and clear their district_officer
+        pivot so district assignments can be re-established within the new
+        hub. `hub_id` must reference an active hub (`is_active=true`); inactive
+        or unknown hub IDs return **422**. Only an authenticated active manager
+        may call this endpoint. Users, officers, inactive managers, and
+        unauthenticated requests receive **403**.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -2385,6 +2390,7 @@ paths:
                   postal_code: '3016 DS'
                   latitude: 51.9106846
                   longitude: 4.4814932
+                  is_active: true
                   districts_count: 6
                   officers_count: 1
                   managers_count: 1
@@ -2396,9 +2402,11 @@ paths:
       tags: [ Hubs ]
       summary: Create a hub
       description: >-
-        Create a hub row. Only an authenticated, active main manager may create
-        hubs. Users, officers, ordinary managers, inactive managers, and
-        unauthenticated requests receive **403**.
+        Create a hub row. New hubs default to `is_active=false` when the field
+        is omitted; send `is_active: true` to create an already-active hub.
+        Only an authenticated, active main manager may create hubs. Users,
+        officers, ordinary managers, inactive managers, and unauthenticated
+        requests receive **403**.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -2459,8 +2467,12 @@ paths:
       tags: [ Hubs ]
       summary: Update a hub
       description: >-
-        Partially update a hub. Only an authenticated, active main manager may
-        update hubs. Users, officers, ordinary managers, inactive managers, and
+        Partially update a hub. Set `is_active` to false to deactivate or true
+        to reactivate; this is the sole activation path (no `/disable` route).
+        Deactivation returns **422** when the hub still has active districts or
+        active officers assigned. Managers assigned to the hub do not block
+        deactivation. Only an authenticated, active main manager may update
+        hubs. Users, officers, ordinary managers, inactive managers, and
         unauthenticated requests receive **403**.
       security:
         - bearerAuth: [ ]
@@ -2470,6 +2482,8 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/HubUpdate'
+            example:
+              is_active: false
       responses:
         '200':
           description: Hub updated
@@ -2484,7 +2498,22 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
         '422':
-          $ref: '#/components/responses/ValidationError'
+          description: >-
+            Validation failed. Returned when field values are invalid or when
+            `is_active: false` is rejected because active districts or active
+            officers remain assigned to the hub.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              examples:
+                deactivateBlocked:
+                  summary: Deactivation blocked by active assignments
+                  value:
+                    message: Cannot deactivate hub while active districts are assigned.
+                    errors:
+                      is_active:
+                        - Cannot deactivate hub while active districts are assigned.
     put:
       tags: [ Hubs ]
       summary: Replace/update a hub
@@ -2562,7 +2591,8 @@ paths:
       summary: Create a district
       description: >-
         Create a district row. `hub_id` is required and must reference an
-        existing hub. Only an authenticated, active main manager
+        existing active hub (`is_active=true`); inactive or unknown hub IDs
+        return **422**. Only an authenticated, active main manager
         (`is_main_manager=true`) may create, update, or delete districts. Users,
         officers, ordinary managers, inactive managers, and unauthenticated
         requests receive **403** (`This action is unauthorized.`). District CRUD
@@ -3221,7 +3251,7 @@ components:
       description: >-
         Rotterdam BOA cluster hub. Districts belong to exactly one hub. Officers
         and managers have a home hub via hub_id; their district pivots must stay
-        within that hub.
+        within that hub. New hubs are inactive by default until activated.
       properties:
         id:
           type: integer
@@ -3242,6 +3272,9 @@ components:
           type: number
           format: double
           nullable: true
+        is_active:
+          type: boolean
+          example: true
         districts_count:
           type: integer
           nullable: true
@@ -3283,6 +3316,12 @@ components:
           minimum: -180
           maximum: 180
           nullable: true
+        is_active:
+          type: boolean
+          default: false
+          description: >-
+            Optional. Defaults to false when omitted; send true to create an
+            already-active hub.
 
     HubUpdate:
       type: object
@@ -3308,6 +3347,13 @@ components:
           minimum: -180
           maximum: 180
           nullable: true
+        is_active:
+          type: boolean
+          description: >-
+            Set to false to deactivate or true to reactivate. Sole activation
+            path for hubs (no `/disable` route). Deactivation returns **422**
+            when active districts or active officers remain assigned to the hub.
+            Managers assigned to the hub do not block deactivation.
 
     HubAssignmentUpdate:
       type: object
@@ -3316,8 +3362,9 @@ components:
         hub_id:
           type: integer
           description: >-
-            Existing hub ID. Changing hub clears the actor's district pivot so
-            assignments can be re-established within the new hub.
+            Existing active hub ID (`is_active=true`). Inactive or unknown hub
+            IDs return **422**. Changing hub clears the actor's district pivot
+            so assignments can be re-established within the new hub.
 
     District:
       type: object
@@ -3376,7 +3423,7 @@ components:
           maxLength: 100
         hub_id:
           type: integer
-          description: Existing hub ID the district belongs to.
+          description: Existing active hub ID (`is_active=true`) the district belongs to.
         postal_prefix:
           type: string
           maxLength: 10
@@ -3409,7 +3456,9 @@ components:
           maxLength: 100
         hub_id:
           type: integer
-          description: Existing hub ID when reassigning a district to another hub.
+          description: >-
+            Existing active hub ID (`is_active=true`) when reassigning a
+            district to another hub.
         postal_prefix:
           type: string
           maxLength: 10

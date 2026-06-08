@@ -51,7 +51,7 @@ Local seeders may create deterministic demo accounts for manual testing. These c
 
 Supported `actor_type` values are `user`, `officer`, and `manager`. The local demo manager is seeded as the main manager and can create other managers. Production environments must provision the initial main manager through trusted operational setup, not through the public API.
 
-Local seeders create four Rotterdam cluster hubs (Cluster Zuid, Cluster Buitengebieden, Cluster Centrum, Cluster Noord), 67 Rotterdam wijken, and BOA/Jeugd categories. The demo officer and demo manager belong to **Cluster Centrum** hub and the **Cool** wijk. Managers are assigned one or more departments through `department_ids` / the `department_manager` pivot. Officers are assigned one or more departments through `department_ids` / the `department_officer` pivot. Manager and officer district assignments are many-to-many: managers use `district_ids` / `district_manager`, and officers use `district_ids` / `district_officer`. District assignments must stay within the actor's home hub when `hub_id` is set.
+Local seeders create four active Rotterdam cluster hubs (Cluster Zuid, Cluster Buitengebieden, Cluster Centrum, Cluster Noord), 67 Rotterdam wijken, and BOA/Jeugd categories. New hubs created via the API default to inactive until activated. The demo officer and demo manager belong to **Cluster Centrum** hub and the **Cool** wijk. Managers are assigned one or more departments through `department_ids` / the `department_manager` pivot. Officers are assigned one or more departments through `department_ids` / the `department_officer` pivot. Manager and officer district assignments are many-to-many: managers use `district_ids` / `district_manager`, and officers use `district_ids` / `district_officer`. District assignments must stay within the actor's home hub when `hub_id` is set.
 
 Actor emails must be unique across users, officers, and managers. This prevents a shared-login email from matching more than one actor table.
 
@@ -595,17 +595,17 @@ Use `"district_ids": []` to clear all manager district assignments. IDs must ref
 
 ### Hubs
 
-Hub endpoints manage Rotterdam BOA cluster hubs. Any authenticated actor can list and show hubs. Create, update, and delete require an authenticated active main manager. Deleting a hub returns `409 Conflict` while districts, officers, or managers still reference it.
+Hub endpoints manage Rotterdam BOA cluster hubs. Any authenticated actor can list and show hubs. Create, update, and delete require an authenticated active main manager. New hubs default to `is_active=false` on create; send `is_active: true` to create an already-active hub. Seeded cluster hubs are active. Deactivate or reactivate via `PATCH` with `is_active` (no `/disable` route). Deactivation returns `422` when active districts or active officers remain assigned; managers assigned to the hub do not block deactivation. Deleting a hub returns `409 Conflict` while districts, officers, or managers still reference it.
 
 Common requests:
 
 - `GET {{base_url}}/api/hubs` — list hubs with reference counts.
 - `GET {{base_url}}/api/hubs/{id}` — show one hub.
-- `POST {{base_url}}/api/hubs` — create a hub (main manager).
-- `PATCH {{base_url}}/api/hubs/{id}` — update a hub (main manager).
+- `POST {{base_url}}/api/hubs` — create a hub (main manager); defaults inactive.
+- `PATCH {{base_url}}/api/hubs/{id}` — update a hub (main manager); send `{"is_active": false}` to deactivate or `{"is_active": true}` to reactivate.
 - `DELETE {{base_url}}/api/hubs/{id}` — delete an eligible hub (main manager).
 
-Hub assignment (clears district pivot on change):
+Hub assignment (clears district pivot on change; `hub_id` must reference an active hub):
 
 - `PATCH {{base_url}}/api/officers/{officer}/hub` — active manager; body `{"hub_id": 3}`.
 - `PATCH {{base_url}}/api/managers/{manager}/hub` — main manager; ordinary managers only.
@@ -613,7 +613,7 @@ Hub assignment (clears district pivot on change):
 
 ### Districts
 
-District endpoints use the `districts` table. Each district belongs to one hub via required `hub_id`. Managers are assigned to districts through the `district_manager` pivot and officers through the `district_officer` pivot; when an actor has `hub_id`, district assignments must stay within that hub (cross-hub IDs return `422`). Issue district handling is separate: `issues.district_id` remains a singular issue location/reference field.
+District endpoints use the `districts` table. Each district belongs to one hub via required `hub_id`, which must reference an active hub (`is_active=true`). Managers are assigned to districts through the `district_manager` pivot and officers through the `district_officer` pivot; when an actor has `hub_id`, district assignments must stay within that hub (cross-hub IDs return `422`). Issue district handling is separate: `issues.district_id` remains a singular issue location/reference field.
 
 Authenticated actors can list and show districts. District mutations (`POST`, `PATCH`, `PUT`, `DELETE`) require `Authorization: Bearer <token>` for an authenticated **active main manager** (`is_main_manager=true`). Users, officers, ordinary managers, inactive managers, and unauthenticated requests receive `403 Forbidden` on district writes.
 

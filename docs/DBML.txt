@@ -22,6 +22,7 @@ Table hubs {
   postal_code      varchar(10)  [not null]
   latitude         decimal(10,8)
   longitude        decimal(11,8)
+  is_active        tinyint(1)   [not null, default: 0, note: 'Nieuwe hubs standaard inactief; vier geseede clusters worden in HubSeeder geactiveerd. Veilige deactivatie via PATCH /api/hubs/{id} met is_active=false (main manager); geen /disable route']
   created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
   updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
 }
