@@ -1961,6 +1961,124 @@
             "description": "Hard delete an issue owned by the authenticated active user. This is not a soft delete: the issue row is removed and attachments cascade with the issue. Run after attachment examples if you want to preserve issue_id for follow-up requests."
           },
           "response": []
+        },
+        {
+          "name": "Officer workflows",
+          "item": [
+            {
+              "name": "Assign Self to Issue",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "method": "POST",
+                "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+                "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/assign-self", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "assign-self" ] },
+                "description": "Self-assign the authenticated active officer to an issue in one of their districts. Requires hub-active officer token (Auth / Login Officer at Hub). Open issues also transition to in_behandeling with one status history row. Idempotent when already assigned to self. Returns 409 issue_already_assigned when another officer owns the issue. Returns 403 officer_not_in_district when the issue district is outside the officer pivot. Use an unassigned issue in the officer's district (demo officer: Cool / district_id 1)."
+              },
+              "response": []
+            },
+            {
+              "name": "Unassign Self from Issue",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "method": "POST",
+                "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+                "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/unassign-self", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "unassign-self" ] },
+                "description": "Clear assigned_officer_id when the authenticated officer is the current assignee. Status is unchanged. Returns 403 not_assigned_officer for non-assignees. Hub-active officer token required."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Issue Status",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "method": "PATCH",
+                "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+                "body": { "mode": "raw", "raw": "{\n  \"status\": \"opgelost\",\n  \"note\": \"Tegel vervangen en stoep hersteld.\"\n}", "options": { "raw": { "language": "json" } } },
+                "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/status", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "status" ] },
+                "description": "Update assigned issue status along the directed officer workflow. Assigned active officer only. Allowed transitions: open to in_behandeling; in_behandeling to opgelost or gesloten; opgelost to gesloten. Sets resolved_at on first transition to opgelost and appends one status history row without coordinates. Invalid transitions return 422."
+              },
+              "response": []
+            },
+            {
+              "name": "Show Officer Resolution",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "method": "GET",
+                "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+                "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/officer-resolution", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "officer-resolution" ] },
+                "description": "Show the single officer field report for an issue. Any authenticated actor who can view the issue may read it. Returns 404 when no resolution exists or the issue is not visible. Officers need hub-active for Tier C routes."
+              },
+              "response": []
+            },
+            {
+              "name": "Create Officer Resolution",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Officer resolution created', function () { pm.response.to.have.status(201); });",
+                      "const response = pm.response.json();",
+                      "const attachments = Array.isArray(response.attachments) ? response.attachments : [];",
+                      "if (attachments.length > 0) {",
+                      "    pm.collectionVariables.set('officer_resolution_attachment_id', attachments[0].id);",
+                      "    if (pm.environment.name) { pm.environment.set('officer_resolution_attachment_id', attachments[0].id); }",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "method": "POST",
+                "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    { "key": "title", "value": "Stoeptegel vervangen", "type": "text" },
+                    { "key": "content", "value": "Losse tegel verwijderd en nieuwe tegel gelegd.", "type": "text" },
+                    { "key": "files[]", "type": "file", "src": [], "description": "Optional images: jpg/jpeg/png/gif/webp, up to 3 files, 5 MB each." }
+                  ]
+                },
+                "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/officer-resolution", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "officer-resolution" ] },
+                "description": "Create the officer field report (once per issue). Multipart. Current assignee only. Duplicate POST returns 409 officer_resolution_exists. Hub-active officer token required."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Officer Resolution",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "method": "PATCH",
+                "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    { "key": "title", "value": "Stoeptegel vervangen (bijgewerkt)", "type": "text" },
+                    { "key": "content", "value": "Losse tegel verwijderd, nieuwe tegel gelegd en voegen afgewerkt.", "type": "text" },
+                    { "key": "remove_attachment_ids[]", "value": "{{officer_resolution_attachment_id}}", "type": "text", "description": "Optional: attachment ids to remove before upload." },
+                    { "key": "files[]", "type": "file", "src": [], "description": "Optional replacement images; total attachments after removals must be <= 3." }
+                  ]
+                },
+                "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/officer-resolution", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "officer-resolution" ] },
+                "description": "Update officer resolution title, content, and attachments. Current assignee only. Send remove_attachment_ids for owned attachments before uploading replacements."
+              },
+              "response": []
+            },
+            {
+              "name": "Download Officer Resolution Attachment",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "method": "GET",
+                "header": [ { "key": "Accept", "value": "application/octet-stream", "type": "text" } ],
+                "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/officer-resolution/attachments/{{officer_resolution_attachment_id}}/download", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "officer-resolution", "attachments", "{{officer_resolution_attachment_id}}", "download" ] },
+                "description": "Download a resolution attachment. Any actor who can view the issue. Run Create Officer Resolution first to populate officer_resolution_attachment_id."
+              },
+              "response": []
+            }
+          ],
+          "description": "Officer issue workflow requests (Tier C: hub-active required for officers). Log in with Auth / Login Officer at Hub before running. Use issue_id in the officer's assigned district (demo: Cool / district_id 1). Run Assign Self before status or resolution writes."
         }
       ],
       "description": "Authenticated issue CRUD and attachment examples. Issue creation requires district_id and no longer accepts client-supplied department or removed legacy locality fields. Departments are derived from the selected category, stored in department_issue, and exposed as a read-only departments array. List filters are composable: district_id, department (code), category_id, mine (users only), and visibility (officers/managers only). Department filtering uses any-match semantics; pagination is backend-driven. Show returns 404 when the issue is not visible to the actor (e.g. another user's hidden issue). Anonymous issues retain user_id ownership while exposing only a stable alias. Attachment deletion is owner-only for replacement workflows. Issue deletion is hard delete and attachments cascade with the issue."
@@ -2093,6 +2211,11 @@
     {
       "key": "attachment_download_url",
       "value": "",
+      "type": "string"
+    },
+    {
+      "key": "officer_resolution_attachment_id",
+      "value": "1",
       "type": "string"
     },
     {

@@ -157,6 +157,52 @@ Issues are listed and shown to any authenticated actor. Create, update, and dele
 
 Issue attachments may be uploaded or deleted only by the issue owner (active user). Downloads are allowed for the issue owner, any active officer, and any active manager; other authenticated users receive `403`. Files are served only through the authenticated download endpoint, not via public URLs.
 
+### Officer issue workflows
+
+Officer assignment, status changes, and field reports are **Tier C** routes: active officers need an active shared shift (`hub_active_until` in the future) or they receive **403** `hub_active_required`. Users and managers are not subject to hub-active gating but cannot call officer-only write endpoints (they receive **403** `This action is unauthorized.`).
+
+**District scoping:** An officer may act only on issues whose `district_id` matches one of their `district_officer` pivot assignments. Otherwise **403** `officer_not_in_district`. The demo officer is seeded in the **Cool** wijk (`district_id: 1`).
+
+**Self-assign / unassign**
+
+| Method | Path | Who | Notes |
+|--------|------|-----|-------|
+| `POST` | `/api/issues/{issue}/assign-self` | Active officer | Idempotent when already assigned to self. **409** `issue_already_assigned` when another officer owns it (no takeover). Open issues also transition to `in_behandeling` with one status history row. |
+| `POST` | `/api/issues/{issue}/unassign-self` | Current assignee only | Clears `assigned_officer_id`; status unchanged. **403** `not_assigned_officer` for non-assignees. |
+
+`assigned_officer_id` is read-only on user-owned create/update; use assign-self/unassign-self instead.
+
+**Status PATCH**
+
+| Method | Path | Who | Notes |
+|--------|------|-----|-------|
+| `PATCH` | `/api/issues/{issue}/status` | Assigned active officer | Body: `{ "status": "...", "note": "..." }`. Directed transitions only: `open` → `in_behandeling`; `in_behandeling` → `opgelost` or `gesloten`; `opgelost` → `gesloten`. Same status or invalid transitions → **422**. Sets `resolved_at` on first transition to `opgelost`. Appends one status history row (no GPS coordinates). |
+
+**Officer resolution (field report)**
+
+Distinct from user satisfaction feedback in `issue_resolutions`. At most **one** officer report per issue (`officer_issue_resolutions.issue_id` unique).
+
+| Method | Path | Who | Notes |
+|--------|------|-----|-------|
+| `GET` | `/api/issues/{issue}/officer-resolution` | Any actor who can view the issue | **404** when no report exists. |
+| `POST` | `/api/issues/{issue}/officer-resolution` | Current assignee (multipart) | **409** `officer_resolution_exists` on duplicate; use PATCH to update. |
+| `PATCH` | `/api/issues/{issue}/officer-resolution` | Current assignee (multipart) | Update title/content; optional `remove_attachment_ids` and new `files`. |
+| `GET` | `/api/issues/{issue}/officer-resolution/attachments/{attachment}/download` | Any actor who can view the issue | Streams from non-public local storage. |
+
+Attachment limits: up to **3** images (`jpg`, `jpeg`, `png`, `gif`, `webp`) per resolution, **5 MB** each. PATCH validates `existing − removals + new_files ≤ 3`.
+
+**Issue show embeds:** `GET /api/issues/{issue}` includes `status_history` (officers/managers only, no lat/lon). `officer_resolution` appears only when eager-loaded; prefer the dedicated GET path above.
+
+**Structured error codes (officer workflows)**
+
+| Code | HTTP | When |
+|------|------|------|
+| `hub_active_required` | 403 | Officer on Tier C without active shared shift |
+| `officer_not_in_district` | 403 | Officer workflow on issue outside assigned districts |
+| `not_assigned_officer` | 403 | Status/unassign/resolution write without assignee ownership |
+| `issue_already_assigned` | 409 | Self-assign when another officer already owns the issue |
+| `officer_resolution_exists` | 409 | Duplicate POST on officer resolution |
+
 Common auth status codes are:
 
 - `201 Created` for successful officer registration.
@@ -184,6 +230,24 @@ After `php artisan migrate:fresh --seed` and starting the server on port 8001:
 13. **Manager session list** — `GET /api/officer-sessions` still works; audit fields populated; response does **not** include `personal_access_token_id`.
 14. **Inactive actor structured 403** — Disable an officer but retain a stale token. `GET /api/issues` → 403 with `code: account_inactive`. Whitelisted `GET /api/auth/me` still works.
 15. **Profile PATCH hub fields rejected** — `PATCH /api/auth/me` with `hub_id` or `hub_active_until` → 422 (prohibited).
+
+### Manual Officer Issue Workflow Checklist
+
+After hub login as `demo.officer@example.com` (Cool wijk / `district_id: 1`):
+
+1. **Assign-self** — `POST /api/issues/{unassigned_open_issue}/assign-self` → 200, `assigned_officer_id` set; open issues also become `in_behandeling`.
+2. **District block** — Officer without issue district → 403 `officer_not_in_district`.
+3. **Conflict** — Second officer assigns same issue → 409 `issue_already_assigned`.
+4. **Unassign** — Current assignee `POST .../unassign-self` → 200, assignee cleared, status unchanged.
+5. **Status** — `PATCH /api/issues/{id}/status` with `{ "status": "opgelost", "note": "Fixed" }` → 200, history row, `resolved_at` set.
+6. **Invalid transition** — Direct `open` → `opgelost` → 422.
+7. **Not assigned** — Another officer PATCH status → 403 `not_assigned_officer`.
+8. **History on show** — Officer/manager `GET /api/issues/{id}` includes `status_history` without lat/lon; user GET omits it.
+9. **Resolution create** — Multipart POST with title, content, images → 201; second POST → 409.
+10. **Resolution update** — PATCH with new title/content, remove one attachment, add one → 200, ≤3 attachments total.
+11. **Resolution read** — User, officer, manager who can view issue → GET `/officer-resolution` 200; hidden issue → 404.
+12. **Download** — Same visibility as show.
+13. **Hub inactive** — Officer with expired shift → 403 on Tier C routes.
 
 For manual API testing, import the Postman collection and local environment from [`../../docs/postman`](../../docs/postman/README.md):
 

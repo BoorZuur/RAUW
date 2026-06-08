@@ -82,6 +82,7 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 | `issue_id` | `1` | Filled automatically after **Issues / Create Issue**. Used by show, update, attachment, and delete examples. |
 | `attachment_id` | `1` | Filled automatically after **Issues / Upload Attachments**. Used by authenticated download and delete. |
 | `attachment_download_url` | blank | Filled automatically after **Issues / Upload Attachments** for reference. |
+| `officer_resolution_attachment_id` | `1` | Filled automatically after **Issues / Officer workflows / Create Officer Resolution**. Used by update and download examples. |
 | `hub_id` | `3` | Cluster Centrum hub ID after seeding (used by hub and district create examples). |
 | `district_id` | `1` | Cool wijk ID after seeding (Cluster Centrum). |
 | `category_id` | `1` | Parkeeroverlast main category ID after seeding. |
@@ -107,8 +108,9 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 14. Run **Categories / List Categories** to find existing category IDs. Category reads work for any authenticated actor; mutations require an active main manager (`main_manager_access_token`).
 15. Run **Auth / Login** with `demo.user@example.com` and password `password`, then **Issues / Create Issue** (stores `issue_id`).
 16. Use **Issues / List Issues - Filtered Paginated** to combine `district_id`, `department` (env `department_filter`), and `category_id`.
-17. To test ordinary-manager privileges, log in as a created manager and copy the token to `manager_access_token` before **Managers / Update Officer Districts** or to confirm category/district/department mutations return **403** (not for successful category writes).
-18. Run **Auth / Logout** when finished.
+17. **Officer issue workflows:** Run **Auth / Login Officer at Hub**, then **Issues / Create Issue** as a user (or pick a seeded issue in Cool / `district_id: 1`). Run **Issues / Officer workflows / Assign Self to Issue**, then **Update Issue Status**, **Create Officer Resolution**, **Show Officer Resolution**, **Update Officer Resolution**, and **Download Officer Resolution Attachment** in that order.
+18. To test ordinary-manager privileges, log in as a created manager and copy the token to `manager_access_token` before **Managers / Update Officer Districts** or to confirm category/district/department mutations return **403** (not for successful category writes).
+19. Run **Auth / Logout** when finished.
 
 The collection stores the returned `access_token` automatically after a successful login, user registration, or officer registration. Manager creation intentionally does not update `access_token` because it returns only the created manager profile. If you disable collection scripts or the token is not stored, copy the `access_token` value from the auth response into the active Postman environment's `access_token` variable before calling protected endpoints.
 
@@ -816,7 +818,42 @@ Visibility write (officers and managers only):
 
 Returns `404` when the issue is not viewable by the caller (same rules as show). User-owned `PATCH /api/issues/{issue}` cannot change visibility.
 
-Issue responses include read-only `status`, `assigned_officer_id`, and `visibility` fields.
+Issue responses include read-only `status`, `assigned_officer_id`, and `visibility` fields. Officers and managers receive `status_history` on show (no GPS coordinates). `officer_resolution` is embedded only when eager-loaded; use the dedicated GET path below.
+
+### Officer issue workflows
+
+Tier C routes require an active officer shared shift (`hub_active_until` in the future) or officers receive **403** `hub_active_required`. District scoping: the officer must be assigned to the issue's district via `district_officer` or **403** `officer_not_in_district`.
+
+**Self-assign / unassign**
+
+- `POST {{base_url}}/api/issues/{issue}/assign-self` — active officer; idempotent when already assigned to self; **409** `issue_already_assigned` when another officer owns it; open issues transition to `in_behandeling`.
+- `POST {{base_url}}/api/issues/{issue}/unassign-self` — current assignee only; **403** `not_assigned_officer` otherwise.
+
+**Status update**
+
+`PATCH {{base_url}}/api/issues/{issue}/status`
+
+```json
+{
+  "status": "opgelost",
+  "note": "Tegel vervangen."
+}
+```
+
+Directed transitions only: `open` → `in_behandeling`; `in_behandeling` → `opgelost` or `gesloten`; `opgelost` → `gesloten`. Assigned officer only.
+
+**Officer resolution (field report)**
+
+Distinct from user satisfaction in `issue_resolutions`. One report per issue.
+
+- `GET {{base_url}}/api/issues/{issue}/officer-resolution` — any actor who can view the issue; **404** when none exists.
+- `POST {{base_url}}/api/issues/{issue}/officer-resolution` — multipart; current assignee only; **409** `officer_resolution_exists` on duplicate.
+- `PATCH {{base_url}}/api/issues/{issue}/officer-resolution` — multipart; optional `remove_attachment_ids` and new `files`.
+- `GET {{base_url}}/api/issues/{issue}/officer-resolution/attachments/{attachment}/download` — same visibility as show.
+
+Up to **3** images (`jpg`, `jpeg`, `png`, `gif`, `webp`), **5 MB** each.
+
+Postman folder: **Issues / Officer workflows**. Run **Auth / Login Officer at Hub** first; use an issue in the officer's district (demo: Cool / `district_id: 1`).
 
 ### Issue Attachments
 

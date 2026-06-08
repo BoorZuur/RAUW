@@ -50,6 +50,10 @@ info:
     | `hub_active_required` | 403 | Officer on Tier C without active shared shift |
     | `hub_not_assigned` | 403 | Officer login or start-shift when `hub_id` is null |
     | `outside_hub_radius` | 403 | Start-shift outside hub radius / ineligible hub |
+    | `officer_not_in_district` | 403 | Officer workflow on an issue outside assigned districts |
+    | `not_assigned_officer` | 403 | Officer status/unassign/resolution write without assignee ownership |
+    | `issue_already_assigned` | 409 | Self-assign when another officer already owns the issue |
+    | `officer_resolution_exists` | 409 | Duplicate POST on officer resolution (use PATCH to update) |
     | `shift_already_active` | 422 | Start-shift when shift already active |
     | `account_inactive` | 403 | Inactive actor on a non-whitelisted route |
 
@@ -2055,6 +2059,10 @@ paths:
         actors receive 403 from global middleware. When the issue exists but is not
         visible to the caller (for example a hidden issue owned by another user),
         the backend returns 404 rather than 403 to avoid leaking existence.
+        Active officers and managers also receive `status_history` (newest first,
+        without coordinates) when loaded. `officer_resolution` is included only
+        when the relation is eager-loaded; use GET
+        `/api/issues/{issueId}/officer-resolution` as the primary read path.
       security:
         - bearerAuth: [ ]
       responses:
@@ -2340,6 +2348,344 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/issues/{issueId}/assign-self:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: integer
+    post:
+      tags: [ Issues ]
+      summary: Self-assign officer to an issue
+      description: >-
+        Assign the authenticated active officer to an issue in one of their
+        assigned districts. Active officers only; users, managers, and inactive
+        officers receive **403**. Officers without an active shared shift receive
+        **403** `hub_active_required` (Tier C). The issue must be viewable by
+        the caller; otherwise **404**. When the officer is not assigned to the
+        issue's district, **403** `officer_not_in_district`. Already assigned to
+        the requesting officer is idempotent (**200**). When assigned to another
+        officer, **409** `issue_already_assigned` (no takeover). When the issue
+        status is `open`, self-assign also transitions it to `in_behandeling` and
+        appends one status history row. `assigned_officer_id` is read-only on
+        user-owned create/update; use this endpoint instead.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Issue with updated assignee (and status when transitioned from open)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: >-
+            Forbidden. Non-officers receive `This action is unauthorized.`
+            Inactive officers receive `account_inactive`. Officers without an
+            active shared shift receive `hub_active_required`. Officers outside
+            the issue district receive `officer_not_in_district`.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/AccountInactiveError'
+                  - $ref: '#/components/schemas/HubError'
+                  - $ref: '#/components/schemas/OfficerWorkflowError'
+                  - $ref: '#/components/schemas/Error'
+              examples:
+                hubActiveRequired:
+                  summary: Officer without active shared shift
+                  value:
+                    message: Hub-active session required.
+                    code: hub_active_required
+                officerNotInDistrict:
+                  summary: Officer not assigned to issue district
+                  value:
+                    message: Officer is not assigned to this issue district.
+                    code: officer_not_in_district
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Issue already assigned to another officer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueWorkflowConflictError'
+              example:
+                message: Issue is already assigned to another officer.
+                code: issue_already_assigned
+
+  /api/issues/{issueId}/unassign-self:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: integer
+    post:
+      tags: [ Issues ]
+      summary: Unassign officer from an issue
+      description: >-
+        Clear `assigned_officer_id` when the authenticated active officer is the
+        current assignee. Status is unchanged. Active officers only. Officers
+        without an active shared shift receive **403** `hub_active_required`.
+        The issue must be viewable (**404** when not). District scoping applies
+        (**403** `officer_not_in_district`). Already unassigned is idempotent
+        (**200**). Non-assignees receive **403** `not_assigned_officer`.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Issue with cleared assignee
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden (see assign-self for structured codes)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/AccountInactiveError'
+                  - $ref: '#/components/schemas/HubError'
+                  - $ref: '#/components/schemas/OfficerWorkflowError'
+                  - $ref: '#/components/schemas/Error'
+              examples:
+                notAssignedOfficer:
+                  summary: Officer is not the current assignee
+                  value:
+                    message: Only the assigned officer may unassign from this issue.
+                    code: not_assigned_officer
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/issues/{issueId}/status:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Issues ]
+      summary: Update issue status (officer workflow)
+      description: >-
+        Update an assigned issue's status along the directed officer workflow.
+        Active officers only; only the current assignee may update status
+        (**403** `not_assigned_officer` otherwise). Officers without an active
+        shared shift receive **403** `hub_active_required`. District scoping
+        applies (**403** `officer_not_in_district`). The issue must be viewable
+        (**404** when not). Each successful change appends one status history row
+        (without coordinates) and sets `resolved_at` on the first transition to
+        `opgelost`. Allowed transitions: `open` → `in_behandeling`;
+        `in_behandeling` → `opgelost` or `gesloten`; `opgelost` → `gesloten`.
+        Same status or invalid transitions receive **422**.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueStatusUpdate'
+            example:
+              status: opgelost
+              note: Tegel vervangen en stoep hersteld.
+      responses:
+        '200':
+          description: Updated issue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden (see assign-self for structured codes)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/AccountInactiveError'
+                  - $ref: '#/components/schemas/HubError'
+                  - $ref: '#/components/schemas/OfficerWorkflowError'
+                  - $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/issues/{issueId}/officer-resolution:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags: [ Issues ]
+      summary: Show officer resolution report
+      description: >-
+        Return the single officer resolution report for an issue. Any
+        authenticated actor who can view the issue may read it; hidden issues
+        return **404** when not visible. Officers without an active shared shift
+        receive **403** `hub_active_required`. Returns **404** when no resolution
+        exists yet. Distinct from user satisfaction feedback in `issue_resolutions`.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Officer resolution object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfficerIssueResolution'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HubActiveRequired'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [ Issues ]
+      summary: Create officer resolution report
+      description: >-
+        Create the officer field report for an issue (once per issue). Multipart
+        upload. Only the authenticated active officer currently assigned to the
+        issue may create it. Officers without an active shared shift receive
+        **403** `hub_active_required`. District scoping applies (**403**
+        `officer_not_in_district`). Duplicate POST returns **409**
+        `officer_resolution_exists`; use PATCH to update an existing report.
+        Up to **3** image attachments (`jpg`, `jpeg`, `png`, `gif`, `webp`), each
+        at most **5 MB**. Files are stored on non-public local storage and
+        served only through authenticated download endpoints.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OfficerIssueResolutionCreate'
+      responses:
+        '201':
+          description: Created officer resolution
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfficerIssueResolution'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden (see assign-self for structured codes)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/AccountInactiveError'
+                  - $ref: '#/components/schemas/HubError'
+                  - $ref: '#/components/schemas/OfficerWorkflowError'
+                  - $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Officer resolution already exists for this issue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueWorkflowConflictError'
+              example:
+                message: An officer resolution already exists for this issue.
+                code: officer_resolution_exists
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    patch:
+      tags: [ Issues ]
+      summary: Update officer resolution report
+      description: >-
+        Update title, content, and image attachments on an existing officer
+        resolution. Multipart upload. Only the authenticated active officer
+        currently assigned to the issue may update it. Officers without an
+        active shared shift receive **403** `hub_active_required`. District
+        scoping applies. Send `remove_attachment_ids` to delete owned attachments
+        before uploading replacements. Total attachments after removals plus new
+        files must not exceed **3**. Returns **404** when no resolution exists.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OfficerIssueResolutionUpdate'
+      responses:
+        '200':
+          description: Updated officer resolution
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfficerIssueResolution'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden (see assign-self for structured codes)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/AccountInactiveError'
+                  - $ref: '#/components/schemas/HubError'
+                  - $ref: '#/components/schemas/OfficerWorkflowError'
+                  - $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/issues/{issueId}/officer-resolution/attachments/{attachmentId}/download:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: attachmentId
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags: [ Issues ]
+      summary: Download officer resolution attachment
+      description: >-
+        Stream a resolution attachment from non-public local development storage.
+        Any authenticated actor who can view the issue may download it. Officers
+        without an active shared shift receive **403** `hub_active_required`. The
+        attachment must belong to the issue's officer resolution and the backing
+        local file must still exist; otherwise **404**.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Attachment file stream
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HubActiveRequired'
         '404':
           $ref: '#/components/responses/NotFound'
 
@@ -3252,6 +3598,32 @@ components:
         code:
           type: string
           enum: [ shift_already_active ]
+
+    OfficerWorkflowError:
+      type: object
+      description: >-
+        Officer issue workflow error with stable machine-readable `code`.
+        Returned when district scoping or assignee ownership checks fail on
+        officer workflow routes.
+      required: [ message, code ]
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+          enum: [ not_assigned_officer, officer_not_in_district ]
+
+    IssueWorkflowConflictError:
+      type: object
+      description: >-
+        Issue officer workflow conflict with stable machine-readable `code`.
+      required: [ message, code ]
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+          enum: [ issue_already_assigned, officer_resolution_exists ]
 
     StartOfficerShiftRequest:
       type: object
@@ -4437,7 +4809,9 @@ components:
           nullable: true
           description: >-
             Read-only nullable officer assignee id. Not accepted on user-owned create
-            or update requests.
+            or update requests. Active officers set or clear it through POST
+            `/api/issues/{issueId}/assign-self` and POST
+            `/api/issues/{issueId}/unassign-self`.
         visibility:
           type: string
           enum: [visible, hidden]
@@ -4482,6 +4856,24 @@ components:
           nullable: true
           items:
             $ref: '#/components/schemas/IssueAttachment'
+        status_history:
+          type: array
+          nullable: true
+          description: >-
+            Status change audit trail. Included only for active officers and
+            managers when eager-loaded (for example on GET issue show). Regular
+            users never receive this field. Rows do not include officer
+            coordinates.
+          items:
+            $ref: '#/components/schemas/IssueStatusHistory'
+        officer_resolution:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/OfficerIssueResolution'
+          description: >-
+            Optional embedded officer field report when the relation is
+            eager-loaded and the actor may view the issue. Use GET
+            `/api/issues/{issueId}/officer-resolution` as the primary read path.
         created_at:
           type: string
           format: date-time
@@ -4523,6 +4915,178 @@ components:
         Attachment metadata. Files are stored in non-public local development
         storage and are downloadable only through the authenticated download_url.
         Raw storage paths and public file URLs are not exposed.
+      properties:
+        id:
+          type: integer
+        issue_id:
+          type: integer
+        original_name:
+          type: string
+          nullable: true
+        file_type:
+          type: string
+          nullable: true
+        file_size:
+          type: integer
+          nullable: true
+          description: File size in bytes. Each uploaded file is limited to 5 MB.
+        uploaded_at:
+          type: string
+          format: date-time
+        download_url:
+          type: string
+          description: Authenticated download endpoint for this attachment.
+
+    IssueStatusUpdate:
+      type: object
+      required: [ status ]
+      description: >-
+        Officer status update payload. Only the assigned active officer may
+        submit this on PATCH `/api/issues/{issueId}/status`.
+      properties:
+        status:
+          type: string
+          enum: [ open, in_behandeling, opgelost, gesloten ]
+          description: >-
+            Target status. Must follow directed transitions from the current
+            status; same status returns 422.
+        note:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: Optional audit note stored on the status history row.
+
+    IssueStatusHistory:
+      type: object
+      description: >-
+        One row in the issue status audit trail. Exposed to officers and
+        managers only. Does not include officer GPS coordinates.
+      properties:
+        id:
+          type: integer
+        issue_id:
+          type: integer
+        changed_by_officer_id:
+          type: integer
+          nullable: true
+        old_status:
+          type: string
+          nullable: true
+          enum: [ open, in_behandeling, opgelost, gesloten ]
+        new_status:
+          type: string
+          enum: [ open, in_behandeling, opgelost, gesloten ]
+        note:
+          type: string
+          nullable: true
+        changed_at:
+          type: string
+          format: date-time
+        officer:
+          type: object
+          nullable: true
+          description: Compact officer summary when changedByOfficer is loaded.
+          properties:
+            id:
+              type: integer
+            username:
+              type: string
+
+    OfficerIssueResolution:
+      type: object
+      description: >-
+        Officer field report describing how an issue was handled. At most one
+        per issue (`officer_issue_resolutions.issue_id` unique). Distinct from
+        user satisfaction feedback in `issue_resolutions`.
+      properties:
+        id:
+          type: integer
+        issue_id:
+          type: integer
+        officer_id:
+          type: integer
+          nullable: true
+        title:
+          type: string
+        content:
+          type: string
+        officer:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            username:
+              type: string
+        attachments:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/OfficerIssueResolutionAttachment'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    OfficerIssueResolutionCreate:
+      type: object
+      required: [ title, content ]
+      description: >-
+        Multipart create payload for POST
+        `/api/issues/{issueId}/officer-resolution`. Assignee-only; one report
+        per issue.
+      properties:
+        title:
+          type: string
+          maxLength: 255
+        content:
+          type: string
+          maxLength: 10000
+        files:
+          type: array
+          maxItems: 3
+          items:
+            type: string
+            format: binary
+          description: >-
+            Optional image attachments (jpg, jpeg, png, gif, webp). Up to 3
+            files, each at most 5 MB.
+
+    OfficerIssueResolutionUpdate:
+      type: object
+      required: [ title, content ]
+      description: >-
+        Multipart update payload for PATCH
+        `/api/issues/{issueId}/officer-resolution`. Assignee-only.
+      properties:
+        title:
+          type: string
+          maxLength: 255
+        content:
+          type: string
+          maxLength: 10000
+        files:
+          type: array
+          items:
+            type: string
+            format: binary
+          description: >-
+            Optional new image attachments. Combined count after
+            `remove_attachment_ids` must not exceed 3; each file at most 5 MB.
+        remove_attachment_ids:
+          type: array
+          items:
+            type: integer
+          description: Attachment ids owned by this resolution to delete before upload.
+
+    OfficerIssueResolutionAttachment:
+      type: object
+      description: >-
+        Officer resolution attachment metadata. Files are stored on non-public
+        local development storage and are downloadable only through
+        `download_url`.
       properties:
         id:
           type: integer
