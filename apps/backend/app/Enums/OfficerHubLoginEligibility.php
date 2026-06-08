@@ -6,6 +6,8 @@ enum OfficerHubLoginEligibility
 {
     case HubActiveEligible;
     case OutsideRadius;
+    case HubNotAssigned;
+    case HubNotFound;
     case InactiveHub;
     case MissingCoordinates;
     case MissingLoginCoordinates;

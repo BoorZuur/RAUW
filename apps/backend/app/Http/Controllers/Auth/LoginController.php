@@ -7,6 +7,7 @@ use App\Actions\Auth\IssueOfficerAuthToken;
 use App\Actions\Auth\OfficerAuthTokenResult;
 use App\Actions\Auth\ResolveLoginActor;
 use App\Enums\ActorType;
+use App\Enums\OfficerHubLoginEligibility;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Resources\AuthProfileResource;
@@ -86,18 +87,21 @@ class LoginController extends Controller
     {
         $request->validateOfficerCoordinates();
 
-        if ($officer->hub_id === null) {
-            return response()->json([
-                'message' => 'Officer hub assignment required before login.',
-                'code' => 'hub_not_assigned',
-            ], Response::HTTP_FORBIDDEN);
-        }
-
         $evaluation = $this->evaluateOfficerHubLogin->evaluate(
             $officer,
             $request->latitude(),
             $request->longitude(),
         );
+
+        if (in_array($evaluation->eligibility, [
+            OfficerHubLoginEligibility::HubNotAssigned,
+            OfficerHubLoginEligibility::HubNotFound,
+        ], true)) {
+            return response()->json([
+                'message' => 'Officer hub assignment required before login.',
+                'code' => 'hub_not_assigned',
+            ], Response::HTTP_FORBIDDEN);
+        }
 
         $authToken = $this->issueOfficerAuthToken->issue(
             $officer,

@@ -8,11 +8,7 @@ use Illuminate\Support\Carbon;
 class ResolveOfficerTokenHubActive
 {
     /**
-     * Derive hub-active state for the current bearer token.
-     *
-     * Matches {@see EnsureOfficerHubActive} and the login response contract:
-     * the token must carry the `hub-active` ability, the officer must be active,
-     * and `hub_active_until` must still be in the future.
+     * Derive hub-active state from the officer's shared shift clock.
      *
      * @return array{hub_active: bool, hub_active_until: string|null}
      */
@@ -21,7 +17,6 @@ class ResolveOfficerTokenHubActive
         $hubActiveUntil = $officer->hub_active_until;
 
         $hubActive = $officer->is_active
-            && $officer->tokenCan('hub-active')
             && $hubActiveUntil instanceof Carbon
             && $hubActiveUntil->isFuture();
 

@@ -16,13 +16,13 @@ class EvaluateOfficerHubLogin
         }
 
         if ($officer->hub_id === null) {
-            return new OfficerHubLoginEvaluation(OfficerHubLoginEligibility::OutsideRadius);
+            return new OfficerHubLoginEvaluation(OfficerHubLoginEligibility::HubNotAssigned);
         }
 
         $hub = $officer->relationLoaded('hub') ? $officer->hub : $officer->hub()->first();
 
         if (! $hub instanceof Hub) {
-            return new OfficerHubLoginEvaluation(OfficerHubLoginEligibility::OutsideRadius);
+            return new OfficerHubLoginEvaluation(OfficerHubLoginEligibility::HubNotFound);
         }
 
         if ($hub->latitude === null || $hub->longitude === null) {

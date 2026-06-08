@@ -68,6 +68,7 @@ class RegisterOfficerController extends Controller
             $evaluation,
             $request->latitude(),
             $request->longitude(),
+            startShift: false,
         );
 
         return response()->json(
