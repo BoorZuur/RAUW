@@ -3,15 +3,15 @@
 namespace App\Models;
 
 use App\Enums\ChatStatus;
-use App\Enums\Department;
 use App\Enums\IssueStatus;
-use App\Enums\Priority;
 use App\Enums\Visibility;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 
 #[Fillable([
     'user_id',
@@ -22,7 +22,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'chat_closed_by_officer_id',
     'title',
     'content',
-    'neighborhood',
     'postal_code',
     'address',
     'latitude',
@@ -30,7 +29,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'status',
     'chat_status',
     'priority',
-    'department',
     'visibility',
     'is_anonymous',
     'anonymous_alias',
@@ -47,10 +45,8 @@ class Issue extends Model
     protected $attributes = [
         'status' => IssueStatus::Open->value,
         'chat_status' => ChatStatus::Closed->value,
-        'priority' => Priority::Low->value,
         'duplicate_count' => 0,
         'participant_count' => 0,
-        'vote_count' => 0,
         'is_flagged' => false,
         'visibility' => Visibility::Visible->value,
         'is_anonymous' => false,
@@ -66,13 +62,11 @@ class Issue extends Model
         return [
             'status' => IssueStatus::class,
             'chat_status' => ChatStatus::class,
-            'priority' => Priority::class,
-            'department' => Department::class,
+            'priority' => 'integer',
             'latitude' => 'decimal:8',
             'longitude' => 'decimal:8',
             'duplicate_count' => 'integer',
             'participant_count' => 'integer',
-            'vote_count' => 'integer',
             'is_flagged' => 'boolean',
             'visibility' => Visibility::class,
             'is_anonymous' => 'boolean',
@@ -88,6 +82,39 @@ class Issue extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    /**
+     * Departments this issue is assigned to via the pivot table.
+     *
+     * This pivot is the source of truth for an issue's department assignments
+     * and supports multiple departments per issue.
+     *
+     * @return BelongsToMany<\App\Models\Department, $this>
+     */
+    public function departments(): BelongsToMany
+    {
+        return $this->belongsToMany(\App\Models\Department::class, 'department_issue');
+    }
+
+    /**
+     * The department codes currently assigned to this issue.
+     *
+     * @return Collection<int, string>
+     */
+    public function departmentCodes(): Collection
+    {
+        return $this->departments->pluck('code')->values();
+    }
+
+    /**
+     * Sync the issue's assigned departments by their model identifiers.
+     *
+     * @param  iterable<int>  $departmentIds
+     */
+    public function syncDepartments(iterable $departmentIds): void
+    {
+        $this->departments()->sync($departmentIds);
     }
 
     public function assignedOfficer(): BelongsTo
@@ -118,11 +145,6 @@ class Issue extends Model
     public function participants(): HasMany
     {
         return $this->hasMany(IssueParticipant::class);
-    }
-
-    public function votes(): HasMany
-    {
-        return $this->hasMany(IssueVote::class);
     }
 
     public function comments(): HasMany

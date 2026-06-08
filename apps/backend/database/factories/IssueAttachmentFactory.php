@@ -20,8 +20,11 @@ class IssueAttachmentFactory extends Factory
     {
         return [
             'issue_id' => Issue::factory(),
+            'file_path' => 'issue-attachments/'.fake()->uuid().'.jpg',
             'file_url' => fake()->imageUrl(),
+            'original_name' => fake()->word().'.jpg',
             'file_type' => fake()->randomElement(['image/jpeg', 'image/png', 'application/pdf']),
+            'file_size' => fake()->numberBetween(1024, 5 * 1024 * 1024),
             'uploaded_at' => now(),
         ];
     }

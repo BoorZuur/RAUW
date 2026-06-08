@@ -15,8 +15,7 @@ class StoreDepartmentRequest extends FormRequest
      * may be a User, Officer, or Manager. Creation is restricted to a Manager
      * whose `is_active` and `is_main_manager` flags are both true, so users,
      * officers, non-main managers, and inactive managers are all rejected with
-     * a 403 response. Department management is intentionally narrower than
-     * category management, which is open to ordinary managers.
+     * a 403 response.
      */
     public function authorize(): bool
     {

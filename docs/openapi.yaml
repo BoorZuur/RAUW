@@ -5,35 +5,32 @@ info:
     OpenAPI 3.0 specification (Swagger UI) for the WIJK application derived from
     the provided ERD. This spec focuses on the main public/admin endpoints used
     by mobile/web clients and officer/manager consoles. It uses Laravel Sanctum
-    bearer token authentication for API consumers.
+    bearer token authentication for API consumers. Issued personal access tokens
+    expire after **7 days** (10080 minutes; `SANCTUM_TOKEN_EXPIRATION` in
+    `config/sanctum.php`, default 10080).
+
+    CORS allows explicit origins only (no wildcard): `FRONTEND_URL` (default
+    `http://localhost:5173`) and optional `FRONTEND_URL_PRODUCTION` in
+    `config/cors.php`. Browser clients must call the API from a configured origin.
+
+    Inactive accounts: after `auth:sanctum` resolves a bearer token, global
+    middleware rejects deactivated users, officers, and managers with **403**
+    (`InactiveAccount`, message `This account is inactive.`) on protected routes.
+    Login already returns generic **401** (`Invalid credentials.`) for inactive
+    credentials as well as unknown email or wrong password. While inactive,
+    actors may still call **GET** `/api/auth/me`, **POST** `/api/auth/logout`,
+    and **PATCH** `/api/auth/me` (inactive: username and password only; active:
+    full identity fields). All other
+    protected routes, including **PATCH** `/api/auth/me/districts`, return
+    **403** from inactive-actor middleware.
+
+    Health check **GET** `/up` (Laravel bootstrap) is intentionally omitted
+    from this spec; it is not part of the JSON API contract under `/api`.
   version: '1.0.0'
 servers:
-  - url: /api/v1
-    description: API base path (versioned)
+  - url: /
+    description: Backend host root; API routes are prefixed with /api.
 paths:
-  /auth/register:
-    post:
-      tags: [ Auth ]
-      summary: Register a new user (legacy path)
-      description: >-
-        Legacy OpenAPI path. The live backend route for public user registration
-        is POST /api/auth/register/user.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RegisterRequest'
-      responses:
-        '201':
-          description: Created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-        '400':
-          $ref: '#/components/responses/ValidationError'
-
   /api/auth/register/officer:
     post:
       tags: [ Auth ]
@@ -43,8 +40,9 @@ paths:
         immediately issues a Sanctum bearer token, and returns the same auth
         response shape and safe profile serializer used by login. This endpoint
         does not create a session and does not require authentication. Officers
-        must be assigned to one or more existing departments through
-        department_ids. Optional district assignments use district_ids and are
+        must be assigned to one or more existing active departments through
+        department_ids; inactive department IDs are rejected with 422. Optional
+        district assignments use district_ids and are
         stored through the district_officer pivot; officers may also start with
         no assigned districts.
       requestBody:
@@ -90,7 +88,7 @@ paths:
             Validation failed. Returned when required fields are missing,
             email is invalid, password is shorter than 8 characters,
             confirm_password does not match password, department_ids is missing,
-            empty, duplicated, or references unknown departments, or
+            empty, duplicated, or references unknown or inactive departments, or
             district_ids is duplicated or references inactive/unknown districts,
             or username/email/badge_number already exists in the officers table.
           content:
@@ -127,14 +125,14 @@ paths:
                 duplicateIdentifiers:
                   summary: Duplicate officer identifiers
                   value:
-                    message: The username has already been taken. (and 2 more errors)
+                    message: The provided credentials could not be registered. (and 2 more errors)
                     errors:
                       username:
-                        - The username has already been taken.
+                        - The provided credentials could not be registered.
                       email:
-                        - The email has already been taken.
+                        - The provided credentials could not be registered.
                       badge_number:
-                        - The badge number has already been taken.
+                        - The provided credentials could not be registered.
 
   /api/auth/register/user:
     post:
@@ -175,9 +173,11 @@ paths:
           description: >-
             Validation failed. Returned when required fields are missing,
             email is invalid, password is shorter than 8 characters,
-            confirm_password does not match password, or username already exists
-            in the users table, or email already exists for any user, officer,
-            or manager.
+            confirm_password does not match password, or username/email is
+            already registered. Duplicate username or email (including email
+            used by an officer or manager) returns the generic message
+            `The provided credentials could not be registered.` on the
+            offending fields without revealing which actor table holds the email.
           content:
             application/json:
               schema:
@@ -208,19 +208,27 @@ paths:
                       confirm_password:
                         - The confirm password field must match password.
                 duplicateIdentifiers:
-                  summary: Duplicate user identifiers
+                  summary: Duplicate user identifiers (generic message)
                   value:
-                    message: The username has already been taken. (and 1 more error)
+                    message: The provided credentials could not be registered. (and 1 more error)
                     errors:
                       username:
-                        - The username has already been taken.
+                        - The provided credentials could not be registered.
                       email:
-                        - The email has already been taken.
+                        - The provided credentials could not be registered.
 
   /api/auth/login:
     post:
       tags: [ Auth ]
       summary: Login and receive tokens
+      description: >-
+        Authenticate a user, officer, or manager with shared email/password
+        credentials. Returns a Sanctum bearer token (expires after 7 days / 10080
+        minutes) and the canonical safe profile payload. Unknown email, wrong
+        password, inactive accounts, and
+        ambiguous email matches across actor tables all return the same generic
+        **401** with message `Invalid credentials.` so callers cannot infer
+        account state.
       requestBody:
         required: true
         content:
@@ -264,7 +272,8 @@ paths:
       description: >-
         Returns the authenticated actor_type and cleaned safe profile payload.
         This response does not issue a token. actor_type is only present at the
-        top level; profile omits internal auth fields.
+        top level; profile omits internal auth fields. Inactive accounts may
+        still call this route (whitelisted by global inactive-actor middleware).
       security:
         - bearerAuth: [ ]
       responses:
@@ -295,20 +304,122 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+    patch:
+      tags: [ Auth ]
+      summary: Update my profile identity fields
+      description: >-
+        Self-service identity update for users, officers, and managers.
+        Inactive accounts may call this route for profile recovery
+        (whitelisted by global inactive-actor middleware) but may only change
+        username and password. Active accounts accept a partial PATCH body:
+        send only the fields to change. Active users and managers may update
+        username, email, and password; active officers may also update
+        badge_number. When password is present, confirm_password must match.
+        Inactive requests that include email or badge_number receive 422
+        validation errors. Department, district, and privileged fields are
+        rejected with 422 validation errors and must not be sent on this path.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthProfileUpdate'
+            examples:
+              emailOnly:
+                summary: Change email only
+                value:
+                  email: new.email@example.com
+              passwordChange:
+                summary: Change password
+                value:
+                  password: newpassword123
+                  confirm_password: newpassword123
+              officerBadge:
+                summary: Officer badge number update
+                value:
+                  badge_number: BOA-0042
+      responses:
+        '200':
+          description: Refreshed actor profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthCurrentProfileResponse'
+              examples:
+                userProfile:
+                  summary: Updated user profile
+                  value:
+                    actor_type: user
+                    profile:
+                      id: 1
+                      username: demo-user
+                      email: new.email@example.com
+                officerProfile:
+                  summary: Updated officer profile
+                  value:
+                    actor_type: officer
+                    profile:
+                      id: 1
+                      username: demo-officer
+                      email: demo.officer@example.com
+                      badge_number: BOA-0042
+                      departments:
+                        - id: 1
+                          code: wijkbeheer
+                          name: Wijkbeheer
+                      districts:
+                        - id: 1
+                          name: Middelharnis
+                          postal_prefix: '3241'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/auth/logout:
+    post:
+      tags: [ Auth ]
+      summary: Logout and revoke all bearer tokens for the actor
+      description: >-
+        Deletes all Sanctum personal access tokens for the authenticated actor,
+        invalidating every active session (not only the bearer token on this
+        request). Inactive accounts may call this route (whitelisted by global
+        inactive-actor middleware).
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: All tokens for the actor revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ message ]
+                properties:
+                  message:
+                    type: string
+                    example: Logged out.
+              example:
+                message: Logged out.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /api/auth/me/districts:
     patch:
       tags: [ Managers, Officers ]
-      summary: Update my district assignments (manager implemented; officer docs only)
+      summary: Update my district assignments
       description: >-
-        Implemented manager self-service district assignment endpoint. Replaces
-        the authenticated manager's district assignments with the supplied
-        district_ids array and returns the refreshed auth profile. Users receive
-        403 because they do not have district assignments. The request updates
-        only actor district pivots and never modifies the singular
-        issues.district_id issue location/reference field. This operation is
-        also shown under Officers for parity only: the backend does not currently
-        implement an officer self-service district update route or officer
-        behavior for this request.
+        Self-service district assignment endpoint for active managers and active
+        officers. Replaces the authenticated actor's district assignments with
+        the supplied district_ids array and returns the refreshed auth profile.
+        Users receive **403** (`This action is unauthorized.`) because they do
+        not have district assignments. Inactive accounts receive **403**
+        (`This account is inactive.`) from global inactive-actor middleware
+        (not whitelisted). The request updates only actor district pivots and
+        never modifies the singular issues.district_id issue location/reference
+        field.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -321,7 +432,7 @@ paths:
               district_ids: [1, 2]
       responses:
         '200':
-          description: Refreshed manager profile; officer shape is illustrative only
+          description: Refreshed manager or officer profile
           content:
             application/json:
               schema:
@@ -347,8 +458,8 @@ paths:
                         - id: 2
                           name: Sommelsdijk
                           postal_prefix: '3245'
-                officerProfileDocsOnly:
-                  summary: Officer parity response shape (docs only, not implemented)
+                officerProfile:
+                  summary: Implemented officer self-service response
                   value:
                     actor_type: officer
                     profile:
@@ -370,18 +481,298 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
+          description: >-
+            Users without district assignments (Forbidden) or deactivated
+            accounts (InactiveAccount).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                userForbidden:
+                  summary: User actor
+                  value:
+                    message: This action is unauthorized.
+                inactiveAccount:
+                  summary: Inactive bearer token
+                  value:
+                    message: This account is inactive.
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/main-managers:
+    get:
+      tags: [ Managers ]
+      summary: List main managers
+      description: >-
+        List managers with `is_main_manager = true` for an authenticated active
+        main manager. Results are ordered by username ascending and include each
+        manager's departments and districts as compact arrays. Users, officers,
+        ordinary managers, inactive managers, inactive main managers, and
+        unauthenticated requests receive 403. Pagination is backend-driven using
+        page and per_page, with a default per_page of 20 and maximum of 100.
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Backend-paginated list of main managers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Manager'
+                  links:
+                    type: object
+                    additionalProperties: true
+                  meta:
+                    type: object
+                    properties:
+                      current_page:
+                        type: integer
+                      per_page:
+                        type: integer
+                      total:
+                        type: integer
+                      last_page:
+                        type: integer
+              example:
+                data:
+                  - actor_type: manager
+                    id: 1
+                    username: demo-manager
+                    email: demo.manager@example.com
+                    is_active: true
+                    is_main_manager: true
+                    created_by_manager_id: null
+                    departments:
+                      - id: 1
+                        code: wijkbeheer
+                        name: Wijkbeheer
+                    districts:
+                      - id: 1
+                        name: Middelharnis
+                        postal_prefix: '3241'
+                links:
+                  first: /api/main-managers?page=1
+                  last: /api/main-managers?page=1
+                  prev: null
+                  next: null
+                meta:
+                  current_page: 1
+                  per_page: 20
+                  total: 1
+                  last_page: 1
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
           $ref: '#/components/responses/Forbidden'
         '422':
           $ref: '#/components/responses/ValidationError'
 
+  /api/main-managers/{managerId}:
+    parameters:
+      - name: managerId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Managers ]
+      summary: Update a main manager
+      description: >-
+        Update another main manager's username, email, and/or password as an
+        authenticated active main manager. Send only fields to change. When
+        password is present, confirm_password must match. Email must remain
+        unique across users, officers, and managers. Privileged fields
+        (is_main_manager, is_active, created_by_manager_id, department_ids, and
+        district_ids) are not accepted. The path target must have
+        is_main_manager=true; ordinary managers and unknown ids return 404.
+        Users, officers, ordinary managers, inactive managers, and
+        unauthenticated requests receive 403.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MainManagerUpdate'
+            example:
+              email: updated.main@example.com
+      responses:
+        '200':
+          description: Updated main manager profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manager'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/main-managers/{managerId}/disable:
+    parameters:
+      - name: managerId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Managers ]
+      summary: Disable a main manager
+      description: >-
+        Deactivate a main manager as an authenticated active main manager by
+        setting is_active to false while preserving the row and associations.
+        The path target must have is_main_manager=true; ordinary managers and
+        unknown ids return 404. Deactivation is rejected with 409 when the
+        target is the last active main manager. Users, officers, ordinary
+        managers, inactive managers, and unauthenticated requests receive 403.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Main manager disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manager'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+
+  /api/main-managers/{managerId}/enable:
+    parameters:
+      - name: managerId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Managers ]
+      summary: Enable a main manager
+      description: >-
+        Reactivate a main manager as an authenticated active main manager by
+        setting is_active to true. The path target must have is_main_manager=true;
+        ordinary managers and unknown ids return 404. Re-enabling an already
+        active main manager is idempotent and returns 200. Unlike disable, no
+        last-active-main-manager guard applies. Users, officers, ordinary
+        managers, inactive managers, and unauthenticated requests receive 403.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Main manager enabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manager'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /api/managers:
+    get:
+      tags: [ Managers ]
+      summary: List ordinary managers
+      description: >-
+        List managers with `is_main_manager = false` for an authenticated active
+        main manager. Results are ordered by username ascending and include each
+        manager's departments and districts as compact arrays. Users, officers,
+        ordinary managers, inactive managers, inactive main managers, and
+        unauthenticated requests receive 403. Pagination is backend-driven using
+        page and per_page, with a default per_page of 20 and maximum of 100.
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Backend-paginated list of ordinary managers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Manager'
+                  links:
+                    type: object
+                    additionalProperties: true
+                  meta:
+                    type: object
+                    properties:
+                      current_page:
+                        type: integer
+                      per_page:
+                        type: integer
+                      total:
+                        type: integer
+                      last_page:
+                        type: integer
+              example:
+                data:
+                  - actor_type: manager
+                    id: 2
+                    username: new-manager
+                    email: new.manager@example.com
+                    is_active: true
+                    is_main_manager: false
+                    created_by_manager_id: 1
+                    departments:
+                      - id: 1
+                        code: wijkbeheer
+                        name: Wijkbeheer
+                    districts:
+                      - id: 1
+                        name: Middelharnis
+                        postal_prefix: '3241'
+                links:
+                  first: /api/managers?page=1
+                  last: /api/managers?page=1
+                  prev: null
+                  next: null
+                meta:
+                  current_page: 1
+                  per_page: 20
+                  total: 1
+                  last_page: 1
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
     post:
       tags: [ Managers ]
       summary: Create a manager
       description: >-
         Create an ordinary manager as an authenticated active main manager. The
-        request must include department_ids with at least one valid department
-        from the departments table. Optional district_ids assign the manager to
+        request must include department_ids with at least one active department
+        (`is_active=true`); inactive or unknown department IDs return **422**.
+        Optional district_ids assign the manager to
         one or more active districts through the district_manager pivot. The
         response returns the created manager profile only and does not issue an
         access token.
@@ -429,6 +820,427 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '422':
           $ref: '#/components/responses/ValidationError'
+
+  /api/managers/{managerId}:
+    parameters:
+      - name: managerId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Managers ]
+      summary: Update an ordinary manager
+      description: >-
+        Update another ordinary manager's username, email, and/or password as an
+        authenticated active main manager. Send only fields to change. When
+        password is present, confirm_password must match. Email must remain
+        unique across users, officers, and managers. Privileged fields
+        (is_main_manager, is_active, created_by_manager_id, department_ids, and
+        district_ids) are not accepted. The path target must have
+        is_main_manager=false; main managers and unknown ids return 404.
+        Users, officers, ordinary managers, inactive managers, and
+        unauthenticated requests receive 403.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MainManagerUpdate'
+            example:
+              email: updated.manager@example.com
+      responses:
+        '200':
+          description: Updated ordinary manager profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manager'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/managers/{managerId}/disable:
+    parameters:
+      - name: managerId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Managers ]
+      summary: Disable an ordinary manager
+      description: >-
+        Deactivate an ordinary manager as an authenticated active main manager by
+        setting is_active to false while preserving the row and associations.
+        The path target must have is_main_manager=false; main managers and
+        unknown ids return 404. Users, officers, ordinary managers, inactive
+        managers, and unauthenticated requests receive 403.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Ordinary manager disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manager'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/managers/{managerId}/enable:
+    parameters:
+      - name: managerId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Managers ]
+      summary: Enable an ordinary manager
+      description: >-
+        Reactivate an ordinary manager as an authenticated active main manager by
+        setting is_active to true while preserving the row and associations.
+        The path target must have is_main_manager=false; main managers and
+        unknown ids return 404. Re-enabling an already active manager is
+        idempotent and returns 200. Users, officers, ordinary managers, inactive
+        managers, and unauthenticated requests receive 403.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Ordinary manager enabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manager'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/managers/{managerId}/departments:
+    parameters:
+      - name: managerId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Managers ]
+      summary: Update a manager's department assignments
+      description: >-
+        Main-manager-only department assignment endpoint. Replaces the target manager's department
+        assignments with the supplied department_ids array and returns that
+        manager's refreshed Manager resource. Only an authenticated active main
+        manager (is_main_manager=true) may call this endpoint. Users, officers,
+        ordinary managers, inactive managers, inactive main managers, and
+        unauthenticated requests receive 403. The endpoint updates only the
+        department_manager pivot. department_ids must be present and may be an
+        empty array to clear all assignments; unlike manager creation, PATCH does
+        not require at least one department. Inactive (`is_active=false`), unknown
+        department IDs, and duplicates return **422**. Soft-deleted managers return 404.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentAssignmentUpdate'
+            examples:
+              assignDepartments:
+                summary: Replace with two departments
+                value:
+                  department_ids: [1, 2]
+              clearDepartments:
+                summary: Clear all department assignments
+                value:
+                  department_ids: []
+      responses:
+        '200':
+          description: Refreshed manager profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manager'
+              example:
+                actor_type: manager
+                id: 2
+                username: new-manager
+                email: new.manager@example.com
+                is_active: true
+                is_main_manager: false
+                created_by_manager_id: 1
+                departments:
+                  - id: 1
+                    code: wijkbeheer
+                    name: Wijkbeheer
+                  - id: 2
+                    code: boa_jeugd
+                    name: BOA Jeugd
+                districts:
+                  - id: 1
+                    name: Middelharnis
+                    postal_prefix: '3241'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/managers/{managerId}/districts:
+    parameters:
+      - name: managerId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Managers ]
+      summary: Update a manager's district assignments
+      description: >-
+        Main-manager-only district assignment endpoint. Replaces the target manager's district
+        assignments with the supplied district_ids array and returns that
+        manager's refreshed Manager resource. Only an authenticated active main
+        manager (is_main_manager=true) may call this endpoint. Users, officers,
+        ordinary managers, inactive managers, inactive main managers, and
+        unauthenticated requests receive 403. The path target must have
+        is_main_manager=false; main managers and unknown ids return 404. The endpoint
+        updates only the district_manager pivot and never modifies issues.district_id
+        or officer district pivots. district_ids must be present and may be an
+        empty array to clear all assignments. Inactive (`is_active=false`), unknown
+        district IDs, and duplicates return **422**. Soft-deleted managers return 404.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DistrictAssignmentUpdate'
+            examples:
+              assignDistricts:
+                summary: Replace with two districts
+                value:
+                  district_ids: [1, 2]
+              clearDistricts:
+                summary: Clear all district assignments
+                value:
+                  district_ids: []
+      responses:
+        '200':
+          description: Refreshed manager profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manager'
+              example:
+                actor_type: manager
+                id: 2
+                username: new-manager
+                email: new.manager@example.com
+                is_active: true
+                is_main_manager: false
+                created_by_manager_id: 1
+                departments:
+                  - id: 1
+                    code: wijkbeheer
+                    name: Wijkbeheer
+                districts:
+                  - id: 1
+                    name: Middelharnis
+                    postal_prefix: '3241'
+                  - id: 2
+                    name: Sommelsdijk
+                    postal_prefix: '3245'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/officers:
+    get:
+      tags: [ Officers ]
+      summary: List officers
+      description: >-
+        List officers for an authenticated active officer or manager. Results are
+        ordered by username ascending and include each officer's departments and
+        districts as compact arrays. Soft-deleted officers are always excluded.
+        When `is_active` is omitted, only active officers are returned. Use
+        `is_active=true` or `is_active=1` to request active officers explicitly,
+        or `is_active=false` or `is_active=0` to request inactive officers only.
+        Optional `district_id` and `department_id` filters narrow results through
+        the officer's district_officer and department_officer pivots. Users and
+        inactive actors receive 403. Pagination is backend-driven using page and
+        per_page, with a default per_page of 20 and maximum of 100.
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: district_id
+          in: query
+          description: Filter to officers assigned to this district.
+          schema:
+            type: integer
+        - name: department_id
+          in: query
+          description: Filter to officers assigned to this department.
+          schema:
+            type: integer
+        - name: is_active
+          in: query
+          description: >-
+            Active-state filter. Truthy values (`true`, `1`) return active officers
+            only; falsy values (`false`, `0`) return inactive officers only. When
+            omitted, the list defaults to active officers only.
+          schema:
+            type: string
+            enum: [ 'true', 'false', '1', '0' ]
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Backend-paginated list of officers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Officer'
+                  links:
+                    type: object
+                    additionalProperties: true
+                  meta:
+                    type: object
+                    properties:
+                      current_page:
+                        type: integer
+                      per_page:
+                        type: integer
+                      total:
+                        type: integer
+                      last_page:
+                        type: integer
+              example:
+                data:
+                  - actor_type: officer
+                    id: 1
+                    username: demo-officer
+                    email: demo.officer@example.com
+                    badge_number: BOA-0001
+                    is_active: true
+                    departments:
+                      - id: 1
+                        code: wijkbeheer
+                        name: Wijkbeheer
+                    districts:
+                      - id: 1
+                        name: Middelharnis
+                        postal_prefix: '3241'
+                links:
+                  first: /api/officers?page=1
+                  last: /api/officers?page=1
+                  prev: null
+                  next: null
+                meta:
+                  current_page: 1
+                  per_page: 20
+                  total: 1
+                  last_page: 1
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/officers/{officerId}/disable:
+    parameters:
+      - name: officerId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Officers ]
+      summary: Disable an officer
+      description: >-
+        Deactivate an officer as an authenticated active manager by setting
+        is_active to false while preserving the row and associations. This does
+        not soft-delete the officer. Only an authenticated active manager may
+        call this endpoint. Users, officers, inactive managers, and
+        unauthenticated requests receive 403. Soft-deleted officers return 404.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Officer disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Officer'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/officers/{officerId}/enable:
+    parameters:
+      - name: officerId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Officers ]
+      summary: Enable an officer
+      description: >-
+        Reactivate an officer as an authenticated active manager by setting
+        is_active to true. This does not restore a soft-deleted officer. Only an
+        authenticated active manager may call this endpoint. Users, officers,
+        inactive managers, and unauthenticated requests receive 403.
+        Re-enabling an already active officer is idempotent and returns 200.
+        Soft-deleted officers return 404.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Officer enabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Officer'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /api/officers/{officerId}/districts:
     parameters:
@@ -491,10 +1303,98 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
 
-  /issues:
+  /api/officers/{officerId}/departments:
+    parameters:
+      - name: officerId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Managers ]
+      summary: Update an officer's department assignments
+      description: >-
+        Main-manager-only department assignment endpoint. Replaces the target officer's department
+        assignments with the supplied department_ids array and returns that
+        officer's refreshed auth profile. Only an authenticated active main manager
+        (is_main_manager=true) may call this endpoint. Users, officers, ordinary
+        managers, inactive managers, inactive main managers, and unauthenticated
+        requests receive 403. This differs from PATCH /api/officers/{officerId}/districts,
+        which any authenticated active manager may call. The endpoint updates only
+        the department_officer pivot. department_ids must be present and may be an
+        empty array to clear all assignments; unlike officer registration, PATCH
+        does         not require at least one department. Inactive (`is_active=false`), unknown
+        department IDs, and duplicates return **422**. Soft-deleted officers return 404.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentAssignmentUpdate'
+            examples:
+              assignDepartments:
+                summary: Replace with two departments
+                value:
+                  department_ids: [1, 2]
+              clearDepartments:
+                summary: Clear all department assignments
+                value:
+                  department_ids: []
+      responses:
+        '200':
+          description: Refreshed officer profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthCurrentProfileResponse'
+              example:
+                actor_type: officer
+                profile:
+                  id: 1
+                  username: demo-officer
+                  email: demo.officer@example.com
+                  badge_number: BOA-0001
+                  departments:
+                    - id: 1
+                      code: wijkbeheer
+                      name: Wijkbeheer
+                    - id: 2
+                      code: boa_jeugd
+                      name: BOA Jeugd
+                  districts:
+                    - id: 1
+                      name: Middelharnis
+                      postal_prefix: '3241'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/issues:
     post:
       tags: [ Issues ]
       summary: Create a new issue
+      description: >-
+        Create an issue as an authenticated active regular user only. Officers,
+        managers, inactive users, and unauthenticated requests receive **403**
+        (`This action is unauthorized.`). The request requires category_id,
+        district_id, title, and content. The issue's departments are derived
+        server-side from the selected category's department assignments, synced
+        to the department_issue pivot, and returned as a read-only departments
+        array. Clients must not send department values. The database no longer
+        stores issues.department; pivot rows are the only persistence. Location
+        fields are optional. When is_anonymous is true the backend still stores
+        user_id ownership, but generates and persists a stable anonymous alias
+        such as Melder#A1B2C3D4 for public display; clients cannot submit the
+        alias. The integer priority is derived server-side from the selected
+        category's main-category priority (lower number = higher urgency) and
+        must not be sent in the request body.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -503,6 +1403,16 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/IssueCreate'
+            example:
+              title: Losliggende stoeptegel
+              content: Er ligt een stoeptegel los bij de bushalte.
+              category_id: 1
+              district_id: 1
+              postal_code: '3241AB'
+              address: Voorstraat 1, Middelharnis
+              latitude: 51.75750000
+              longitude: 4.16500000
+              is_anonymous: true
       responses:
         '201':
           description: Issue created
@@ -510,49 +1420,133 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Issue'
-        '400':
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: >-
+            Forbidden. Deactivated accounts receive `This account is inactive.`
+            (InactiveAccount). Officers, managers, and other non-user actors
+            receive `This action is unauthorized.` (FormRequest authorize).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                inactiveAccount:
+                  summary: Inactive bearer token (middleware)
+                  value:
+                    message: This account is inactive.
+                unauthorizedRole:
+                  summary: Officer or manager (authorize)
+                  value:
+                    message: This action is unauthorized.
+        '422':
           $ref: '#/components/responses/ValidationError'
 
     get:
       tags: [ Issues ]
       summary: List issues with filters and pagination
+      description: >-
+        List issues for any authenticated active actor. Results are visibility-scoped
+        by actor type before optional filters: active users receive issues with
+        `visibility = visible` or issues they own (`issues.user_id` match), including
+        their own hidden issues; other users' hidden issues are excluded. Active
+        officers and active managers receive all issues, including hidden issues from
+        any user.         Filters are optional and composable (AND with visibility): district_id,
+        department, category_id, status, assigned_officer_id, unassigned, mine, and visibility
+        may be combined in a single request to narrow the result set. Query param status
+        accepts any IssueStatus enum value (`open`, `in_behandeling`, `opgelost`, `gesloten`)
+        and is available to all active actors; invalid values receive 422. Query param
+        assigned_officer_id filters issues assigned to that officer; query param unassigned
+        (`unassigned=1` or equivalent truthy values) returns only issues with no assigned
+        officer. Assignee filters are available to officers and managers only; users receive
+        422. assigned_officer_id and unassigned are mutually exclusive (422 when both are set).
+        Query param mine (`mine=1` or equivalent truthy values) restricts
+        active users to issues they own (`issues.user_id`); officers and managers sending
+        mine receive 422. Query param visibility (`visible` or `hidden`) narrows officer/manager
+        lists to that visibility value; when omitted officers and managers see all issues.
+        Users sending visibility receive 422. Query param department accepts a department code from the departments
+        table and matches through department_issue with any-match semantics, so a
+        multi-department issue is included when any pivot assignment has the requested
+        code. Pagination is backend-driven using page and per_page, with a default
+        per_page of 20 and maximum of 100. Results are ordered newest first.
+      security:
+        - bearerAuth: [ ]
       parameters:
         - $ref: '#/components/parameters/page'
         - $ref: '#/components/parameters/perPage'
-        - name: status
-          in: query
-          schema:
-            type: string
         - name: department
           in: query
+          description: >-
+            Optional composable department filter. Must be an existing department
+            code and matches issues where any assigned department has this code.
           schema:
             type: string
+            example: wijkbeheer
         - name: category_id
           in: query
+          description: Optional composable category filter.
           schema:
             type: integer
         - name: district_id
           in: query
+          description: Optional composable district filter.
           schema:
             type: integer
-        - name: lat
+        - name: mine
           in: query
+          description: >-
+            Optional filter for active users only. When set to a truthy value (`1`,
+            `true`), returns only issues owned by the authenticated user (`issues.user_id`),
+            including the user's own hidden issues. Composes with default user visibility
+            scoping (AND). Officers and managers cannot use this filter (422).
           schema:
-            type: number
-            format: double
-        - name: lng
+            type: string
+            enum: [ '1', 'true' ]
+            example: '1'
+        - name: visibility
           in: query
+          description: >-
+            Optional filter for active officers and managers only. When set to `hidden`,
+            returns only hidden issues; when set to `visible`, returns only visible issues.
+            When omitted, officers and managers receive all issues (visible and hidden).
+            Composes with other filters (AND). Users cannot use this filter (422).
           schema:
-            type: number
-            format: double
-        - name: radius
+            type: string
+            enum: [ visible, hidden ]
+            example: hidden
+        - name: status
           in: query
+          description: >-
+            Optional composable status filter available to all active actors. Matches
+            issues where status equals the provided IssueStatus enum value.
+          schema:
+            type: string
+            enum: [ open, in_behandeling, opgelost, gesloten ]
+            example: open
+        - name: assigned_officer_id
+          in: query
+          description: >-
+            Optional filter for active officers and managers only. Returns issues
+            assigned to the given officer id. Composes with other filters (AND).
+            Users cannot use this filter (422). Mutually exclusive with unassigned (422).
           schema:
             type: integer
-            description: radius in meters
+            example: 1
+        - name: unassigned
+          in: query
+          description: >-
+            Optional filter for active officers and managers only. When set to a truthy
+            value (`1`, `true`), returns only issues with no assigned officer
+            (`assigned_officer_id` is null). Composes with other filters (AND).
+            Users cannot use this filter (422). Mutually exclusive with assigned_officer_id (422).
+          schema:
+            type: string
+            enum: [ '1', 'true' ]
+            example: '1'
       responses:
         '200':
-          description: Paged list of issues
+          description: Backend-paginated list of issues
           content:
             application/json:
               schema:
@@ -562,14 +1556,28 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/Issue'
-                  page:
-                    type: integer
-                  per_page:
-                    type: integer
-                  total:
-                    type: integer
+                  links:
+                    type: object
+                    additionalProperties: true
+                  meta:
+                    type: object
+                    properties:
+                      current_page:
+                        type: integer
+                      per_page:
+                        type: integer
+                      total:
+                        type: integer
+                      last_page:
+                        type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InactiveAccount'
+        '422':
+          $ref: '#/components/responses/ValidationError'
 
-  /issues/{issueId}:
+  /api/issues/{issueId}:
     parameters:
       - name: issueId
         in: path
@@ -579,6 +1587,16 @@ paths:
     get:
       tags: [ Issues ]
       summary: Get an issue by id
+      description: >-
+        Return one issue with eager-loaded relations. Active users may view issues
+        with `visibility = visible` or issues they own (`issues.user_id` match),
+        including their own hidden issues. Active officers and active managers may
+        view any issue, including hidden issues owned by other users. Inactive
+        actors receive 403 from global middleware. When the issue exists but is not
+        visible to the caller (for example a hidden issue owned by another user),
+        the backend returns 404 rather than 403 to avoid leaking existence.
+      security:
+        - bearerAuth: [ ]
       responses:
         '200':
           description: Issue object
@@ -586,19 +1604,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Issue'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InactiveAccount'
         '404':
           $ref: '#/components/responses/NotFound'
 
-    patch:
+    put:
       tags: [ Issues ]
-      summary: Update an issue (owner/officer/manager depending on fields)
+      summary: Replace/update own issue
+      description: Same partial-update behavior and validation as PATCH /api/issues/{issueId}.
       security:
         - bearerAuth: [ ]
       requestBody:
+        required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/IssueUpdate'
+            example:
+              title: Stoeptegel bij bushalte bijgewerkt
+              content: De tegel ligt nu volledig los.
+              category_id: 1
+              district_id: 1
+              is_anonymous: false
       responses:
         '200':
           description: Updated issue
@@ -606,48 +1636,93 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Issue'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    patch:
+      tags: [ Issues ]
+      summary: Update own issue
+      description: >-
+        Partially update an issue owned by the authenticated active user. The
+        owner is checked through issues.user_id, including for anonymous issues.
+        Clients may update title, content, category_id, district_id, optional
+        location fields, and is_anonymous. When category_id changes, departments
+        and integer priority are re-derived from the selected category's
+        main-category priority and returned as read-only fields. user_id, status,
+        priority, counters, department assignments, visibility, and anonymous_alias are
+        server-owned; clients must not send priority or visibility. Officers and
+        managers change visibility through PATCH /api/issues/{issueId}/visibility.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueUpdate'
+            example:
+              title: Stoeptegel bij bushalte bijgewerkt
+              content: De tegel ligt nu volledig los.
+              category_id: 1
+              district_id: 1
+              is_anonymous: false
+      responses:
+        '200':
+          description: Updated issue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
 
     delete:
       tags: [ Issues ]
-      summary: Soft-delete an issue
+      summary: Hard delete own issue
+      description: >-
+        Hard delete an issue owned by the authenticated active user. This is not
+        a soft delete. The issue row is removed outright and issue attachments
+        cascade with the issue through the database foreign key.
       security:
         - bearerAuth: [ ]
       responses:
         '204':
-          description: Deleted
+          description: Issue hard deleted; attachments cascaded
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
-  /issues/{issueId}/comments:
-    get:
-      tags: [ Comments ]
-      summary: List comments for an issue
-      parameters:
-        - name: issueId
-          in: path
-          required: true
-          schema:
-            type: integer
-        - $ref: '#/components/parameters/page'
-        - $ref: '#/components/parameters/perPage'
-      responses:
-        '200':
-          description: Comments list
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/IssueComment'
-
-    post:
-      tags: [ Comments ]
-      summary: Post a new comment on an issue
+  /api/issues/{issueId}/visibility:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Issues ]
+      summary: Set issue visibility
+      description: >-
+        Set an issue's visibility to `visible` or `hidden`. Active officers and
+        active managers only; users receive 403. The issue must be viewable by
+        the caller (same rules as GET /api/issues/{issueId}); otherwise the
+        backend returns 404. Only the visibility field is updated; user-owned
+        PATCH /api/issues/{issueId} cannot change visibility.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -655,61 +1730,43 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/IssueCommentCreate'
-      responses:
-        '201':
-          description: Created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/IssueComment'
-
-  /issues/{issueId}/messages:
-    get:
-      tags: [ Messages ]
-      summary: Get chat messages for an issue
-      parameters:
-        - name: issueId
-          in: path
-          required: true
-          schema:
-            type: integer
+              $ref: '#/components/schemas/IssueVisibilityUpdate'
+            example:
+              visibility: hidden
       responses:
         '200':
-          description: List of messages
+          description: Updated issue
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/IssueMessage'
+                $ref: '#/components/schemas/Issue'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
 
-    post:
-      tags: [ Messages ]
-      summary: Send a chat message in an issue
-      security:
-        - bearerAuth: [ ]
-      requestBody:
+  /api/issues/{issueId}/attachments:
+    parameters:
+      - name: issueId
+        in: path
         required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/IssueMessageCreate'
-      responses:
-        '201':
-          description: Created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/IssueMessage'
-
-  /issues/{issueId}/attachments:
+        schema:
+          type: integer
     post:
       tags: [ Attachments ]
       summary: Upload files for an issue
+      description: >-
+        Upload attachments to an issue owned by the authenticated active user.
+        Each issue may hold at most 5 attachments in total. Each uploaded file is
+        limited to 5 MB and must be jpg, jpeg, png, gif, webp, or pdf. In local
+        development files are stored on the non-public local disk and are served
+        only through the authenticated download endpoint; no public storage URL
+        is exposed. To replace files while editing an issue, delete existing
+        attachments first, then upload new files within the same total limit.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -718,9 +1775,12 @@ paths:
           multipart/form-data:
             schema:
               type: object
+              required: [ files ]
               properties:
                 files:
                   type: array
+                  minItems: 1
+                  maxItems: 5
                   items:
                     type: string
                     format: binary
@@ -730,18 +1790,112 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/IssueAttachment'
+                type: object
+                required: [ data ]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/IssueAttachment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/issues/{issueId}/attachments/{attachmentId}:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: attachmentId
+        in: path
+        required: true
+        schema:
+          type: integer
+    delete:
+      tags: [ Attachments ]
+      summary: Delete an issue attachment
+      description: >-
+        Hard delete one attachment from an issue owned by the authenticated active
+        user only. Officers, managers, non-owner users, and unauthenticated
+        requests receive **403** (`This action is unauthorized.`). Deactivated
+        accounts receive **403** (`This account is inactive.`). The attachment must
+        belong to the issue in
+        the route; otherwise the backend returns 404. Deletion removes the backing
+        file from non-public local storage when present and deletes the attachment
+        row, enabling replace workflows before uploading new files.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '204':
+          description: Attachment hard deleted; no response body
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/issues/{issueId}/attachments/{attachmentId}/download:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: attachmentId
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags: [ Attachments ]
+      summary: Download an issue attachment
+      description: >-
+        Stream an attachment from non-public local development storage. Allowed for
+        the authenticated active user who owns the issue, any active officer, or
+        any active manager. Non-owner users receive **403** (`This action is
+        unauthorized.`). Deactivated accounts receive **403** (`This account is
+        inactive.`). Unauthenticated requests receive **401**. The attachment must
+        belong to the issue in the route
+        and the backing local file must still exist; otherwise the backend returns
+        404.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Attachment file stream
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /api/categories:
     get:
       tags: [ Categories ]
-      summary: List categories for managers
+      summary: List categories
       description: >-
         Returns main categories ordered by priority, with children ordered by
         weight. Lower numeric priority/weight values sort first and therefore
-        mean higher priority. Requires an authenticated active manager.
+        mean higher priority. Categories use a two-level hierarchy: main
+        categories have `parent_id` null; subcategories reference an active main
+        category through `parent_id` and cannot have children themselves (no
+        sub-under-sub). Any authenticated active actor (User, Officer, or
+        Manager) may call this endpoint. Inactive accounts receive **403**
+        (InactiveAccount) from global middleware.
       security:
         - bearerAuth: [ ]
       responses:
@@ -756,16 +1910,21 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          $ref: '#/components/responses/Forbidden'
+          $ref: '#/components/responses/InactiveAccount'
     post:
       tags: [ Categories ]
       summary: Create a category
       description: >-
         Create a main category or subcategory and assign it to one or more
-        departments through the category_department pivot. Active managers may
-        manage categories; main-manager status is not required. Main categories
+        departments through the category_department pivot. Restricted to
+        authenticated active main managers only. Users, officers, ordinary
+        managers, inactive managers, and unauthenticated requests receive
+        **403**. Categories use
+        a two-level hierarchy: `parent_id` null creates a main category;
+        `parent_id` must reference an active main category for subcategories.
+        Subcategories cannot have children (no sub-under-sub). Main categories
         use priority, subcategories use weight, and lower numbers mean higher
-        priority. Nested subcategories are rejected.
+        priority.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -798,7 +1957,11 @@ paths:
     get:
       tags: [ Categories ]
       summary: Show a category
-      description: Requires an authenticated active manager.
+      description: >-
+        Returns a single category with departments, parent, and children. Any
+        authenticated active actor (User, Officer, or Manager) may call this
+        endpoint. Inactive accounts receive **403** (InactiveAccount) from global
+        middleware.
       security:
         - bearerAuth: [ ]
       responses:
@@ -811,7 +1974,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          $ref: '#/components/responses/Forbidden'
+          $ref: '#/components/responses/InactiveAccount'
         '404':
           $ref: '#/components/responses/NotFound'
     patch:
@@ -821,6 +1984,12 @@ paths:
         Partially update a category. Include department_ids to replace the
         category's department assignments. Main categories use priority;
         subcategories use weight. Lower numbers mean higher priority.
+        `parent_id` may only reference a main category; subcategories cannot
+        have children. Set `is_active` to false to deactivate or true to
+        reactivate; this is the sole activation path (no `/disable` route).
+        Restricted to authenticated active main managers only. Users, officers,
+        ordinary managers, inactive managers, and unauthenticated requests
+        receive **403**.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -847,7 +2016,9 @@ paths:
     put:
       tags: [ Categories ]
       summary: Replace/update a category
-      description: Same behavior and validation as PATCH /api/categories/{categoryId}.
+      description: >-
+        Same behavior and validation as PATCH /api/categories/{categoryId}.
+        Restricted to authenticated active main managers only.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -875,10 +2046,14 @@ paths:
       tags: [ Categories ]
       summary: Hard delete an eligible category
       description: >-
-        Hard deletion is guarded and is not the standard removal path. Prefer
-        PATCH /api/categories/{categoryId}/disable so historical issues keep
-        their category context. A main category cannot be hard deleted while it
-        still has subcategories. Categories referenced by existing issues also
+        Only authenticated active main managers may hard delete categories.
+        Users, officers, ordinary managers, inactive managers, and
+        unauthenticated requests receive **403**. Hard deletion is guarded and
+        is not the standard removal path. Prefer PATCH with `is_active: false`
+        so historical issues keep their category context.
+        A main category cannot be hard deleted while it still has subcategories
+        (returns **409** with message `Cannot delete a main category while it
+        still has subcategories.`). Categories referenced by existing issues also
         return a conflict.
       security:
         - bearerAuth: [ ]
@@ -893,36 +2068,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/ConflictError'
-
-  /api/categories/{categoryId}/disable:
-    parameters:
-      - name: categoryId
-        in: path
-        required: true
-        schema:
-          type: integer
-    patch:
-      tags: [ Categories ]
-      summary: Disable a category
-      description: >-
-        Standard safe removal path for categories. Sets is_active to false while
-        preserving the category row, department assignments, and historical issue
-        references.
-      security:
-        - bearerAuth: [ ]
-      responses:
-        '200':
-          description: Category disabled
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Category'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
 
   /api/departments:
     get:
@@ -998,7 +2143,12 @@ paths:
     patch:
       tags: [ Departments ]
       summary: Update a department
-      description: Restricted to authenticated active main managers only.
+      description: >-
+        Restricted to authenticated active main managers only. Partial updates
+        may include code, name, and `is_active`. Set `is_active` to false to
+        deactivate or true to reactivate; this is the sole activation path (no
+        `/disable` route). Deactivation returns **409** when the department is
+        still referenced by existing records.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -1020,6 +2170,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/ConflictError'
         '422':
           $ref: '#/components/responses/ValidationError'
     put:
@@ -1047,6 +2199,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/ConflictError'
         '422':
           $ref: '#/components/responses/ValidationError'
     delete:
@@ -1056,17 +2210,16 @@ paths:
         Hard deletes the department row. Departments assigned to any manager or
         officer cannot be deleted until those actor assignments are changed.
         Once no actors reference the department, the category_department pivot
-        uses database-level cascade deletes, so deleting a department
-        automatically removes only its category assignments and leaves
-        categories intact. Issue department migration is intentionally deferred
-        to a later plan, so issue department fields may still use the legacy
-        enum/string contract for now. Restricted to authenticated active main
-        managers only.
+        uses database-level cascade deletes, and department_issue cascades the
+        issue pivot assignments, so deleting a department removes only those
+        assignments while leaving categories and issue rows intact. Issue
+        responses expose derived read-only departments as an array. Restricted to
+        authenticated active main managers only.
       security:
         - bearerAuth: [ ]
       responses:
         '204':
-          description: Department deleted; category assignments removed automatically
+          description: Department deleted; category and issue pivot assignments removed automatically
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1104,10 +2257,12 @@ paths:
       tags: [ Districts ]
       summary: Create a district
       description: >-
-        Create a district row. Only authenticated active managers may create,
-        update, or delete districts. District CRUD manages district records only;
-        actor assignments use district_ids endpoints and issue district
-        references are not reassigned.
+        Create a district row. Only an authenticated, active main manager
+        (`is_main_manager=true`) may create, update, or delete districts. Users,
+        officers, ordinary managers, inactive managers, and unauthenticated
+        requests receive **403** (`This action is unauthorized.`). District CRUD
+        manages district records only; actor assignments use district_ids
+        endpoints and issue district references are not reassigned.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -1163,7 +2318,11 @@ paths:
     patch:
       tags: [ Districts ]
       summary: Update a district
-      description: Only authenticated active managers may update districts.
+      description: >-
+        Only an authenticated, active main manager may update districts. Users,
+        officers, ordinary managers, inactive managers, and unauthenticated
+        requests receive **403**. Set `is_active` to false to deactivate or true
+        to reactivate; this is the sole activation path (no `/disable` route).
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -1193,7 +2352,10 @@ paths:
     put:
       tags: [ Districts ]
       summary: Replace/update a district
-      description: Same behavior and validation as PATCH /api/districts/{districtId}.
+      description: >-
+        Same behavior and validation as PATCH /api/districts/{districtId}.
+        Only an authenticated, active main manager may call district writes;
+        others receive **403**.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -1221,9 +2383,11 @@ paths:
       tags: [ Districts ]
       summary: Delete an eligible district
       description: >-
-        Only authenticated active managers may delete districts. Deletion returns
-        409 Conflict when the district is still assigned to any manager, assigned
-        to any officer, or referenced by any issue through issues.district_id.
+        Only an authenticated, active main manager may delete districts. Users,
+        officers, ordinary managers, inactive managers, and unauthenticated
+        requests receive **403**. Deletion returns **409 Conflict** when the
+        district is still assigned to any manager, assigned to any officer, or
+        referenced by any issue through issues.district_id.
       security:
         - bearerAuth: [ ]
       responses:
@@ -1244,6 +2408,18 @@ components:
       type: http
       scheme: bearer
       bearerFormat: Sanctum
+      description: >-
+        Laravel Sanctum personal access token sent as `Authorization: Bearer
+        {token}`. Tokens expire after 7 days (10080 minutes;
+        `SANCTUM_TOKEN_EXPIRATION`). Required on all `/api/*` routes except public
+        auth registration and login. After the token resolves to a user, officer, or
+        manager, the
+        `actor.active` middleware returns **403** with message
+        `This account is inactive.` when `is_active` is false, except on
+        whitelisted routes: GET `/api/auth/me`, POST `/api/auth/logout`, and
+        PATCH `/api/auth/me`. Other **403** responses on protected routes use
+        `This action is unauthorized.` when FormRequest authorization fails.
+        See `#/components/responses/InactiveAccount` and `#/components/responses/Forbidden`.
 
   parameters:
     page:
@@ -1255,9 +2431,12 @@ components:
     perPage:
       name: per_page
       in: query
+      description: Backend-driven page size. Defaults to 20 and is capped at 100.
       schema:
         type: integer
-        default: 25
+        default: 20
+        minimum: 1
+        maximum: 100
 
   responses:
     ValidationError:
@@ -1273,23 +2452,53 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
     Forbidden:
-      description: Insufficient permissions
+      description: >-
+        FormRequest authorization failed on a protected route (`This action is
+        unauthorized.`). Not used for deactivated accounts; those receive
+        InactiveAccount from global middleware instead.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+          example:
+            message: This action is unauthorized.
+    InactiveAccount:
+      description: >-
+        Authenticated account is inactive. Returned by global middleware on
+        protected routes when the bearer token is valid but the actor's account
+        is deactivated. Whitelisted while inactive: GET /api/auth/me, POST
+        /api/auth/logout, PATCH /api/auth/me. Login rejects inactive credentials
+        with 401.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: This account is inactive.
     NotFound:
       description: Resource not found
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+          example:
+            message: Resource not found.
     ConflictError:
       description: Request conflicts with current resource state
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ConflictError'
+    ServerError:
+      description: >-
+        Unexpected server error. With APP_DEBUG=false, responses use a safe
+        generic message and never include SQL, bindings, or stack traces.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: Server error.
 
   schemas:
     Error:
@@ -1321,20 +2530,6 @@ components:
       example:
         message: Cannot delete a main category while it still has subcategories.
 
-    RegisterRequest:
-      type: object
-      required: [ username, email, password ]
-      properties:
-        username:
-          type: string
-        email:
-          type: string
-          format: email
-        password:
-          type: string
-        is_anonymous:
-          type: boolean
-
     LoginRequest:
       type: object
       required: [ email, password ]
@@ -1344,6 +2539,32 @@ components:
           format: email
         password:
           type: string
+
+    MainManagerUpdate:
+      type: object
+      description: >-
+        Partial main-manager identity update. All fields are optional; send only
+        fields to change. When password is present, confirm_password is required
+        and must match. Privileged fields (is_main_manager, is_active,
+        created_by_manager_id, department_ids, and district_ids) are not
+        accepted on this path.
+      properties:
+        username:
+          type: string
+          maxLength: 50
+          description: Unique manager username. Uniqueness is checked within managers.
+        email:
+          type: string
+          format: email
+          description: Unique email address across users, officers, and managers.
+        password:
+          type: string
+          format: password
+          minLength: 8
+        confirm_password:
+          type: string
+          format: password
+          description: Required when password is present; must exactly match password.
 
     ManagerCreate:
       type: object
@@ -1369,7 +2590,9 @@ components:
           type: array
           minItems: 1
           uniqueItems: true
-          description: Existing department IDs. Managers must have one or more departments.
+          description: >-
+            Existing active department IDs (`is_active=true`). Managers must have
+            one or more departments; inactive or unknown IDs return 422.
           items:
             type: integer
         district_ids:
@@ -1378,6 +2601,35 @@ components:
           description: Optional active district IDs to attach through the district_manager pivot.
           items:
             type: integer
+
+    Officer:
+      type: object
+      description: Officer resource returned by officer list and administration endpoints.
+      properties:
+        actor_type:
+          type: string
+          enum: [ officer ]
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        badge_number:
+          type: string
+        is_active:
+          type: boolean
+        departments:
+          type: array
+          description: Compact department objects. Officers must have one or more departments.
+          items:
+            $ref: '#/components/schemas/AuthDepartmentProfile'
+        districts:
+          type: array
+          description: Compact district objects assigned through the district_officer pivot.
+          items:
+            $ref: '#/components/schemas/AuthDistrictProfile'
 
     Manager:
       type: object
@@ -1439,7 +2691,9 @@ components:
           type: array
           minItems: 1
           uniqueItems: true
-          description: Existing department IDs. Officers must have one or more departments.
+          description: >-
+            Existing active department IDs. Officers must have one or more
+            departments; inactive department IDs are rejected with 422.
           items:
             type: integer
         district_ids:
@@ -1470,6 +2724,38 @@ components:
           format: password
           description: Must exactly match password.
 
+    AuthProfileUpdate:
+      type: object
+      description: >-
+        Partial self-service identity update. All fields are optional; send only
+        fields to change. Active actors: users and managers may send username,
+        email, and password; officers may also send badge_number. Inactive actors
+        may only send username and password (email and badge_number are
+        prohibited with 422). When password is present, confirm_password is
+        required and must match. Department, district, and privileged fields are
+        not accepted on this path.
+      properties:
+        username:
+          type: string
+          maxLength: 50
+          description: Unique username within the authenticated actor's table.
+        email:
+          type: string
+          format: email
+          description: Unique email address across users, officers, and managers.
+        password:
+          type: string
+          format: password
+          minLength: 8
+        confirm_password:
+          type: string
+          format: password
+          description: Required when password is present; must exactly match password.
+        badge_number:
+          type: string
+          maxLength: 20
+          description: Officers only. Unique officer badge number.
+
     AuthResponse:
       type: object
       description: >-
@@ -1483,7 +2769,9 @@ components:
           example: Bearer
         access_token:
           type: string
-          description: Plain-text Laravel Sanctum token. Use as Authorization: Bearer <token>.
+          description: >-
+            Plain-text Laravel Sanctum token. Use as Authorization Bearer header
+            value (format `Bearer <token>`).
         actor_type:
           type: string
           enum: [ user, officer, manager ]
@@ -1594,27 +2882,6 @@ components:
         postal_prefix:
           type: string
 
-    User:
-      type: object
-      properties:
-        id:
-          type: integer
-        username:
-          type: string
-        email:
-          type: string
-        is_active:
-          type: boolean
-        flag_count:
-          type: integer
-        is_under_review:
-          type: boolean
-        anonymous_alias:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-
     District:
       type: object
       description: >-
@@ -1715,6 +2982,9 @@ components:
           nullable: true
         is_active:
           type: boolean
+          description: >-
+            Set to false to deactivate or true to reactivate. Sole activation
+            path for districts.
 
     DistrictAssignmentUpdate:
       type: object
@@ -1730,14 +3000,32 @@ components:
           items:
             type: integer
 
+    DepartmentAssignmentUpdate:
+      type: object
+      required: [ department_ids ]
+      properties:
+        department_ids:
+          type: array
+          uniqueItems: true
+          description: >-
+            Full replacement set of active department IDs (`is_active=true`) from
+            the departments table. The key must be present. Use an empty array to
+            clear all actor department assignments (valid for PATCH; differs from
+            create/register flows that require at least one department). Duplicate,
+            inactive, and unknown department IDs return **422**.
+          items:
+            type: integer
+
     Category:
       type: object
       description: >-
         Category resource. Categories are assigned to departments through the
-        category_department many-to-many pivot. Main categories have parent_id
-        null and use priority for ordering. Subcategories reference a main
-        category through parent_id and use weight for ordering. For both fields,
-        lower numbers mean higher priority and sort first.
+        category_department many-to-many pivot. Categories use a two-level
+        hierarchy: main categories have parent_id null and use priority for
+        ordering; subcategories reference a main category through parent_id, use
+        weight for ordering, and cannot have children (no sub-under-sub). For
+        both priority and weight, lower numbers mean higher priority and sort
+        first.
       properties:
         id:
           type: integer
@@ -1820,7 +3108,9 @@ components:
         parent_id:
           type: integer
           nullable: true
-          description: Null for main categories; subcategories must reference an active main category.
+          description: >-
+            Null for main categories. Subcategories must reference an active main
+            category; subcategories cannot have children (no sub-under-sub).
         department_ids:
           type: array
           minItems: 1
@@ -1852,6 +3142,9 @@ components:
         parent_id:
           type: integer
           nullable: true
+          description: >-
+            When present, must reference a main category. Subcategories cannot
+            have children.
         department_ids:
           type: array
           minItems: 1
@@ -1872,6 +3165,9 @@ components:
           description: Subcategories only; lower number means higher priority.
         is_active:
           type: boolean
+          description: >-
+            Set to false to deactivate or true to reactivate. Sole activation
+            path for categories.
 
     Department:
       type: object
@@ -1879,11 +3175,13 @@ components:
         Department table row. Categories are assigned to one or more departments
         through category_department. Managers reference one or more departments
         through department_manager. Officers reference one or more departments
-        through department_officer. Deleting a department is blocked while it is
-        assigned to managers or officers; otherwise it cascades only category
-        pivot assignments and does not delete category rows. Issue department
-        migration is deferred to a later plan, so issues may still expose the
-        legacy enum/string department field.
+        through department_officer. Activation and deactivation use PATCH with
+        `is_active` (main manager only). Deleting a department is blocked while
+        it is assigned to managers or officers;
+        otherwise it cascades only category and issue pivot assignments and does
+        not delete category or issue rows. Issue departments are derived from
+        categories, stored through the department_issue pivot, and exposed to
+        clients as read-only arrays.
       properties:
         id:
           type: integer
@@ -1932,59 +3230,121 @@ components:
           maxLength: 100
         is_active:
           type: boolean
+          description: >-
+            Set to false to deactivate or true to reactivate. Sole activation
+            path for departments. Deactivation may return **409** when still
+            referenced.
 
     IssueCreate:
       type: object
-      required: [ category_id, title, content, department ]
+      description: >-
+        Client payload for creating an issue (active regular users only).
+        district_id is required and must reference an active district.
+        Departments are derived server-side from the selected category's
+        department assignments and are not accepted in the request. The integer
+        priority (unsigned tinyint scale, lower = higher urgency) is derived
+        server-side from the selected category's main-category priority and must
+        not be sent; legacy string priorities (laag/midden/zwaar) are not accepted.
+        Removed legacy locality fields are not accepted. Anonymous aliases are
+        generated server-side; anonymous issues remain owned by the authenticated
+        user via user_id.
+      required: [ title, content, category_id, district_id ]
       properties:
-        category_id:
-          type: integer
         title:
           type: string
+          maxLength: 255
         content:
           type: string
+        category_id:
+          type: integer
+        district_id:
+          type: integer
+          description: Required active district ID for the issue location/reference.
         latitude:
           type: number
           format: double
+          nullable: true
         longitude:
           type: number
           format: double
+          nullable: true
         address:
           type: string
+          nullable: true
         postal_code:
           type: string
-        neighborhood:
-          type: string
-        department:
-          type: string
-          description: wijkbeheer | boa_jeugd
+          nullable: true
         is_anonymous:
           type: boolean
+          default: false
 
     IssueUpdate:
       type: object
+      description: >-
+        Owner-editable issue fields. All fields are optional for PATCH/PUT and
+        only supplied fields are changed. user_id, status, priority,
+        visibility, anonymous_alias, department assignments, and counters are
+        server-owned; priority and visibility must not be sent. When category_id
+        is supplied, departments and integer priority are re-derived from that
+        category's main-category priority. Officers and managers change
+        visibility through PATCH /api/issues/{issueId}/visibility. The public
+        API no longer accepts removed legacy locality fields or client-supplied
+        department values.
       properties:
         title:
           type: string
+          maxLength: 255
         content:
           type: string
         category_id:
           type: integer
-        priority:
+        district_id:
+          type: integer
+        postal_code:
           type: string
-        status:
+          nullable: true
+        address:
           type: string
+          nullable: true
+        latitude:
+          type: number
+          format: double
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          nullable: true
+        is_anonymous:
+          type: boolean
+
+    IssueVisibilityUpdate:
+      type: object
+      required: [ visibility ]
+      description: >-
+        Officer/manager visibility write payload. Active officers and active
+        managers may set an issue to visible or hidden when they can view the
+        issue.
+      properties:
+        visibility:
+          type: string
+          enum: [ visible, hidden ]
+          description: Target visibility for the issue.
 
     Issue:
       type: object
+      description: >-
+        Issue resource. Anonymous issues remain user-owned in the database
+        through user_id, but the response exposes only an author display alias
+        such as Melder#A1B2C3D4 and never leaks the owning user's id. Non-anonymous
+        issues include author identity when loaded. Attachments include
+        authenticated download URLs only. Department assignments are stored in
+        department_issue, derived from the issue category, and exposed as a
+        read-only departments array only (no singular department property on
+        requests or responses).
       properties:
         id:
           type: integer
-        user_id:
-          type: integer
         category_id:
-          type: integer
-        assigned_officer_id:
           type: integer
         district_id:
           type: integer
@@ -1992,126 +3352,142 @@ components:
           type: string
         content:
           type: string
+        postal_code:
+          type: string
+          nullable: true
         address:
           type: string
+          nullable: true
         latitude:
           type: number
           format: double
+          nullable: true
         longitude:
           type: number
           format: double
+          nullable: true
+        departments:
+          type: array
+          nullable: true
+          description: >-
+            Read-only compact departments assigned to the issue through the
+            department_issue pivot. Derived from the selected category on create
+            and whenever category_id changes.
+          items:
+            $ref: '#/components/schemas/AuthDepartmentProfile'
         status:
           type: string
+          enum: [ open, in_behandeling, opgelost, gesloten ]
+        assigned_officer_id:
+          type: integer
+          nullable: true
+          description: >-
+            Read-only nullable officer assignee id. Not accepted on user-owned create
+            or update requests.
+        visibility:
+          type: string
+          enum: [visible, hidden]
+          description: >-
+            Issue visibility. Visible issues appear in public-scoped lists; hidden
+            issues are visible only to officers, managers, and the owning user.
+            Not accepted on user-owned create or update requests. Active officers
+            and managers may change it through PATCH /api/issues/{issueId}/visibility.
         priority:
-          type: string
-        is_flagged:
+          type: integer
+          nullable: true
+          description: >-
+            Server-derived integer priority copied from the issue category's
+            main-category priority on create and whenever category_id changes.
+            Lower number means higher urgency; same scale as categories.priority.
+        is_anonymous:
           type: boolean
-        visibility:
-          type: string
-        anonymous_alias:
-          type: string
+        author:
+          $ref: '#/components/schemas/IssueAuthor'
+        participant_count:
+          type: integer
+        duplicate_count:
+          type: integer
+        category:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+        district:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+        attachments:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/IssueAttachment'
         created_at:
           type: string
           format: date-time
-
-    IssueCommentCreate:
-      type: object
-      required: [ content ]
-      properties:
-        content:
+        updated_at:
           type: string
+          format: date-time
+        resolved_at:
+          type: string
+          format: date-time
+          nullable: true
 
-    IssueComment:
+    IssueAuthor:
       type: object
+      description: >-
+        Ownership-safe author summary. For anonymous issues this contains only
+        is_anonymous=true and display_name with the stable alias; user_id is not
+        returned even though the database keeps ownership via issues.user_id.
+        For non-anonymous issues with the user relation loaded, id and username
+        are exposed and display_name equals username.
       properties:
+        is_anonymous:
+          type: boolean
         id:
           type: integer
-        issue_id:
-          type: integer
-        author_type:
+          nullable: true
+        username:
           type: string
-        user_id:
-          type: integer
-        officer_id:
-          type: integer
-        content:
+          nullable: true
+        display_name:
           type: string
-        is_flagged:
-          type: boolean
-        visibility:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-
-    IssueMessageCreate:
-      type: object
-      required: [ content ]
-      properties:
-        content:
-          type: string
-
-    IssueMessage:
-      type: object
-      properties:
-        id:
-          type: integer
-        issue_id:
-          type: integer
-        sender_type:
-          type: string
-        user_id:
-          type: integer
-        officer_id:
-          type: integer
-        content:
-          type: string
-        is_read:
-          type: boolean
-        created_at:
-          type: string
-          format: date-time
+          description: >-
+            Username for non-anonymous authors when the user relation is loaded;
+            stable anonymous alias (e.g. Melder#A1B2C3D4) for anonymous issues.
+          example: Melder#A1B2C3D4
 
     IssueAttachment:
       type: object
+      description: >-
+        Attachment metadata. Files are stored in non-public local development
+        storage and are downloadable only through the authenticated download_url.
+        Raw storage paths and public file URLs are not exposed.
       properties:
         id:
           type: integer
         issue_id:
           type: integer
-        file_url:
+        original_name:
           type: string
+          nullable: true
         file_type:
           type: string
+          nullable: true
+        file_size:
+          type: integer
+          nullable: true
+          description: File size in bytes. Each uploaded file is limited to 5 MB.
         uploaded_at:
           type: string
           format: date-time
-
-    IssueParticipant:
-      type: object
-      properties:
-        id:
-          type: integer
-        issue_id:
-          type: integer
-        user_id:
-          type: integer
-        joined_via:
+        download_url:
           type: string
-        joined_at:
-          type: string
-          format: date-time
-
-    IssueVote:
-      type: object
-      properties:
-        id:
-          type: integer
-        issue_id:
-          type: integer
-        user_id:
-          type: integer
-        voted_at:
-          type: string
-          format: date-time
+          description: Authenticated download endpoint for this attachment.
 

@@ -28,9 +28,10 @@ class UpdateDepartmentRequest extends FormRequest
      * Validation rules for department updates.
      *
      * All fields use `sometimes` so a partial update only validates and applies
-     * the provided keys. The `code` uniqueness check ignores the department
-     * currently being updated so re-submitting its own code is not flagged as a
-     * conflict.
+     * the provided keys. Activation and deactivation use `is_active` on this
+     * request only; there is no dedicated `/disable` route. The `code` uniqueness
+     * check ignores the department currently being updated so re-submitting its
+     * own code is not flagged as a conflict.
      *
      * @return array<string, array<int, mixed>>
      */

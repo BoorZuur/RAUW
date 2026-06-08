@@ -6,6 +6,7 @@ use App\Http\Requests\Departments\StoreDepartmentRequest;
 use App\Http\Requests\Departments\UpdateDepartmentRequest;
 use App\Http\Resources\DepartmentResource;
 use App\Models\Department;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
@@ -67,7 +68,7 @@ class DepartmentController extends Controller
      * Only the validated keys present in the request are applied, so partial
      * updates leave untouched fields intact.
      */
-    public function update(UpdateDepartmentRequest $request, Department $department): DepartmentResource
+    public function update(UpdateDepartmentRequest $request, Department $department): DepartmentResource|JsonResponse
     {
         $attributes = $request->safe()->only([
             'code',
@@ -76,7 +77,17 @@ class DepartmentController extends Controller
         ]);
 
         if ($attributes !== []) {
-            $department->update($attributes);
+            if (array_key_exists('is_active', $attributes) && $attributes['is_active'] === false) {
+                try {
+                    $department->update($attributes);
+                } catch (QueryException $exception) {
+                    return response()->json([
+                        'message' => 'Cannot disable this department because it is still referenced by existing records.',
+                    ], Response::HTTP_CONFLICT);
+                }
+            } else {
+                $department->update($attributes);
+            }
         }
 
         $department->refresh()->loadCount('categories');

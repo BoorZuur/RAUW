@@ -14,9 +14,14 @@ return new class extends Migration
         Schema::create('issue_attachments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('issue_id')->constrained('issues')->cascadeOnDelete();
-            $table->string('file_url', 500);
-            $table->string('file_type', 50)->nullable();
+            $table->string('file_path', 500);
+            $table->string('file_url', 500)->nullable();
+            $table->string('original_name')->nullable();
+            $table->string('file_type', 100)->nullable();
+            $table->unsignedBigInteger('file_size')->nullable();
             $table->dateTime('uploaded_at')->useCurrent();
+
+            $table->index('issue_id', 'issue_attachments_issue_id_idx');
         });
     }
 

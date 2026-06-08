@@ -48,10 +48,10 @@ class CategoryFactory extends Factory
      */
     public function withDepartments(Department ...$departments): static
     {
-        $departments = $departments === []
-            ? [Department::factory()]
-            : $departments;
+        if ($departments === []) {
+            return $this->hasAttached(Department::factory(), [], 'departments');
+        }
 
-        return $this->hasAttached(collect($departments), [], 'departments');
+        return $this->hasAttached($departments, [], 'departments');
     }
 }
