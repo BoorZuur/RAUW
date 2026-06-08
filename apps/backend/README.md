@@ -155,7 +155,7 @@ Categories are readable by any authenticated actor (`GET /api/categories`, `GET 
 
 Issues are listed and shown to any authenticated actor. Create, update, and delete require the authenticated active user who owns the issue (`issues.user_id`). Issue departments are derived server-side from the selected category and returned as a read-only `departments` array; clients must not send department values in create or update bodies. Issue `priority` is a nullable unsigned integer on the same scale as main category `priority` (lower number = higher urgency). The server copies the main category's `priority` on create and whenever `category_id` changes; subcategory issues use the parent category's `priority`. Clients must not POST or PATCH `priority`.
 
-Issue attachments may be uploaded or deleted only by the issue owner (active user). Downloads are allowed for the issue owner, any active officer, and any active manager; other authenticated users receive `403`. Files are served only through the authenticated download endpoint, not via public URLs.
+Issue attachments may be uploaded or deleted only by the issue owner (active user). Downloads use visibility-only authorization (`IssueVisibilityQuery::canViewIssue`): any actor who may view the issue may download. Users probing hidden issues they do not own receive `404`; other unauthorized actors receive `403`. Files are served only through the authenticated download endpoint, not via public URLs.
 
 ### Officer issue workflows
 
@@ -178,7 +178,7 @@ Officer write paths use a **validate-after-lock** pattern: cheap visibility and 
 
 | Method | Path | Who | Notes |
 |--------|------|-----|-------|
-| `PATCH` | `/api/issues/{issue}/status` | Assigned active officer | Body: `{ "status": "...", "note": "..." }`. Directed transitions only: `open` → `in_behandeling`; `in_behandeling` → `opgelost` or `gesloten`; `opgelost` → `gesloten`. Same status or invalid transitions → **422**. Sets `resolved_at` on first transition to `opgelost`. Appends one status history row (no GPS coordinates). |
+| `PATCH` | `/api/issues/{issue}/status` | Assigned active officer | Body: `{ "status": "...", "note": "..." }`. Directed transitions only: `open` → `in_behandeling`; `in_behandeling` → `opgelost`; `opgelost` → `gesloten`. Same status or invalid transitions → **422**. Sets `resolved_at` on first transition to `opgelost`. Appends one status history row (no GPS coordinates). |
 
 **Officer resolution (field report)**
 
@@ -187,8 +187,8 @@ Distinct from user satisfaction feedback in `issue_resolutions`. At most **one**
 | Method | Path | Who | Notes |
 |--------|------|-----|-------|
 | `GET` | `/api/issues/{issue}/officer-resolution` | Any actor who can view the issue | **404** when no report exists. |
-| `POST` | `/api/issues/{issue}/officer-resolution` | Current assignee (multipart) | **409** `officer_resolution_exists` on duplicate; use PATCH to update. |
-| `PATCH` | `/api/issues/{issue}/officer-resolution` | Current assignee (multipart) | Update title/content; optional `remove_attachment_ids` and new `files`. `officer_id` is overwritten with the editing officer (last editor). |
+| `POST` | `/api/issues/{issue}/officer-resolution` | Current assignee (multipart) | **409** `officer_resolution_exists` on duplicate; use PATCH to update. **422** `issue_closed` when status is `gesloten`; `opgelost` remains writable. |
+| `PATCH` | `/api/issues/{issue}/officer-resolution` | Current assignee (multipart) | Update title/content; optional `remove_attachment_ids` and new `files`. `officer_id` is overwritten with the editing officer (last editor). **422** `issue_closed` when status is `gesloten`; `opgelost` remains writable. |
 | `GET` | `/api/issues/{issue}/officer-resolution/attachments/{attachment}/download` | Any actor who can view the issue (Tier B) | Visibility-only auth in `authorize()`; streams from non-public local storage. |
 
 Attachment limits: up to **3** images (`jpg`, `jpeg`, `png`, `gif`, `webp`) per resolution, **5 MB** each. PATCH validates `existing − removals + new_files ≤ 3`. Uploads are content-validated (Symfony MIME sniff for images; issue user attachments also accept PDF via `%PDF-` magic bytes).
@@ -205,6 +205,7 @@ Attachment limits: up to **3** images (`jpg`, `jpeg`, `png`, `gif`, `webp`) per 
 | `issue_already_assigned` | 409 | Self-assign when another officer already owns the issue |
 | `officer_resolution_exists` | 409 | Duplicate POST on officer resolution |
 | `issue_not_assignable` | 422 | Self-assign on `opgelost` or `gesloten` issues |
+| `issue_closed` | 422 | Resolution POST/PATCH when issue status is `gesloten` |
 
 Common auth status codes are:
 
@@ -244,11 +245,12 @@ After hub login as `demo.officer@example.com` (Cool wijk / `district_id: 1`):
 3b. **Terminal assign block** — `POST .../assign-self` on `opgelost`/`gesloten` issue → 422 `issue_not_assignable`.
 4. **Unassign** — Current assignee `POST .../unassign-self` → 200, assignee cleared, status unchanged.
 5. **Status** — `PATCH /api/issues/{id}/status` with `{ "status": "opgelost", "note": "Fixed" }` → 200, history row, `resolved_at` set.
-6. **Invalid transition** — Direct `open` → `opgelost` → 422.
+6. **Invalid transition** — Direct `open` → `opgelost` → 422. Direct `in_behandeling` → `gesloten` → 422.
 7. **Not assigned** — Another officer PATCH status → 403 `not_assigned_officer`.
 8. **List vs show embeds** — `GET /api/issues` includes `officer_resolution` when present and omits `status_history`. Officer/manager `GET /api/issues/{id}` adds `status_history` (newest first, no lat/lon); user GET omits `status_history`.
 9. **Resolution create** — Multipart POST with title, content, images → 201; second POST → 409.
 10. **Resolution update** — PATCH with new title/content, remove one attachment, add one → 200, ≤3 attachments total.
+10b. **Resolution blocked on gesloten** — PATCH (or POST) on issue with status `gesloten` → 422 `issue_closed`; `opgelost` issues remain writable.
 11. **Resolution read** — User, officer, manager who can view issue → GET `/officer-resolution` 200; hidden issue → 404.
 12. **Download** — Same visibility as show.
 13. **Browse without shift** — Officer with expired shift → `GET /api/issues` and `GET /api/issues/{id}` still 200; Tier C writes → 403 `hub_active_required`.

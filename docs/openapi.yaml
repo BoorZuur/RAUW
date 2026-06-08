@@ -62,6 +62,7 @@ info:
     | `issue_already_assigned` | 409 | Self-assign when another officer already owns the issue |
     | `officer_resolution_exists` | 409 | Duplicate POST on officer resolution (use PATCH to update) |
     | `issue_not_assignable` | 422 | Self-assign when issue status is `opgelost` or `gesloten` |
+    | `issue_closed` | 422 | Resolution POST/PATCH when issue status is `gesloten` |
     | `shift_already_active` | 422 | Start-shift when shift already active |
     | `account_inactive` | 403 | Inactive actor on a non-whitelisted route |
 
@@ -2338,15 +2339,16 @@ paths:
       tags: [ Attachments ]
       summary: Download an issue attachment
       description: >-
-        Stream an attachment from non-public local development storage. Allowed for
-        the authenticated active user who owns the issue, any active officer, or
-        any active manager. **Tier B** for officers: no active shared shift
-        required. Non-owner users receive **403** (`This action is
-        unauthorized.`). Deactivated accounts receive **403** (`This account is
-        inactive.`). Unauthenticated requests receive **401**. The attachment must
-        belong to the issue in the route
-        and the backing local file must still exist; otherwise the backend returns
-        404.
+        Stream an attachment from non-public local development storage.
+        Visibility-only authorization: any authenticated actor who can view the
+        parent issue may download (`IssueVisibilityQuery::canViewIssue`). **Tier B**
+        for officers: no active shared shift required. Users probing hidden issues
+        they do not own receive **404** (no enumeration). Other unauthorized actors
+        receive **403** (`This action is unauthorized.`). Deactivated accounts
+        receive **403** (`This account is inactive.`). Unauthenticated requests
+        receive **401**. The attachment must belong to the issue in the route and
+        the backing local file must still exist; otherwise the backend returns
+        **404**.
       security:
         - bearerAuth: [ ]
       responses:
@@ -2512,7 +2514,7 @@ paths:
         (**404** when not). Each successful change appends one status history row
         (without coordinates) and sets `resolved_at` on the first transition to
         `opgelost`. Allowed transitions: `open` → `in_behandeling`;
-        `in_behandeling` → `opgelost` or `gesloten`; `opgelost` → `gesloten`.
+        `in_behandeling` → `opgelost`; `opgelost` → `gesloten`.
         Same status or invalid transitions receive **422** (Laravel validation
         `errors` object). Assignee and transition checks run after `lockForUpdate`
         (validate-after-lock).
@@ -2591,13 +2593,14 @@ paths:
         upload. Only the authenticated active officer currently assigned to the
         issue may create it. Officers without an active shared shift receive
         **403** `hub_active_required`. District scoping applies (**403**
-        `officer_not_in_district`). Duplicate POST returns **409**
+        `officer_not_in_district`).         Duplicate POST returns **409**
         `officer_resolution_exists`; use PATCH to update an existing report.
-        Up to **3** image attachments (`jpg`, `jpeg`, `png`, `gif`, `webp`), each
-        at most **5 MB**. After extension rules pass, uploads are content-sniffed
-        as allowed images; mismatches return **422**. Files are stored on
-        non-public local storage and served only through authenticated download
-        endpoints.
+        Blocked when issue status is `gesloten` (**422** `issue_closed`); issues in
+        `opgelost` remain writable. Up to **3** image attachments (`jpg`, `jpeg`,
+        `png`, `gif`, `webp`), each at most **5 MB**. After extension rules pass,
+        uploads are content-sniffed as allowed images; mismatches return **422**.
+        Files are stored on non-public local storage and served only through
+        authenticated download endpoints.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -2637,7 +2640,19 @@ paths:
                 message: An officer resolution already exists for this issue.
                 code: officer_resolution_exists
         '422':
-          $ref: '#/components/responses/ValidationError'
+          description: >-
+            Validation failure, or issue status is `gesloten` (`issue_closed`).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/IssueWorkflowUnprocessableError'
+                  - $ref: '#/components/schemas/ValidationError'
+              examples:
+                issue_closed:
+                  value:
+                    message: Cannot create or update a resolution on a closed issue.
+                    code: issue_closed
     patch:
       tags: [ Issues ]
       summary: Update officer resolution report
@@ -2647,10 +2662,12 @@ paths:
         currently assigned to the issue may update it. Officers without an
         active shared shift receive **403** `hub_active_required`. District
         scoping applies. `officer_id` is overwritten with the editing officer
-        (last editor). Send `remove_attachment_ids` to delete owned attachments
-        before uploading replacements. Total attachments after removals plus new
-        files must not exceed **3**. New uploads are content-sniffed as allowed
-        images. Returns **404** when no resolution exists.
+        (last editor). Blocked when issue status is `gesloten` (**422**
+        `issue_closed`); issues in `opgelost` remain writable. Send
+        `remove_attachment_ids` to delete owned attachments before uploading
+        replacements. Total attachments after removals plus new files must not
+        exceed **3**. New uploads are content-sniffed as allowed images. Returns
+        **404** when no resolution exists.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -2681,7 +2698,19 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
         '422':
-          $ref: '#/components/responses/ValidationError'
+          description: >-
+            Validation failure, or issue status is `gesloten` (`issue_closed`).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/IssueWorkflowUnprocessableError'
+                  - $ref: '#/components/schemas/ValidationError'
+              examples:
+                issue_closed:
+                  value:
+                    message: Cannot create or update a resolution on a closed issue.
+                    code: issue_closed
 
   /api/issues/{issueId}/officer-resolution/attachments/{attachmentId}/download:
     parameters:
@@ -3673,7 +3702,7 @@ components:
           type: string
         code:
           type: string
-          enum: [ issue_not_assignable ]
+          enum: [ issue_not_assignable, issue_closed ]
 
     StartOfficerShiftRequest:
       type: object
@@ -4999,8 +5028,9 @@ components:
           type: string
           enum: [ open, in_behandeling, opgelost, gesloten ]
           description: >-
-            Target status. Must follow directed transitions from the current
-            status; same status returns 422.
+            Target status. Directed transitions: `open` → `in_behandeling`;
+            `in_behandeling` → `opgelost`; `opgelost` → `gesloten`. Same status
+            or invalid transitions return 422.
         note:
           type: string
           nullable: true
@@ -5123,12 +5153,14 @@ components:
           maxLength: 10000
         files:
           type: array
+          maxItems: 3
           items:
             type: string
             format: binary
           description: >-
             Optional new image attachments. Combined count after
             `remove_attachment_ids` must not exceed 3; each file at most 5 MB.
+            Content-sniffed after extension rules.
         remove_attachment_ids:
           type: array
           items:

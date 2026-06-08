@@ -15,9 +15,8 @@ class DownloadOfficerIssueResolutionAttachmentRequest extends FormRequest
      *
      * IssueVisibilityQuery::canViewIssue() mirrors show/index scoping — active users
      * may download when the issue is visible or they own it; active officers and
-     * managers may download any issue attachment. This differs from
-     * DownloadIssueAttachmentRequest, which restricts users to issue-owner-only
-     * regardless of visibility.
+     * managers may download any issue attachment. Matches
+     * DownloadIssueAttachmentRequest (same visibility-only rules).
      *
      * A user probing a hidden issue they do not own receives 404 (no enumeration).
      * Other unauthorized actors receive 403 with a message. Whether the attachment

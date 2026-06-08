@@ -840,15 +840,15 @@ Issue responses include read-only `status`, `assigned_officer_id`, and `visibili
 }
 ```
 
-Directed transitions only: `open` → `in_behandeling`; `in_behandeling` → `opgelost` or `gesloten`; `opgelost` → `gesloten`. Assigned officer only.
+Directed transitions only: `open` → `in_behandeling`; `in_behandeling` → `opgelost`; `opgelost` → `gesloten`. Assigned officer only.
 
 **Officer resolution (field report)**
 
 Distinct from user satisfaction in `issue_resolutions`. One report per issue.
 
 - `GET {{base_url}}/api/issues/{issue}/officer-resolution` — any actor who can view the issue; **404** when none exists.
-- `POST {{base_url}}/api/issues/{issue}/officer-resolution` — multipart; current assignee only; **409** `officer_resolution_exists` on duplicate.
-- `PATCH {{base_url}}/api/issues/{issue}/officer-resolution` — multipart; optional `remove_attachment_ids` and new `files`; `officer_id` updated to last editor.
+- `POST {{base_url}}/api/issues/{issue}/officer-resolution` — multipart; current assignee only; **409** `officer_resolution_exists` on duplicate; **422** `issue_closed` when status is `gesloten` (`opgelost` remains writable).
+- `PATCH {{base_url}}/api/issues/{issue}/officer-resolution` — multipart; optional `remove_attachment_ids` and new `files` (max 3 total); `officer_id` updated to last editor; **422** `issue_closed` when status is `gesloten`.
 - `GET {{base_url}}/api/issues/{issue}/officer-resolution/attachments/{attachment}/download` — visibility-only auth (any actor who can view the issue); Tier B.
 
 Up to **3** images (`jpg`, `jpeg`, `png`, `gif`, `webp`), **5 MB** each. Uploads are content-sniffed after extension rules (issue user attachments also accept PDF via magic bytes).
@@ -857,12 +857,12 @@ Postman folder: **Issues / Officer workflows**. Run **Auth / Login Officer at Hu
 
 ### Issue Attachments
 
-Attachment endpoints require `Authorization: Bearer <token>`. Upload and delete are owner-only for the authenticated active regular user who owns the issue. Downloads are authenticated and require the attachment to belong to the issue in the route.
+Attachment endpoints require `Authorization: Bearer <token>`. Upload and delete are owner-only for the authenticated active regular user who owns the issue. Downloads use visibility-only authorization: any actor who can view the parent issue may download. Users probing hidden issues they do not own receive `404`; other unauthorized actors receive `403`. The attachment must belong to the issue in the route.
 
 Common requests:
 
 - `POST {{base_url}}/api/issues/{issue}/attachments` — upload 1-5 files. Each file must be 5 MB or smaller and one of `jpg`, `jpeg`, `png`, `gif`, `webp`, or `pdf`. Server content-sniffs images and verifies PDF magic bytes (`%PDF-`).
-- `GET {{base_url}}/api/issues/{issue}/attachments/{attachment}/download` — stream the file from non-public local storage through the authenticated API route.
+- `GET {{base_url}}/api/issues/{issue}/attachments/{attachment}/download` — visibility-only auth (any actor who can view the issue); Tier B for officers; stream from non-public local storage.
 - `DELETE {{base_url}}/api/issues/{issue}/attachments/{attachment}` — owner-only hard delete for one attachment. Use this before uploading replacement files.
 
 Successful upload response shape:
@@ -886,8 +886,8 @@ Successful upload response shape:
 Common error responses:
 
 - `401 Unauthorized` when the bearer token is missing, invalid, or revoked.
-- `403 Forbidden` when uploading or deleting as a non-owner, officer, manager, or inactive user.
-- `404 Not Found` when the issue or attachment does not exist, the attachment does not belong to the route issue, or a download backing file is missing.
+- `403 Forbidden` when uploading or deleting as a non-owner, officer, manager, or inactive user; or when downloading without view permission (non-user actors).
+- `404 Not Found` when the issue or attachment does not exist, the attachment does not belong to the route issue, a download backing file is missing, or a user probes a hidden issue they do not own.
 - `422 Unprocessable Entity` when upload validation fails.
 
 ### Logout

@@ -1943,7 +1943,7 @@
             "method": "GET",
             "header": [ { "key": "Accept", "value": "application/octet-stream", "type": "text" } ],
             "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/attachments/{{attachment_id}}/download", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "attachments", "{{attachment_id}}", "download" ] },
-            "description": "Authenticated attachment download. Tier B for officers (no hub-active shift required). The attachment must belong to the issue in the route and the local backing file must exist. The API streams the original filename from non-public local storage."
+            "description": "Authenticated attachment download with visibility-only authorization (IssueVisibilityQuery::canViewIssue): any actor who can view the parent issue may download. Tier B for officers (no hub-active shift required). Users probing hidden issues they do not own receive 404; other unauthorized actors receive 403. The attachment must belong to the issue in the route and the local backing file must exist. The API streams the original filename from non-public local storage."
           },
           "response": []
         },
@@ -1991,7 +1991,7 @@
                 "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
                 "body": { "mode": "raw", "raw": "{\n  \"status\": \"opgelost\",\n  \"note\": \"Tegel vervangen en stoep hersteld.\"\n}", "options": { "raw": { "language": "json" } } },
                 "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/status", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "status" ] },
-                "description": "Update assigned issue status along the directed officer workflow. Tier C: hub-active required. Assigned active officer only. Allowed transitions: open to in_behandeling; in_behandeling to opgelost or gesloten; opgelost to gesloten. Sets resolved_at on first transition to opgelost and appends one status history row without coordinates. Invalid transitions return 422. Assignee and transition checks run after row lock."
+                "description": "Update assigned issue status along the directed officer workflow. Tier C: hub-active required. Assigned active officer only. Allowed transitions: open to in_behandeling; in_behandeling to opgelost; opgelost to gesloten. Sets resolved_at on first transition to opgelost and appends one status history row without coordinates. Invalid transitions return 422. Assignee and transition checks run after row lock."
               },
               "response": []
             },
@@ -2038,7 +2038,7 @@
                   ]
                 },
                 "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/officer-resolution", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "officer-resolution" ] },
-                "description": "Create the officer field report (once per issue). Tier C: hub-active required. Multipart. Current assignee only. Duplicate POST returns 409 officer_resolution_exists. Image uploads are content-sniffed (Symfony MIME). Resolution row commits before attachment storage."
+                "description": "Create the officer field report (once per issue). Tier C: hub-active required. Multipart. Current assignee only. Duplicate POST returns 409 officer_resolution_exists. Blocked when issue status is gesloten (422 issue_closed); opgelost remains writable. Up to 3 images, 5 MB each, content-sniffed after extension rules."
               },
               "response": []
             },
@@ -2058,7 +2058,7 @@
                   ]
                 },
                 "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/officer-resolution", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "officer-resolution" ] },
-                "description": "Update officer resolution title, content, and attachments. Tier C: hub-active required. Current assignee only. officer_id is overwritten with the editing officer (last editor). Send remove_attachment_ids for owned attachments before uploading replacements. New files are content-sniffed."
+                "description": "Update officer resolution title, content, and attachments. Tier C: hub-active required. Current assignee only. officer_id is overwritten with the editing officer (last editor). Blocked when issue status is gesloten (422 issue_closed); opgelost remains writable. Send remove_attachment_ids for owned attachments before uploading replacements. Total attachments after removals plus new files must not exceed 3. New files are content-sniffed."
               },
               "response": []
             },
