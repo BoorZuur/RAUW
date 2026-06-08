@@ -7,10 +7,17 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'address', 'postal_code', 'latitude', 'longitude'])]
+#[Fillable(['name', 'address', 'postal_code', 'latitude', 'longitude', 'is_active'])]
 class Hub extends Model
 {
     use HasFactory;
+
+    /**
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'is_active' => false,
+    ];
 
     /**
      * Get the attributes that should be cast.
@@ -22,6 +29,7 @@ class Hub extends Model
         return [
             'latitude' => 'decimal:8',
             'longitude' => 'decimal:8',
+            'is_active' => 'boolean',
         ];
     }
 

@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('postal_code', 10);
             $table->decimal('latitude', 10, 8)->nullable();
             $table->decimal('longitude', 11, 8)->nullable();
+            $table->boolean('is_active')->default(false);
             $table->timestamps();
         });
     }

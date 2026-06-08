@@ -20,6 +20,7 @@ class HubSeeder extends Seeder
                     'postal_code' => $hub['postal_code'],
                     'latitude' => $hub['latitude'],
                     'longitude' => $hub['longitude'],
+                    'is_active' => true,
                 ],
             );
         }
