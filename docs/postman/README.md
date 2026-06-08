@@ -51,7 +51,7 @@ Local seeders may create deterministic demo accounts for manual testing. These c
 
 Supported `actor_type` values are `user`, `officer`, and `manager`. The local demo manager is seeded as the main manager and can create other managers. Production environments must provision the initial main manager through trusted operational setup, not through the public API.
 
-Local seeders also create canonical departments and districts. Managers are assigned one or more departments through `department_ids` / the `department_manager` pivot. Officers are assigned one or more departments through `department_ids` / the `department_officer` pivot. Manager and officer district assignments are many-to-many: managers use `district_ids` / `district_manager`, and officers use `district_ids` / `district_officer`.
+Local seeders create four Rotterdam cluster hubs (Cluster Zuid, Cluster Buitengebieden, Cluster Centrum, Cluster Noord), 67 Rotterdam wijken, and BOA/Jeugd categories. The demo officer and demo manager belong to **Cluster Centrum** hub and the **Cool** wijk. Managers are assigned one or more departments through `department_ids` / the `department_manager` pivot. Officers are assigned one or more departments through `department_ids` / the `department_officer` pivot. Manager and officer district assignments are many-to-many: managers use `district_ids` / `district_manager`, and officers use `district_ids` / `district_officer`. District assignments must stay within the actor's home hub when `hub_id` is set.
 
 Actor emails must be unique across users, officers, and managers. This prevents a shared-login email from matching more than one actor table.
 
@@ -76,8 +76,9 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 | `issue_id` | `1` | Filled automatically after **Issues / Create Issue**. Used by show, update, attachment, and delete examples. |
 | `attachment_id` | `1` | Filled automatically after **Issues / Upload Attachments**. Used by authenticated download and delete. |
 | `attachment_download_url` | blank | Filled automatically after **Issues / Upload Attachments** for reference. |
-| `district_id` | `1` | Example required district ID and list filter. |
-| `category_id` | `1` | Example category ID and list filter. |
+| `hub_id` | `3` | Cluster Centrum hub ID after seeding (used by hub and district create examples). |
+| `district_id` | `1` | Cool wijk ID after seeding (Cluster Centrum). |
+| `category_id` | `1` | Parkeeroverlast main category ID after seeding. |
 | `department_filter` | `wijkbeheer` | Example value for the issue list query param `department` (department code). Any-match against rows in `department_issue`. Not sent in create/update bodies. |
 | `page` | `1` | Example issue list page. |
 | `per_page` | `20` | Example issue list page size. Backend caps this at 100. |
@@ -86,7 +87,7 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 
 1. Run **Auth / Register User** or **Auth / Register Officer** to create a public actor and auto-login, or run **Auth / Login** with an existing demo account. Officer registration requires at least one existing department ID; local seeded departments normally include IDs `1` and `2`.
 2. Run **Auth / Current Profile** to inspect the actor attached to the stored token.
-3. Run **Districts / List Districts** and **Departments / List Departments** to find local IDs for assignment examples.
+3. Run **Hubs / List Hubs**, **Districts / List Districts**, and **Departments / List Departments** to find local IDs for assignment examples.
 4. Run **Auth / Login as Main Manager** (`demo.manager@example.com` / `password`) to populate `main_manager_access_token` and `access_token` for manager administration.
 5. Run **Auth / Register User - Duplicate Email (Generic 422)** to confirm duplicate registration returns the generic message (not Laravel “already been taken” wording).
 6. Run **Managers / List Main Managers**, then **Managers / Create Manager** (stores `manager_id`). Create Manager does not issue a login token for the new manager.
@@ -157,8 +158,8 @@ Successful response shape:
     "districts": [
       {
         "id": 1,
-        "name": "Middelharnis",
-        "postal_prefix": "3241"
+        "name": "Cool",
+        "postal_prefix": "3012"
       }
     ]
   }
@@ -454,8 +455,8 @@ Successful response shape:
   "districts": [
     {
       "id": 1,
-      "name": "Middelharnis",
-      "postal_prefix": "3241"
+      "name": "Cool",
+      "postal_prefix": "3012"
     }
   ]
 }
@@ -592,9 +593,27 @@ Request body example:
 
 Use `"district_ids": []` to clear all manager district assignments. IDs must reference active districts; duplicates, inactive, and unknown IDs return `422`. Returns the flat `Manager` resource with refreshed `districts`. This only updates `district_manager` and never modifies `issues.district_id`.
 
+### Hubs
+
+Hub endpoints manage Rotterdam BOA cluster hubs. Any authenticated actor can list and show hubs. Create, update, and delete require an authenticated active main manager. Deleting a hub returns `409 Conflict` while districts, officers, or managers still reference it.
+
+Common requests:
+
+- `GET {{base_url}}/api/hubs` — list hubs with reference counts.
+- `GET {{base_url}}/api/hubs/{id}` — show one hub.
+- `POST {{base_url}}/api/hubs` — create a hub (main manager).
+- `PATCH {{base_url}}/api/hubs/{id}` — update a hub (main manager).
+- `DELETE {{base_url}}/api/hubs/{id}` — delete an eligible hub (main manager).
+
+Hub assignment (clears district pivot on change):
+
+- `PATCH {{base_url}}/api/officers/{officer}/hub` — active manager; body `{"hub_id": 3}`.
+- `PATCH {{base_url}}/api/managers/{manager}/hub` — main manager; ordinary managers only.
+- `PATCH {{base_url}}/api/main-managers/{manager}/hub` — main manager; main managers only.
+
 ### Districts
 
-District endpoints use the `districts` table. Managers are assigned to districts through the `district_manager` pivot and officers through the `district_officer` pivot. Issue district handling is separate: `issues.district_id` remains a singular issue location/reference field.
+District endpoints use the `districts` table. Each district belongs to one hub via required `hub_id`. Managers are assigned to districts through the `district_manager` pivot and officers through the `district_officer` pivot; when an actor has `hub_id`, district assignments must stay within that hub (cross-hub IDs return `422`). Issue district handling is separate: `issues.district_id` remains a singular issue location/reference field.
 
 Authenticated actors can list and show districts. District mutations (`POST`, `PATCH`, `PUT`, `DELETE`) require `Authorization: Bearer <token>` for an authenticated **active main manager** (`is_main_manager=true`). Users, officers, ordinary managers, inactive managers, and unauthenticated requests receive `403 Forbidden` on district writes.
 
@@ -611,10 +630,11 @@ Create body example:
 ```json
 {
   "name": "Nieuwe Wijk",
-  "postal_prefix": "3248",
-  "center_lat": 51.75,
-  "center_lng": 4.16,
-  "radius_meters": 2500,
+  "hub_id": 3,
+  "postal_prefix": "3017",
+  "center_lat": 51.91,
+  "center_lng": 4.48,
+  "radius_meters": 1200,
   "is_active": true
 }
 ```
@@ -634,7 +654,7 @@ Category reads (`GET /api/categories`, `GET /api/categories/{id}`) require `Auth
 
 Categories belong to one or more departments through the `category_department` many-to-many pivot. Use `department_ids` in create/update requests to attach existing departments.
 
-Main categories have `parent_id: null` and use `priority` for ordering. Subcategories reference an active main category with `parent_id` and use `weight` for ordering. Lower `priority` and `weight` numbers mean higher priority and sort first. Nested subcategories are rejected.
+Main categories have `parent_id: null` and use `priority` for ordering (lower number = higher urgency). Subcategories reference an active main category with `parent_id` and sort alphabetically by name. Nested subcategories are rejected. The legacy `weight` field is rejected with 422.
 
 Common requests:
 
@@ -648,10 +668,10 @@ Main category body example:
 
 ```json
 {
-  "name": "Openbare ruimte",
+  "name": "Parkeeroverlast",
   "parent_id": null,
-  "department_ids": [1],
-  "priority": 10,
+  "department_ids": [2],
+  "priority": 1,
   "is_active": true
 }
 ```
@@ -660,10 +680,9 @@ Subcategory body example:
 
 ```json
 {
-  "name": "Losliggende stoeptegel",
+  "name": "Parkeren op stoep",
   "parent_id": 1,
-  "department_ids": [1, 2],
-  "weight": 5,
+  "department_ids": [2],
   "is_active": true
 }
 ```
@@ -672,7 +691,7 @@ Common error responses:
 
 - `401 Unauthorized` when the bearer token is missing, invalid, or revoked.
 - `403 Forbidden` when the authenticated actor is not an active manager.
-- `422 Unprocessable Entity` for validation failures, including missing departments, invalid parent categories, nested subcategories, using `priority` on subcategories, or using `weight` on main categories.
+- `422 Unprocessable Entity` for validation failures, including missing departments, invalid parent categories, nested subcategories, using `priority` on subcategories, or sending the removed `weight` field.
 - `409 Conflict` when hard deleting a main category that still has subcategories: `Cannot delete a main category while it still has subcategories.`
 - `409 Conflict` when hard deleting a category that is still referenced by existing issues: `Cannot delete this category because it is still referenced by existing records. Disable it instead.`
 
