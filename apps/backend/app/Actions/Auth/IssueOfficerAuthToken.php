@@ -42,6 +42,10 @@ class IssueOfficerAuthToken
             && $hubActiveUntil instanceof Carbon
             && $hubActiveUntil->isFuture();
 
+        // Attach the new token so AuthProfileResource can derive hub_active via
+        // ResolveOfficerTokenHubActive during login/register (no Bearer header yet).
+        $officer->withAccessToken($tokenResult->accessToken);
+
         return new OfficerAuthTokenResult(
             plainTextToken: $tokenResult->plainTextToken,
             hubActive: $hubActive,
