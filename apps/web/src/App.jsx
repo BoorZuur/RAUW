@@ -1,12 +1,12 @@
 import './App.css';
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import {createBrowserRouter, RouterProvider} from "react-router-dom";
 
 // Imports
 import Onboarding from "./user/Onboarding.jsx";
 import Login from "./user/U_Login.jsx";
 import Register from "./user/U_Register.jsx";
 // import Map from "./user/Map.jsx";
-// import Feed from "./user/Feed.jsx";
+import Feed from "./user/Feed.jsx";
 // import Report from "./user/Report.jsx";
 // import NewsFeed from "./user/Newsfeed.jsx";
 import Account from "./user/Account.jsx";
@@ -42,13 +42,13 @@ function App() {
         {path: "/registreerhandhaver", element: <HandhaverRegister/>},
         {path: "/loginmanager", element: <ManagerLogin/>},
 
-        { path: "/account", element: <Account /> },
+        {path: "/account", element: <Account/>},
         // 2. User Routes
         // {
         //     element: <RoleProtectedRoute allowedRoles={['officer']} />,
         //     children: [
         //         { path: "/map", element: <Map /> },
-        //         { path: "/feed", element: <Feed /> },
+        {path: "/feed", element: <Feed/>},
         //         { path: "/meld", element: <Report /> },
         //         { path: "/nieuws", element: <NewsFeed /> },
         //         { path: "/account", element: <Account /> },
@@ -79,7 +79,7 @@ function App() {
         // }
     ]);
 
-    return <RouterProvider router={router} />;
+    return <RouterProvider router={router}/>;
 }
 
 export default App;
