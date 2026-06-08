@@ -39,17 +39,11 @@ class EnsureOfficerHubActive
             return $next($request);
         }
 
-        $this->clearStaleHubActiveUntil($actor);
-
         if ($this->isWhitelisted($request)) {
             return $next($request);
         }
 
-        if (
-            $actor->is_active
-            && $actor->tokenCan('hub-active')
-            && $actor->hub_active_until?->isFuture()
-        ) {
+        if ($actor->is_active && $actor->hub_active_until?->isFuture()) {
             return $next($request);
         }
 
@@ -57,16 +51,6 @@ class EnsureOfficerHubActive
             'message' => 'Hub-active session required.',
             'code' => 'hub_active_required',
         ], Response::HTTP_FORBIDDEN);
-    }
-
-    private function clearStaleHubActiveUntil(Officer $officer): void
-    {
-        $hubActiveUntil = $officer->hub_active_until;
-
-        if ($hubActiveUntil !== null && $hubActiveUntil->isPast()) {
-            $officer->hub_active_until = null;
-            $officer->save();
-        }
     }
 
     private function isWhitelisted(Request $request): bool

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Actions\Auth\BuildOfficerAuthProfile;
 use App\Enums\ActorType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\UpdateProfileRequest;
@@ -13,6 +14,11 @@ use Illuminate\Http\JsonResponse;
 
 class ProfileUpdateController extends Controller
 {
+    public function __construct(
+        private readonly BuildOfficerAuthProfile $buildOfficerAuthProfile,
+    ) {
+    }
+
     /**
      * Update the authenticated actor's own identity fields and return the
      * refreshed canonical auth profile payload.
@@ -49,7 +55,9 @@ class ProfileUpdateController extends Controller
 
         return response()->json([
             'actor_type' => $type->value,
-            'profile' => (new AuthProfileResource($actor))->toArray($request),
+            'profile' => $actor instanceof Officer
+                ? $this->buildOfficerAuthProfile->build($actor, $request)
+                : (new AuthProfileResource($actor))->toArray($request),
         ]);
     }
 }

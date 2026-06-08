@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Actions\Auth\BuildOfficerAuthProfile;
 use App\Actions\Auth\EvaluateOfficerHubLogin;
 use App\Actions\Auth\IssueOfficerAuthToken;
 use App\Actions\Auth\OfficerAuthTokenResult;
 use App\Enums\ActorType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\RegisterOfficerRequest;
-use App\Http\Resources\AuthProfileResource;
 use App\Models\Officer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
@@ -18,6 +18,7 @@ class RegisterOfficerController extends Controller
     public function __construct(
         private readonly EvaluateOfficerHubLogin $evaluateOfficerHubLogin,
         private readonly IssueOfficerAuthToken $issueOfficerAuthToken,
+        private readonly BuildOfficerAuthProfile $buildOfficerAuthProfile,
     ) {
     }
 
@@ -91,7 +92,7 @@ class RegisterOfficerController extends Controller
             'actor_type' => ActorType::Officer->value,
             'hub_active' => $authToken->hubActive,
             'hub_active_until' => $authToken->hubActiveUntil?->toIso8601String(),
-            'profile' => (new AuthProfileResource($officer))->toArray($request),
+            'profile' => $this->buildOfficerAuthProfile->build($officer, $request),
         ];
     }
 }

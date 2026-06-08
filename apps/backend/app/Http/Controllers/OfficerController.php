@@ -76,7 +76,7 @@ class OfficerController extends Controller
         $officer->update(['is_active' => false]);
 
         $this->revokeOfficerHubActive->revoke($officer);
-        $this->closeOfficerSessions->closeFor($officer);
+        $this->closeOfficerSessions->closeAllFor($officer);
 
         $officer->load(['departments', 'districts', 'hub']);
 

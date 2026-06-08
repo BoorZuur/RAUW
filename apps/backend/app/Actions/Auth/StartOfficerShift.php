@@ -7,6 +7,10 @@ use Illuminate\Support\Carbon;
 
 class StartOfficerShift
 {
+    /**
+     * Start a shared shift when none is active. Past {@see Officer::$hub_active_until}
+     * is treated as inactive and normalized to null before starting a new shift.
+     */
     public function start(Officer $officer): StartOfficerShiftResult
     {
         $officer->refresh();

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Actions\Auth\BuildOfficerAuthProfile;
 use App\Actions\Auth\EvaluateOfficerHubLogin;
 use App\Actions\Auth\IssueOfficerAuthToken;
 use App\Actions\Auth\OfficerAuthTokenResult;
@@ -23,6 +24,7 @@ class LoginController extends Controller
         private readonly ResolveLoginActor $resolver,
         private readonly EvaluateOfficerHubLogin $evaluateOfficerHubLogin,
         private readonly IssueOfficerAuthToken $issueOfficerAuthToken,
+        private readonly BuildOfficerAuthProfile $buildOfficerAuthProfile,
     ) {
     }
 
@@ -130,7 +132,7 @@ class LoginController extends Controller
             'actor_type' => $type->value,
             'hub_active' => $authToken->hubActive,
             'hub_active_until' => $authToken->hubActiveUntil?->toIso8601String(),
-            'profile' => (new AuthProfileResource($officer))->toArray($request),
+            'profile' => $this->buildOfficerAuthProfile->build($officer, $request),
         ];
     }
 }

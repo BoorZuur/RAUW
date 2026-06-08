@@ -2,14 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Auth\BuildOfficerAuthProfile;
 use App\Enums\ActorType;
 use App\Http\Requests\DistrictAssignments\UpdateOfficerDistrictsRequest;
-use App\Http\Resources\AuthProfileResource;
 use App\Models\Officer;
 use Illuminate\Http\JsonResponse;
 
 class OfficerDistrictController extends Controller
 {
+    public function __construct(
+        private readonly BuildOfficerAuthProfile $buildOfficerAuthProfile,
+    ) {
+    }
+
     /**
      * Sync a target officer's district assignments on behalf of an active
      * manager and return the officer's refreshed profile payload.
@@ -34,7 +39,7 @@ class OfficerDistrictController extends Controller
 
         return response()->json([
             'actor_type' => ActorType::Officer->value,
-            'profile' => (new AuthProfileResource($officer))->toArray($request),
+            'profile' => $this->buildOfficerAuthProfile->build($officer, $request),
         ]);
     }
 }

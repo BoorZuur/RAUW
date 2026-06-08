@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
-use App\Actions\Auth\ResolveOfficerTokenHubActive;
+use App\Actions\Auth\BuildOfficerAuthProfile;
 use App\Enums\ActorType;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AuthProfileResource;
@@ -16,7 +16,7 @@ use Illuminate\Http\Response;
 class ProfileController extends Controller
 {
     public function __construct(
-        private readonly ResolveOfficerTokenHubActive $resolveOfficerTokenHubActive,
+        private readonly BuildOfficerAuthProfile $buildOfficerAuthProfile,
     ) {
     }
 
@@ -64,18 +64,11 @@ class ProfileController extends Controller
             $actor->loadMissing('departments');
         }
 
-        $payload = [
+        return response()->json([
             'actor_type' => $type->value,
-            'profile' => (new AuthProfileResource($actor))->toArray($request),
-        ];
-
-        if ($actor instanceof Officer) {
-            $payload = array_merge(
-                $payload,
-                $this->resolveOfficerTokenHubActive->resolve($actor),
-            );
-        }
-
-        return response()->json($payload);
+            'profile' => $actor instanceof Officer
+                ? $this->buildOfficerAuthProfile->build($actor, $request)
+                : (new AuthProfileResource($actor))->toArray($request),
+        ]);
     }
 }

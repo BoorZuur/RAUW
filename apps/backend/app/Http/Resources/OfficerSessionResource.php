@@ -35,7 +35,6 @@ class OfficerSessionResource extends JsonResource
             'id' => $session->id,
             'officer_id' => $session->officer_id,
             'officer' => $this->compactOfficer($session),
-            'personal_access_token_id' => $session->personal_access_token_id,
             'hub_id' => $session->hub_id,
             'hub' => $this->compactHub($session),
             'shift_start' => $session->shift_start?->toIso8601String(),
