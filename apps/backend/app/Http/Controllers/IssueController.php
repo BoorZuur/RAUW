@@ -174,7 +174,10 @@ class IssueController extends Controller
         }
 
         $actor = $request->user();
-        $issue->load(self::ISSUE_RELATIONS);
+        $issue->load([
+            ...self::ISSUE_RELATIONS,
+            'officerResolution' => fn ($q) => $q->with(['officer', 'attachments']),
+        ]);
 
         if ($actor instanceof Officer || $actor instanceof Manager) {
             $issue->load([
