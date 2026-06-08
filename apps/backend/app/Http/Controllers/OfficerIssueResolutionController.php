@@ -13,6 +13,7 @@ use App\Support\IssueVisibilityQuery;
 use App\Support\OfficerIssueConflict;
 use App\Support\OfficerIssueDistrictAccess;
 use App\Support\OfficerIssueRowLock;
+use App\Support\UploadedFileValidator;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
@@ -180,7 +181,7 @@ class OfficerIssueResolutionController extends Controller
                     'file_path' => $path,
                     'file_url' => $path,
                     'original_name' => $file->getClientOriginalName(),
-                    'file_type' => $file->getMimeType(),
+                    'file_type' => UploadedFileValidator::detectMimeType($file),
                     'file_size' => $file->getSize(),
                     'uploaded_at' => Carbon::now(),
                 ]);

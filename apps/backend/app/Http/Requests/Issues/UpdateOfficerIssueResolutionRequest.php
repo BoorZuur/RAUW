@@ -5,6 +5,7 @@ namespace App\Http\Requests\Issues;
 use App\Models\Issue;
 use App\Models\Officer;
 use App\Models\OfficerIssueResolution;
+use App\Support\UploadedFileValidator;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -65,6 +66,16 @@ class UpdateOfficerIssueResolutionRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
+            UploadedFileValidator::validateUploadedFiles(
+                $validator,
+                $this->file('files'),
+                UploadedFileValidator::assertAllowedImage(...),
+            );
+
             if ($validator->errors()->isNotEmpty()) {
                 return;
             }

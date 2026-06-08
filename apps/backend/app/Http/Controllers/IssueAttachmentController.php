@@ -6,6 +6,7 @@ use App\Http\Requests\Issues\DeleteIssueAttachmentRequest;
 use App\Http\Requests\Issues\DownloadIssueAttachmentRequest;
 use App\Http\Requests\Issues\StoreIssueAttachmentRequest;
 use App\Http\Resources\IssueAttachmentResource;
+use App\Support\UploadedFileValidator;
 use App\Models\Issue;
 use App\Models\IssueAttachment;
 use Illuminate\Http\JsonResponse;
@@ -59,7 +60,7 @@ class IssueAttachmentController extends Controller
                 'file_path' => $path,
                 'file_url' => $path,
                 'original_name' => $file->getClientOriginalName(),
-                'file_type' => $file->getClientMimeType(),
+                'file_type' => UploadedFileValidator::detectMimeType($file),
                 'file_size' => $file->getSize(),
                 'uploaded_at' => Carbon::now(),
             ]);

@@ -4,6 +4,8 @@ namespace App\Http\Requests\Issues;
 
 use App\Models\Issue;
 use App\Models\Officer;
+use App\Support\UploadedFileValidator;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreOfficerIssueResolutionRequest extends FormRequest
@@ -53,5 +55,19 @@ class StoreOfficerIssueResolutionRequest extends FormRequest
                 'mimes:jpg,jpeg,png,gif,webp',
             ],
         ];
+    }
+
+    /**
+     * Reject uploads whose content does not match an allowed image type.
+     */
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            UploadedFileValidator::validateUploadedFiles(
+                $validator,
+                $this->file('files'),
+                UploadedFileValidator::assertAllowedImage(...),
+            );
+        });
     }
 }
