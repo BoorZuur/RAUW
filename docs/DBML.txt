@@ -141,6 +141,24 @@ Table department_manager {
   }
 }
 
+Table personal_access_tokens {
+  id               int          [pk, increment]
+  tokenable_type   varchar(255) [not null, note: 'Polymorf: User | Officer | Manager (Laravel Sanctum)']
+  tokenable_id     int          [not null, note: 'Polymorf FK naar tokenable_type']
+  name             text         [not null]
+  token            varchar(64)  [not null, unique]
+  abilities        text         [note: 'JSON-serialized abilities, bv. hub-active']
+  last_used_at     datetime
+  expires_at       datetime
+  created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (tokenable_type, tokenable_id)
+    expires_at
+  }
+}
+
 Table officer_sessions {
   id                        int          [pk, increment]
   officer_id                int          [not null, ref: > officers.id, note: 'Cascade delete']
