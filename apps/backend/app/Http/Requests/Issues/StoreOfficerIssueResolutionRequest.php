@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\Issues;
 
-use App\Models\Issue;
 use App\Models\Officer;
 use App\Support\UploadedFileValidator;
 use Illuminate\Contracts\Validation\Validator;
@@ -22,21 +21,17 @@ class StoreOfficerIssueResolutionRequest extends FormRequest
     public const MAX_FILE_SIZE_KB = 5120;
 
     /**
-     * Only the authenticated, active officer currently assigned to the issue
-     * may create its officer resolution report.
+     * Only an authenticated, active officer may create an officer resolution.
+     *
+     * District access, assignee checks, and duplicate-resolution guards run
+     * on the locked issue row in the controller.
      */
     public function authorize(): bool
     {
         $actor = $this->user();
 
-        if (! $actor instanceof Officer || (bool) $actor->is_active !== true) {
-            return false;
-        }
-
-        $issue = $this->route('issue');
-
-        return $issue instanceof Issue
-            && $issue->assigned_officer_id === $actor->getKey();
+        return $actor instanceof Officer
+            && (bool) $actor->is_active === true;
     }
 
     /**

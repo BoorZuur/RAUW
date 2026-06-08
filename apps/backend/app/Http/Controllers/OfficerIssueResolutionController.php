@@ -19,8 +19,8 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
@@ -34,6 +34,8 @@ class OfficerIssueResolutionController extends Controller
      * @var array<int, string>
      */
     private const RESOLUTION_RELATIONS = ['officer', 'attachments'];
+
+    private const RESOLUTION_ASSIGNEE_MESSAGE = 'Only the assigned officer may submit or update the resolution for this issue.';
 
     /**
      * Show the single officer resolution for an issue.
@@ -74,6 +76,7 @@ class OfficerIssueResolutionController extends Controller
 
         try {
             $resolution = OfficerIssueRowLock::withLockedIssue($issue, function (Issue $lockedIssue) use ($officer, $validated) {
+                OfficerIssueRowLock::assertAssignee($officer, $lockedIssue, self::RESOLUTION_ASSIGNEE_MESSAGE);
                 OfficerIssueRowLock::assertNoResolution($lockedIssue);
 
                 return $lockedIssue->officerResolution()->create([
@@ -125,18 +128,28 @@ class OfficerIssueResolutionController extends Controller
 
         OfficerIssueDistrictAccess::assertOfficerInIssueDistrict($officer, $issue);
 
-        $resolution = $issue->officerResolution;
-
-        if ($resolution === null) {
-            abort(404);
-        }
-
         $validated = $request->validated();
         $files = $request->file('files', []);
         $removeIds = $validated['remove_attachment_ids'] ?? [];
         $pathsToDelete = [];
 
-        DB::transaction(function () use ($officer, $resolution, $validated, $removeIds, &$pathsToDelete): void {
+        OfficerIssueRowLock::withLockedIssue($issue, function (Issue $lockedIssue) use (
+            $officer,
+            $validated,
+            $removeIds,
+            $files,
+            &$pathsToDelete,
+        ): void {
+            OfficerIssueRowLock::assertAssignee($officer, $lockedIssue, self::RESOLUTION_ASSIGNEE_MESSAGE);
+
+            $resolution = $lockedIssue->officerResolution;
+
+            if ($resolution === null) {
+                abort(404);
+            }
+
+            self::assertAttachmentCapUnderLock($resolution, $removeIds, count($files));
+
             $resolution->update([
                 'title' => $validated['title'],
                 'content' => $validated['content'],
@@ -158,12 +171,55 @@ class OfficerIssueResolutionController extends Controller
             }
         });
 
+        $resolution = $issue->officerResolution()->firstOrFail();
+
         self::deleteDiskFiles($pathsToDelete);
         self::attachUploadedFiles($resolution, $files);
 
         $resolution->refresh()->load(self::RESOLUTION_RELATIONS);
 
         return new OfficerIssueResolutionResource($resolution);
+    }
+
+    /**
+     * Assert attachment ownership and cumulative cap on a locked resolution row.
+     *
+     * @param  array<int, int>  $removeIds
+     *
+     * @throws ValidationException
+     */
+    private static function assertAttachmentCapUnderLock(
+        OfficerIssueResolution $resolution,
+        array $removeIds,
+        int $incomingCount,
+    ): void {
+        if ($removeIds !== []) {
+            $ownedCount = $resolution->attachments()
+                ->whereIn('id', $removeIds)
+                ->count();
+
+            if ($ownedCount !== count($removeIds)) {
+                throw ValidationException::withMessages([
+                    'remove_attachment_ids' => [
+                        'One or more attachment ids do not belong to this resolution.',
+                    ],
+                ]);
+            }
+        }
+
+        $existing = $resolution->attachments()->count();
+        $remaining = $existing - count($removeIds);
+
+        if ($remaining + $incomingCount > StoreOfficerIssueResolutionRequest::MAX_ATTACHMENTS) {
+            $allowed = max(0, StoreOfficerIssueResolutionRequest::MAX_ATTACHMENTS - $remaining);
+
+            throw ValidationException::withMessages([
+                'files' => [
+                    'This resolution can have at most '.StoreOfficerIssueResolutionRequest::MAX_ATTACHMENTS.' attachments. '.
+                    "After removals, you may upload {$allowed} more.",
+                ],
+            ]);
+        }
     }
 
     /**

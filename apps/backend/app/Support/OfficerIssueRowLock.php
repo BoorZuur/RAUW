@@ -33,11 +33,14 @@ class OfficerIssueRowLock
     /**
      * Assert the officer is the current assignee or throw 403.
      */
-    public static function assertAssignee(Officer $officer, Issue $locked): void
-    {
+    public static function assertAssignee(
+        Officer $officer,
+        Issue $locked,
+        ?string $message = null,
+    ): void {
         if ($locked->assigned_officer_id !== $officer->getKey()) {
             throw OfficerIssueConflict::notAssignedOfficer(
-                'Only the assigned officer may update this issue status.',
+                $message ?? 'Only the assigned officer may update this issue status.',
             );
         }
     }

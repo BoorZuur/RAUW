@@ -23,21 +23,17 @@ class UpdateOfficerIssueResolutionRequest extends FormRequest
     public const MAX_FILE_SIZE_KB = 5120;
 
     /**
-     * Only the authenticated, active officer currently assigned to the issue
-     * may update its officer resolution report.
+     * Only an authenticated, active officer may update an officer resolution.
+     *
+     * District access, assignee checks, and attachment-cap validation run
+     * on the locked issue row in the controller.
      */
     public function authorize(): bool
     {
         $actor = $this->user();
 
-        if (! $actor instanceof Officer || (bool) $actor->is_active !== true) {
-            return false;
-        }
-
-        $issue = $this->route('issue');
-
-        return $issue instanceof Issue
-            && $issue->assigned_officer_id === $actor->getKey();
+        return $actor instanceof Officer
+            && (bool) $actor->is_active === true;
     }
 
     /**
