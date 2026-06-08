@@ -44,7 +44,7 @@ export default function ResolvedReportsFeed() {
                         location={item.location}
                         date={item.date}
                         imageUrl={item.imageUrl}
-                        onClick={() => handleRowClick(item.id)} // Dit triggert jouw navigatiefunctie
+                        onClick={() => handleRowClick(item.id)}
                     />
                 ))}
             </div>
