@@ -5,8 +5,7 @@ export default function UserCard({flag, onAction}) {
 
     // Check of er al een actie is uitgevoerd op deze flag
     const isProcessed = flag.action_taken !== "In afwachting";
-
-    // Verbeterde colorcoding voor de status badges
+    
     const getStatusStyle = (status) => {
         switch (status) {
             case 'In afwachting':
