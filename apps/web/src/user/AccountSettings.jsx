@@ -123,7 +123,7 @@ export default function Instellingen() {
                     <p className="text-xs text-secondary-text mt-4">Dit is een onomkeerbare actie.</p>
                 </section>
 
-                <button onClick={handleSave} className="w-full bg-primary-text text-primary-bg font-bold py-4 rounded-lg text-xs uppercase tracking-widest hover:opacity-90 transition-all flex justify-center">
+                <button onClick={handleSave} className="w-full h-12 mt-4 bg-primary-text hover:bg-primary-accent text-white font-medium rounded-xl transition-all shadow-md active:scale-[0.98]">
                     {loading ? <Loader2 className="animate-spin" /> : 'Wijzigingen opslaan'}
                 </button>
 
