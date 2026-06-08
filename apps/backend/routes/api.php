@@ -19,6 +19,8 @@ use App\Http\Controllers\IssueAttachmentController;
 use App\Http\Controllers\IssueController;
 use App\Http\Controllers\IssueOfficerAssignmentController;
 use App\Http\Controllers\IssueOfficerStatusController;
+use App\Http\Controllers\OfficerIssueResolutionAttachmentController;
+use App\Http\Controllers\OfficerIssueResolutionController;
 use App\Http\Controllers\MainManagerController;
 use App\Http\Controllers\ManagerController;
 use App\Http\Controllers\ManagerDepartmentController;
@@ -284,6 +286,14 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     // persists one status history row per change without coordinates, and sets
     // resolved_at on the first transition to opgelost.
     Route::patch('issues/{issue}/status', [IssueOfficerStatusController::class, 'update'])->name('issues.status.update');
+    // Officer resolution (Tier C: hub-active required). One resolution per issue;
+    // create is assignee-only with district scoping (403 officer_not_in_district),
+    // duplicate POST returns 409 officer_resolution_exists; update via PATCH.
+    // Show and attachment download use IssueVisibilityQuery (404 when not viewable).
+    Route::get('issues/{issue}/officer-resolution', [OfficerIssueResolutionController::class, 'show'])->name('issues.officer-resolution.show');
+    Route::post('issues/{issue}/officer-resolution', [OfficerIssueResolutionController::class, 'store'])->name('issues.officer-resolution.store');
+    Route::patch('issues/{issue}/officer-resolution', [OfficerIssueResolutionController::class, 'update'])->name('issues.officer-resolution.update');
+    Route::get('issues/{issue}/officer-resolution/attachments/{attachment}/download', [OfficerIssueResolutionAttachmentController::class, 'download'])->name('issues.officer-resolution.attachments.download');
     Route::delete('issues/{issue}', [IssueController::class, 'destroy'])->name('issues.destroy');
 
     // Issue attachments. Uploads are authorized inside StoreIssueAttachmentRequest

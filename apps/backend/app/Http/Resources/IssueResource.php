@@ -8,7 +8,9 @@ use App\Models\District;
 use App\Models\Issue;
 use App\Models\Manager;
 use App\Models\Officer;
+use App\Models\OfficerIssueResolution;
 use App\Models\User;
+use App\Support\IssueVisibilityQuery;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -60,6 +62,12 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * when the controller has eager-loaded the relation. Regular users never receive
  * status history in issue payloads.
  *
+ * Officer resolution
+ * ------------------
+ * The optional `officer_resolution` object is included when the controller has
+ * eager-loaded the relation and the actor may view the issue. GET
+ * `/issues/{issue}/officer-resolution` is the primary read path.
+ *
  * @mixin Issue
  */
 class IssueResource extends JsonResource
@@ -105,7 +113,7 @@ class IssueResource extends JsonResource
             'created_at' => $issue->created_at,
             'updated_at' => $issue->updated_at,
             'resolved_at' => $issue->resolved_at,
-        ], $this->maybeStatusHistory($issue, $request));
+        ], $this->maybeStatusHistory($issue, $request), $this->maybeOfficerResolution($issue, $request));
     }
 
     /**
@@ -225,6 +233,32 @@ class IssueResource extends JsonResource
 
         return [
             'status_history' => IssueStatusHistoryResource::collection($issue->getRelation('statusHistory'))->resolve(),
+        ];
+    }
+
+    /**
+     * Include officer resolution when eager loaded and the actor may view the issue.
+     *
+     * @return array<string, mixed>
+     */
+    protected function maybeOfficerResolution(Issue $issue, Request $request): array
+    {
+        if (! IssueVisibilityQuery::canViewIssue($issue, $request->user())) {
+            return [];
+        }
+
+        if (! $issue->relationLoaded('officerResolution')) {
+            return [];
+        }
+
+        $resolution = $issue->getRelation('officerResolution');
+
+        if (! $resolution instanceof OfficerIssueResolution) {
+            return ['officer_resolution' => null];
+        }
+
+        return [
+            'officer_resolution' => (new OfficerIssueResolutionResource($resolution))->resolve(),
         ];
     }
 
