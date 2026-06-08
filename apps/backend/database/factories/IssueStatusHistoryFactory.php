@@ -24,8 +24,6 @@ class IssueStatusHistoryFactory extends Factory
             'changed_by_officer_id' => null,
             'old_status' => IssueStatus::Open,
             'new_status' => fake()->randomElement(IssueStatus::cases()),
-            'officer_lat' => fake()->latitude(51.8, 52.5),
-            'officer_lng' => fake()->longitude(4.0, 5.5),
             'note' => fake()->optional()->sentence(),
             'changed_at' => now(),
         ];
