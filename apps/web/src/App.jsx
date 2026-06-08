@@ -5,7 +5,7 @@ import { createBrowserRouter, RouterProvider, Navigate, Outlet } from "react-rou
 import Onboarding from "./user/Onboarding.jsx";
 import Login from "./user/U_Login.jsx";
 import Register from "./user/U_Register.jsx";
-// import Map from "./user/Map.jsx";
+import Map from "./user/Map.jsx";
 // import Feed from "./user/Feed.jsx";
 import Report from "./user/Report.jsx";
 // import NewsFeed from "./user/Newsfeed.jsx";
@@ -48,7 +48,7 @@ function App() {
         {
             element: <PortalGuard allowedType="user" />,
             children: [
-                // { path: "/map", element: <Map /> },
+                { path: "/map", element: <Map /> },
                 // { path: "/feed", element: <Feed /> },
                 { path: "/meld", element: <Report /> },
                 // { path: "/nieuws", element: <NewsFeed /> },

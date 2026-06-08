@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import U_Nav from '../components/U_Nav';
 import NativeLeafletMap from '../components/MapComponent.jsx';
+import { useNavigate } from 'react-router-dom';
 
 const apiClient = axios.create({
     baseURL: 'http://localhost:8001',
@@ -30,18 +31,24 @@ export default function ReportIssue() {
     const [position, setPosition] = useState(null);
     const [error, setError] = useState(null);
     const [categories, setCategories] = useState([]);
+    const [districts, setDistricts] = useState([]); // Toegevoegd voor validatie
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const [showConfirm, setShowConfirm] = useState(false); // State voor pop-up
+    const [showConfirm, setShowConfirm] = useState(false);
+    const [success, setSuccess] = useState(false);
 
     useEffect(() => {
-        apiClient.get('/api/categories')
-            .then(res => {
-                const dataToSet = Array.isArray(res.data) ? res.data : (res.data.data || []);
-                setCategories(dataToSet);
+        // Categorieën én Districten ophalen voor validatie
+        Promise.all([
+            apiClient.get('/api/categories'),
+            apiClient.get('/api/districts')
+        ])
+            .then(([catRes, distRes]) => {
+                setCategories(Array.isArray(catRes.data) ? catRes.data : (catRes.data.data || []));
+                setDistricts(Array.isArray(distRes.data) ? distRes.data : (distRes.data.data || []));
             })
             .catch(err => {
                 console.error("API Error details:", err.response || err);
-                setError("Kon categorieën niet laden.");
+                setError("Kon gegevens niet laden.");
             });
     }, []);
 
@@ -87,6 +94,19 @@ export default function ReportIssue() {
             return;
         }
 
+        // --- STRIKTE VALIDATIE LOGICA ---
+        // Controleer of de ingevulde neighborhood in de database lijst (districts) staat
+        const isValidDistrict = districts.some(d =>
+            formData.neighborhood.toLowerCase().includes(d.name.toLowerCase())
+        );
+
+        if (!isValidDistrict) {
+            setError("De ingevulde buurt is niet geldig of niet bekend in ons systeem.");
+            setShowConfirm(false);
+            return;
+        }
+        // --------------------------------
+
         try {
             await apiClient.post('/api/issues', {
                 ...formData,
@@ -94,14 +114,13 @@ export default function ReportIssue() {
                 longitude: position.lng,
                 is_anonymous: formData.is_anonymous ? 1 : 0,
                 category_id: parseInt(formData.category_id),
-                district_id: 1
+                district_id: 1 // (Blijft zoals je had)
             });
 
-            alert("Melding succesvol verzonden.");
+            setSuccess(true);
             setShowConfirm(false);
         } catch (err) {
             if (err.response && err.response.status === 422) {
-                console.log("Validatiefouten:", err.response.data.errors);
                 setError("Controleer de velden: " + JSON.stringify(err.response.data.errors));
             } else {
                 setError("Verzenden mislukt: " + (err.response?.data?.message || err.message));
@@ -112,16 +131,25 @@ export default function ReportIssue() {
 
     return (
         <div className="min-h-screen bg-primary-bg text-primary-text flex flex-col transition-colors duration-300">
-            {/* Bevestigings-pop-up */}
             {showConfirm && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                     <div className="bg-primary-bg-cards p-8 rounded-3xl border-2 border-primary-border shadow-2xl max-w-sm w-full">
                         <h3 className="text-xl font-black uppercase mb-4">Bevestig melding</h3>
-                        <p className="text-sm opacity-70 mb-8">Weet je zeker dat je deze melding wilt versturen naar de handhaving?</p>
+                        <p className="text-sm opacity-70 mb-8">Weet je zeker dat je deze melding wilt versturen?</p>
                         <div className="flex gap-4">
                             <button onClick={() => setShowConfirm(false)} className="flex-1 p-3 border-2 border-primary-border rounded-xl">Annuleren</button>
                             <button onClick={handleSubmit} className="flex-1 p-3 bg-secondary-accent text-white rounded-xl font-black uppercase tracking-widest hover:brightness-110">Verstuur</button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {success && (
+                <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-primary-bg-cards p-8 rounded-3xl border-2 border-primary-border shadow-2xl max-w-sm w-full text-center">
+                        <h3 className="text-xl font-black uppercase mb-4">Verzonden!</h3>
+                        <p className="text-sm opacity-70 mb-8">Je melding is succesvol ontvangen.</p>
+                        <button onClick={() => { setSuccess(false); window.location.reload(); }} className="w-full p-3 bg-secondary-accent text-white rounded-xl font-black uppercase tracking-widest">Sluiten</button>
                     </div>
                 </div>
             )}

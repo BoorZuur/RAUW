@@ -126,6 +126,7 @@ body {
     margin: 0;
 }
 
+
 h1 {
     font-family: var(--font-headline), serif;
     font-size: 3rem;
@@ -164,4 +165,42 @@ p {
 
 ::-webkit-scrollbar-thumb:hover {
     background: var(--primary-accent);
+}
+
+/* Sloop de Google Translate balken, popups en frames volledig */
+iframe[class*="goog"],
+iframe[id*="goog"],
+.goog-te-banner-frame,
+#goog-gt-tt,
+.goog-te-balloon-frame,
+.goog-tooltip,
+.goog-tooltip-back {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    width: 0 !important;
+    border: none !important;
+}
+
+html {
+    top: 0 !important;
+}
+
+/* Verberg de 'Originele tekst tonen' popups bij hover over vertaalde teksten */
+.goog-text-highlight {
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+/* Handige scrollbar styling voor je talenlijstje */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
 }

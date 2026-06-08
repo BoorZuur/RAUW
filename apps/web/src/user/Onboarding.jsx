@@ -93,7 +93,6 @@ export default function Onboarding() {
             {/* Main Content */}
             <main className="w-full max-w-3xl mx-auto flex flex-col items-center justify-center grow z-10 text-center px-6">
                 <div className={`w-full flex flex-col items-center justify-center transition-all duration-600 ${isTransitioning ? 'opacity-0 blur-sm' : 'opacity-100 blur-none'}`}>
-                    {/* Tag label - AAA contrast: witte tekst op zwarte/donkere achtergrond */}
                     <div className="inline-block bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full text-[11px] sm:text-xs font-bold tracking-widest text-white mb-6 border border-white/50 uppercase">
                         {step.tag}
                     </div>

@@ -23,7 +23,7 @@ export default function Register() {
                 localStorage.setItem('auth_token', response.data.access_token);
             }
             localStorage.setItem('user_type', 'user');
-            navigate('/feed');
+            navigate('/map');
         } catch (err) { setError('Registratie mislukt.'); }
     };
 
