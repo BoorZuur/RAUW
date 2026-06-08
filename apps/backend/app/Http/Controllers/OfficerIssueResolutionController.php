@@ -150,6 +150,10 @@ class OfficerIssueResolutionController extends Controller
 
             self::assertAttachmentCapUnderLock($resolution, $removeIds, count($files));
 
+            if ($files !== []) {
+                self::attachUploadedFiles($resolution, $files);
+            }
+
             $resolution->update([
                 'title' => $validated['title'],
                 'content' => $validated['content'],
@@ -171,12 +175,11 @@ class OfficerIssueResolutionController extends Controller
             }
         });
 
-        $resolution = $issue->officerResolution()->firstOrFail();
-
         self::deleteDiskFiles($pathsToDelete);
-        self::attachUploadedFiles($resolution, $files);
 
-        $resolution->refresh()->load(self::RESOLUTION_RELATIONS);
+        $resolution = $issue->officerResolution()
+            ->with(self::RESOLUTION_RELATIONS)
+            ->firstOrFail();
 
         return new OfficerIssueResolutionResource($resolution);
     }
