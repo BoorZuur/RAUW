@@ -21,10 +21,16 @@ export default function Navbar() {
 
     return (
         <nav
-            className="fixed top-6 left-6 right-6 z-50 flex items-center justify-between px-8 py-4 rounded-3xl border border-primary-border shadow-sm backdrop-blur-xl bg-primary-bg-cards/80 transition-all duration-500">
+            className="fixed top-6 left-6 right-6 z-50 flex items-center justify-between px-8 py-4 rounded-3xl border border-primary-border shadow-sm backdrop-blur-xl bg-primary-bg-cards/90 transition-all duration-500"
+            role="navigation"
+            aria-label="Hoofdnavigatie"
+        >
 
             {/* Logo */}
-            <div className="cursor-pointer shrink-0 transition-transform hover:scale-102" onClick={() => navigate('/')}>
+            <div className="cursor-pointer shrink-0 transition-transform hover:scale-102"
+                 onClick={() => navigate('/feed')}
+                 role="button"
+                 aria-label="Ga naar de homepage">
                 <img src={RauwLogoImg} alt="RAUW Logo" className="h-12 w-auto object-contain"/>
             </div>
 
@@ -32,10 +38,11 @@ export default function Navbar() {
             <div className="flex items-center gap-1">
                 {tabs.map((tab) => (
                     <Link key={tab.name} to={tab.path}
-                          className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl transition-all duration-300 font-medium text-sm
+                          aria-current={isActive(tab.path) ? 'page' : undefined}
+                          className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl transition-all duration-300 font-bold text-sm
                           ${isActive(tab.path)
                               ? 'bg-primary-border text-primary-text'
-                              : 'bg-transparent text-primary-text opacity-60 hover:opacity-100'}`}>
+                              : 'bg-transparent text-secondary-text hover:text-primary-text hover:bg-black/5 dark:hover:bg-white/5'}`}>
                         <tab.icon className="w-4 h-4"/>
                         <span>{tab.name}</span>
                     </Link>
@@ -45,13 +52,16 @@ export default function Navbar() {
             {/* Utilities */}
             <div className="flex items-center gap-2 text-primary-text">
                 <button onClick={toggleTheme}
-                        className="p-3 rounded-2xl hover:bg-black/5 dark:hover:bg-white/5 transition-all">
+                        aria-label={isDark ? "Schakel over naar lichte modus" : "Schakel over naar donkere modus"}
+                        className="p-3 rounded-2xl hover:bg-black/10 dark:hover:bg-white/10 transition-all">
                     {isDark ? <Sun className="w-5 h-5"/> : <Moon className="w-5 h-5"/>}
                 </button>
 
                 <div className="relative">
                     <button onClick={() => setShowNotifications(!showNotifications)}
-                            className="p-3 rounded-2xl hover:bg-black/5 dark:hover:bg-white/5 transition-all">
+                            aria-label="Open meldingen"
+                            aria-expanded={showNotifications}
+                            className="p-3 rounded-2xl hover:bg-black/10 dark:hover:bg-white/10 transition-all">
                         <Bell className="w-5 h-5"/>
                     </button>
                     {showNotifications && (
@@ -60,7 +70,8 @@ export default function Navbar() {
                             <div className="flex justify-between items-center mb-4">
                                 <span className="font-bold text-base text-primary-text">Meldingen</span>
                                 <button onClick={() => setShowNotifications(false)}
-                                        className="p-1 hover:bg-black/5 rounded-full"><X className="w-4 h-4"/></button>
+                                        aria-label="Sluit meldingen"
+                                        className="p-1 hover:bg-black/10 rounded-full"><X className="w-4 h-4"/></button>
                             </div>
                             <p className="text-sm text-secondary-text">Geen nieuwe berichten.</p>
                         </div>
@@ -68,7 +79,8 @@ export default function Navbar() {
                 </div>
 
                 <button onClick={() => navigate('/account')}
-                        className="p-3 rounded-2xl hover:bg-black/5 dark:hover:bg-white/5 transition-all">
+                        aria-label="Ga naar accountinstellingen"
+                        className="p-3 rounded-2xl hover:bg-black/10 dark:hover:bg-white/10 transition-all">
                     <User className="w-5 h-5"/>
                 </button>
             </div>
