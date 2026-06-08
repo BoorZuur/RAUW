@@ -11,12 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('categories', function (Blueprint $table) {
+        Schema::create('hubs', function (Blueprint $table) {
             $table->id();
-            $table->string('name', 100);
-            $table->unsignedTinyInteger('priority')->nullable();
-            $table->foreignId('parent_id')->nullable()->constrained('categories')->nullOnDelete();
-            $table->boolean('is_active')->default(true);
+            $table->string('name', 100)->unique();
+            $table->string('address', 255);
+            $table->string('postal_code', 10);
+            $table->decimal('latitude', 10, 8)->nullable();
+            $table->decimal('longitude', 11, 8)->nullable();
             $table->timestamps();
         });
     }
@@ -26,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('categories');
+        Schema::dropIfExists('hubs');
     }
 };
