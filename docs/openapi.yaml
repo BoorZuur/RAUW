@@ -1917,8 +1917,12 @@ paths:
         Users sending visibility receive 422. Query param department accepts a department code from the departments
         table and matches through department_issue with any-match semantics, so a
         multi-department issue is included when any pivot assignment has the requested
-        code. Pagination is backend-driven using page and per_page, with a default
+        code.         Pagination is backend-driven using page and per_page, with a default
         per_page of 20 and maximum of 100. Results are ordered newest first.
+        Each issue embeds `officer_resolution` (with officer and attachments)
+        when a field report exists. `status_history` is omitted on list responses;
+        use GET `/api/issues/{issueId}` for full status history (officers and
+        managers only, newest first, without coordinates).
 
         **Officer shared shift:** Issue list is a **Tier B** browse read — officers
         without an active shared shift may still call this endpoint. Tier C
@@ -2062,11 +2066,12 @@ paths:
         actors receive 403 from global middleware. When the issue exists but is not
         visible to the caller (for example a hidden issue owned by another user),
         the backend returns 404 rather than 403 to avoid leaking existence.
-        Active officers and managers also receive `status_history` (newest first,
-        without coordinates). `officer_resolution` is embedded with officer and
-        attachments when a report exists. **Tier B** browse: officers without an
-        active shared shift may still call this endpoint. Use GET
-        `/api/issues/{issueId}/officer-resolution` for resolution-only reads.
+        `officer_resolution` is embedded with officer and attachments when a
+        report exists. Active officers and managers also receive `status_history`
+        (newest first, without coordinates); regular users never receive
+        `status_history`. List responses omit `status_history`. **Tier B** browse:
+        officers without an active shared shift may still call this endpoint. Use
+        GET `/api/issues/{issueId}/officer-resolution` for resolution-only reads.
       security:
         - bearerAuth: [ ]
       responses:
@@ -4906,8 +4911,8 @@ components:
           nullable: true
           description: >-
             Status change audit trail. Included only for active officers and
-            managers when eager-loaded (for example on GET issue show). Regular
-            users never receive this field. Rows do not include officer
+            managers on GET issue show (newest first). Omitted on GET issue list
+            and never returned to regular users. Rows do not include officer
             coordinates.
           items:
             $ref: '#/components/schemas/IssueStatusHistory'
@@ -4917,9 +4922,9 @@ components:
             - $ref: '#/components/schemas/OfficerIssueResolution'
           description: >-
             Embedded officer field report (with officer and attachments) when
-            present and the actor may view the issue. Included on GET issue show.
-            Use GET `/api/issues/{issueId}/officer-resolution` for resolution-only
-            reads.
+            present and the actor may view the issue. Included on GET issue list
+            and show when eager-loaded. Use GET
+            `/api/issues/{issueId}/officer-resolution` for resolution-only reads.
         created_at:
           type: string
           format: date-time

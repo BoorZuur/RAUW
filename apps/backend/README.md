@@ -49,7 +49,7 @@ Officers share one shift clock across all devices via `officers.hub_active_until
 
 **Hub reassignment / manager end-shift:** `PATCH /api/officers/{officer}/hub` and `PATCH /api/officers/{officer}/end-shift` clear `hub_active_until` without revoking tokens. **Officer disable** revokes all tokens, closes all sessions, and ends the shift.
 
-**Middleware:** `officer.hub-active` gates Tier C workflow routes by reading `hub_active_until` on the officer row. **Tier B** (browse without an active shift): `GET /api/issues`, `GET /api/issues/{issue}` (includes embedded `officer_resolution` when present), `GET /api/issues/{issue}/officer-resolution`, and authenticated attachment downloads (`GET .../attachments/.../download`, `GET .../officer-resolution/attachments/.../download`). **Tier C** (hub-active required): `POST .../assign-self`, `POST .../unassign-self`, `PATCH .../status`, and officer-resolution `POST`/`PATCH`. Also whitelisted without a shift: profile/auth (`GET/PATCH /api/auth/me`, logout, `POST /api/auth/start-shift`, district self-service), reference reads (hubs, districts, departments, categories), and `GET /api/officer-sessions` (authorization still requires an active manager).
+**Middleware:** `officer.hub-active` gates Tier C workflow routes by reading `hub_active_until` on the officer row. **Tier B** (browse without an active shift): `GET /api/issues` (embeds `officer_resolution` when present; omits `status_history`), `GET /api/issues/{issue}` (same `officer_resolution` plus `status_history` for officers/managers), `GET /api/issues/{issue}/officer-resolution`, and authenticated attachment downloads (`GET .../attachments/.../download`, `GET .../officer-resolution/attachments/.../download`). **Tier C** (hub-active required): `POST .../assign-self`, `POST .../unassign-self`, `PATCH .../status`, and officer-resolution `POST`/`PATCH`. Also whitelisted without a shift: profile/auth (`GET/PATCH /api/auth/me`, logout, `POST /api/auth/start-shift`, district self-service), reference reads (hubs, districts, departments, categories), and `GET /api/officer-sessions` (authorization still requires an active manager).
 
 **Error codes** (`message` + `code`):
 
@@ -193,7 +193,7 @@ Distinct from user satisfaction feedback in `issue_resolutions`. At most **one**
 
 Attachment limits: up to **3** images (`jpg`, `jpeg`, `png`, `gif`, `webp`) per resolution, **5 MB** each. PATCH validates `existing − removals + new_files ≤ 3`. Uploads are content-validated (Symfony MIME sniff for images; issue user attachments also accept PDF via `%PDF-` magic bytes).
 
-**Issue show embeds:** `GET /api/issues/{issue}` includes `status_history` (officers/managers only, no lat/lon) and `officer_resolution` (with officer and attachments when present). Prefer the dedicated GET path for resolution-only reads.
+**Issue embeds:** `GET /api/issues` includes `officer_resolution` (with officer and attachments when present) and omits `status_history`. `GET /api/issues/{issue}` includes the same `officer_resolution` embed plus `status_history` for officers and managers only (newest first, no lat/lon); regular users never receive `status_history`. Prefer the dedicated GET path for resolution-only reads.
 
 **Structured error codes (officer workflows)**
 
@@ -246,7 +246,7 @@ After hub login as `demo.officer@example.com` (Cool wijk / `district_id: 1`):
 5. **Status** — `PATCH /api/issues/{id}/status` with `{ "status": "opgelost", "note": "Fixed" }` → 200, history row, `resolved_at` set.
 6. **Invalid transition** — Direct `open` → `opgelost` → 422.
 7. **Not assigned** — Another officer PATCH status → 403 `not_assigned_officer`.
-8. **History on show** — Officer/manager `GET /api/issues/{id}` includes `status_history` without lat/lon and embedded `officer_resolution` when present; user GET omits `status_history`.
+8. **List vs show embeds** — `GET /api/issues` includes `officer_resolution` when present and omits `status_history`. Officer/manager `GET /api/issues/{id}` adds `status_history` (newest first, no lat/lon); user GET omits `status_history`.
 9. **Resolution create** — Multipart POST with title, content, images → 201; second POST → 409.
 10. **Resolution update** — PATCH with new title/content, remove one attachment, add one → 200, ≤3 attachments total.
 11. **Resolution read** — User, officer, manager who can view issue → GET `/officer-resolution` 200; hidden issue → 404.
