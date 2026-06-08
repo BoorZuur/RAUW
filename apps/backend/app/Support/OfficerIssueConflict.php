@@ -41,4 +41,13 @@ class OfficerIssueConflict extends Exception
             status: Response::HTTP_CONFLICT,
         );
     }
+
+    public static function issueNotAssignable(): self
+    {
+        return new self(
+            code: 'issue_not_assignable',
+            message: 'Issues that are resolved or closed cannot be assigned.',
+            status: Response::HTTP_UNPROCESSABLE_ENTITY,
+        );
+    }
 }

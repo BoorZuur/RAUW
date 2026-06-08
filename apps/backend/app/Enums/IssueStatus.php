@@ -16,4 +16,12 @@ enum IssueStatus: string
     {
         return array_column(self::cases(), 'value');
     }
+
+    /**
+     * Whether an officer may self-assign to an issue in this status.
+     */
+    public function isAssignable(): bool
+    {
+        return ! in_array($this, [self::Resolved, self::Closed], true);
+    }
 }

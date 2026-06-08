@@ -43,6 +43,16 @@ class OfficerIssueRowLock
     }
 
     /**
+     * Assert the issue status allows self-assign or throw 422.
+     */
+    public static function assertAssignable(Issue $locked): void
+    {
+        if (! $locked->status->isAssignable()) {
+            throw OfficerIssueConflict::issueNotAssignable();
+        }
+    }
+
+    /**
      * Assert the issue is unassigned or already assigned to this officer.
      *
      * Idempotent when assigned to self; throws 409 when assigned to another officer.

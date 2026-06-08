@@ -26,9 +26,10 @@ class IssueOfficerAssignmentController extends Controller
     /**
      * Self-assign the authenticated officer to an issue in their district.
      *
-     * Open issues also transition to in_behandeling with one status history row.
-     * Already assigned to the requesting officer is idempotent. Assignment to a
-     * different officer returns 409 without takeover.
+     * Resolved (opgelost) and closed (gesloten) issues cannot be self-assigned (422
+     * issue_not_assignable). Open issues also transition to in_behandeling with one
+     * status history row. Already assigned to the requesting officer is idempotent.
+     * Assignment to a different officer returns 409 without takeover.
      */
     public function store(AssignIssueToOfficerRequest $request, Issue $issue): IssueResource
     {
@@ -48,6 +49,7 @@ class IssueOfficerAssignmentController extends Controller
         }
 
         OfficerIssueRowLock::withLockedIssue($issue, function (Issue $lockedIssue) use ($officer): void {
+            OfficerIssueRowLock::assertAssignable($lockedIssue);
             OfficerIssueRowLock::assertUnassignedOrSelf($officer, $lockedIssue);
 
             if ($lockedIssue->assigned_officer_id === $officer->getKey()) {
