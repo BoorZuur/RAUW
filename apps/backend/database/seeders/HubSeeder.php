@@ -21,6 +21,7 @@ class HubSeeder extends Seeder
                     'latitude' => $hub['latitude'],
                     'longitude' => $hub['longitude'],
                     'is_active' => true,
+                    'radius_meters' => 100,
                 ],
             );
         }

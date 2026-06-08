@@ -19,7 +19,15 @@ return new class extends Migration
             $table->decimal('latitude', 10, 8);
             $table->decimal('longitude', 11, 8);
             $table->boolean('is_active')->default(false);
+            $table->unsignedSmallInteger('radius_meters')->default(100);
             $table->timestamps();
+        });
+
+        Schema::table('officer_sessions', function (Blueprint $table) {
+            $table->foreign('hub_id')
+                ->references('id')
+                ->on('hubs')
+                ->nullOnDelete();
         });
     }
 
@@ -28,6 +36,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::table('officer_sessions', function (Blueprint $table) {
+            $table->dropForeign(['hub_id']);
+        });
+
         Schema::dropIfExists('hubs');
     }
 };
