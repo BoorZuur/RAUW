@@ -281,12 +281,14 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     Route::post('issues/{issue}/assign-self', [IssueOfficerAssignmentController::class, 'store'])->name('issues.assign-self');
     Route::post('issues/{issue}/unassign-self', [IssueOfficerAssignmentController::class, 'destroy'])->name('issues.unassign-self');
     // Officer status updates (Tier C: hub-active required). Authorization is
-    // narrowed inside UpdateIssueStatusRequest to active officers only; district
-    // access (403 officer_not_in_district), assignee checks (403
-    // not_assigned_officer), and directed transitions (422) are enforced in the
-    // request. The controller enforces visibility scope (404 when not viewable),
-    // persists one status history row per change without coordinates, and sets
-    // resolved_at on the first transition to opgelost.
+    // narrowed inside UpdateIssueStatusRequest to active officers only with
+    // field rules (status, note). District access (403 officer_not_in_district),
+    // assignee checks (403 not_assigned_officer), and directed transitions (422)
+    // are enforced in IssueOfficerStatusController: district access before
+    // locking; assignee and transition validation on the locked row via
+    // OfficerIssueRowLock. The controller enforces visibility scope (404 when not
+    // viewable), persists one status history row per change without coordinates,
+    // and sets resolved_at on the first transition to opgelost.
     Route::patch('issues/{issue}/status', [IssueOfficerStatusController::class, 'update'])->name('issues.status.update');
     // Officer resolution. Show and attachment download are Tier B (browse without
     // shift); POST/PATCH are Tier C (hub-active required). One resolution per
