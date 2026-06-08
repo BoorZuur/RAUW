@@ -33,6 +33,11 @@
                   "    pm.expect(response.profile.district_id).to.be.undefined;",
                   "});",
                   "",
+                  "pm.test('Registration does not start shared shift', function () {",
+                  "    pm.expect(response.hub_active).to.eql(false);",
+                  "    pm.expect(response.hub_active_until).to.be.oneOf([null, undefined]);",
+                  "});",
+                  "",
                   "if (response.access_token) {",
                   "    pm.collectionVariables.set('access_token', response.access_token);",
                   "",
@@ -79,7 +84,7 @@
                 "officer"
               ]
             },
-            "description": "Register a backend API-only officer account with username, email, password, confirm_password, badge_number, department_ids, latitude, longitude, and optional district_ids. latitude and longitude are required device GPS coordinates used for hub-radius evaluation. department_ids is required, must contain at least one active department ID (is_active=true), and cannot contain duplicates; inactive or unknown department IDs return 422. district_ids may be omitted or empty, must contain active existing district IDs when present, and cannot contain duplicates; assignments are stored through district_officer. Within the assigned hub radius the 201 response includes hub_active: true and a token with the hub-active ability; outside the radius login succeeds with hub_active: false. Registration does not require hub_id; officers without a hub cannot use POST /api/auth/login until a manager assigns one. The 201 response includes token_type, access_token, actor_type, hub_active, hub_active_until, and a cleaned safe officer profile. The test script stores access_token in collection and active environment variables. Change username, email, and badge_number before rerunning because username and badge_number must be unique within officers and email must be unique across users, officers, and managers."
+            "description": "Register a backend API-only officer account with username, email, password, confirm_password, badge_number, department_ids, latitude, longitude, and optional district_ids. latitude and longitude are required for validation and audit session rows. Registration does **not** start a shared shift — expect hub_active: false and hub_active_until: null even at hub coordinates. department_ids is required, must contain at least one active department ID (is_active=true), and cannot contain duplicates. district_ids may be omitted or empty. Registration does not require hub_id; officers without a hub cannot use POST /api/auth/login until a manager assigns one. Change username, email, and badge_number before rerunning."
           },
           "response": []
         },
@@ -418,7 +423,7 @@
               "host": [ "{{base_url}}" ],
               "path": [ "api", "auth", "login" ]
             },
-            "description": "Log in as the seeded demo officer with GPS coordinates at Cluster Centrum hub (Zalmstraat 7). Locally demo.officer@example.com belongs to hub_id 3. Expect hub_active: true, hub_active_until, and a Sanctum token with the hub-active ability. Stores access_token and officer_hub_active_token."
+            "description": "Log in as demo.officer@example.com at Cluster Centrum coords (hub_id 3). Hub-eligible login starts the shared shift: hub_active: true, hub_active_until ~10h ahead. Re-login at hub does not extend an existing shift. Sanctum hub-active ability is audit-only. Stores access_token and officer_hub_active_token."
           },
           "response": []
         },
@@ -436,11 +441,16 @@
                   "",
                   "const response = pm.response.json();",
                   "",
-                  "pm.test('Officer did not receive hub-active session', function () {",
+                  "pm.test('Officer remote login without active shift', function () {",
                   "    pm.expect(response.actor_type).to.eql('officer');",
-                  "    pm.expect(response.hub_active).to.eql(false);",
-                  "    pm.expect(response.hub_active_until).to.be.oneOf([null, undefined]);",
-                  "    pm.expect(response.profile.hub_active).to.eql(false);",
+                  "    // Run on fresh seed or after shift ended. If hub_active is true, a shared shift from a prior hub login is still active.",
+                  "    if (response.hub_active === false) {",
+                  "        pm.expect(response.hub_active_until).to.be.oneOf([null, undefined]);",
+                  "        pm.expect(response.profile.hub_active).to.eql(false);",
+                  "    } else {",
+                  "        pm.expect(response.hub_active).to.eql(true);",
+                  "        pm.expect(response.profile.hub_active).to.eql(true);",
+                  "    }",
                   "});",
                   "",
                   "if (response.access_token) {",
@@ -472,7 +482,56 @@
               "host": [ "{{base_url}}" ],
               "path": [ "api", "auth", "login" ]
             },
-            "description": "Log in as demo.officer@example.com with coordinates far outside the assigned hub radius (Amsterdam). Login succeeds but hub_active is false and workflow routes return 403 hub_active_required. Stores access_token and officer_remote_token for the workflow smoke test."
+            "description": "Log in as demo.officer@example.com with coordinates far outside the hub radius (Amsterdam). Login always succeeds. Without an active shared shift: hub_active false, workflow blocked. With an active shared shift (run Login Officer at Hub first): hub_active true, workflow allowed. Stores officer_remote_token for workflow smoke test when no shift is active."
+          },
+          "response": []
+        },
+        {
+          "name": "Start Shift",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Start shift succeeded', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Shared shift started', function () {",
+                  "    pm.expect(response.hub_active).to.eql(true);",
+                  "    pm.expect(response.hub_active_until).to.be.a('string').and.not.empty;",
+                  "    pm.expect(response.profile.hub_active).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{access_token}}", "type": "string" }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 51.9106846,\n  \"longitude\": 4.4814932\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/start-shift",
+              "host": [ "{{base_url}}" ],
+              "path": [ "api", "auth", "start-shift" ]
+            },
+            "description": "Start the officer's shared shift at the assigned hub. Requires an authenticated officer with no active shift (422 shift_already_active if shift already active). Cluster Centrum coordinates locally. Remote coords return 403 outside_hub_radius; missing hub_id returns 403 hub_not_assigned. Does not issue a new token. Run Auth / Login as officer first (without hub-eligible login) or after manager end-shift."
           },
           "response": []
         },
@@ -518,7 +577,7 @@
                 { "key": "per_page", "value": "20" }
               ]
             },
-            "description": "Smoke test for officer.hub-active middleware. Run Auth / Login Officer Remote first so officer_remote_token is set. Expects 403 with code hub_active_required on Tier C routes such as GET /api/issues. Profile and reference reads (GET /api/auth/me, GET /api/hubs) remain available without hub-active."
+            "description": "Smoke test for shared-shift gate on Tier C routes. Run Auth / Login Officer Remote when the officer has no active shared shift (fresh seed or after end-shift). Expects 403 hub_active_required on GET /api/issues. Profile, start-shift, and reference reads remain available without an active shift."
           },
           "response": []
         },
@@ -730,7 +789,7 @@
                 "logout"
               ]
             },
-            "description": "Invalidate all Sanctum personal access tokens for the authenticated actor (every session ends, not only the bearer token on this request). Requires Authorization: Bearer <token>. Inactive actors may still call logout (whitelisted). After 200, previously issued tokens—including tokens stored in other clients—no longer authenticate."
+            "description": "Revoke only the current bearer token. For officers, closes the open officer_sessions row for that token; shared shift (hub_active_until) is preserved and other devices remain authenticated. Inactive actors may still call logout (whitelisted). After 200, this token no longer authenticates; other tokens for the same officer still work until revoked or expired."
           },
           "response": []
         }
@@ -1181,7 +1240,18 @@
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
             "body": { "mode": "raw", "raw": "{\n  \"hub_id\": {{hub_id}}\n}", "options": { "raw": { "language": "json" } } },
             "url": { "raw": "{{base_url}}/api/officers/1/hub", "host": [ "{{base_url}}" ], "path": [ "api", "officers", "1", "hub" ] },
-            "description": "Assign an active hub to an officer and clear district_officer pivot. hub_id must reference an active hub (is_active=true); inactive or unknown hub IDs return 422. Active manager only. Returns refreshed officer auth profile."
+            "description": "Assign an active hub to an officer and clear district_officer pivot. Also ends the shared shift (hub_active_until cleared) without revoking tokens. hub_id must reference an active hub (is_active=true). Active manager only."
+          },
+          "response": []
+        },
+        {
+          "name": "End Officer Shift",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "PATCH",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+            "url": { "raw": "{{base_url}}/api/officers/1/end-shift", "host": [ "{{base_url}}" ], "path": [ "api", "officers", "1", "end-shift" ] },
+            "description": "End an officer's shared shift as an authenticated active manager. Clears hub_active_until without revoking Sanctum tokens; Tier C routes return 403 hub_active_required until a new shift is started. Empty body. Use demo.officer (id 1) after Login as Main Manager or any active manager login."
           },
           "response": []
         },

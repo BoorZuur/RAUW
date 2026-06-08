@@ -41,9 +41,9 @@ Postman and server-side clients are not subject to CORS. Browser-based frontends
 
 Personal access tokens expire after **7 days** (10080 minutes). Configure via `SANCTUM_TOKEN_EXPIRATION` in `.env` (see `config/sanctum.php`).
 
-### Officer hub-active session TTL
+### Officer shared shift TTL
 
-Hub-active workflow access lasts **10 hours** by default after a successful hub-radius login. Configure via `OFFICER_HUB_ACTIVE_TTL_HOURS` in `.env` (see `config/officer.php`). This is separate from the 7-day Sanctum token expiry: a token may remain valid for 7 days while workflow routes are blocked once the hub-active window expires.
+Shared shift workflow access lasts **10 hours** by default after hub-eligible login or `POST /api/auth/start-shift`. Configure via `OFFICER_HUB_ACTIVE_TTL_HOURS` in `.env` (see `config/officer.php`). All devices share one `hub_active_until` clock. This is separate from the 7-day Sanctum token expiry: tokens may remain valid while Tier C routes are blocked once the shift expires.
 
 Local seeders may create deterministic demo accounts for manual testing. These credentials are local development fixtures only and are not production behavior.
 
@@ -93,7 +93,7 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 
 1. Run **Auth / Register User** or **Auth / Register Officer** to create a public actor and auto-login, or run **Auth / Login** with an existing demo account. Officer registration requires at least one existing department ID, **latitude**, and **longitude**; local seeded departments normally include IDs `1` and `2`.
 2. Run **Auth / Current Profile** to inspect the actor attached to the stored token.
-3. **Officer hub-active flow:** Run **Auth / Login Officer at Hub** (`demo.officer@example.com` with Cluster Centrum coordinates) to get `hub_active: true`, then **Officers / List officers** or **Issues / List Issues - Hidden Filter** (workflow access). Run **Auth / Login Officer Remote** (Amsterdam coordinates), then **Auth / Officer Workflow Blocked (403 Smoke)** to confirm `code: hub_active_required` on Tier C routes. Profile and reference reads (`GET /api/auth/me`, **Hubs / List Hubs**) work without hub-active.
+3. **Officer shared shift flow:** Run **Auth / Login Officer at Hub** to start the shared shift, then **Issues / List Issues** (workflow access). Run **Auth / Start Shift** when logged in without an active shift. Run **Auth / Login Officer Remote** (no active shift) then **Auth / Officer Workflow Blocked (403 Smoke)** for `hub_active_required`. **Managers / End Officer Shift** clears the shift without revoking tokens. Profile, start-shift, and reference reads work without an active shift.
 4. Run **Hubs / List Hubs**, **Districts / List Districts**, and **Departments / List Departments** to find local IDs for assignment examples.
 5. Run **Auth / Login as Main Manager** (`demo.manager@example.com` / `password`) to populate `main_manager_access_token` and `access_token` for manager administration.
 6. Run **Officers / List Officer Sessions** to inspect login audit rows (manager only).
@@ -144,7 +144,7 @@ Request body:
 }
 ```
 
-`latitude` and `longitude` are **required** device GPS coordinates. The server evaluates hub-radius using Haversine against the officer's assigned hub `radius_meters` (default 100 m locally). Within radius → `hub_active: true` and a token with the `hub-active` Sanctum ability; outside → standard token without workflow access. Registration does not require `hub_id`; officers without a hub cannot use login until a manager assigns one.
+`latitude` and `longitude` are **required** device GPS coordinates for validation and audit. Registration **does not start a shift** — always `hub_active: false`, `hub_active_until: null`. Registration does not require `hub_id`; officers without a hub cannot use login until a manager assigns one.
 
 `department_ids` is required, must contain at least one **active** department ID (`is_active=true`), and cannot contain duplicates; inactive or unknown IDs return `422`. `district_ids` is optional, may be empty or omitted, must contain active existing district IDs when present, and cannot contain duplicates. Use **Departments / List Departments** and **Districts / List Districts** while authenticated to inspect available IDs.
 
@@ -155,16 +155,16 @@ Successful response shape:
   "token_type": "Bearer",
   "access_token": "<token>",
   "actor_type": "officer",
-  "hub_active": true,
-  "hub_active_until": "2026-06-08T22:00:00+00:00",
+  "hub_active": false,
+  "hub_active_until": null,
   "profile": {
     "id": 1,
     "username": "new-officer",
     "email": "new.officer@example.com",
     "badge_number": "BOA-1234",
     "hub_id": 3,
-    "hub_active": true,
-    "hub_active_until": "2026-06-08T22:00:00+00:00",
+    "hub_active": false,
+    "hub_active_until": null,
     "departments": [
       {
         "id": 1,
@@ -248,7 +248,7 @@ Request body for users and managers uses email and password only:
 }
 ```
 
-Missing or invalid officer coordinates return `422`. Officers without `hub_id` receive `403` with `code: hub_not_assigned`. Within the assigned active hub's `radius_meters`, the response includes `hub_active: true`, `hub_active_until`, and a token with the `hub-active` ability. Outside the radius, login succeeds with `hub_active: false` and workflow routes return `403` with `code: hub_active_required`.
+Missing or invalid officer coordinates return `422`. Officers without `hub_id` receive `403` with `code: hub_not_assigned`. Hub-eligible login starts or joins the shared shift (`hub_active: true`, `hub_active_until`); re-login at hub does not extend an existing shift. Outside-radius login preserves an active shared shift; without a shift, `hub_active: false` and Tier C routes return `403` `hub_active_required`. Use **Auth / Start Shift** to start a shift without re-login.
 
 Successful response shape:
 
@@ -278,7 +278,8 @@ Common error responses:
 
 - `401 Unauthorized` with `{"message":"Invalid credentials."}` for invalid, inactive, ambiguous, or unknown accounts.
 - `403 Forbidden` with `{"message":"Officer hub assignment required before login.","code":"hub_not_assigned"}` when an officer has no `hub_id`.
-- `403 Forbidden` with `{"message":"Hub-active session required.","code":"hub_active_required"}` on Tier C routes when the officer token lacks hub-active access.
+- `403 Forbidden` with `{"message":"Hub-active session required.","code":"hub_active_required"}` on Tier C routes when the officer has no active shared shift.
+- `403 Forbidden` with `code: outside_hub_radius` or `shift_already_active` (422) on start-shift.
 - `422 Unprocessable Entity` with validation errors when `email` or `password` is missing or invalid, or when officer `latitude`/`longitude` is missing or out of range.
 
 ### Current Profile
@@ -310,11 +311,11 @@ Common error response:
 
 `PATCH {{base_url}}/api/auth/me`
 
-Self-service identity update for users, officers, and managers. Send only fields to change. **Active:** `username`, `email`, `password`; officers may also send `badge_number`. **Inactive:** `username` and `password` only (`email` and `badge_number` return `422`). When `password` is present, `confirm_password` must match. Department, district, and privileged fields are rejected with `422`.
+Self-service identity update for users, officers, and managers. Send only fields to change. **Active:** `username`, `email`, `password`; officers may also send `badge_number`. **Inactive:** `username` and `password` only (`email` and `badge_number` return `422`). When `password` is present, `confirm_password` must match. Department, district, `hub_id`, `hub_active_until`, and other privileged fields are rejected with `422`.
 
 ### Inactive actor middleware
 
-Valid bearer tokens for deactivated actors (`is_active = false`) receive `403 Forbidden` with `{"message":"This account is inactive."}` on most protected routes. Whitelisted while inactive: `GET` and `PATCH` `/api/auth/me` (identity only), `POST` `/api/auth/logout`. `PATCH /api/auth/me/districts` and operational APIs such as `GET /api/issues` return `403`. Postman: copy a pre-deactivation token into `inactive_access_token`, then run **Auth / Inactive Actor - List Issues (403 Smoke)**.
+Valid bearer tokens for deactivated actors (`is_active = false`) receive `403 Forbidden` with `{"message":"This account is inactive.","code":"account_inactive"}` on most protected routes. Whitelisted while inactive: `GET` and `PATCH` `/api/auth/me` (identity only), `POST` `/api/auth/logout`. `PATCH /api/auth/me/districts` and operational APIs such as `GET /api/issues` return `403`. Postman: copy a pre-deactivation token into `inactive_access_token`, then run **Auth / Inactive Actor - List Issues (403 Smoke)**.
 
 Manager auth profiles return `departments` and `districts` arrays of compact objects:
 
@@ -781,7 +782,7 @@ Officer listing and enable/disable require an authenticated active officer or ma
 
 Requires `Authorization: Bearer <token>` for an authenticated, active manager. Users, officers, and inactive managers receive `403`.
 
-Optional query params: `officer_id`, `hub_id`, `is_hub_active` (truthy/falsy), `page` (default `1`), `per_page` (default `20`, max `100`). Returns paginated login audit rows ordered newest-first by `shift_start`, including compact `officer` and `hub` summaries, login coordinates (`start_lat`, `start_lng`), `distance_meters_at_login`, `is_hub_active`, and `hub_active_until`.
+Optional query params: `officer_id`, `hub_id`, `is_hub_active` (truthy/falsy), `page` (default `1`), `per_page` (default `20`, max `100`). Returns paginated login audit rows ordered newest-first by `shift_start`, including compact `officer` and `hub` summaries, login coordinates (`start_lat`, `start_lng`), `distance_meters_at_login`, `is_hub_active`, and `hub_active_until`. Internal `personal_access_token_id` is not exposed; use session `id` as the public identifier.
 
 Common requests:
 
@@ -866,7 +867,7 @@ Successful response shape:
 }
 ```
 
-Logout deletes **all** Sanctum personal access tokens for the authenticated actor, ending every session (not only the token on this request). Other devices or tabs using older tokens for the same actor are signed out as well.
+Logout revokes **only the current bearer token**. For officers, the shared shift is preserved and other devices remain authenticated. The open `officer_sessions` row for this token is closed.
 
 Common error response:
 

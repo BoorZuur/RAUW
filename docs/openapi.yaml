@@ -15,7 +15,8 @@ info:
 
     Inactive accounts: after `auth:sanctum` resolves a bearer token, global
     middleware rejects deactivated users, officers, and managers with **403**
-    (`InactiveAccount`, message `This account is inactive.`) on protected routes.
+    (`InactiveAccount`, `code: account_inactive`, message `This account is inactive.`)
+    on protected routes.
     Login already returns generic **401** (`Invalid credentials.`) for inactive
     credentials as well as unknown email or wrong password. While inactive,
     actors may still call **GET** `/api/auth/me`, **POST** `/api/auth/logout`,
@@ -24,28 +25,33 @@ info:
     protected routes, including **PATCH** `/api/auth/me/districts`, return
     **403** from inactive-actor middleware.
 
-    **Officer hub-active login:** Officers must send `latitude` and `longitude`
-    on `POST /api/auth/login` and `POST /api/auth/register/officer`. When
-    within their assigned active hub's `radius_meters` (default 100 m,
-    Haversine), the issued Sanctum token carries the `hub-active` ability and
-    unlocks operational (Tier C) routes for **10 hours** (`OFFICER_HUB_ACTIVE_TTL_HOURS`,
-    default 10). Outside the radius, login still succeeds but workflow routes
-    return **403** with `code: hub_active_required`. Officers without `hub_id`
-    cannot log in (`403`, `code: hub_not_assigned`). Users and managers ignore
-    coordinate fields.
+    **Officer shared shift:** Officers share one shift clock via
+    `officers.hub_active_until`. Workflow access (Tier C) requires `is_active`
+    and a future `hub_active_until` — not the bearer token's Sanctum `hub-active`
+    ability (audit-only). Officers must send `latitude` and `longitude` on
+    `POST /api/auth/login`; hub-eligible login or `POST /api/auth/start-shift`
+    starts the shift for **10 hours** (`OFFICER_HUB_ACTIVE_TTL_HOURS`, default
+    10). Outside-radius login does not clear an active shift. Registration does
+    not start a shift. Logout revokes only the current token; hub reassignment
+    and manager end-shift clear the shift without revoking tokens. Users and
+    managers ignore coordinate fields.
 
     **GPS trust (v1):** Coordinates are client-reported only. No mock-location
-    detection, no per-request geofence re-check. Hub-active is operational
-    policy, not cryptographic proof of presence. Login coords are audited on
-    `officer_sessions` (`start_lat`, `start_lng`, `distance_meters_at_login`).
+    detection, no per-request geofence re-check. Shared shift is operational
+    policy, not cryptographic proof of presence. Login and start-shift coords
+    are audited on `officer_sessions` (`start_lat`, `start_lng`,
+    `distance_meters_at_login`).
 
-    **Hub error codes:** Hub-related **403** responses include stable `code`
-    values alongside `message` for mobile clients:
+    **Structured error codes:** Hub- and account-related responses include
+    stable `code` values alongside `message` for mobile clients:
 
-    | Code | When |
-    |------|------|
-    | `hub_active_required` | Officer on a Tier C route without valid hub-active token |
-    | `hub_not_assigned` | Officer login when `hub_id` is null |
+    | Code | HTTP | When |
+    |------|------|------|
+    | `hub_active_required` | 403 | Officer on Tier C without active shared shift |
+    | `hub_not_assigned` | 403 | Officer login or start-shift when `hub_id` is null |
+    | `outside_hub_radius` | 403 | Start-shift outside hub radius / ineligible hub |
+    | `shift_already_active` | 422 | Start-shift when shift already active |
+    | `account_inactive` | 403 | Inactive actor on a non-whitelisted route |
 
     Health check **GET** `/up` (Laravel bootstrap) is intentionally omitted
     from this spec; it is not part of the JSON API contract under `/api`.
@@ -67,10 +73,10 @@ paths:
         department_ids; inactive department IDs are rejected with 422. Optional
         district assignments use district_ids and are
         stored through the district_officer pivot; officers may also start with
-        no assigned districts. Requires `latitude` and `longitude` (device GPS).
-        Runs the same hub-radius evaluation as login: within radius → hub-active
-        token; outside → standard token without workflow access. Registration does
-        not require `hub_id`; officers without a hub cannot use login until a
+        no assigned districts.         Requires `latitude` and `longitude` (device GPS) for validation and audit
+        session rows. Registration **does not start a shift** — response is always
+        `hub_active: false`, `hub_active_until: null`. Registration does not
+        require `hub_id`; officers without a hub cannot use login until a
         manager assigns one.
       requestBody:
         required: true
@@ -99,16 +105,16 @@ paths:
                 token_type: Bearer
                 access_token: 1|plain-text-sanctum-token
                 actor_type: officer
-                hub_active: true
-                hub_active_until: '2026-06-08T22:00:00+00:00'
+                hub_active: false
+                hub_active_until: null
                 profile:
                   id: 1
                   username: new-officer
                   email: new.officer@example.com
                   badge_number: BOA-1234
                   hub_id: 3
-                  hub_active: true
-                  hub_active_until: '2026-06-08T22:00:00+00:00'
+                  hub_active: false
+                  hub_active_until: null
                   departments:
                     - id: 1
                       code: wijkbeheer
@@ -267,12 +273,13 @@ paths:
 
         **Officers** must include `latitude` and `longitude` (device GPS). Missing
         or invalid coordinates return **422**. When the officer has no `hub_id`,
-        login returns **403** with `code: hub_not_assigned`. When within the
-        assigned active hub's `radius_meters`, the response includes
-        `hub_active: true`, `hub_active_until`, and a token with the `hub-active`
-        ability. Outside the radius, login succeeds with `hub_active: false` and
-        a token without workflow access. Users and managers ignore coordinate
-        fields.
+        login returns **403** with `code: hub_not_assigned`. Hub-eligible login
+        starts or joins the shared shift (`hub_active: true`, `hub_active_until`);
+        re-login at hub does not extend an existing shift. Outside-radius login
+        preserves an active shared shift (`hub_active: true`); without a shift,
+        login succeeds with `hub_active: false`. The Sanctum `hub-active` ability
+        is audit-only when login is hub-eligible. Users and managers ignore
+        coordinate fields.
       requestBody:
         required: true
         content:
@@ -367,8 +374,8 @@ paths:
         top level; profile omits internal auth fields. Inactive accounts may
         still call this route (whitelisted by global inactive-actor middleware).
         For officers, the wrapper and profile include `hub_active` and
-        `hub_active_until` derived from the current bearer token's `hub-active`
-        ability and `hub_active_until` timestamp.
+        `hub_active_until` derived from the officer's shared shift column
+        (`officers.hub_active_until`), not the bearer token's Sanctum abilities.
       security:
         - bearerAuth: [ ]
       responses:
@@ -411,8 +418,9 @@ paths:
         username, email, and password; active officers may also update
         badge_number. When password is present, confirm_password must match.
         Inactive requests that include email or badge_number receive 422
-        validation errors. Department, district, and privileged fields are
-        rejected with 422 validation errors and must not be sent on this path.
+        validation errors. Department, district, hub assignment (`hub_id`),
+        shift (`hub_active_until`), and other privileged fields are rejected
+        with 422 validation errors and must not be sent on this path.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -473,20 +481,93 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
 
+  /api/auth/start-shift:
+    post:
+      tags: [ Auth ]
+      summary: Start the officer's shared shift at the assigned hub
+      description: >-
+        Active officers only. Starts the shared shift when the officer is within
+        the assigned active hub's `radius_meters` and no shift is currently active.
+        Requires `latitude` and `longitude`. Adds the `hub-active` Sanctum ability
+        to the current token for audit and creates an `officer_sessions` row.
+        Does not issue a new token. Whitelisted by `officer.hub-active` middleware
+        (callable without an active shift). Officers without `hub_id` receive
+        **403** `hub_not_assigned`. Outside hub radius receives **403**
+        `outside_hub_radius`. Active shift receives **422** `shift_already_active`.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartOfficerShiftRequest'
+            example:
+              latitude: 51.9106846
+              longitude: 4.4814932
+      responses:
+        '200':
+          description: Shared shift started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StartOfficerShiftResponse'
+              example:
+                hub_active: true
+                hub_active_until: '2026-06-08T22:00:00+00:00'
+                profile:
+                  id: 1
+                  username: demo-officer
+                  email: demo.officer@example.com
+                  badge_number: BOA-0001
+                  hub_id: 3
+                  hub_active: true
+                  hub_active_until: '2026-06-08T22:00:00+00:00'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Hub not assigned or outside hub radius
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HubError'
+              examples:
+                hubNotAssigned:
+                  summary: Officer has no hub_id
+                  value:
+                    message: Officer hub assignment required before login.
+                    code: hub_not_assigned
+                outsideRadius:
+                  summary: Coordinates outside hub radius
+                  value:
+                    message: Start shift requires login within hub radius.
+                    code: outside_hub_radius
+        '422':
+          description: Shift already active or validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftError'
+              example:
+                message: Officer shift is already active.
+                code: shift_already_active
+
   /api/auth/logout:
     post:
       tags: [ Auth ]
-      summary: Logout and revoke all bearer tokens for the actor
+      summary: Logout and revoke the current bearer token
       description: >-
-        Deletes all Sanctum personal access tokens for the authenticated actor,
-        invalidating every active session (not only the bearer token on this
-        request). Inactive accounts may call this route (whitelisted by global
-        inactive-actor middleware).
+        Revokes only the Sanctum personal access token on this request. For
+        officers, closes the open `officer_sessions` row linked to that token.
+        The shared shift (`hub_active_until`) is **not** cleared; other devices
+        remain authenticated and retain workflow access until shift TTL. Inactive
+        accounts may call this route (whitelisted by global inactive-actor
+        middleware).
       security:
         - bearerAuth: [ ]
       responses:
         '200':
-          description: All tokens for the actor revoked
+          description: Current token revoked
           content:
             application/json:
               schema:
@@ -1269,13 +1350,13 @@ paths:
       summary: List officer login sessions
       description: >-
         Paginated read-only list of officer login sessions (audit/shift tracking).
-        Each row is created on officer login and linked to the Sanctum token.
-        Only an authenticated, active manager may call this endpoint; users,
-        officers, and inactive managers receive **403**. Results are ordered
-        newest-first by `shift_start` then `id`. Optional filters: `officer_id`,
-        `hub_id`, `is_hub_active` (truthy/falsy). Officers may reach this route
-        without hub-active (whitelisted) but still receive **403** from
-        authorization.
+        Rows are created on officer login and start-shift. Session `id` is the
+        public identifier; internal token FK is not returned. Only an authenticated,
+        active manager may call this endpoint; users, officers, and inactive
+        managers receive **403**. Results are ordered newest-first by `shift_start`
+        then `id`. Optional filters: `officer_id`, `hub_id`, `is_hub_active`
+        (truthy/falsy). Officers may reach this route without an active shared
+        shift (whitelisted) but still receive **403** from authorization.
       security:
         - bearerAuth: [ ]
       parameters:
@@ -1322,7 +1403,6 @@ paths:
                       id: 1
                       username: demo-officer
                       badge_number: BOA-0001
-                    personal_access_token_id: 42
                     hub_id: 3
                     hub:
                       id: 3
@@ -1521,6 +1601,38 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/officers/{officerId}/end-shift:
+    parameters:
+      - name: officerId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Officers ]
+      summary: End an officer's shared shift
+      description: >-
+        Clears `hub_active_until` for the target officer (ends the shared shift).
+        Does **not** revoke Sanctum tokens; officers retain authentication but
+        Tier C workflow routes return **403** `hub_active_required` until a new
+        shift is started. Only an authenticated active manager may call this
+        endpoint. Empty request body.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Officer resource after shift ended
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Officer'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /api/officers/{officerId}/hub:
     parameters:
       - name: officerId
@@ -1534,9 +1646,10 @@ paths:
       description: >-
         Assign an active hub to an officer and clear their district_officer
         pivot so district assignments can be re-established within the new
-        hub. `hub_id` must reference an active hub (`is_active=true`); inactive
-        or unknown hub IDs return **422**. Only an authenticated active manager
-        may call this endpoint. Users, officers, inactive managers, and
+        hub. Also clears `hub_active_until` (ends the shared shift) without
+        revoking tokens. `hub_id` must reference an active hub (`is_active=true`);
+        inactive or unknown hub IDs return **422**. Only an authenticated active
+        manager may call this endpoint. Users, officers, inactive managers, and
         unauthenticated requests receive **403**.
       security:
         - bearerAuth: [ ]
@@ -1795,8 +1908,9 @@ paths:
         code. Pagination is backend-driven using page and per_page, with a default
         per_page of 20 and maximum of 100. Results are ordered newest first.
 
-        **Officer hub-active:** Officers without a valid hub-active session receive
-        **403** with `code: hub_active_required` on this route (Tier C workflow).
+        **Officer shared shift:** Officers without an active shared shift
+        (`hub_active_until` null or past) receive **403** with
+        `code: hub_active_required` on this route (Tier C workflow).
       security:
         - bearerAuth: [ ]
       parameters:
@@ -1901,8 +2015,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           description: >-
-            Inactive account (`This account is inactive.`) or officer without
-            hub-active session (`code: hub_active_required`).
+            Inactive account (`code: account_inactive`) or officer without active
+            shared shift (`code: hub_active_required`).
           content:
             application/json:
               schema:
@@ -1914,8 +2028,9 @@ paths:
                   summary: Inactive bearer token
                   value:
                     message: This account is inactive.
+                    code: account_inactive
                 hubActiveRequired:
-                  summary: Officer without hub-active session
+                  summary: Officer without active shared shift
                   value:
                     message: Hub-active session required.
                     code: hub_active_required
@@ -2967,15 +3082,15 @@ components:
         `SANCTUM_TOKEN_EXPIRATION`). Required on all `/api/*` routes except public
         auth registration and login. After the token resolves to a user, officer, or
         manager, the
-        `actor.active` middleware returns **403** with message
-        `This account is inactive.` when `is_active` is false, except on
-        whitelisted routes: GET `/api/auth/me`, POST `/api/auth/logout`, and
-        PATCH `/api/auth/me`. Other **403** responses on protected routes use
-        `This action is unauthorized.` when FormRequest authorization fails.
-        Officers without a valid hub-active session receive **403** with
+        `actor.active` middleware returns **403** with `code: account_inactive`
+        when `is_active` is false, except on whitelisted routes: GET
+        `/api/auth/me`, POST `/api/auth/logout`, and PATCH `/api/auth/me`. Other
+        **403** responses on protected routes use `This action is unauthorized.`
+        when FormRequest authorization fails. Officers without an active shared
+        shift (`hub_active_until` null or past) receive **403** with
         `code: hub_active_required` on Tier C (workflow) routes; whitelisted
-        reference reads (profile, hubs, districts, departments, categories) remain
-        available. See `#/components/responses/InactiveAccount`,
+        routes (profile, start-shift, reference reads) remain available. See
+        `#/components/responses/InactiveAccount`,
         `#/components/responses/Forbidden`, and `#/components/responses/HubActiveRequired`.
 
   parameters:
@@ -3029,16 +3144,18 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Error'
+            $ref: '#/components/schemas/AccountInactiveError'
           example:
             message: This account is inactive.
+            code: account_inactive
     HubActiveRequired:
       description: >-
-        Authenticated officer lacks a valid hub-active session. Returned by
-        `officer.hub-active` middleware on Tier C routes when the bearer token
-        lacks the `hub-active` ability, `hub_active_until` has expired, or the
-        officer logged in outside the hub radius. Whitelisted routes (profile,
-        reference reads) do not require hub-active.
+        Authenticated officer lacks an active shared shift. Returned by
+        `officer.hub-active` middleware on Tier C routes when the officer is
+        inactive or `hub_active_until` is null or in the past. The middleware
+        does not inspect the bearer token's Sanctum `hub-active` ability.
+        Whitelisted routes (profile, start-shift, reference reads) do not
+        require an active shift.
       content:
         application/json:
           schema:
@@ -3112,7 +3229,61 @@ components:
           type: string
         code:
           type: string
-          enum: [ hub_active_required, hub_not_assigned ]
+          enum: [ hub_active_required, hub_not_assigned, outside_hub_radius ]
+
+    AccountInactiveError:
+      type: object
+      description: Inactive actor on a non-whitelisted protected route.
+      required: [ message, code ]
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+          enum: [ account_inactive ]
+
+    ShiftError:
+      type: object
+      description: Start-shift conflict or validation error with stable `code`.
+      required: [ message, code ]
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+          enum: [ shift_already_active ]
+
+    StartOfficerShiftRequest:
+      type: object
+      required: [ latitude, longitude ]
+      properties:
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          description: Device GPS latitude for hub-radius evaluation.
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          description: Device GPS longitude for hub-radius evaluation.
+
+    StartOfficerShiftResponse:
+      type: object
+      description: >-
+        Shared shift started. Does not include token fields; use the existing
+        bearer token.
+      required: [ hub_active, hub_active_until, profile ]
+      properties:
+        hub_active:
+          type: boolean
+        hub_active_until:
+          type: string
+          format: date-time
+        profile:
+          $ref: '#/components/schemas/AuthOfficerProfile'
 
     LoginRequest:
       type: object
@@ -3241,9 +3412,9 @@ components:
     OfficerSession:
       type: object
       description: >-
-        Officer login session audit record. Created on every officer login;
-        linked to the Sanctum personal access token. Manager read-only listing
-        via GET /api/officer-sessions.
+        Officer login session audit record. Created on officer login and
+        start-shift. Session `id` is the public identifier; internal token FK
+        is not exposed. Manager read-only listing via GET /api/officer-sessions.
       properties:
         id:
           type: integer
@@ -3260,9 +3431,6 @@ components:
               type: string
             badge_number:
               type: string
-        personal_access_token_id:
-          type: integer
-          nullable: true
         hub_id:
           type: integer
           nullable: true
@@ -3436,8 +3604,8 @@ components:
         email, and password; officers may also send badge_number. Inactive actors
         may only send username and password (email and badge_number are
         prohibited with 422). When password is present, confirm_password is
-        required and must match. Department, district, and privileged fields are
-        not accepted on this path.
+        required and must match. Department, district, `hub_id`, `hub_active_until`,
+        and other privileged fields are not accepted on this path (prohibited → 422).
       properties:
         username:
           type: string
@@ -3476,22 +3644,23 @@ components:
           type: string
           description: >-
             Plain-text Laravel Sanctum token. Use as Authorization Bearer header
-            value (format `Bearer <token>`). Officer hub-active tokens include
-            the `hub-active` Sanctum ability when login was within hub radius.
+            value (format `Bearer <token>`). Officers may carry the `hub-active`
+            Sanctum ability for audit when login or start-shift was hub-eligible;
+            workflow access is gated on the shared shift column, not this ability.
         actor_type:
           type: string
           enum: [ user, officer, manager ]
         hub_active:
           type: boolean
           description: >-
-            Officers only. True when the issued token has hub-active workflow
-            access. Omitted for users and managers.
+            Officers only. True when the officer has an active shared shift
+            (`hub_active_until` in the future). Omitted for users and managers.
         hub_active_until:
           type: string
           format: date-time
           nullable: true
           description: >-
-            Officers only. ISO 8601 expiry of the hub-active window (now +
+            Officers only. ISO 8601 expiry of the shared shift (now +
             OFFICER_HUB_ACTIVE_TTL_HOURS). Null when hub_active is false.
             Omitted for users and managers.
         profile:
@@ -3506,8 +3675,8 @@ components:
         Current authenticated actor response. No token fields are included.
         actor_type is emitted once at the top level and is not duplicated inside
         profile. Officer responses also include hub_active and hub_active_until
-        at the top level (mirrored inside profile), derived from the current
-        bearer token.
+        at the top level (mirrored inside profile), derived from the officer's
+        shared shift column.
       required: [ actor_type, profile ]
       properties:
         actor_type:
@@ -3515,12 +3684,12 @@ components:
           enum: [ user, officer, manager ]
         hub_active:
           type: boolean
-          description: Officers only. True when the current token has hub-active access.
+          description: Officers only. True when the officer has an active shared shift.
         hub_active_until:
           type: string
           format: date-time
           nullable: true
-          description: Officers only. Hub-active expiry for the current token.
+          description: Officers only. Shared shift expiry; null when inactive.
         profile:
           oneOf:
             - $ref: '#/components/schemas/AuthUserProfile'
@@ -3546,7 +3715,7 @@ components:
         Safe officer profile payload returned by login, officer registration, and
         current profile. Internal fields such as actor_type, district_id, and
         is_active are omitted. Includes hub_active and hub_active_until derived
-        from the current bearer token.
+        from the officer's shared shift column (`officers.hub_active_until`).
       properties:
         id:
           type: integer
@@ -3576,12 +3745,12 @@ components:
             $ref: '#/components/schemas/AuthDistrictProfile'
         hub_active:
           type: boolean
-          description: True when the current token has hub-active workflow access.
+          description: True when the officer has an active shared shift.
         hub_active_until:
           type: string
           format: date-time
           nullable: true
-          description: ISO 8601 hub-active expiry for the current token; null when not hub-active.
+          description: ISO 8601 shared shift expiry; null when not active.
 
     AuthManagerProfile:
       type: object
