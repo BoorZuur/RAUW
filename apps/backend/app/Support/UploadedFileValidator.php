@@ -20,6 +20,11 @@ class UploadedFileValidator
 
     /**
      * Detect MIME type from file content (not the client-supplied header).
+     *
+     * Layer 1: finfo content sniff via {@see UploadedFile::getMimeType()} (Symfony
+     * MimeTypes). Layer 2 for images: {@see assertAllowedImage()} requires
+     * {@see getimagesize()} to succeed and agree with this value. PDFs use
+     * {@see assertAllowedPdf()} magic-byte verification separately.
      */
     public static function detectMimeType(UploadedFile $file): string
     {
@@ -30,12 +35,40 @@ class UploadedFileValidator
 
     /**
      * Require a content-sniffed image MIME in the allowed set.
+     *
+     * Rejects files that finfo mislabels as an allowed image when PHP cannot
+     * parse them as a real image or when {@see getimagesize()} disagrees with
+     * {@see detectMimeType()}.
      */
     public static function assertAllowedImage(UploadedFile $file): void
     {
         $mime = self::detectMimeType($file);
 
         if (! in_array($mime, self::ALLOWED_IMAGE_MIMES, true)) {
+            throw new InvalidArgumentException(
+                'The file must be a valid image (JPEG, PNG, GIF, or WebP).',
+            );
+        }
+
+        $path = $file->getRealPath();
+
+        if ($path === false) {
+            throw new InvalidArgumentException(
+                'The file must be a valid image (JPEG, PNG, GIF, or WebP).',
+            );
+        }
+
+        $imageInfo = @getimagesize($path);
+
+        if ($imageInfo === false) {
+            throw new InvalidArgumentException(
+                'The file must be a valid image (JPEG, PNG, GIF, or WebP).',
+            );
+        }
+
+        $imageMime = $imageInfo['mime'] ?? null;
+
+        if (! is_string($imageMime) || $imageMime === '' || $imageMime !== $mime) {
             throw new InvalidArgumentException(
                 'The file must be a valid image (JPEG, PNG, GIF, or WebP).',
             );
