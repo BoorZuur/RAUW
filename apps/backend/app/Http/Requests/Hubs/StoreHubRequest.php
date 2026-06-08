@@ -6,6 +6,12 @@ use App\Models\Manager;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * Validates hub creation.
+ *
+ * New hubs are inactive by default until activated via `is_active: true` on
+ * create or a follow-up PATCH.
+ */
 class StoreHubRequest extends FormRequest
 {
     /**
@@ -31,6 +37,7 @@ class StoreHubRequest extends FormRequest
             'postal_code' => ['required', 'string', 'max:10'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'is_active' => ['sometimes', 'boolean'],
         ];
     }
 }

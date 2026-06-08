@@ -52,6 +52,7 @@ class HubController extends Controller
             'postal_code',
             'latitude',
             'longitude',
+            'is_active',
         ]));
 
         $hub->loadCount(['districts', 'officers', 'managers']);
@@ -75,6 +76,7 @@ class HubController extends Controller
             'postal_code',
             'latitude',
             'longitude',
+            'is_active',
         ]);
 
         if ($attributes !== []) {

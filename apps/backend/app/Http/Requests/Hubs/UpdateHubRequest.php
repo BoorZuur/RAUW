@@ -4,9 +4,17 @@ namespace App\Http\Requests\Hubs;
 
 use App\Models\Hub;
 use App\Models\Manager;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * Validates hub updates.
+ *
+ * Deactivation is performed via PATCH with `is_active: false`; there is no
+ * dedicated disable route. Deactivation is blocked while active districts or
+ * active officers remain assigned to the hub.
+ */
 class UpdateHubRequest extends FormRequest
 {
     /**
@@ -41,6 +49,40 @@ class UpdateHubRequest extends FormRequest
             'postal_code' => ['sometimes', 'required', 'string', 'max:10'],
             'latitude' => ['sometimes', 'nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['sometimes', 'nullable', 'numeric', 'between:-180,180'],
+            'is_active' => ['sometimes', 'boolean'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            if (! $this->has('is_active')) {
+                return;
+            }
+
+            $hub = $this->route('hub');
+
+            if (! $hub instanceof Hub) {
+                return;
+            }
+
+            if ($this->boolean('is_active') || ! $hub->is_active) {
+                return;
+            }
+
+            if ($hub->districts()->where('is_active', true)->exists()) {
+                $validator->errors()->add(
+                    'is_active',
+                    'Cannot deactivate hub while active districts are assigned.',
+                );
+            }
+
+            if ($hub->officers()->where('is_active', true)->exists()) {
+                $validator->errors()->add(
+                    'is_active',
+                    'Cannot deactivate hub while active officers are assigned.',
+                );
+            }
+        });
     }
 }
