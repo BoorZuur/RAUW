@@ -79,6 +79,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $isOfficerResolutionIssueIdViolation = static function (QueryException $exception): bool {
             $message = strtolower($exception->getMessage());
 
+            if (str_contains($message, 'officer_issue_resolutions_issue_id_unique')) {
+                return true;
+            }
+
             return str_contains($message, 'officer_issue_resolutions')
                 && str_contains($message, 'issue_id');
         };

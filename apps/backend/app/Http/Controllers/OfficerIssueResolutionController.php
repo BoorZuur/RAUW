@@ -8,6 +8,7 @@ use App\Http\Requests\Issues\UpdateOfficerIssueResolutionRequest;
 use App\Http\Resources\OfficerIssueResolutionResource;
 use App\Models\Issue;
 use App\Models\Officer;
+use App\Models\OfficerIssueResolution;
 use App\Support\IssueVisibilityQuery;
 use App\Support\OfficerIssueConflict;
 use App\Support\OfficerIssueDistrictAccess;
@@ -15,10 +16,12 @@ use App\Support\OfficerIssueRowLock;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class OfficerIssueResolutionController extends Controller
 {
@@ -69,36 +72,33 @@ class OfficerIssueResolutionController extends Controller
         $files = $request->file('files', []);
 
         try {
-            $resolution = OfficerIssueRowLock::withLockedIssue($issue, function (Issue $lockedIssue) use ($officer, $validated, $files) {
+            $resolution = OfficerIssueRowLock::withLockedIssue($issue, function (Issue $lockedIssue) use ($officer, $validated) {
                 OfficerIssueRowLock::assertNoResolution($lockedIssue);
 
-                $resolution = $lockedIssue->officerResolution()->create([
+                return $lockedIssue->officerResolution()->create([
                     'officer_id' => $officer->getKey(),
                     'title' => $validated['title'],
                     'content' => $validated['content'],
                 ]);
-
-                foreach ($files as $file) {
-                    $path = $file->store(self::DIRECTORY.'/'.$resolution->getKey(), self::DISK);
-
-                    $resolution->attachments()->create([
-                        'file_path' => $path,
-                        'file_url' => $path,
-                        'original_name' => $file->getClientOriginalName(),
-                        'file_type' => $file->getClientMimeType(),
-                        'file_size' => $file->getSize(),
-                        'uploaded_at' => Carbon::now(),
-                    ]);
-                }
-
-                return $resolution;
             });
-        } catch (UniqueConstraintViolationException) {
-            throw OfficerIssueConflict::officerResolutionExists();
+        } catch (UniqueConstraintViolationException $exception) {
+            if (self::isOfficerResolutionIssueIdViolation($exception)) {
+                throw OfficerIssueConflict::officerResolutionExists();
+            }
+
+            throw $exception;
         } catch (QueryException $exception) {
             if (self::isOfficerResolutionIssueIdViolation($exception)) {
                 throw OfficerIssueConflict::officerResolutionExists();
             }
+
+            throw $exception;
+        }
+
+        try {
+            self::attachUploadedFiles($resolution, $files);
+        } catch (Throwable $exception) {
+            self::compensatingDeleteResolutionIfNoAttachments($resolution);
 
             throw $exception;
         }
@@ -133,8 +133,9 @@ class OfficerIssueResolutionController extends Controller
         $validated = $request->validated();
         $files = $request->file('files', []);
         $removeIds = $validated['remove_attachment_ids'] ?? [];
+        $pathsToDelete = [];
 
-        DB::transaction(function () use ($officer, $resolution, $validated, $files, $removeIds): void {
+        DB::transaction(function () use ($officer, $resolution, $validated, $removeIds, &$pathsToDelete): void {
             $resolution->update([
                 'title' => $validated['title'],
                 'content' => $validated['content'],
@@ -146,30 +147,18 @@ class OfficerIssueResolutionController extends Controller
                     ->whereIn('id', $removeIds)
                     ->get();
 
-                $disk = Storage::disk(self::DISK);
+                $pathsToDelete = $attachmentsToRemove
+                    ->pluck('file_path')
+                    ->all();
 
                 foreach ($attachmentsToRemove as $attachment) {
-                    if ($disk->exists($attachment->file_path)) {
-                        $disk->delete($attachment->file_path);
-                    }
-
                     $attachment->delete();
                 }
             }
-
-            foreach ($files as $file) {
-                $path = $file->store(self::DIRECTORY.'/'.$resolution->getKey(), self::DISK);
-
-                $resolution->attachments()->create([
-                    'file_path' => $path,
-                    'file_url' => $path,
-                    'original_name' => $file->getClientOriginalName(),
-                    'file_type' => $file->getClientMimeType(),
-                    'file_size' => $file->getSize(),
-                    'uploaded_at' => Carbon::now(),
-                ]);
-            }
         });
+
+        self::deleteDiskFiles($pathsToDelete);
+        self::attachUploadedFiles($resolution, $files);
 
         $resolution->refresh()->load(self::RESOLUTION_RELATIONS);
 
@@ -177,15 +166,72 @@ class OfficerIssueResolutionController extends Controller
     }
 
     /**
+     * Store uploaded files to disk and create attachment rows (after transaction commit).
+     *
+     * @param  array<int, UploadedFile>  $files
+     */
+    private static function attachUploadedFiles(OfficerIssueResolution $resolution, array $files): void
+    {
+        foreach ($files as $file) {
+            $path = $file->store(self::DIRECTORY.'/'.$resolution->getKey(), self::DISK);
+
+            try {
+                $resolution->attachments()->create([
+                    'file_path' => $path,
+                    'file_url' => $path,
+                    'original_name' => $file->getClientOriginalName(),
+                    'file_type' => $file->getMimeType(),
+                    'file_size' => $file->getSize(),
+                    'uploaded_at' => Carbon::now(),
+                ]);
+            } catch (Throwable $exception) {
+                self::deleteDiskFiles([$path]);
+
+                throw $exception;
+            }
+        }
+    }
+
+    /**
+     * @param  array<int, string>  $paths
+     */
+    private static function deleteDiskFiles(array $paths): void
+    {
+        if ($paths === []) {
+            return;
+        }
+
+        $disk = Storage::disk(self::DISK);
+
+        foreach ($paths as $path) {
+            if ($disk->exists($path)) {
+                $disk->delete($path);
+            }
+        }
+    }
+
+    /**
+     * Remove a resolution row left without attachments after a failed create upload.
+     */
+    private static function compensatingDeleteResolutionIfNoAttachments(OfficerIssueResolution $resolution): void
+    {
+        if ($resolution->attachments()->exists()) {
+            return;
+        }
+
+        $resolution->delete();
+    }
+
+    /**
      * Whether a query exception reflects an officer_issue_resolutions.issue_id unique violation.
      */
     private static function isOfficerResolutionIssueIdViolation(QueryException $exception): bool
     {
-        if ($exception instanceof UniqueConstraintViolationException) {
+        $message = strtolower($exception->getMessage());
+
+        if (str_contains($message, 'officer_issue_resolutions_issue_id_unique')) {
             return true;
         }
-
-        $message = strtolower($exception->getMessage());
 
         return str_contains($message, 'officer_issue_resolutions')
             && str_contains($message, 'issue_id');
