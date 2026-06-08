@@ -48,7 +48,7 @@ function App() {
         //     element: <RoleProtectedRoute allowedRoles={['officer']} />,
         //     children: [
         //         { path: "/map", element: <Map /> },
-        //         { path: "/feed", element: <Feed/>},
+        //         { path: "/feed", element: <Feed /> },
         //         { path: "/meld", element: <Report /> },
         //         { path: "/nieuws", element: <NewsFeed /> },
         //         { path: "/account", element: <Account /> },
