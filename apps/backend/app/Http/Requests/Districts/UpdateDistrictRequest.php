@@ -50,8 +50,8 @@ class UpdateDistrictRequest extends FormRequest
                 Rule::unique('districts', 'name')->ignore($districtId),
             ],
             'postal_prefix' => ['sometimes', 'nullable', 'string', 'max:10'],
-            'center_lat' => ['sometimes', 'nullable', 'numeric', 'between:-90,90'],
-            'center_lng' => ['sometimes', 'nullable', 'numeric', 'between:-180,180'],
+            'center_lat' => ['sometimes', 'required', 'numeric', 'between:-90,90'],
+            'center_lng' => ['sometimes', 'required', 'numeric', 'between:-180,180'],
             'radius_meters' => ['sometimes', 'nullable', 'integer', 'min:1'],
             'is_active' => ['sometimes', 'boolean'],
         ];

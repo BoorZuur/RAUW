@@ -595,13 +595,13 @@ Use `"district_ids": []` to clear all manager district assignments. IDs must ref
 
 ### Hubs
 
-Hub endpoints manage Rotterdam BOA cluster hubs. Any authenticated actor can list and show hubs. Create, update, and delete require an authenticated active main manager. New hubs default to `is_active=false` on create; send `is_active: true` to create an already-active hub. Seeded cluster hubs are active. Deactivate or reactivate via `PATCH` with `is_active` (no `/disable` route). Deactivation returns `422` when active districts or active officers remain assigned; managers assigned to the hub do not block deactivation. Deleting a hub returns `409 Conflict` while districts, officers, or managers still reference it.
+Hub endpoints manage Rotterdam BOA cluster hubs. Any authenticated actor can list and show hubs. Create, update, and delete require an authenticated active main manager. Hub create requires `latitude` and `longitude` (not geocoded server-side). New hubs default to `is_active=false` on create; send `is_active: true` to create an already-active hub. Seeded cluster hubs are active. Deactivate or reactivate via `PATCH` with `is_active` (no `/disable` route). Deactivation returns `422` when active districts or active officers remain assigned; managers assigned to the hub do not block deactivation. Deleting a hub returns `409 Conflict` while districts, officers, or managers still reference it.
 
 Common requests:
 
 - `GET {{base_url}}/api/hubs` — list hubs with reference counts.
 - `GET {{base_url}}/api/hubs/{id}` — show one hub.
-- `POST {{base_url}}/api/hubs` — create a hub (main manager); defaults inactive.
+- `POST {{base_url}}/api/hubs` — create a hub (main manager); requires `latitude` and `longitude`; defaults inactive.
 - `PATCH {{base_url}}/api/hubs/{id}` — update a hub (main manager); send `{"is_active": false}` to deactivate or `{"is_active": true}` to reactivate.
 - `DELETE {{base_url}}/api/hubs/{id}` — delete an eligible hub (main manager).
 
@@ -613,7 +613,7 @@ Hub assignment (clears district pivot on change; `hub_id` must reference an acti
 
 ### Districts
 
-District endpoints use the `districts` table. Each district belongs to one hub via required `hub_id`, which must reference an active hub (`is_active=true`). Managers are assigned to districts through the `district_manager` pivot and officers through the `district_officer` pivot; when an actor has `hub_id`, district assignments must stay within that hub (cross-hub IDs return `422`). Issue district handling is separate: `issues.district_id` remains a singular issue location/reference field.
+District endpoints use the `districts` table. Each district belongs to one hub via required `hub_id`, which must reference an active hub (`is_active=true`). District create requires `center_lat` and `center_lng` (not geocoded server-side). Managers are assigned to districts through the `district_manager` pivot and officers through the `district_officer` pivot; when an actor has `hub_id`, district assignments must stay within that hub (cross-hub IDs return `422`). Issue district handling is separate: `issues.district_id` remains a singular issue location/reference field.
 
 Authenticated actors can list and show districts. District mutations (`POST`, `PATCH`, `PUT`, `DELETE`) require `Authorization: Bearer <token>` for an authenticated **active main manager** (`is_main_manager=true`). Users, officers, ordinary managers, inactive managers, and unauthenticated requests receive `403 Forbidden` on district writes.
 

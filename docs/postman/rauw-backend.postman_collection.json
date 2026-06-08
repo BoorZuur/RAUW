@@ -1299,7 +1299,7 @@
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
             "body": { "mode": "raw", "raw": "{\n  \"name\": \"Cluster Test\",\n  \"address\": \"Teststraat 1\",\n  \"postal_code\": \"3011 AA\",\n  \"latitude\": 51.92,\n  \"longitude\": 4.48\n}", "options": { "raw": { "language": "json" } } },
             "url": { "raw": "{{base_url}}/api/hubs", "host": [ "{{base_url}}" ], "path": [ "api", "hubs" ] },
-            "description": "Create a hub as an authenticated active main manager. New hubs default to is_active=false when the field is omitted; send is_active: true to create an already-active hub. Ordinary managers receive 403."
+            "description": "Create a hub as an authenticated active main manager. Required: name, address, postal_code, latitude, longitude (not geocoded server-side). New hubs default to is_active=false when the field is omitted; send is_active: true to create an already-active hub. Ordinary managers receive 403."
           },
           "response": []
         },
@@ -1386,7 +1386,7 @@
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
             "body": { "mode": "raw", "raw": "{\n  \"name\": \"Nieuwe Wijk\",\n  \"hub_id\": {{hub_id}},\n  \"postal_prefix\": \"3017\",\n  \"center_lat\": 51.91,\n  \"center_lng\": 4.48,\n  \"radius_meters\": 1200,\n  \"is_active\": true\n}", "options": { "raw": { "language": "json" } } },
             "url": { "raw": "{{base_url}}/api/districts", "host": [ "{{base_url}}" ], "path": [ "api", "districts" ] },
-            "description": "Create a district as an authenticated active main manager (is_main_manager=true). hub_id is required and must reference an active hub (is_active=true; use hub_id env var, Cluster Centrum=3 locally). Inactive or unknown hub IDs return 422. Users, officers, ordinary managers, inactive managers, and unauthenticated requests receive 403. Use main_manager_access_token; manager_access_token from a non-main manager should fail with 403."
+            "description": "Create a district as an authenticated active main manager (is_main_manager=true). Required: name, hub_id, center_lat, center_lng (not geocoded server-side). hub_id must reference an active hub (is_active=true; use hub_id env var, Cluster Centrum=3 locally). Inactive or unknown hub IDs return 422. Users, officers, ordinary managers, inactive managers, and unauthenticated requests receive 403. Use main_manager_access_token; manager_access_token from a non-main manager should fail with 403."
           },
           "response": []
         },

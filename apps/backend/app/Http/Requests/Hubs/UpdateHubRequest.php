@@ -47,8 +47,8 @@ class UpdateHubRequest extends FormRequest
             ],
             'address' => ['sometimes', 'required', 'string', 'max:255'],
             'postal_code' => ['sometimes', 'required', 'string', 'max:10'],
-            'latitude' => ['sometimes', 'nullable', 'numeric', 'between:-90,90'],
-            'longitude' => ['sometimes', 'nullable', 'numeric', 'between:-180,180'],
+            'latitude' => ['sometimes', 'required', 'numeric', 'between:-90,90'],
+            'longitude' => ['sometimes', 'required', 'numeric', 'between:-180,180'],
             'is_active' => ['sometimes', 'boolean'],
         ];
     }

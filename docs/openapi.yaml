@@ -2402,11 +2402,12 @@ paths:
       tags: [ Hubs ]
       summary: Create a hub
       description: >-
-        Create a hub row. New hubs default to `is_active=false` when the field
-        is omitted; send `is_active: true` to create an already-active hub.
-        Only an authenticated, active main manager may create hubs. Users,
-        officers, ordinary managers, inactive managers, and unauthenticated
-        requests receive **403**.
+        Create a hub row. `latitude` and `longitude` are required and are not
+        geocoded server-side. New hubs default to `is_active=false` when the
+        field is omitted; send `is_active: true` to create an already-active
+        hub. Only an authenticated, active main manager may create hubs.
+        Users, officers, ordinary managers, inactive managers, and
+        unauthenticated requests receive **403**.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -2590,9 +2591,10 @@ paths:
       tags: [ Districts ]
       summary: Create a district
       description: >-
-        Create a district row. `hub_id` is required and must reference an
-        existing active hub (`is_active=true`); inactive or unknown hub IDs
-        return **422**. Only an authenticated, active main manager
+        Create a district row. `hub_id`, `center_lat`, and `center_lng` are
+        required; coordinates are not geocoded server-side. `hub_id` must
+        reference an existing active hub (`is_active=true`); inactive or
+        unknown hub IDs return **422**. Only an authenticated, active main manager
         (`is_main_manager=true`) may create, update, or delete districts. Users,
         officers, ordinary managers, inactive managers, and unauthenticated
         requests receive **403** (`This action is unauthorized.`). District CRUD
@@ -3267,11 +3269,9 @@ components:
         latitude:
           type: number
           format: double
-          nullable: true
         longitude:
           type: number
           format: double
-          nullable: true
         is_active:
           type: boolean
           example: true
@@ -3293,7 +3293,7 @@ components:
 
     HubCreate:
       type: object
-      required: [ name, address, postal_code ]
+      required: [ name, address, postal_code, latitude, longitude ]
       properties:
         name:
           type: string
@@ -3309,13 +3309,11 @@ components:
           format: double
           minimum: -90
           maximum: 90
-          nullable: true
         longitude:
           type: number
           format: double
           minimum: -180
           maximum: 180
-          nullable: true
         is_active:
           type: boolean
           default: false
@@ -3340,13 +3338,11 @@ components:
           format: double
           minimum: -90
           maximum: 90
-          nullable: true
         longitude:
           type: number
           format: double
           minimum: -180
           maximum: 180
-          nullable: true
         is_active:
           type: boolean
           description: >-
@@ -3416,7 +3412,7 @@ components:
 
     DistrictCreate:
       type: object
-      required: [ name, hub_id ]
+      required: [ name, hub_id, center_lat, center_lng ]
       properties:
         name:
           type: string
@@ -3433,13 +3429,11 @@ components:
           format: double
           minimum: -90
           maximum: 90
-          nullable: true
         center_lng:
           type: number
           format: double
           minimum: -180
           maximum: 180
-          nullable: true
         radius_meters:
           type: integer
           minimum: 1
@@ -3468,13 +3462,11 @@ components:
           format: double
           minimum: -90
           maximum: 90
-          nullable: true
         center_lng:
           type: number
           format: double
           minimum: -180
           maximum: 180
-          nullable: true
         radius_meters:
           type: integer
           minimum: 1

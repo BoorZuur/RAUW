@@ -35,8 +35,8 @@ class StoreHubRequest extends FormRequest
             'name' => ['required', 'string', 'max:100', Rule::unique('hubs', 'name')],
             'address' => ['required', 'string', 'max:255'],
             'postal_code' => ['required', 'string', 'max:10'],
-            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
-            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'latitude' => ['required', 'numeric', 'between:-90,90'],
+            'longitude' => ['required', 'numeric', 'between:-180,180'],
             'is_active' => ['sometimes', 'boolean'],
         ];
     }
