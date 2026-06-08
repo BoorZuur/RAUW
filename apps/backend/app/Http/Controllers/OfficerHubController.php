@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Auth\BuildOfficerAuthProfile;
+use App\Actions\Auth\EndOfficerShift;
 use App\Enums\ActorType;
 use App\Http\Requests\HubAssignments\UpdateOfficerHubRequest;
 use App\Models\Officer;
@@ -12,6 +13,7 @@ class OfficerHubController extends Controller
 {
     public function __construct(
         private readonly BuildOfficerAuthProfile $buildOfficerAuthProfile,
+        private readonly EndOfficerShift $endOfficerShift,
     ) {
     }
 
@@ -26,6 +28,8 @@ class OfficerHubController extends Controller
     {
         $officer->update(['hub_id' => $request->integer('hub_id')]);
         $officer->districts()->sync([]);
+
+        $this->endOfficerShift->end($officer);
 
         $officer->load(['departments', 'districts', 'hub']);
 

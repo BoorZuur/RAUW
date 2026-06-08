@@ -19,6 +19,7 @@ class EnsureOfficerHubActive
         'auth.me',
         'auth.me.update',
         'auth.logout',
+        'auth.start-shift',
         'auth.me.districts.update',
         'hubs.index',
         'hubs.show',

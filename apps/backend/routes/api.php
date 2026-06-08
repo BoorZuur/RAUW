@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
+use App\Http\Controllers\Auth\StartOfficerShiftController;
 use App\Http\Controllers\Auth\ProfileController;
 use App\Http\Controllers\Auth\ProfileDistrictController;
 use App\Http\Controllers\Auth\ProfileUpdateController;
@@ -21,6 +22,7 @@ use App\Http\Controllers\ManagerController;
 use App\Http\Controllers\ManagerDepartmentController;
 use App\Http\Controllers\ManagerDistrictController;
 use App\Http\Controllers\OfficerController;
+use App\Http\Controllers\OfficerEndShiftController;
 use App\Http\Controllers\OfficerDepartmentController;
 use App\Http\Controllers\OfficerDistrictController;
 use App\Http\Controllers\OfficerSessionController;
@@ -60,6 +62,11 @@ Route::middleware('throttle:10,1')->prefix('auth')->group(function (): void {
 Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active'])->prefix('auth')->group(function (): void {
     Route::get('me', ProfileController::class)->name('auth.me');
     Route::post('logout', LogoutController::class)->name('auth.logout');
+
+    // Start a shared hub shift when at the assigned hub. Officers without an
+    // active shift may call this while authenticated; geo evaluation mirrors
+    // login. Whitelisted in officer.hub-active middleware (Tier A).
+    Route::post('start-shift', StartOfficerShiftController::class)->name('auth.start-shift');
 
     // Self-service district assignment updates. Only active managers and active
     // officers carry district assignments, so authorization is narrowed inside
@@ -147,6 +154,11 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     // soft-deleting or restoring the row. Soft-deleted officers return 404.
     Route::patch('officers/{officer}/disable', [OfficerController::class, 'disable'])->name('officers.disable');
     Route::patch('officers/{officer}/enable', [OfficerController::class, 'enable'])->name('officers.enable');
+
+    // Manager-protected officer end-shift. Authorization is narrowed inside
+    // EndOfficerShiftRequest to an authenticated, active manager. Clears the
+    // shared shift clock without revoking tokens.
+    Route::patch('officers/{officer}/end-shift', OfficerEndShiftController::class)->name('officers.end-shift');
 
     // Manager-protected officer district assignment. Authorization is narrowed
     // inside UpdateOfficerDistrictsRequest to an authenticated, active manager;
