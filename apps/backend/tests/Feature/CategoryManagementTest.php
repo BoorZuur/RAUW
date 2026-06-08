@@ -144,13 +144,12 @@ class CategoryManagementTest extends TestCase
             ->postJson('/api/categories', [
                 'name' => 'Subcategory',
                 'parent_id' => $main->id,
-                'weight' => 2,
                 'department_ids' => [$department->id],
             ])
             ->assertCreated()
             ->assertJsonPath('is_main_category', false)
             ->assertJsonPath('parent_id', $main->id)
-            ->assertJsonPath('weight', 2);
+            ->assertJsonMissingPath('weight');
     }
 
     public function test_nested_subcategory_is_rejected(): void
@@ -164,14 +163,13 @@ class CategoryManagementTest extends TestCase
             ->postJson('/api/categories', [
                 'name' => 'Nested',
                 'parent_id' => $sub->id,
-                'weight' => 1,
                 'department_ids' => [$department->id],
             ])
             ->assertStatus(422)
             ->assertJsonValidationErrors(['parent_id']);
     }
 
-    public function test_main_category_rejects_a_weight_value(): void
+    public function test_create_rejects_a_weight_value(): void
     {
         $manager = $this->mainManager();
         $department = Department::factory()->create();
@@ -204,7 +202,7 @@ class CategoryManagementTest extends TestCase
     }
 
     // ---------------------------------------------------------------------
-    // Priority / weight sorting (lower number = higher priority)
+    // Sorting (main: priority; subcategory: name)
     // ---------------------------------------------------------------------
 
     public function test_main_categories_sort_by_ascending_priority(): void
@@ -224,20 +222,20 @@ class CategoryManagementTest extends TestCase
             ->assertJsonPath('data.2.id', $low->id);
     }
 
-    public function test_subcategories_sort_by_ascending_weight(): void
+    public function test_subcategories_sort_by_name(): void
     {
         $manager = $this->regularManager();
         $department = Department::factory()->create();
         $main = Category::factory()->withDepartments($department)->create(['priority' => 1]);
 
-        $heavier = Category::factory()->subcategoryOf($main)->withDepartments($department)->create(['name' => 'Heavier', 'weight' => 9]);
-        $lighter = Category::factory()->subcategoryOf($main)->withDepartments($department)->create(['name' => 'Lighter', 'weight' => 2]);
+        $zebra = Category::factory()->subcategoryOf($main)->withDepartments($department)->create(['name' => 'Zebra']);
+        $alpha = Category::factory()->subcategoryOf($main)->withDepartments($department)->create(['name' => 'Alpha']);
 
         $this->withHeaders($this->authHeaders($manager))
             ->getJson("/api/categories/{$main->id}")
             ->assertOk()
-            ->assertJsonPath('children.0.id', $lighter->id)
-            ->assertJsonPath('children.1.id', $heavier->id);
+            ->assertJsonPath('children.0.id', $alpha->id)
+            ->assertJsonPath('children.1.id', $zebra->id);
     }
 
     // ---------------------------------------------------------------------

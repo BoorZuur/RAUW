@@ -29,8 +29,8 @@ class UpdateCategoryRequest extends FormRequest
      * Validation rules for category updates.
      *
      * All mutable fields use `sometimes` so a partial update only validates and
-     * applies the provided keys. Hierarchy, priority/weight, and department
-     * rules match StoreCategoryRequest, with the additional guards that a
+     * applies the provided keys. Hierarchy, priority, and department rules
+     * match StoreCategoryRequest, with the additional guards that a
      * category cannot become its own parent and a category that already has
      * subcategories cannot be demoted into a subcategory itself. Activation and
      * deactivation use `is_active` on this request only; there is no dedicated
@@ -59,14 +59,7 @@ class UpdateCategoryRequest extends FormRequest
                 'max:255',
                 Rule::prohibitedIf(fn (): bool => $this->resolvesToSubcategory()),
             ],
-            'weight' => [
-                'sometimes',
-                'nullable',
-                'integer',
-                'min:0',
-                'max:255',
-                Rule::prohibitedIf(fn (): bool => ! $this->resolvesToSubcategory()),
-            ],
+            'weight' => ['prohibited'],
             'is_active' => ['sometimes', 'boolean'],
         ];
     }
@@ -124,7 +117,7 @@ class UpdateCategoryRequest extends FormRequest
      *
      * When `parent_id` is present in the request payload, the incoming value
      * decides; otherwise the existing category's current parent is used. This
-     * lets the prohibited priority/weight rules apply to the resulting state.
+     * lets the prohibited priority rule apply to the resulting state.
      */
     protected function resolvesToSubcategory(): bool
     {
@@ -138,7 +131,7 @@ class UpdateCategoryRequest extends FormRequest
     }
 
     /**
-     * Custom validation messages for the prohibited priority/weight fields.
+     * Custom validation messages for prohibited fields.
      *
      * @return array<string, string>
      */
@@ -146,7 +139,7 @@ class UpdateCategoryRequest extends FormRequest
     {
         return [
             'priority.prohibited' => 'The priority field is only allowed for main categories.',
-            'weight.prohibited' => 'The weight field is only allowed for subcategories.',
+            'weight.prohibited' => 'The weight field is no longer supported.',
         ];
     }
 

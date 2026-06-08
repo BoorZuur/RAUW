@@ -16,12 +16,12 @@ use Illuminate\Support\Facades\DB;
 class CategoryController extends Controller
 {
     /**
-     * List categories ordered by priority (main) then weight (subcategory).
+     * List categories ordered by priority (main) then name (subcategory).
      *
      * Departments and parent are eager loaded to avoid N+1 queries, and main
-     * categories carry their nested children. A LOWER `priority`/`weight`
-     * value sorts first (higher priority); null values sort last so explicitly
-     * ordered categories appear ahead of unordered ones.
+     * categories carry their nested children. Main categories sort by ascending
+     * `priority` (lower number = higher priority), then `name`; null priority
+     * sorts last. Subcategories sort by `name` ascending.
      */
     public function index(): AnonymousResourceCollection
     {
@@ -31,14 +31,12 @@ class CategoryController extends Controller
                 'parent',
                 'children' => fn ($query) => $query
                     ->with('departments')
-                    ->orderByRaw('weight IS NULL')
-                    ->orderBy('weight')
-                    ->orderBy('id'),
+                    ->orderBy('name'),
             ])
             ->whereNull('parent_id')
             ->orderByRaw('priority IS NULL')
             ->orderBy('priority')
-            ->orderBy('id')
+            ->orderBy('name')
             ->get();
 
         return CategoryResource::collection($categories);
@@ -54,9 +52,7 @@ class CategoryController extends Controller
             'parent',
             'children' => fn ($query) => $query
                 ->with('departments')
-                ->orderByRaw('weight IS NULL')
-                ->orderBy('weight')
-                ->orderBy('id'),
+                ->orderBy('name'),
         ]);
 
         return new CategoryResource($category);
@@ -76,7 +72,6 @@ class CategoryController extends Controller
                 'name',
                 'parent_id',
                 'priority',
-                'weight',
                 'is_active',
             ]));
 
@@ -106,7 +101,6 @@ class CategoryController extends Controller
                 'name',
                 'parent_id',
                 'priority',
-                'weight',
                 'is_active',
             ]);
 
