@@ -28,6 +28,7 @@ class EnsureOfficerHubActive
         'departments.show',
         'categories.index',
         'categories.show',
+        'officer-sessions.index',
     ];
 
     public function handle(Request $request, Closure $next): Response

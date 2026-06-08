@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Actions\Auth\ResolveOfficerTokenHubActive;
 use App\Enums\ActorType;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AuthProfileResource;
@@ -14,6 +15,11 @@ use Illuminate\Http\Response;
 
 class ProfileController extends Controller
 {
+    public function __construct(
+        private readonly ResolveOfficerTokenHubActive $resolveOfficerTokenHubActive,
+    ) {
+    }
+
     /**
      * Return the authenticated actor's canonical profile payload using the
      * same shape as the shared login/register responses, minus the token
@@ -58,9 +64,18 @@ class ProfileController extends Controller
             $actor->loadMissing('departments');
         }
 
-        return response()->json([
+        $payload = [
             'actor_type' => $type->value,
             'profile' => (new AuthProfileResource($actor))->toArray($request),
-        ]);
+        ];
+
+        if ($actor instanceof Officer) {
+            $payload = array_merge(
+                $payload,
+                $this->resolveOfficerTokenHubActive->resolve($actor),
+            );
+        }
+
+        return response()->json($payload);
     }
 }

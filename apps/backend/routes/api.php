@@ -23,6 +23,7 @@ use App\Http\Controllers\ManagerDistrictController;
 use App\Http\Controllers\OfficerController;
 use App\Http\Controllers\OfficerDepartmentController;
 use App\Http\Controllers\OfficerDistrictController;
+use App\Http\Controllers\OfficerSessionController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -124,6 +125,13 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     // narrowed inside UpdateManagerHubRequest to an authenticated, active main
     // manager only. Setting a manager's hub clears their district_manager pivot.
     Route::patch('managers/{manager}/hub', [ManagerHubController::class, 'update'])->name('managers.hub.update');
+
+    // Officer session listing. Authorization is narrowed inside
+    // IndexOfficerSessionRequest to an authenticated, active manager only;
+    // users, officers, and inactive managers receive a 403. Optional
+    // `officer_id`, `hub_id`, and `is_hub_active` filters narrow the result
+    // set. Results are ordered newest-first by shift_start.
+    Route::get('officer-sessions', [OfficerSessionController::class, 'index'])->name('officer-sessions.index');
 
     // Officer listing. Authorization is narrowed inside IndexOfficerRequest to
     // an authenticated, active officer or manager; users and inactive actors
