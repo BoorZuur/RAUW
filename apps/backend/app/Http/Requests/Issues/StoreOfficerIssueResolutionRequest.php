@@ -3,17 +3,13 @@
 namespace App\Http\Requests\Issues;
 
 use App\Models\Officer;
+use App\Support\OfficerIssueResolutionAttachments;
 use App\Support\UploadedFileValidator;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreOfficerIssueResolutionRequest extends FormRequest
 {
-    /**
-     * The maximum number of image attachments a resolution may hold.
-     */
-    public const MAX_ATTACHMENTS = 3;
-
     /**
      * The maximum accepted size per uploaded file, expressed in kilobytes
      * (5 MB) to match Laravel's `max` file-size rule unit.
@@ -35,6 +31,8 @@ class StoreOfficerIssueResolutionRequest extends FormRequest
     }
 
     /**
+     * `files` is capped at OfficerIssueResolutionAttachments::MAX_COUNT per request.
+     *
      * @return array<string, array<int, mixed>>
      */
     public function rules(): array
@@ -42,7 +40,7 @@ class StoreOfficerIssueResolutionRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:255'],
             'content' => ['required', 'string', 'max:10000'],
-            'files' => ['sometimes', 'array', 'max:'.self::MAX_ATTACHMENTS],
+            'files' => ['sometimes', 'array', 'max:'.OfficerIssueResolutionAttachments::MAX_COUNT],
             'files.*' => [
                 'required',
                 'file',

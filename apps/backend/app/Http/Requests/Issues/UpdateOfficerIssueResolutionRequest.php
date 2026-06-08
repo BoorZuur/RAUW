@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Issues;
 
 use App\Models\Officer;
+use App\Support\OfficerIssueResolutionAttachments;
 use App\Support\UploadedFileValidator;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -18,8 +19,10 @@ class UpdateOfficerIssueResolutionRequest extends FormRequest
     /**
      * Only an authenticated, active officer may update an officer resolution.
      *
-     * District access, assignee checks, and attachment-cap validation run
-     * on the locked issue row in the controller.
+     * District access and assignee checks run on the locked issue row in the
+     * controller. Early request validation rejects more than
+     * OfficerIssueResolutionAttachments::MAX_COUNT files before any lock or
+     * disk I/O; cumulative cap checks run under lock.
      */
     public function authorize(): bool
     {
@@ -37,7 +40,7 @@ class UpdateOfficerIssueResolutionRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:255'],
             'content' => ['required', 'string', 'max:10000'],
-            'files' => ['sometimes', 'array'],
+            'files' => ['sometimes', 'array', 'max:'.OfficerIssueResolutionAttachments::MAX_COUNT],
             'files.*' => [
                 'required',
                 'file',

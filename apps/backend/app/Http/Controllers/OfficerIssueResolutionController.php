@@ -12,6 +12,7 @@ use App\Models\OfficerIssueResolution;
 use App\Support\IssueVisibilityQuery;
 use App\Support\OfficerIssueConflict;
 use App\Support\OfficerIssueDistrictAccess;
+use App\Support\OfficerIssueResolutionAttachments;
 use App\Support\OfficerIssueRowLock;
 use App\Support\UploadedFileValidator;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -220,12 +221,12 @@ class OfficerIssueResolutionController extends Controller
         $existing = $resolution->attachments()->count();
         $remaining = $existing - count($removeIds);
 
-        if ($remaining + $incomingCount > StoreOfficerIssueResolutionRequest::MAX_ATTACHMENTS) {
-            $allowed = max(0, StoreOfficerIssueResolutionRequest::MAX_ATTACHMENTS - $remaining);
+        if ($remaining + $incomingCount > OfficerIssueResolutionAttachments::MAX_COUNT) {
+            $allowed = max(0, OfficerIssueResolutionAttachments::MAX_COUNT - $remaining);
 
             throw ValidationException::withMessages([
                 'files' => [
-                    'This resolution can have at most '.StoreOfficerIssueResolutionRequest::MAX_ATTACHMENTS.' attachments. '.
+                    'This resolution can have at most '.OfficerIssueResolutionAttachments::MAX_COUNT.' attachments. '.
                     "After removals, you may upload {$allowed} more.",
                 ],
             ]);
