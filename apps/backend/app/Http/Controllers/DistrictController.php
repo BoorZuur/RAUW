@@ -39,7 +39,7 @@ class DistrictController extends Controller
     /**
      * Create a district.
      *
-     * Authorization (active manager only) and validation are enforced by
+     * Authorization (active main manager only) and validation are enforced by
      * StoreDistrictRequest. Only validated district attributes are persisted;
      * actor district assignments remain managed through their dedicated pivot
      * endpoints.
@@ -65,9 +65,9 @@ class DistrictController extends Controller
     /**
      * Update a district.
      *
-     * Authorization and validation are enforced by UpdateDistrictRequest. Only
-     * provided validated keys are applied, so partial updates leave untouched
-     * fields intact.
+     * Authorization (active main manager only) and validation are enforced by
+     * UpdateDistrictRequest. Only provided validated keys are applied, so partial
+     * updates leave untouched fields intact.
      */
     public function update(UpdateDistrictRequest $request, District $district): DistrictResource
     {
@@ -92,7 +92,8 @@ class DistrictController extends Controller
     /**
      * Hard delete an eligible district.
      *
-     * Deletion is rejected when the district is still assigned to any manager,
+     * Authorization (active main manager only) is enforced by
+     * DeleteDistrictRequest. Deletion is rejected when the district is still assigned to any manager,
      * assigned to any officer, or referenced by any issue. This keeps actor
      * assignments intact and preserves the singular `issues.district_id` issue
      * location/reference boundary.

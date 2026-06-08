@@ -146,10 +146,12 @@ Because each app has its own dependency files, run `npm i` inside the specific a
 
 ```bash
 cd C:\Users\henk-\Development\RAUW\apps\backend
-php artisan migrate
+php artisan migrate:fresh --seed
 php artisan test
 npm run build
 ```
+
+After the department schema squash, use `migrate:fresh --seed` rather than incremental `migrate` when resetting local data. There is no upgrade path from databases that still had legacy enum columns on `issues`, `categories`, or `managers`, or singular `district_id` on `officers` / `managers`.
 
 ### Web
 
@@ -169,13 +171,14 @@ npm run lint
 
 ## Backend Department Fixtures
 
-When you run `php artisan migrate --seed` in `apps/backend`, local seeders create canonical rows in the backend `departments` table and assign demo actors to them.
+When you run `php artisan migrate:fresh --seed` in `apps/backend`, local seeders create canonical rows in the backend `departments` table and assign demo actors to them.
 
 - Managers have one or more departments through `department_ids` / the `department_manager` pivot.
 - Officers have one or more departments through `department_ids` / the `department_officer` pivot.
 - Use the Postman **Departments / List Departments** request to inspect local department IDs before creating managers or registering officers.
 - Department deletion is blocked while a department is assigned to any manager or officer.
-- Issue department migration is intentionally deferred to a later plan. Issue request/response fields may still use the legacy department enum/string contract for now.
+- Issue departments are derived from the selected category on create and whenever `category_id` changes on update. They are stored only in the `department_issue` pivot (the `issues.department` enum column was removed). API responses expose a read-only `departments` array; clients must not send `department` on issue create or update. Issue list filtering uses query param `department` with a department code (pivot any-match).
+- Active main managers can replace officer or manager department pivots with `PATCH /api/officers/{officer}/departments` and `PATCH /api/managers/{manager}/departments`, body `{"department_ids":[1,2]}` or `[]` to clear all assignments. Non-main managers receive `403 Forbidden`. Use the Postman **Managers** folder requests with a main manager token.
 
 ## Backend District Fixtures
 
@@ -185,6 +188,6 @@ Local seeders also create canonical rows in the backend `districts` table and as
 - Officers have zero or more districts through `district_ids` / the `district_officer` pivot.
 - Auth profile payloads for managers and officers return `districts` arrays of compact objects (`id`, `name`, `postal_prefix`), not a singular actor-side `district_id`.
 - Use the Postman **Districts / List Districts** request to inspect local district IDs before creating managers, registering officers, or updating actor district assignments.
-- Active managers can replace their own districts with `PATCH /api/auth/me/districts` and `{"district_ids":[1,2]}`. Active managers can replace an officer's districts with `PATCH /api/officers/{officer}/districts`. The docs also show an officer self-service district update flow for parity, but that flow is illustrative only and is not implemented in the backend.
+- Active managers and active officers can replace their own districts with `PATCH /api/auth/me/districts` and `{"district_ids":[1,2]}`. Active managers can replace an officer's districts with `PATCH /api/officers/{officer}/districts`. Regular users receive `403 Forbidden` from the self-service district endpoint because they do not have district assignments.
 - Only active managers can create, update, or delete district records. District deletion is blocked while the district is assigned to any manager, assigned to any officer, or referenced by issues.
 - Issue district handling is intentionally unchanged: `issues.district_id` remains a singular issue location/reference field and is out of scope for actor district many-to-many assignments.

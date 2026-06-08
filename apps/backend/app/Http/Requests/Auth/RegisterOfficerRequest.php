@@ -9,6 +9,8 @@ use Illuminate\Validation\Rules\Password;
 
 class RegisterOfficerRequest extends FormRequest
 {
+    private const REGISTRATION_FAILURE_MESSAGE = 'The provided credentials could not be registered.';
+
     public function authorize(): bool
     {
         return true;
@@ -24,8 +26,9 @@ class RegisterOfficerRequest extends FormRequest
      * officer registration cannot create shared-login ambiguity with users
      * or managers.
      *
-     * Each officer must be assigned at least one existing department through
-     * `department_ids`; `distinct` prevents duplicate pivot assignments.
+     * Each officer must be assigned at least one existing active department through
+     * `department_ids`; inactive departments are rejected. `distinct` prevents
+     * duplicate pivot assignments.
      *
      * District assignment is optional at registration: `district_ids` may be
      * omitted or empty, but when present every entry must reference an existing
@@ -37,14 +40,25 @@ class RegisterOfficerRequest extends FormRequest
     {
         return [
             'username' => ['required', 'string', 'max:50', Rule::unique('officers', 'username')],
-            'email' => ['required', 'email', new UniqueActorEmail()],
+            'email' => ['required', 'email', new UniqueActorEmail(failureMessage: self::REGISTRATION_FAILURE_MESSAGE)],
             'password' => ['required', 'string', Password::min(8)],
             'confirm_password' => ['required', 'string', 'same:password'],
             'badge_number' => ['required', 'string', 'max:20', Rule::unique('officers', 'badge_number')],
             'department_ids' => ['required', 'array', 'min:1'],
-            'department_ids.*' => ['integer', 'distinct', Rule::exists('departments', 'id')],
+            'department_ids.*' => ['integer', 'distinct', Rule::exists('departments', 'id')->where('is_active', true)],
             'district_ids' => ['sometimes', 'array'],
             'district_ids.*' => ['integer', 'distinct', Rule::exists('districts', 'id')->where('is_active', true)],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'username.unique' => self::REGISTRATION_FAILURE_MESSAGE,
+            'badge_number.unique' => self::REGISTRATION_FAILURE_MESSAGE,
         ];
     }
 

@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['issue_id', 'file_url', 'file_type', 'uploaded_at'])]
+#[Fillable(['issue_id', 'file_path', 'file_url', 'original_name', 'file_type', 'file_size', 'uploaded_at'])]
 class IssueAttachment extends Model
 {
     use HasFactory;
@@ -22,6 +22,7 @@ class IssueAttachment extends Model
     protected function casts(): array
     {
         return [
+            'file_size' => 'integer',
             'uploaded_at' => 'datetime',
         ];
     }

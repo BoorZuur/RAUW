@@ -18,7 +18,6 @@ return new class extends Migration
             $table->string('password');
             $table->rememberToken();
             $table->string('badge_number', 20)->unique();
-            $table->foreignId('district_id')->nullable()->constrained('districts')->nullOnDelete();
             $table->boolean('is_active')->default(true);
             $table->softDeletes();
             $table->timestamps();

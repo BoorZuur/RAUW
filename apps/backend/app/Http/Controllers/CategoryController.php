@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Categories\DeleteCategoryRequest;
 use App\Http\Requests\Categories\StoreCategoryRequest;
 use App\Http\Requests\Categories\UpdateCategoryRequest;
 use App\Http\Resources\CategoryResource;
@@ -124,22 +125,6 @@ class CategoryController extends Controller
     }
 
     /**
-     * Disable a category without removing it (the standard safe removal path).
-     *
-     * Setting `is_active = false` keeps the row and its department/issue
-     * associations intact, so historical entries never lose their category
-     * context. This is preferred over hard deletion.
-     */
-    public function disable(Category $category): CategoryResource
-    {
-        $category->update(['is_active' => false]);
-
-        $category->load(['departments', 'parent']);
-
-        return new CategoryResource($category);
-    }
-
-    /**
      * Hard delete an eligible category.
      *
      * A main category that still has subcategories is rejected with a 409 so
@@ -148,7 +133,7 @@ class CategoryController extends Controller
      * `restrictOnDelete`; that constraint failure is caught and returned as a
      * 409 conflict rather than surfacing as a 500.
      */
-    public function destroy(Category $category): JsonResponse
+    public function destroy(DeleteCategoryRequest $request, Category $category): JsonResponse
     {
         if ($category->parent_id === null && $category->children()->exists()) {
             return response()->json([

@@ -6,7 +6,6 @@ enum Department: string
 {
     case DistrictManagement = 'wijkbeheer';
     case BoaYouth = 'boa_jeugd';
-    case Both = 'beide';
 
     /**
      * @return list<string>

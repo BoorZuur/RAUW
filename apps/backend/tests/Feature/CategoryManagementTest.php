@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Enums\Department as DepartmentEnum;
 use App\Models\Category;
 use App\Models\Department;
 use App\Models\Issue;
@@ -19,17 +18,34 @@ class CategoryManagementTest extends TestCase
     private const PASSWORD = 'correct-horse-battery';
 
     /**
-     * Create an active, ordinary (non-main) manager who may manage categories.
+     * Create an active main manager who may manage categories.
      *
      * @param  array<string, mixed>  $overrides
      */
-    private function activeManager(array $overrides = []): Manager
+    private function mainManager(array $overrides = []): Manager
+    {
+        $manager = Manager::create(array_merge([
+            'username' => 'category-main-manager',
+            'email' => 'category.main.manager@example.com',
+            'password' => self::PASSWORD,
+        ], $overrides));
+
+        $manager->forceFill(['is_main_manager' => true])->save();
+
+        return $manager->refresh();
+    }
+
+    /**
+     * Create an active, ordinary (non-main) manager.
+     *
+     * @param  array<string, mixed>  $overrides
+     */
+    private function regularManager(array $overrides = []): Manager
     {
         return Manager::create(array_merge([
-            'username' => 'category-manager',
-            'email' => 'category.manager@example.com',
+            'username' => 'category-regular-manager',
+            'email' => 'category.regular.manager@example.com',
             'password' => self::PASSWORD,
-            'department' => DepartmentEnum::Both,
         ], $overrides));
     }
 
@@ -55,9 +71,9 @@ class CategoryManagementTest extends TestCase
     // Creation and department assignment
     // ---------------------------------------------------------------------
 
-    public function test_active_manager_can_create_category_with_multiple_departments(): void
+    public function test_main_manager_can_create_category_with_multiple_departments(): void
     {
-        $manager = $this->activeManager();
+        $manager = $this->mainManager();
         $departmentA = Department::factory()->create();
         $departmentB = Department::factory()->create();
 
@@ -84,9 +100,9 @@ class CategoryManagementTest extends TestCase
         );
     }
 
-    public function test_active_manager_can_update_category_and_resync_departments(): void
+    public function test_main_manager_can_update_category_and_resync_departments(): void
     {
-        $manager = $this->activeManager();
+        $manager = $this->mainManager();
         $departmentA = Department::factory()->create();
         $departmentB = Department::factory()->create();
         $category = Category::factory()->withDepartments($departmentA)->create([
@@ -120,7 +136,7 @@ class CategoryManagementTest extends TestCase
 
     public function test_subcategory_can_reference_an_active_main_category(): void
     {
-        $manager = $this->activeManager();
+        $manager = $this->mainManager();
         $department = Department::factory()->create();
         $main = Category::factory()->withDepartments($department)->create();
 
@@ -139,7 +155,7 @@ class CategoryManagementTest extends TestCase
 
     public function test_nested_subcategory_is_rejected(): void
     {
-        $manager = $this->activeManager();
+        $manager = $this->mainManager();
         $department = Department::factory()->create();
         $main = Category::factory()->withDepartments($department)->create();
         $sub = Category::factory()->subcategoryOf($main)->withDepartments($department)->create();
@@ -157,7 +173,7 @@ class CategoryManagementTest extends TestCase
 
     public function test_main_category_rejects_a_weight_value(): void
     {
-        $manager = $this->activeManager();
+        $manager = $this->mainManager();
         $department = Department::factory()->create();
 
         $this->withHeaders($this->authHeaders($manager))
@@ -172,7 +188,7 @@ class CategoryManagementTest extends TestCase
 
     public function test_subcategory_rejects_a_priority_value(): void
     {
-        $manager = $this->activeManager();
+        $manager = $this->mainManager();
         $department = Department::factory()->create();
         $main = Category::factory()->withDepartments($department)->create();
 
@@ -193,7 +209,7 @@ class CategoryManagementTest extends TestCase
 
     public function test_main_categories_sort_by_ascending_priority(): void
     {
-        $manager = $this->activeManager();
+        $manager = $this->regularManager();
         $department = Department::factory()->create();
 
         $low = Category::factory()->withDepartments($department)->create(['name' => 'Low priority', 'priority' => 10]);
@@ -210,7 +226,7 @@ class CategoryManagementTest extends TestCase
 
     public function test_subcategories_sort_by_ascending_weight(): void
     {
-        $manager = $this->activeManager();
+        $manager = $this->regularManager();
         $department = Department::factory()->create();
         $main = Category::factory()->withDepartments($department)->create(['priority' => 1]);
 
@@ -230,12 +246,14 @@ class CategoryManagementTest extends TestCase
 
     public function test_disabling_a_category_keeps_the_row_and_assignments(): void
     {
-        $manager = $this->activeManager();
+        $manager = $this->mainManager();
         $department = Department::factory()->create();
         $category = Category::factory()->withDepartments($department)->create();
 
         $this->withHeaders($this->authHeaders($manager))
-            ->patchJson("/api/categories/{$category->id}/disable")
+            ->patchJson("/api/categories/{$category->id}", [
+                'is_active' => false,
+            ])
             ->assertOk()
             ->assertJsonPath('is_active', false);
 
@@ -255,7 +273,7 @@ class CategoryManagementTest extends TestCase
 
     public function test_eligible_category_can_be_hard_deleted_and_pivot_cascades(): void
     {
-        $manager = $this->activeManager();
+        $manager = $this->mainManager();
         $department = Department::factory()->create();
         $category = Category::factory()->withDepartments($department)->create();
 
@@ -269,7 +287,7 @@ class CategoryManagementTest extends TestCase
 
     public function test_main_category_with_subcategories_cannot_be_hard_deleted(): void
     {
-        $manager = $this->activeManager();
+        $manager = $this->mainManager();
         $department = Department::factory()->create();
         $main = Category::factory()->withDepartments($department)->create();
         Category::factory()->subcategoryOf($main)->withDepartments($department)->create();
@@ -284,7 +302,7 @@ class CategoryManagementTest extends TestCase
 
     public function test_category_referenced_by_an_issue_returns_conflict_on_hard_delete(): void
     {
-        $manager = $this->activeManager();
+        $manager = $this->mainManager();
         $department = Department::factory()->create();
         $category = Category::factory()->withDepartments($department)->create();
         Issue::factory()->create(['category_id' => $category->id]);
@@ -303,7 +321,7 @@ class CategoryManagementTest extends TestCase
 
     public function test_creation_requires_at_least_one_department(): void
     {
-        $manager = $this->activeManager();
+        $manager = $this->mainManager();
 
         $this->withHeaders($this->authHeaders($manager))
             ->postJson('/api/categories', [
@@ -316,7 +334,7 @@ class CategoryManagementTest extends TestCase
 
     public function test_creation_rejects_nonexistent_department(): void
     {
-        $manager = $this->activeManager();
+        $manager = $this->mainManager();
 
         $this->withHeaders($this->authHeaders($manager))
             ->postJson('/api/categories', [
@@ -382,9 +400,36 @@ class CategoryManagementTest extends TestCase
         $this->assertSame(0, Category::query()->count());
     }
 
-    public function test_inactive_manager_cannot_manage_categories(): void
+    public function test_non_main_manager_cannot_mutate_categories(): void
     {
-        $manager = $this->activeManager();
+        $manager = $this->regularManager();
+        $department = Department::factory()->create();
+        $category = Category::factory()->withDepartments($department)->create();
+
+        $this->withHeaders($this->authHeaders($manager))
+            ->postJson('/api/categories', [
+                'name' => 'Regular attempt',
+                'priority' => 1,
+                'department_ids' => [$department->id],
+            ])
+            ->assertForbidden();
+
+        $this->withHeaders($this->authHeaders($manager))
+            ->patchJson("/api/categories/{$category->id}", [
+                'name' => 'Regular update',
+            ])
+            ->assertForbidden();
+
+        $this->withHeaders($this->authHeaders($manager))
+            ->deleteJson("/api/categories/{$category->id}")
+            ->assertForbidden();
+
+        $this->assertSame(1, Category::query()->count());
+    }
+
+    public function test_inactive_main_manager_cannot_manage_categories(): void
+    {
+        $manager = $this->mainManager();
         $manager->forceFill(['is_active' => false])->save();
         $department = Department::factory()->create();
 

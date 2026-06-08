@@ -48,9 +48,15 @@ Table managers {
   password_hash    varchar(255) [not null]
   // Afdelingen via department_manager; een manager kan aan meerdere afdelingen gekoppeld zijn.
   // Wijken via district_manager; een manager kan aan meerdere wijken gekoppeld zijn.
+  // is_main_manager: alleen via seeding/admin; nooit via publieke API. Route-niveau (geen extra kolommen):
+  //   GET/PATCH/PATCH disable /api/main-managers — alleen actieve main manager; binding op is_main_manager = true.
+  //   GET/POST/PATCH/PATCH disable /api/managers — alleen actieve main manager; binding op is_main_manager = false.
+  is_main_manager  boolean      [not null, default: false, note: 'Hiërarchievlag; API mag niet wijzigen; route binding filtert main vs gewone managers']
+  created_by_manager_id int     [ref: > managers.id, note: 'Optioneel; wie deze manager heeft aangemaakt']
   is_active        tinyint(1)   [not null, default: 1]
   deleted_at       datetime
   created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at       datetime
 }
 
 Table district_officer {
@@ -85,7 +91,7 @@ Table departments {
   id               int          [pk, increment]
   code             varchar(50)  [not null, unique, note: 'Stabiele code, bv. wijkbeheer of boa_jeugd; gebruikt door categorieën, managers en BOA-afdelingen']
   name             varchar(100) [not null, note: 'Weergavenaam']
-  is_active        tinyint(1)   [not null, default: 1]
+  is_active        tinyint(1)   [not null, default: 1, note: 'Veilige deactivatie via PATCH /api/departments/{id} met is_active=false (main manager); geen /disable route']
   created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
   updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
 }
@@ -156,35 +162,50 @@ Table category_department {
   }
 }
 
+Table department_issue {
+  id               int          [pk, increment]
+  issue_id         int          [not null, ref: > issues.id, note: 'Cascade delete met issue; source of truth voor issue-afdelingstoewijzingen']
+  department_id    int          [not null, ref: > departments.id, note: 'Cascade delete verwijdert alleen pivot-toewijzing; issue blijft bestaan']
+  created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (issue_id, department_id) [unique]
+    issue_id
+    department_id
+  }
+}
+
 Table issues {
   id                   int          [pk, increment]
   user_id              int          [ref: > users.id, note: 'NULL na soft delete user']
   category_id          int          [not null, ref: > categories.id]
   assigned_officer_id  int          [ref: > officers.id]
-  district_id          int          [ref: > districts.id, note: 'Singuliere issue-locatie/referentie; valt buiten actor-wijk many-to-many toewijzingen']
+  district_id          int          [not null, ref: > districts.id, note: 'Verplichte singuliere issue-locatie/referentie; restrict delete; valt buiten actor-wijk many-to-many toewijzingen']
   duplicate_of_id      int          [ref: > issues.id]
   title                varchar(255) [not null]
   content              text         [not null]
-  neighborhood         varchar(100)
   postal_code          varchar(10)
   address              varchar(255)
   latitude             decimal(10,8)
   longitude            decimal(11,8)
-  status               varchar(20)  [not null, default: 'open', note: 'open | in_behandeling | afgerond | afgewezen | gedupliceerd']
-  priority             varchar(10)  [not null, default: 'laag', note: 'laag | midden | zwaar']
-  department           varchar(20)  [not null, note: 'wijkbeheer | boa_jeugd; issues zijn nog niet gemigreerd naar departments']
+  status               varchar(20)  [not null, default: 'open', note: 'open | in_behandeling | opgelost | gesloten']
+  priority             tinyint      [note: 'unsigned nullable; server-afgeleid uit hoofdcategorie priority (lager getal = hogere urgentie); client mag niet schrijven']
   duplicate_count      int          [not null, default: 0]
   participant_count    int          [not null, default: 0, note: 'Direct opgehoogd, nachtelijks gereconcilieerd']
-  vote_count           int          [not null, default: 0, note: 'Direct opgehoogd, nachtelijks gereconcilieerd']
   is_flagged           tinyint(1)   [not null, default: 0]
-  visibility           varchar(20)  [not null, default: 'visible', note: 'visible | hidden_pending | hidden_removed | visible_approved']
-  is_anonymous         tinyint(1)   [not null, default: 0, note: 'Publiek + BOA zien alleen alias']
-  anonymous_alias      varchar(20)  [note: 'Bv. Melder #A7F3, getoond i.p.v. username']
+  visibility           varchar(20)  [not null, default: 'visible', note: 'visible | hidden']
+  is_anonymous         tinyint(1)   [not null, default: 0, note: 'User_id blijft eigenaar; publiek + BOA zien alleen alias']
+  anonymous_alias      varchar(20)  [note: 'Bv. Melder#A1B2C3D4, stabiel server-generated alias getoond i.p.v. username; unique index (meerdere NULL toegestaan)']
   chat_status          varchar(10)  [not null, default: 'closed', note: 'open | closed - alleen BOA bedient dit']
   chat_closed_by_officer_id int     [ref: > officers.id]
   resolved_at          datetime
   created_at           datetime     [not null, default: `CURRENT_TIMESTAMP`]
   updated_at           datetime     [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    anonymous_alias [unique, note: 'issues_anonymous_alias_unique; meerdere NULL toegestaan']
+  }
 }
 
 Table issue_participants {
@@ -194,17 +215,6 @@ Table issue_participants {
   joined_via       varchar(10)  [not null, default: 'manual', note: 'creator | manual | duplicate']
   via_issue_id     int          [ref: > issues.id]
   joined_at        datetime     [not null, default: `CURRENT_TIMESTAMP`]
-
-  indexes {
-    (issue_id, user_id) [unique]
-  }
-}
-
-Table issue_votes {
-  id               int          [pk, increment]
-  issue_id         int          [not null, ref: > issues.id]
-  user_id          int          [not null, ref: > users.id]
-  voted_at         datetime     [not null, default: `CURRENT_TIMESTAMP`]
 
   indexes {
     (issue_id, user_id) [unique]
@@ -238,10 +248,17 @@ Table issue_messages {
 
 Table issue_attachments {
   id               int          [pk, increment]
-  issue_id         int          [not null, ref: > issues.id]
-  file_url         varchar(500) [not null]
-  file_type        varchar(50)
+  issue_id         int          [not null, ref: > issues.id, note: 'Cascade delete met issue; individuele hard delete via owner-only API voor vervanging']
+  file_path        varchar(500) [not null, note: 'Niet-publiek local storage path, bv. issue-attachments/{issue_id}/{hash}']
+  file_url         varchar(500) [note: 'Nullable legacy/display field; downloads lopen via authenticated endpoint']
+  original_name    varchar(255) [note: 'Originele clientbestandsnaam']
+  file_type        varchar(100) [note: 'MIME type, bv. image/jpeg of application/pdf']
+  file_size        bigint       [note: 'Bestandsgrootte in bytes; uploadlimiet 5 MB per bestand']
   uploaded_at      datetime     [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    issue_id
+  }
 }
 
 Table issue_status_history {
