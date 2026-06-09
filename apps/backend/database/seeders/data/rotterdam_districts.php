@@ -12,11 +12,11 @@
  */
 return [
     // Cluster Centrum (6)
-    ['name' => 'Cool', 'hub' => 'Cluster Centrum', 'postal_prefix' => '3012', 'center_lat' => 51.91712, 'center_lng' => 4.47834, 'radius_meters' => 1200],
+    ['name' => 'Delfshaven', 'hub' => 'Cluster Centrum', 'postal_prefix' => '3012', 'center_lat' => 51.91712, 'center_lng' => 4.47834, 'radius_meters' => 1200],
     ['name' => 'Stadsdriehoek', 'hub' => 'Cluster Centrum', 'postal_prefix' => '3011', 'center_lat' => 51.92268, 'center_lng' => 4.47918, 'radius_meters' => 900],
     ['name' => 'Oude Westen', 'hub' => 'Cluster Centrum', 'postal_prefix' => '3014', 'center_lat' => 51.91852, 'center_lng' => 4.46148, 'radius_meters' => 1000],
     ['name' => 'Dijkzigt', 'hub' => 'Cluster Centrum', 'postal_prefix' => '3015', 'center_lat' => 51.91048, 'center_lng' => 4.46582, 'radius_meters' => 1100],
-    ['name' => 'CS-kwartier', 'hub' => 'Cluster Centrum', 'postal_prefix' => '3013', 'center_lat' => 51.92482, 'center_lng' => 4.46952, 'radius_meters' => 800],
+    ['name' => 'Centrum', 'hub' => 'Cluster Centrum', 'postal_prefix' => '3013', 'center_lat' => 51.92482, 'center_lng' => 4.46952, 'radius_meters' => 800],
     ['name' => 'Scheepvaartkwartier', 'hub' => 'Cluster Centrum', 'postal_prefix' => '3016', 'center_lat' => 51.90578, 'center_lng' => 4.48318, 'radius_meters' => 1500],
 
     // Cluster Noord (36)

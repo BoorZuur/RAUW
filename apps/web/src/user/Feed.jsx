@@ -17,21 +17,33 @@ apiClient.interceptors.request.use(config => {
 });
 
 export default function Feed() {
-    const [meldingen, setMeldingen] = useState([]);
+    const [mainStory, setMainStory] = useState(null);
+    const [otherStories, setOtherStories] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedIssue, setSelectedIssue] = useState(null);
 
     useEffect(() => {
         apiClient.get('/api/issues')
             .then(res => {
-                setMeldingen(Array.isArray(res.data) ? res.data : (res.data.data || []));
+                const data = Array.isArray(res.data) ? res.data : (res.data.data || []);
+                const openIssues = data.filter(s => s.status !== 'gesloten' && s.resolved_at === null);
+                const oneWeekAgo = new Date();
+                oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+                const recent = openIssues.filter(s => new Date(s.created_at) >= oneWeekAgo);
+
+                if (recent.length > 0) {
+                    const sorted = [...recent].sort((a, b) => b.participant_count - a.participant_count);
+                    setMainStory(sorted[0]);
+                    setOtherStories(openIssues.filter(s => s.id !== sorted[0].id));
+                } else {
+                    setMainStory(openIssues[0]);
+                    setOtherStories(openIssues.slice(1));
+                }
+
                 setIsLoading(false);
             })
             .catch(() => setIsLoading(false));
     }, []);
-
-    const highlightedStory = meldingen.find(s => s.type === "UITGELICHT") || meldingen[0];
-    const otherStories = meldingen.filter(s => s.id !== highlightedStory?.id);
 
     return (
         <div className="min-h-screen bg-primary-bg text-primary-text transition-colors duration-300">
@@ -42,14 +54,14 @@ export default function Feed() {
                     <div className="text-center py-20 text-secondary-text">Verhalen laden...</div>
                 ) : (
                     <div className="flex flex-col gap-12">
-                        {highlightedStory && (
+                        {mainStory && (
                             <section aria-labelledby="main-story-heading">
                                 <h2 id="main-story-heading" className="text-xs font-bold tracking-[0.2em] text-secondary-text uppercase mb-4">
                                     Belangrijkste signaal
                                 </h2>
                                 <MainStoryCard
-                                    issue={highlightedStory}
-                                    onClick={() => setSelectedIssue(highlightedStory)}
+                                    issue={mainStory}
+                                    onClick={() => setSelectedIssue(mainStory)}
                                 />
                             </section>
                         )}

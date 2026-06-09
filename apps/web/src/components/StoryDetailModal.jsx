@@ -3,10 +3,10 @@ import React from 'react';
 export default function StoryDetailModal({ issue, onClose }) {
     if (!issue) return null;
 
-    const isResolved = issue.status === 'opgelost' || issue.resolved_at !== null;
+    const isResolved = issue.status === 'gesloten' || issue.resolved_at !== null;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <div className="bg-primary-bg border-2 border-primary-border rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-8 relative shadow-2xl">
                 <button
                     onClick={onClose}

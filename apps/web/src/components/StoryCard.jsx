@@ -9,14 +9,14 @@ export default function StoryCard({ issue, onClick }) {
             onClick={onClick}
             className="w-full max-w-sm text-left bg-primary-bg-cards border-2 border-primary-border rounded-2xl shadow-sm hover:border-primary-accent transition-all cursor-pointer overflow-hidden flex flex-col focus:outline-none focus:ring-2 focus:ring-primary-accent"
         >
-            <div className="relative w-full h-48 bg-primary-border flex-shrink-0">
+            <div className="relative w-full h-48 bg-primary-border shrink-0">
                 {imageUrl ? (
                     <img src={imageUrl} alt={issue.title} className="w-full h-full object-cover" />
                 ) : (
                     <div className="w-full h-full flex items-center justify-center text-secondary-text text-[10px] uppercase font-black tracking-widest">Geen beeld</div>
                 )}
 
-                {issue.status === 'opgelost' && (
+                {issue.status === 'gesloten' && (
                     <div className="absolute top-3 left-3 flex items-center gap-1 bg-secondary-accent text-white px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest shadow-sm">
                         Opgelost
                     </div>
