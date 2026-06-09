@@ -356,6 +356,12 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     Route::post('issues/{issue}/officer-resolution', [OfficerIssueResolutionController::class, 'store'])->name('issues.officer-resolution.store');
     Route::patch('issues/{issue}/officer-resolution', [OfficerIssueResolutionController::class, 'update'])->name('issues.officer-resolution.update');
     Route::get('issues/{issue}/officer-resolution/attachments/{attachment}/download', [OfficerIssueResolutionAttachmentController::class, 'download'])->name('issues.officer-resolution.attachments.download');
+    // Officer resolution attachment delete (Tier C: hub-active required).
+    // Assignee-only authorization on the locked row (403 not_assigned_officer);
+    // district scoping (403 officer_not_in_district); attachment must belong to
+    // the route resolution (404 otherwise). Repeat delete → 404 once the row is
+    // removed. Returns 204 with row and backing file removed.
+    Route::delete('issues/{issue}/officer-resolution/attachments/{attachment}', [OfficerIssueResolutionAttachmentController::class, 'destroy'])->name('issues.officer-resolution.attachments.destroy');
     Route::delete('issues/{issue}', [IssueController::class, 'destroy'])->name('issues.destroy');
 
     // Issue attachments. Uploads are authorized inside StoreIssueAttachmentRequest
