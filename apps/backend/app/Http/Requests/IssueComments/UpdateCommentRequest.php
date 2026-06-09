@@ -4,6 +4,7 @@ namespace App\Http\Requests\IssueComments;
 
 use App\Enums\ActorType;
 use App\Models\IssueComment;
+use App\Models\Manager;
 use App\Models\Officer;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
@@ -11,7 +12,8 @@ use Illuminate\Foundation\Http\FormRequest;
 class UpdateCommentRequest extends FormRequest
 {
     /**
-     * Only the authenticated, active author of the comment may update it.
+     * Only the authenticated, active author of the comment may update it
+     * (user, officer, or manager matching author_type and author id).
      */
     public function authorize(): bool
     {
@@ -37,6 +39,11 @@ class UpdateCommentRequest extends FormRequest
                 && $comment->officer_id === $actor->getKey();
         }
 
+        if ($actor instanceof Manager) {
+            return $comment->author_type === ActorType::Manager
+                && $comment->manager_id === $actor->getKey();
+        }
+
         return false;
     }
 
@@ -48,7 +55,7 @@ class UpdateCommentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'content' => ['required', 'string'],
+            'content' => ['required', 'string', 'max:2000'],
         ];
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\IssueComments;
 
+use App\Models\Manager;
 use App\Models\Officer;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
@@ -9,14 +10,21 @@ use Illuminate\Foundation\Http\FormRequest;
 class StoreCommentRequest extends FormRequest
 {
     /**
-     * Only an authenticated, active regular user or active officer may create comments.
+     * Only an authenticated, active user, officer, or manager may create comments.
      */
     public function authorize(): bool
     {
         $actor = $this->user();
 
-        return ($actor instanceof User || $actor instanceof Officer)
-            && (bool) $actor->is_active === true;
+        if ($actor instanceof Officer && (bool) $actor->is_active === true) {
+            return true;
+        }
+
+        if ($actor instanceof Manager && (bool) $actor->is_active === true) {
+            return true;
+        }
+
+        return $actor instanceof User && (bool) $actor->is_active === true;
     }
 
     /**
@@ -27,7 +35,7 @@ class StoreCommentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'content' => ['required', 'string'],
+            'content' => ['required', 'string', 'max:2000'],
         ];
     }
 }
