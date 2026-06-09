@@ -80,6 +80,7 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 | `manager_id` | `2` | Ordinary manager path ID; overwritten by **Managers / Create Manager**. |
 | `department_id` | `1` | Department path ID for update, deactivate (PATCH `is_active`), and delete examples. |
 | `issue_id` | `1` | Filled automatically after **Issues / Create Issue**. Used by show, update, attachment, and delete examples. |
+| `comment_id` | `1` | Filled automatically after **Comments / Add Comment**. Used by update, delete, and visibility examples. |
 | `attachment_id` | `1` | Filled automatically after **Issues / Upload Attachments**. Used by authenticated download and delete. |
 | `attachment_download_url` | blank | Filled automatically after **Issues / Upload Attachments** for reference. |
 | `officer_resolution_attachment_id` | `1` | Filled automatically after **Issues / Officer workflows / Create Officer Resolution**. Used by update and download examples. |
@@ -114,7 +115,7 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 
 The collection stores the returned `access_token` automatically after a successful login, user registration, or officer registration. Manager creation intentionally does not update `access_token` because it returns only the created manager profile. If you disable collection scripts or the token is not stored, copy the `access_token` value from the auth response into the active Postman environment's `access_token` variable before calling protected endpoints.
 
-Issue examples also store `issue_id` after issue creation and `attachment_id` / `attachment_download_url` after attachment upload. Attachment upload returns a `data: [...]` wrapper, and the collection stores these variables from `response.data[0]`. Attachment upload uses local, non-public development storage. Downloads and deletes require `Authorization: Bearer <token>` and use authenticated API routes.
+Issue examples also store `issue_id` after issue creation, `comment_id` after **Comments / Add Comment**, and `attachment_id` / `attachment_download_url` after attachment upload. Attachment upload returns a `data: [...]` wrapper, and the collection stores these variables from `response.data[0]`. Attachment upload uses local, non-public development storage. Downloads and deletes require `Authorization: Bearer <token>` and use authenticated API routes.
 
 Protected endpoints use this header:
 
@@ -917,12 +918,12 @@ Comment endpoints require `Authorization: Bearer <token>`. Listing comments is a
 Common requests:
 
 - `GET {{base_url}}/api/issues/{issue}/comments` — list comments. Eager-loads author profiles. Sorted oldest first. Paginated. Users see visible comments + comments they authored. Officers/Managers see all. Officers may call this without a hub-active shift (Tier B).
-- `POST {{base_url}}/api/issues/{issue}/comments` — add a comment. Active users and active officers only. Requires active shift for officers (Tier C).
+- `POST {{base_url}}/api/issues/{issue}/comments` — add a comment. Active users, active officers, and active managers. Content max 2000 characters. Officers require active shift (Tier C); users and managers do not.
 - `PATCH {{base_url}}/api/issues/{issue}/comments/{comment}` — update comment content. Only the comment author may perform this. Requires active shift for officers (Tier C).
 - `DELETE {{base_url}}/api/issues/{issue}/comments/{comment}` — delete a comment. Only the author or any active manager may perform this action. Requires active shift for officers (Tier C).
 - `PATCH {{base_url}}/api/issues/{issue}/comments/{comment}/visibility` — change comment visibility (`visible` or `hidden`). Active officers and active managers only. Requires active shift for officers (Tier C).
 
-Successful comment response shape:
+Successful comment response shape (non-anonymous user author):
 
 ```json
 {
@@ -933,6 +934,7 @@ Successful comment response shape:
   "is_flagged": false,
   "visibility": "visible",
   "author": {
+    "is_anonymous": false,
     "id": 1,
     "username": "demo.user",
     "display_name": "demo.user"
@@ -941,4 +943,25 @@ Successful comment response shape:
   "updated_at": "2026-06-09T11:45:00.000000Z"
 }
 ```
+
+When the issue owner comments on an anonymous issue, the response redacts the author automatically (no request flag). All viewers see the same alias:
+
+```json
+{
+  "id": 2,
+  "issue_id": 1,
+  "author_type": "user",
+  "content": "Nog een opmerking van de melder.",
+  "is_flagged": false,
+  "visibility": "visible",
+  "author": {
+    "is_anonymous": true,
+    "display_name": "Melder#A1B2C3D4"
+  },
+  "created_at": "2026-06-09T12:00:00.000000Z",
+  "updated_at": "2026-06-09T12:00:00.000000Z"
+}
+```
+
+Officer and manager comments always expose real identity with `is_anonymous: false`.
 

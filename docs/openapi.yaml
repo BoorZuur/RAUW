@@ -2841,8 +2841,12 @@ paths:
       tags: [ Comments ]
       summary: Add a comment to an issue
       description: >-
-        Add a new comment to a specific issue. Active users and active officers only.
-        Requires a hub-active shift for officers (Tier C).
+        Add a new comment to a specific issue. Active users, active officers, and
+        active managers may create comments. Officers require a hub-active shift
+        (Tier C); users and managers do not. Content is limited to 2000 characters.
+        When the issue owner comments on an anonymous issue, the response redacts
+        the author to the issue's stable alias (`is_anonymous: true`,
+        `display_name` only); there is no request flag to opt into anonymity.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -3787,9 +3791,10 @@ components:
         `officer.hub-active` middleware on Tier C routes when the officer is
         inactive or `hub_active_until` is null or in the past. The middleware
         does not inspect the bearer token's Sanctum `hub-active` ability.
-        Tier B browse routes (issue list/show, officer-resolution show,
-        attachment downloads) and other whitelisted routes (profile, start-shift,
-        reference reads) do not require an active shift.
+        Tier B browse routes (issue list/show, issue comments index,
+        officer-resolution show, attachment downloads) and other whitelisted
+        routes (profile, start-shift, reference reads) do not require an active
+        shift.
       content:
         application/json:
           schema:
@@ -5423,7 +5428,7 @@ components:
     IssueComment:
       type: object
       description: >-
-        Comment posted on an issue by a user or an officer.
+        Comment posted on an issue by a user, officer, or manager.
       required: [ id, issue_id, author_type, content, is_flagged, visibility, author, created_at, updated_at ]
       properties:
         id:
@@ -5432,9 +5437,10 @@ components:
           type: integer
         author_type:
           type: string
-          enum: [ user, officer ]
+          enum: [ user, officer, manager ]
         content:
           type: string
+          maxLength: 2000
         is_flagged:
           type: boolean
         visibility:
@@ -5451,17 +5457,28 @@ components:
 
     IssueCommentAuthor:
       type: object
-      description: Summary of the comment's author. Exposes the author's real identity (id and username).
-      required: [ id ]
+      description: >-
+        Ownership-safe author summary. User-authored comments on anonymous issues
+        by the issue owner expose only is_anonymous=true and display_name with the
+        stable alias; id and username are not returned. All viewers see the same
+        redacted shape. Officer and manager comments always expose real identity
+        with is_anonymous=false. Non-redacted user comments expose id, username,
+        and display_name with is_anonymous=false.
       properties:
+        is_anonymous:
+          type: boolean
         id:
           type: integer
+          nullable: true
         username:
           type: string
           nullable: true
         display_name:
           type: string
           nullable: true
+          description: >-
+            Username for non-anonymous authors when the relation is loaded;
+            stable anonymous alias (e.g. Melder#A1B2C3D4) when redacted.
 
     IssueCommentCreate:
       type: object
@@ -5469,7 +5486,8 @@ components:
       properties:
         content:
           type: string
-          description: Plain text content of the comment.
+          maxLength: 2000
+          description: Plain text content of the comment (max 2000 characters).
 
     IssueCommentUpdate:
       type: object
@@ -5477,7 +5495,8 @@ components:
       properties:
         content:
           type: string
-          description: Updated plain text content of the comment.
+          maxLength: 2000
+          description: Updated plain text content of the comment (max 2000 characters).
 
     IssueCommentVisibilityUpdate:
       type: object
