@@ -2,19 +2,18 @@ import './App.css';
 import { createBrowserRouter, RouterProvider, Navigate, Outlet } from "react-router-dom";
 
 // Imports
-// import Onboarding from "./user/Onboarding.jsx";
-// import Login from "./user/U_Login.jsx";
-// import Register from "./user/U_Register.jsx";
+import Onboarding from "./user/Onboarding.jsx";
+import Login from "./user/U_Login.jsx";
+import Register from "./user/U_Register.jsx";
 // import Map from "./user/Map.jsx";
 // import Feed from "./user/Feed.jsx";
-// import Report from "./user/Report.jsx";
+import Report from "./user/Report.jsx";
 // import NewsFeed from "./user/Newsfeed.jsx";
-// import Account from "./user/Account.jsx";
-// import AccountSettings from "./user/AccountSettings.jsx";
+import Account from "./user/Account.jsx";
+import AccountSettings from "./user/AccountSettings.jsx";
 
 // import CommandCenter from "./handhaver/CommandCenter.jsx";
-import SectorSettings from "./handhaver/SectorSettings.jsx";
-// import ServiceProfile from "./handhaver/ServiceProfile.jsx";
+// import SectorSettings from "./handhaver/SectorSettings.jsx";
 // import H_ReportsOverview from "./handhaver/H_ReportsOverview.jsx";
 import HandhaverLogin from "./handhaver/H_Login.jsx";
 import HandhaverRegister from "./handhaver/H_Register.jsx";
@@ -26,73 +25,56 @@ import HandhaverRegister from "./handhaver/H_Register.jsx";
 import ManagerLogin from "./manager/M_Login.jsx";
 
 // Beveiligingscomponent
-// const RoleProtectedRoute = ({ allowedRoles }) => {
-//     const userRole = localStorage.getItem("userRole");
-//     const isAuthenticated = !!localStorage.getItem("token");
-//
-//     if (!isAuthenticated) return <Navigate to="/login" />;
-//     return allowedRoles.includes(userRole) ? <Outlet /> : <Navigate to="/login" />;
-// };
+const PortalGuard = ({ allowedType }) => {
+    const token = localStorage.getItem("auth_token");
+    const type = localStorage.getItem("user_type");
+
+    if (!token) return <Navigate to="/login" replace />;
+    return type === allowedType ? <Outlet /> : <Navigate to="/" replace />;
+};
 
 function App() {
     const router = createBrowserRouter([
         // 1. Publieke routes
-        // { path: "/", element: <Onboarding /> },
-        // { path: "/login", element: <Login /> },
-        // { path: "/register", element: <Register /> },
-        // { path: "/handhaver_login", element: <HandhaverLogin /> },
-        // { path: "/handhaver_register", element: <HandhaverRegister /> },
-        // { path: "/manager_login", element: <ManagerLogin /> },
+        {path: "/", element: <Onboarding/>},
+        {path: "/login", element: <Login/>},
+        {path: "/registreer", element: <Register/>},
+        {path: "/loginhandhaver", element: <HandhaverLogin/>},
+        {path: "/registreerhandhaver", element: <HandhaverRegister/>},
+        {path: "/loginmanager", element: <ManagerLogin/>},
 
-        // { path: "/map", element: <Map /> },
-        // { path: "/feed", element: <Feed /> },
-        // { path: "/report", element: <Report /> },
-        // { path: "/nieuws", element: <NewsFeed /> },
-        // { path: "/account", element: <Account /> },
-        // { path: "/account_instellingen", element: <AccountSettings /> },
-        //
-        // { path: "/commando_centrum", element: <CommandCenter /> },
-        // { path: "/dienstprofiel", element: <ServiceProfile /> },
-        // { path: "/handhaver_rapport", element: <H_ReportsOverview /> },
-        { path: "/sector_instellingen", element: <SectorSettings /> },
-        //
-        // { path: "/manager_dashboard", element: <M_dashboard /> },
-        // { path: "/flagged_dashboard", element: <FlaggedDashboard /> },
-        // { path: "/reports_overview", element: <ReportsOverview /> },
-        // { path: "/gebruiker_management", element: <UserManagement /> },
-
+        { path: "/account", element: <Account /> },
         // 2. User Routes
+        {
+            element: <PortalGuard allowedType="user" />,
+            children: [
+                // { path: "/map", element: <Map /> },
+                // { path: "/feed", element: <Feed /> },
+                { path: "/meld", element: <Report /> },
+                // { path: "/nieuws", element: <NewsFeed /> },
+                { path: "/account", element: <Account /> },
+                { path: "/instellingen", element: <AccountSettings /> },
+            ]
+        },
+
+        // 3. Handhaver (BOA) Routes
         // {
-        //     element: <RoleProtectedRoute allowedRoles={['officer']} />,
+        //     element: <PortalGuard allowedType="officer" />,
         //     children: [
-        //         { path: "/map", element: <Map /> },
-        //         { path: "/feed", element: <Feed /> },
-        //         { path: "/report", element: <Report /> },
-        //         { path: "/nieuws", element: <NewsFeed /> },
-        //         { path: "/account", element: <Account /> },
-        //         { path: "/account_instellingen", element: <AccountSettings /> },
-        //     ]
-        // },
-        //
-        // // 3. Handhaver (BOA) Routes
-        // {
-        //     element: <RoleProtectedRoute allowedRoles={['boa']} />,
-        //     children: [
-        //         { path: "/commando_centrum", element: <CommandCenter /> },
-        //         { path: "/dienstprofiel", element: <ServiceProfile /> },
-        //         { path: "/handhaver_rapport", element: <H_ReportsOverview /> },
-        //         { path: "/sector_instellingen", element: <SectorSettings /> },
+        //         { path: "/meldingen", element: <CommandCenter /> },
+        //         { path: "/rapport", element: <H_ReportsOverview /> },
+        //         { path: "/sectorinstellingen", element: <SectorSettings /> },
         //     ]
         // },
 
         // 4. Manager Routes
         // {
-        //     element: <RoleProtectedRoute allowedRoles={['manager']} />,
+        //     element: <PortalGuard allowedType="manager" />,
         //     children: [
-        //         { path: "/manager_dashboard", element: <M_dashboard /> },
-        //         { path: "/flagged_dashboard", element: <FlaggedDashboard /> },
-        //         { path: "/reports_overview", element: <ReportsOverview /> },
-        //         { path: "/gebruiker_management", element: <UserManagement /> },
+        //         { path: "/dashboard", element: <M_dashboard /> },
+        //         { path: "/flaggeddashboard", element: <FlaggedDashboard /> },
+        //         { path: "/rapportoverzicht", element: <ReportsOverview /> },
+        //         { path: "/gebruikermanagement", element: <UserManagement /> },
         //     ]
         // }
     ]);

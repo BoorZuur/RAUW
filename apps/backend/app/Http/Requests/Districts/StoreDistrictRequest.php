@@ -9,18 +9,18 @@ use Illuminate\Validation\Rule;
 class StoreDistrictRequest extends FormRequest
 {
     /**
-     * Only an authenticated, active manager may create districts.
+     * Only an authenticated, active main manager may create districts.
      *
-     * Users, officers, and inactive managers are all rejected with a 403
-     * response. District management is open to ordinary managers and is not
-     * limited to main managers.
+     * Users, officers, non-main managers, and inactive managers are all rejected
+     * with a 403 response.
      */
     public function authorize(): bool
     {
         $actor = $this->user();
 
         return $actor instanceof Manager
-            && (bool) $actor->is_active === true;
+            && (bool) $actor->is_active === true
+            && (bool) $actor->is_main_manager === true;
     }
 
     /**

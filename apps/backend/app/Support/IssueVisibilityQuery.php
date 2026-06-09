@@ -1,0 +1,59 @@
+<?php
+
+namespace App\Support;
+
+use App\Enums\Visibility;
+use App\Models\Issue;
+use App\Models\Manager;
+use App\Models\Officer;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+
+class IssueVisibilityQuery
+{
+    /**
+     * Restrict issue queries to rows the actor may list or show.
+     *
+     * Active users see issues with `visibility = visible` or issues they own
+     * (`issues.user_id`). Active officers and managers see all issues including
+     * hidden. Assumes the actor is active; inactive actors are blocked by
+     * middleware before this runs.
+     */
+    public static function applyVisibilityScope(Builder $query, Model $actor): Builder
+    {
+        if ($actor instanceof Officer || $actor instanceof Manager) {
+            return $query;
+        }
+
+        if ($actor instanceof User) {
+            return $query->where(function (Builder $scoped) use ($actor): void {
+                $scoped->where('visibility', Visibility::Visible)
+                    ->orWhere('user_id', $actor->getKey());
+            });
+        }
+
+        return $query->whereRaw('0 = 1');
+    }
+
+    /**
+     * Whether the actor may view a single issue (show).
+     *
+     * Mirrors {@see applyVisibilityScope()} for one row: users may view visible
+     * issues or their own issues regardless of visibility; officers and managers
+     * may view any issue.
+     */
+    public static function canViewIssue(Issue $issue, Model $actor): bool
+    {
+        if ($actor instanceof Officer || $actor instanceof Manager) {
+            return true;
+        }
+
+        if ($actor instanceof User) {
+            return $issue->visibility === Visibility::Visible
+                || $issue->user_id === $actor->getKey();
+        }
+
+        return false;
+    }
+}

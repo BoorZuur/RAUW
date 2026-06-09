@@ -44,6 +44,16 @@ class Department extends Model
     }
 
     /**
+     * Issues assigned to this department via the pivot table.
+     *
+     * @return BelongsToMany<Issue, $this>
+     */
+    public function issues(): BelongsToMany
+    {
+        return $this->belongsToMany(Issue::class, 'department_issue');
+    }
+
+    /**
      * Managers assigned to this department via the pivot table.
      *
      * @return BelongsToMany<Manager, $this>

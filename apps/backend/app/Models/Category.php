@@ -65,4 +65,19 @@ class Category extends Model
     {
         return $this->hasMany(Issue::class);
     }
+
+    /**
+     * The department model identifiers assigned to this category.
+     *
+     * This drives issue department auto-assignment: an issue inherits its
+     * departments from its selected category through the shared pivot source
+     * of truth, which supports multiple departments per issue. The loaded
+     * `departments` relation is reused when available to avoid extra queries.
+     *
+     * @return list<int>
+     */
+    public function departmentIds(): array
+    {
+        return $this->departments->pluck('id')->all();
+    }
 }

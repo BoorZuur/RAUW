@@ -13,12 +13,12 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-// NOTE: `created_by_manager_id` is fillable so the controller can assign it
-// explicitly from the authenticated creator. It MUST NEVER be populated from
-// client-submitted request data. `is_main_manager` is intentionally omitted
-// from fillable: the initial main manager is provisioned only through trusted
+// NOTE: `created_by_manager_id` is set only by the controller via forceFill or
+// direct property assignment after create — never from client request data and
+// not mass-assignable. `is_main_manager` is intentionally omitted from
+// fillable: the initial main manager is provisioned only through trusted
 // operational seeding or direct administration, never via the public API.
-#[Fillable(['username', 'email', 'password', 'created_by_manager_id'])]
+#[Fillable(['username', 'email', 'password'])]
 #[Hidden(['password', 'remember_token'])]
 class Manager extends Authenticatable
 {
@@ -102,5 +102,32 @@ class Manager extends Authenticatable
     public function userReviews(): HasMany
     {
         return $this->hasMany(UserReview::class, 'reviewed_by_manager_id');
+    }
+
+    /**
+     * Resolve the manager for implicit route model binding.
+     *
+     * - `main-managers.*` routes require `is_main_manager = true` on the target row.
+     * - `managers.*` routes with a `{manager}` parameter require `is_main_manager = false`,
+     *   except `managers.departments.update`, where a main manager may assign departments
+     *   to any manager including other main managers.
+     * - Unscoped routes (e.g. `managers.index`) never invoke this binding.
+     */
+    public function resolveRouteBinding($value, $field = null): ?static
+    {
+        $field = $field ?? $this->getRouteKeyName();
+
+        $query = static::query()->where($field, $value);
+
+        if (request()->routeIs('main-managers.*')) {
+            $query->where('is_main_manager', true);
+        } elseif (
+            request()->routeIs('managers.*')
+            && ! request()->routeIs('managers.departments.update')
+        ) {
+            $query->where('is_main_manager', false);
+        }
+
+        return $query->first();
     }
 }

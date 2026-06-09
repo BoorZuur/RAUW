@@ -13,7 +13,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'username', 'email', 'password'])]
+#[Fillable(['username', 'email', 'password'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -55,11 +55,6 @@ class User extends Authenticatable
     public function participations(): HasMany
     {
         return $this->hasMany(IssueParticipant::class);
-    }
-
-    public function votes(): HasMany
-    {
-        return $this->hasMany(IssueVote::class);
     }
 
     public function comments(): HasMany

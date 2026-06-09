@@ -9,6 +9,8 @@ use Illuminate\Validation\Rules\Password;
 
 class RegisterUserRequest extends FormRequest
 {
+    private const REGISTRATION_FAILURE_MESSAGE = 'The provided credentials could not be registered.';
+
     public function authorize(): bool
     {
         return true;
@@ -30,17 +32,21 @@ class RegisterUserRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
-            'username' => ['required', 'string', 'max:255', Rule::unique('users', 'username')],
-            'email' => ['required', 'email', new UniqueActorEmail()],
+            'username' => ['required', 'string', 'max:50', Rule::unique('users', 'username')],
+            'email' => ['required', 'email', new UniqueActorEmail(failureMessage: self::REGISTRATION_FAILURE_MESSAGE)],
             'password' => ['required', 'string', Password::min(8)],
             'confirm_password' => ['required', 'string', 'same:password'],
         ];
     }
 
-    public function name(): string
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
     {
-        return (string) $this->input('name');
+        return [
+            'username.unique' => self::REGISTRATION_FAILURE_MESSAGE,
+        ];
     }
 
     public function username(): string
