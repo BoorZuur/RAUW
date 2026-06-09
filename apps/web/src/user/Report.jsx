@@ -28,16 +28,16 @@ export default function ReportIssue() {
         is_anonymous: false
     });
 
+    const [images, setImages] = useState([]);
     const [position, setPosition] = useState(null);
     const [error, setError] = useState(null);
     const [categories, setCategories] = useState([]);
-    const [districts, setDistricts] = useState([]); // Toegevoegd voor validatie
+    const [districts, setDistricts] = useState([]);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
     const [success, setSuccess] = useState(false);
 
     useEffect(() => {
-        // Categorieën én Districten ophalen voor validatie
         Promise.all([
             apiClient.get('/api/categories'),
             apiClient.get('/api/districts')
@@ -94,8 +94,6 @@ export default function ReportIssue() {
             return;
         }
 
-        // --- STRIKTE VALIDATIE LOGICA ---
-        // Controleer of de ingevulde neighborhood in de database lijst (districts) staat
         const isValidDistrict = districts.some(d =>
             formData.neighborhood.toLowerCase().includes(d.name.toLowerCase())
         );
@@ -105,16 +103,22 @@ export default function ReportIssue() {
             setShowConfirm(false);
             return;
         }
-        // --------------------------------
+
+        const data = new FormData();
+        Object.keys(formData).forEach(key => data.append(key, formData[key]));
+        data.append('latitude', position.lat);
+        data.append('longitude', position.lng);
+        data.append('is_anonymous', formData.is_anonymous ? 1 : 0);
+        data.append('category_id', parseInt(formData.category_id));
+        data.append('district_id', 1);
+
+        images.forEach((file, index) => {
+            data.append(`images[${index}]`, file);
+        });
 
         try {
-            await apiClient.post('/api/issues', {
-                ...formData,
-                latitude: position.lat,
-                longitude: position.lng,
-                is_anonymous: formData.is_anonymous ? 1 : 0,
-                category_id: parseInt(formData.category_id),
-                district_id: 1 // (Blijft zoals je had)
+            await apiClient.post('/api/issues', data, {
+                headers: { 'Content-Type': 'multipart/form-data' }
             });
 
             setSuccess(true);
@@ -163,33 +167,35 @@ export default function ReportIssue() {
                     </div>
                 </section>
 
-                <section className="bg-primary-bg-cards border-2 border-primary-border rounded-3xl p-8 shadow-sm">
-                    <h2 className="text-2xl font-black mb-8 uppercase tracking-widest text-primary-text">Signaal Melden</h2>
-                    {error && <p className="text-red-600 font-bold mb-6 p-4 bg-red-100 rounded-xl">{error}</p>}
+                <section className="bg-primary-bg-cards border-2 border-primary-border rounded-3xl p-6 shadow-sm">
+                    <h2 className="text-xl font-black mb-6 uppercase tracking-widest text-primary-text">Signaal Melden</h2>
+                    {error && <p className="text-red-600 font-bold mb-4 p-3 bg-red-100 rounded-lg text-sm">{error}</p>}
 
-                    <div className="space-y-6">
+                    <div className="space-y-4">
+                        {/* Titel */}
                         <div>
-                            <label className="block text-[10px] font-black mb-2 uppercase tracking-widest text-secondary-text">Titel</label>
-                            <input className="w-full p-4 bg-primary-bg border-2 border-primary-border rounded-xl focus:border-primary-accent outline-none"
+                            <label className="block text-[9px] font-black mb-1 uppercase tracking-widest text-secondary-text">Titel</label>
+                            <input className="w-full p-3 bg-primary-bg border-2 border-primary-border rounded-lg focus:border-primary-accent outline-none text-sm"
                                    value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
                         </div>
 
+                        {/* Categorie */}
                         <div className="relative">
-                            <label className="block text-[10px] font-black mb-2 uppercase tracking-widest text-secondary-text">Categorie</label>
-                            <div onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="w-full p-4 bg-primary-bg border-2 border-primary-border rounded-xl cursor-pointer flex justify-between items-center hover:border-primary-accent transition-all">
-                                <span className="text-sm font-medium">{getSelectedCategoryName()}</span>
+                            <label className="block text-[9px] font-black mb-1 uppercase tracking-widest text-secondary-text">Categorie</label>
+                            <div onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="w-full p-3 bg-primary-bg border-2 border-primary-border rounded-lg cursor-pointer flex justify-between items-center hover:border-primary-accent text-sm">
+                                <span>{getSelectedCategoryName()}</span>
                                 <span>▼</span>
                             </div>
                             {isDropdownOpen && (
-                                <div className="absolute z-50 w-full mt-2 max-h-60 overflow-y-auto bg-primary-bg border-2 border-primary-border rounded-xl p-2 shadow-2xl">
+                                <div className="absolute z-50 w-full mt-1 max-h-48 overflow-y-auto bg-primary-bg border-2 border-primary-border rounded-lg p-1 shadow-xl text-xs">
                                     {categories.map(mainCat => (
                                         <React.Fragment key={mainCat.id}>
-                                            <div onClick={() => { setFormData({...formData, category_id: mainCat.id}); setIsDropdownOpen(false); }} className="p-3 font-black uppercase text-[10px] tracking-widest mt-2 cursor-pointer rounded-lg hover:bg-primary-border/20">
+                                            <div onClick={() => { setFormData({...formData, category_id: mainCat.id}); setIsDropdownOpen(false); }} className="p-2 font-black uppercase cursor-pointer hover:bg-primary-border/20 rounded">
                                                 {mainCat.name}
                                             </div>
-                                            {mainCat.children && mainCat.children.map(sub => (
-                                                <div key={sub.id} onClick={() => { setFormData({...formData, category_id: sub.id}); setIsDropdownOpen(false); }} className="pl-10 p-3 text-xs opacity-70 cursor-pointer flex items-center rounded-lg hover:bg-primary-border/20">
-                                                    <span className="mr-2">↳</span> {sub.name}
+                                            {mainCat.children?.map(sub => (
+                                                <div key={sub.id} onClick={() => { setFormData({...formData, category_id: sub.id}); setIsDropdownOpen(false); }} className="pl-4 p-2 cursor-pointer hover:bg-primary-border/20 rounded">
+                                                    ↳ {sub.name}
                                                 </div>
                                             ))}
                                         </React.Fragment>
@@ -198,32 +204,46 @@ export default function ReportIssue() {
                             )}
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        {/* Adres & Buurt */}
+                        <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-[10px] font-black mb-2 uppercase tracking-widest text-secondary-text">Adres</label>
-                                <input className="w-full p-4 bg-primary-bg border-2 border-primary-border rounded-xl"
+                                <label className="block text-[9px] font-black mb-1 uppercase tracking-widest text-secondary-text">Adres</label>
+                                <input className="w-full p-3 bg-primary-bg border-2 border-primary-border rounded-lg text-sm"
                                        value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} onBlur={handleGeocode} />
                             </div>
                             <div>
-                                <label className="block text-[10px] font-black mb-2 uppercase tracking-widest text-secondary-text">Buurt</label>
-                                <input className="w-full p-4 bg-primary-bg border-2 border-primary-border rounded-xl"
+                                <label className="block text-[9px] font-black mb-1 uppercase tracking-widest text-secondary-text">Buurt</label>
+                                <input className="w-full p-3 bg-primary-bg border-2 border-primary-border rounded-lg text-sm"
                                        value={formData.neighborhood} onChange={e => setFormData({...formData, neighborhood: e.target.value})} />
                             </div>
                         </div>
 
-                        <textarea className="w-full p-4 h-32 bg-primary-bg border-2 border-primary-border rounded-xl" placeholder="Context & Behoefte" value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} />
+                        {/* Context */}
+                        <textarea className="w-full p-3 h-20 bg-primary-bg border-2 border-primary-border rounded-lg text-sm" placeholder="Context & Behoefte" value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} />
 
+                        {/* Foto Knop */}
+                        <div>
+                            <label className="block text-[9px] font-black mb-1 uppercase tracking-widest text-secondary-text">Foto's (Optioneel)</label>
+                            <label className="flex items-center justify-center gap-2 w-full p-3 border-2 border-dashed border-primary-border rounded-lg cursor-pointer hover:border-primary-accent hover:bg-primary-border/10 transition-all">
+                                <span className="text-xs font-bold uppercase tracking-widest">Bestanden selecteren</span>
+                                <input type="file" multiple accept="image/*" className="hidden" onChange={(e) => setImages(Array.from(e.target.files))} />
+                            </label>
+                            {images.length > 0 && <p className="text-[10px] mt-1 text-secondary-text">{images.length} bestand(en) geselecteerd</p>}
+                        </div>
+
+                        {/* Anoniem Switch */}
                         <div onClick={() => setFormData({...formData, is_anonymous: !formData.is_anonymous})}
-                             className={`cursor-pointer p-4 border-2 rounded-xl flex items-center justify-between transition-all ${formData.is_anonymous ? 'border-secondary-accent bg-secondary-accent/10' : 'border-primary-border bg-primary-bg'}`}>
-                            <span className="font-bold text-sm">Anoniem signaleren</span>
-                            <div className={`w-10 h-5 rounded-full relative transition-colors ${formData.is_anonymous ? 'bg-secondary-accent' : 'bg-primary-border'}`}>
-                                <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${formData.is_anonymous ? 'left-6' : 'left-1'}`} />
+                             className={`cursor-pointer p-3 border-2 rounded-lg flex items-center justify-between ${formData.is_anonymous ? 'border-secondary-accent bg-secondary-accent/10' : 'border-primary-border'}`}>
+                            <span className="font-bold text-xs">Anoniem signaleren</span>
+                            <div className={`w-8 h-4 rounded-full relative ${formData.is_anonymous ? 'bg-secondary-accent' : 'bg-primary-border'}`}>
+                                <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${formData.is_anonymous ? 'left-4.5' : 'left-0.5'}`} />
                             </div>
                         </div>
 
+                        {/* Verzenden */}
                         <button
                             onClick={() => setShowConfirm(true)}
-                            className="w-full h-12 mt-4 bg-primary-text text-primary-bg hover:bg-primary-accent font-black uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-[0.98]"
+                            className="w-full h-10 mt-2 bg-primary-text text-primary-bg hover:bg-primary-accent font-black uppercase text-xs tracking-widest rounded-lg transition-all shadow-md active:scale-[0.98]"
                         >
                             Verstuur melding
                         </button>

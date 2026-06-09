@@ -5,6 +5,7 @@ import U_Nav from '../components/U_Nav';
 import axios from 'axios';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+import Footer from "../components/Footer.jsx";
 
 const DefaultIcon = L.icon({
     iconUrl: markerIcon,
@@ -95,9 +96,8 @@ export default function MapOverview() {
             });
     }, [reports, filters]);
 
-    // ... rest van je JSX (return) blijft ongewijzigd
     return (
-        <div className="h-screen w-full flex flex-col bg-primary-bg overflow-hidden">
+        <div className="min-h-screen w-full flex flex-col bg-primary-bg overflow-hidden">
             <header className="h-20 shrink-0"><U_Nav /></header>
             <main className="flex-1 p-4 md:p-8 flex gap-6 overflow-hidden">
                 <section className="flex-1 bg-primary-bg-cards border-2 border-primary-border rounded-3xl overflow-hidden relative shadow-lg">
@@ -107,14 +107,17 @@ export default function MapOverview() {
                 <aside className="w-80 bg-primary-bg-cards border-2 border-primary-border rounded-3xl p-8 shrink-0 overflow-y-auto space-y-8">
                     <h1 className="text-2xl font-black text-primary-text">Kaartbeheer</h1>
 
+                    {/* Categorie Dropdown */}
                     <div className="relative">
-                        <label className="block text-[10px] font-black mb-2 uppercase text-secondary-text">Wijk Filter</label>
-                        <div onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="w-full p-4 bg-primary-bg border-2 border-primary-border rounded-xl cursor-pointer flex justify-between items-center">
-                            <span className="text-sm font-medium">{filters.district === 'all' ? "Alle wijken" : districts.find(d=>d.id.toString()===filters.district)?.name}</span>
-                            <span>▼</span>
+                        <label className="block text-[10px] font-black mb-2 uppercase tracking-widest text-secondary-text">Categorie</label>
+                        <div onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="w-full p-4 bg-primary-bg border-2 border-primary-border rounded-xl cursor-pointer flex justify-between items-center text-primary-text">
+            <span className="text-sm font-medium">
+                {filters.district === 'all' ? "Alle wijken" : districts.find(d=>d.id.toString()===filters.district)?.name}
+            </span>
+                            <span className="text-secondary-text">▼</span>
                         </div>
                         {isDropdownOpen && (
-                            <div className="absolute z-50 w-full mt-2 max-h-40 overflow-y-auto bg-primary-bg border-2 border-primary-border rounded-xl p-2 shadow-2xl">
+                            <div className="absolute z-50 w-full mt-2 max-h-60 overflow-y-auto bg-primary-bg border-2 border-primary-border rounded-xl p-2 shadow-2xl text-primary-text">
                                 <div onClick={() => {setFilters({...filters, district: 'all'}); setIsDropdownOpen(false)}} className="p-3 cursor-pointer hover:bg-primary-border/20 text-sm">Alle wijken</div>
                                 {districts.map(d => (
                                     <div key={d.id} onClick={() => {setFilters({...filters, district: d.id.toString()}); setIsDropdownOpen(false)}} className="p-3 cursor-pointer hover:bg-primary-border/20 text-sm">{d.name}</div>
@@ -123,16 +126,34 @@ export default function MapOverview() {
                         )}
                     </div>
 
+                    {/* Weergave Buttons */}
                     <div>
                         <label className="block text-[10px] font-black mb-2 uppercase text-secondary-text">Weergave</label>
                         <div className="grid grid-cols-1 gap-2">
-                            <button onClick={() => setFilters({...filters, view: 'all'})} className={`px-4 py-2 rounded-lg text-xs font-bold ${filters.view === 'all' ? 'bg-primary-accent text-white' : 'bg-primary-border'}`}>Alle</button>
-                            <button onClick={() => setFilters({...filters, view: 'mine'})} className={`px-4 py-2 rounded-lg text-xs font-bold ${filters.view === 'mine' ? 'bg-primary-accent text-white' : 'bg-primary-border'}`}>Mijn verhalen</button>
-                            <button onClick={() => setFilters({...filters, view: 'resolved'})} className={`px-4 py-2 rounded-lg text-xs font-bold ${filters.view === 'resolved' ? 'bg-primary-accent text-white' : 'bg-primary-border'}`}>Afgehandeld</button>
+                            {[
+                                { label: 'Alle', value: 'all' },
+                                { label: 'Mijn verhalen', value: 'mine' },
+                                { label: 'Afgehandeld', value: 'resolved' }
+                            ].map((btn) => (
+                                <button
+                                    key={btn.value}
+                                    onClick={() => setFilters({...filters, view: btn.value})}
+                                    className={`px-4 py-3 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${
+                                        filters.view === btn.value
+                                            ? 'bg-primary-accent text-white'
+                                            : 'bg-primary-border text-primary-text hover:bg-primary-border/80'
+                                    }`}
+                                >
+                                    {btn.label}
+                                </button>
+                            ))}
                         </div>
                     </div>
                 </aside>
             </main>
+
+            <Footer/>
+
         </div>
     );
 }

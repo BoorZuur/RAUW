@@ -21,7 +21,7 @@ export default function Footer() {
                     <h4 className="font-black text-xs uppercase tracking-widest text-secondary-text">Menu</h4>
                     <ul className="space-y-2 text-sm font-medium">
                         <li><a href="/feed" className="hover:text-primary-accent transition-colors">Home</a></li>
-                        <li><a href="/melden" className="hover:text-primary-accent transition-colors">Melding doen</a></li>
+                        <li><a href="/meld" className="hover:text-primary-accent transition-colors">Melding doen</a></li>
                     </ul>
                 </div>
 
