@@ -1,5 +1,5 @@
 import React from 'react';
-import DataCard from '../components/HM_DataCard.jsx';
+// import DataCard from '../components/HM_DataCard.jsx';
 import InformationCard from "../components/InformationCard.jsx";
 import "./Handhaver_styling.css"
 import "../App.css"

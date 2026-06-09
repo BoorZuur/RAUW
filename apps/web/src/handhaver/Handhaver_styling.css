@@ -1,3 +1,6 @@
+/*🌟: In this file there are some components that repeat quite often (such as margin left to prevent the nav from overlapping)
+Can still make this into a single class to prevent repeating things*/
+
 @theme{
     --main-bg: var(--main-bg);
     --header-bg: var(--header-bg);
@@ -508,7 +511,7 @@
 
 .reports-charts-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr); /* Spreads main charts evenly in halves */
+    grid-template-columns: repeat(2, 1fr);
     gap: 24px;
     width: 100%;
 }
@@ -542,4 +545,109 @@
     border: 1px dashed var(--border-color);
     border-radius: 14px;
     margin: 10px 20px 20px 20px;
+}
+
+/*Dienst profiel*/
+.profile-container {
+    margin-left: 260px;
+    padding: 40px;
+    background-color: var(--main-bg);
+    min-height: 100vh;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+
+    align-items: flex-start;
+    text-align: left;
+}
+
+.profile-user-card {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    width: 100%;
+
+    justify-content: flex-start;
+}
+
+.profile-avatar-box {
+    background-color: #2c3e35;
+    color: #ffffff;
+    width: 72px;
+    height: 72px;
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-user-info {
+    display: flex;
+    flex-direction: column;
+
+    align-items: flex-start;
+    text-align: left;
+}
+
+.profile-user-info h2 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-dark);
+    text-align: left;
+}
+
+.profile-email {
+    margin: 2px 0 6px 0;
+    font-size: 15px;
+    color: var(--text-muted);
+    text-align: left;
+}
+
+.profile-role-badge {
+    font-size: 13px;
+    font-weight: 500;
+    color: #8c938d;
+    text-align: left;
+}
+
+.profile-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+    align-items: flex-start;
+}
+
+.section-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-dark);
+    text-align: left;
+    width: 100%;
+}
+
+.profile-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    width: 100%;
+}
+
+.activity-timeline-card {
+    background-color: transparent;
+    width: 100%;
+}
+
+.timeline-empty-state {
+    width: 100%;
+    padding: 48px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 500;
 }
