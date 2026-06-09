@@ -17,6 +17,7 @@ use App\Http\Controllers\ManagerHubController;
 use App\Http\Controllers\OfficerHubController;
 use App\Http\Controllers\IssueAttachmentController;
 use App\Http\Controllers\IssueController;
+use App\Http\Controllers\IssueDuplicateController;
 use App\Http\Controllers\IssueParticipantController;
 use App\Http\Controllers\IssueSimilarCheckController;
 use App\Http\Controllers\IssueOfficerAssignmentController;
@@ -270,6 +271,11 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     // the canonical parent. Not participating returns 422 not_participant.
     Route::post('issues/{issue}/join', [IssueParticipantController::class, 'join'])->name('issues.join');
     Route::delete('issues/{issue}/leave', [IssueParticipantController::class, 'leave'])->name('issues.leave');
+    // Duplicate children list is officer/manager-only and authorized inside
+    // IndexIssueDuplicatesRequest. The target must be a canonical issue (422
+    // issue_not_canonical on duplicate children). Children are paginated
+    // oldest-first with full IssueResource payloads.
+    Route::get('issues/{issue}/duplicates', [IssueDuplicateController::class, 'index'])->name('issues.duplicates.index');
     // Show returns 404 when the issue is not visible to the actor (e.g. hidden
     // and not owned by an active user); officers and managers may view all issues.
     Route::get('issues/{issue}', [IssueController::class, 'show'])->name('issues.show');
