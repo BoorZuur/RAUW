@@ -72,9 +72,15 @@ info:
     | `issue_already_assigned` | 409 | Self-assign when another officer already owns the issue |
     | `officer_resolution_exists` | 409 | Duplicate POST on officer resolution (use PATCH to update) |
     | `issue_not_assignable` | 422 | Self-assign when issue status is `opgelost` or `gesloten` |
-    | `issue_closed` | 422 | Resolution POST/PATCH when issue status is `gesloten` |
+    | `issue_closed` | 422 | Resolution POST/PATCH/attachment DELETE when issue status is `gesloten` |
     | `shift_already_active` | 422 | Start-shift when shift already active |
     | `account_inactive` | 403 | Inactive actor on a non-whitelisted route |
+    | `duplicate_target_not_found` | 404 | Mark-duplicate: child, target, or resolved canonical not visible |
+    | `issue_not_linkable` | 422 | Mark-duplicate: child not linkable (status, assignee, or resolution) |
+    | `issue_has_duplicates` | 422 | Mark-duplicate: child has duplicate children of its own |
+    | `cannot_duplicate_self` | 422 | Mark-duplicate: child and canonical are the same issue |
+    | `issue_not_matchable` | 422 | Mark-duplicate: canonical not `open` or `in_behandeling` |
+    | `issue_is_duplicate_child` | 422 | Mark-duplicate: route child is already a duplicate |
 
     Health check **GET** `/up` (Laravel bootstrap) is intentionally omitted
     from this spec; it is not part of the JSON API contract under `/api`.
@@ -1631,7 +1637,8 @@ paths:
         and hub. Available to any authenticated active actor (users, officers,
         and managers). Results are city-wide with no hub scoping. Soft-deleted
         officers return 404 from route model binding. Inactive actors receive
-        403 from global middleware.
+        403 from global middleware. **Officer shared shift:** **Tier B** browse
+        read — officers without an active shared shift may still call this endpoint.
       security:
         - bearerAuth: [ ]
       responses:
@@ -2090,8 +2097,9 @@ paths:
         per_page of 20 and maximum of 100. Results are ordered newest first.
         Each issue embeds `officer_resolution` (with officer and attachments)
         when a field report exists. `status_history` is omitted on list responses;
-        use GET `/api/issues/{issueId}` for full status history (officers and
-        managers only, newest first, without coordinates).
+        use GET `/api/issues/{issueId}` for an unpaginated `status_history` embed
+        (officers and managers only, newest first, without coordinates) or
+        GET `/api/issues/{issueId}/status-history` for paginated history.
 
         **Officer shared shift:** Issue list is a **Tier B** browse read — officers
         without an active shared shift may still call this endpoint. Tier C
@@ -3271,26 +3279,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/IssueStatusHistory'
-                  links:
-                    type: object
-                    additionalProperties: true
-                  meta:
-                    type: object
-                    properties:
-                      current_page:
-                        type: integer
-                      per_page:
-                        type: integer
-                      total:
-                        type: integer
-                      last_page:
-                        type: integer
+                $ref: '#/components/schemas/IssueStatusHistoryPaginated'
               example:
                 data:
                   - id: 12
@@ -6002,10 +5991,12 @@ components:
           type: array
           nullable: true
           description: >-
-            Status change audit trail. Included only for active officers and
-            managers on GET issue show (newest first). Omitted on GET issue list
-            and never returned to regular users. Rows do not include officer
-            coordinates.
+            Unpaginated status change audit trail embed. Included only for active
+            officers and managers on GET issue show (newest first). Omitted on
+            GET issue list and never returned to regular users. Rows do not
+            include officer coordinates. For paginated history, use GET
+            `/api/issues/{issueId}/status-history` (duplicate child route ids
+            resolve to the canonical parent).
           items:
             $ref: '#/components/schemas/IssueStatusHistory'
         officer_resolution:
@@ -6155,6 +6146,32 @@ components:
           nullable: true
           maxLength: 2000
           description: Optional audit note stored on the status history row.
+
+    IssueStatusHistoryPaginated:
+      type: object
+      description: >-
+        Laravel paginator envelope for GET `/api/issues/{issueId}/status-history`.
+        Rows are newest-first `IssueStatusHistory` entries. Duplicate child route
+        ids resolve to the canonical parent before querying.
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/IssueStatusHistory'
+        links:
+          type: object
+          additionalProperties: true
+        meta:
+          type: object
+          properties:
+            current_page:
+              type: integer
+            per_page:
+              type: integer
+            total:
+              type: integer
+            last_page:
+              type: integer
 
     IssueStatusHistory:
       type: object
