@@ -6,6 +6,7 @@ use App\Enums\ActorType;
 use App\Enums\Visibility;
 use App\Models\Issue;
 use App\Models\IssueComment;
+use App\Models\Manager;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -30,5 +31,15 @@ class IssueCommentFactory extends Factory
             'is_flagged' => false,
             'visibility' => Visibility::Visible,
         ];
+    }
+
+    public function forManager(): static
+    {
+        return $this->state(fn () => [
+            'author_type' => ActorType::Manager,
+            'manager_id' => Manager::factory(),
+            'user_id' => null,
+            'officer_id' => null,
+        ]);
     }
 }
