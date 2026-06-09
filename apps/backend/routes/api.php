@@ -17,6 +17,7 @@ use App\Http\Controllers\ManagerHubController;
 use App\Http\Controllers\OfficerHubController;
 use App\Http\Controllers\IssueAttachmentController;
 use App\Http\Controllers\IssueController;
+use App\Http\Controllers\IssueSimilarCheckController;
 use App\Http\Controllers\IssueOfficerAssignmentController;
 use App\Http\Controllers\IssueOfficerStatusController;
 use App\Http\Controllers\OfficerIssueResolutionAttachmentController;
@@ -259,6 +260,7 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     // foreign-key cascade to remove the issue's attachments.
     Route::get('issues', [IssueController::class, 'index'])->name('issues.index');
     Route::post('issues', [IssueController::class, 'store'])->name('issues.store');
+    Route::post('issues/similar-check', [IssueSimilarCheckController::class, 'store'])->name('issues.similar-check');
     // Show returns 404 when the issue is not visible to the actor (e.g. hidden
     // and not owned by an active user); officers and managers may view all issues.
     Route::get('issues/{issue}', [IssueController::class, 'show'])->name('issues.show');
