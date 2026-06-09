@@ -20,6 +20,7 @@ use App\Http\Controllers\IssueController;
 use App\Http\Controllers\IssueDuplicateController;
 use App\Http\Controllers\IssueParticipantController;
 use App\Http\Controllers\IssueSimilarCheckController;
+use App\Http\Controllers\IssueStatusHistoryController;
 use App\Http\Controllers\IssueOfficerAssignmentController;
 use App\Http\Controllers\IssueOfficerStatusController;
 use App\Http\Controllers\OfficerIssueResolutionAttachmentController;
@@ -314,6 +315,11 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     // to the canonical parent. Participants are paginated oldest-first by
     // joined_at with anonymous alias redaction in IssueParticipantResource.
     Route::get('issues/{issue}/participants', [IssueParticipantController::class, 'index'])->name('issues.participants.index');
+    // Status history list is officer/manager-only and authorized inside
+    // IndexIssueStatusHistoryRequest (Tier B). Duplicate child route ids resolve
+    // to the canonical parent. Rows are paginated newest-first by changed_at with
+    // IssueStatusHistoryResource payloads (changedByOfficer eager loaded).
+    Route::get('issues/{issue}/status-history', [IssueStatusHistoryController::class, 'index'])->name('issues.status-history.index');
     // Show returns 404 when the issue is not visible to the actor (e.g. hidden
     // and not owned by an active user, or outside assigned districts for
     // officers/ordinary managers). Main managers may view any issue city-wide.

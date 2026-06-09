@@ -37,6 +37,7 @@ class EnsureOfficerHubActive
         'issues.show',
         'issues.duplicates.index',
         'issues.participants.index',
+        'issues.status-history.index',
         'issues.officer-resolution.show',
         'issues.officer-resolution.attachments.download',
         'issues.attachments.download',

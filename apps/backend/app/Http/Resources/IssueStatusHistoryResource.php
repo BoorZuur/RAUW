@@ -2,23 +2,22 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\IssueStatus;
 use App\Models\IssueStatusHistory;
 use App\Models\Officer;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Serializes an issue status history row for officer and manager issue payloads.
+ * Serializes one issue status history row for officer and manager endpoints.
+ *
+ * Does not include officer GPS coordinates. The compact `officer` summary is
+ * included only when `changedByOfficer` has been eager loaded.
  *
  * @mixin IssueStatusHistory
  */
 class IssueStatusHistoryResource extends JsonResource
 {
-    /**
-     * @var string|null
-     */
-    public static $wrap = null;
-
     /**
      * @return array<string, mixed>
      */
@@ -31,17 +30,24 @@ class IssueStatusHistoryResource extends JsonResource
             'id' => $history->id,
             'issue_id' => $history->issue_id,
             'changed_by_officer_id' => $history->changed_by_officer_id,
-            'old_status' => $history->old_status,
-            'new_status' => $history->new_status,
+            'old_status' => $this->statusValue($history->old_status),
+            'new_status' => $this->statusValue($history->new_status),
             'note' => $history->note,
             'changed_at' => $history->changed_at,
             'officer' => $this->compactOfficer($history),
         ];
     }
 
+    protected function statusValue(IssueStatus|string|null $status): ?string
+    {
+        if ($status instanceof IssueStatus) {
+            return $status->value;
+        }
+
+        return $status;
+    }
+
     /**
-     * Return a compact officer summary only when the relation is loaded.
-     *
      * @return array<string, mixed>|null
      */
     protected function compactOfficer(IssueStatusHistory $history): ?array
