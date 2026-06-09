@@ -49,7 +49,7 @@ Officers share one shift clock across all devices via `officers.hub_active_until
 
 **Hub reassignment / manager end-shift:** `PATCH /api/officers/{officer}/hub` and `PATCH /api/officers/{officer}/end-shift` clear `hub_active_until` without revoking tokens. **Officer disable** revokes all tokens, closes all sessions, and ends the shift.
 
-**Middleware:** `officer.hub-active` gates Tier C routes by reading `hub_active_until` on the officer row. Whitelisted without an active shift: profile/auth (`GET/PATCH /api/auth/me`, logout, `POST /api/auth/start-shift`, district self-service), reference reads (hubs, districts, departments, categories), and `GET /api/officer-sessions` (authorization still requires an active manager).
+**Middleware:** `officer.hub-active` gates Tier C workflow routes by reading `hub_active_until` on the officer row. **Tier B** (browse without an active shift): `GET /api/issues` (embeds `officer_resolution` when present; omits `status_history`), `GET /api/issues/{issue}` (same `officer_resolution` plus `status_history` for officers/managers), `GET /api/issues/{issue}/officer-resolution`, and authenticated attachment downloads (`GET .../attachments/.../download`, `GET .../officer-resolution/attachments/.../download`). **Tier C** (hub-active required): `POST .../assign-self`, `POST .../unassign-self`, `PATCH .../status`, and officer-resolution `POST`/`PATCH`. Also whitelisted without a shift: profile/auth (`GET/PATCH /api/auth/me`, logout, `POST /api/auth/start-shift`, district self-service), reference reads (hubs, districts, departments, categories), and `GET /api/officer-sessions` (authorization still requires an active manager).
 
 **Error codes** (`message` + `code`):
 
@@ -155,7 +155,57 @@ Categories are readable by any authenticated actor (`GET /api/categories`, `GET 
 
 Issues are listed and shown to any authenticated actor. Create, update, and delete require the authenticated active user who owns the issue (`issues.user_id`). Issue departments are derived server-side from the selected category and returned as a read-only `departments` array; clients must not send department values in create or update bodies. Issue `priority` is a nullable unsigned integer on the same scale as main category `priority` (lower number = higher urgency). The server copies the main category's `priority` on create and whenever `category_id` changes; subcategory issues use the parent category's `priority`. Clients must not POST or PATCH `priority`.
 
-Issue attachments may be uploaded or deleted only by the issue owner (active user). Downloads are allowed for the issue owner, any active officer, and any active manager; other authenticated users receive `403`. Files are served only through the authenticated download endpoint, not via public URLs.
+Issue attachments may be uploaded or deleted only by the issue owner (active user). Downloads use visibility-only authorization (`IssueVisibilityQuery::canViewIssue`): any actor who may view the issue may download. Users probing hidden issues they do not own receive `404`; other unauthorized actors receive `403`. Files are served only through the authenticated download endpoint, not via public URLs.
+
+### Officer issue workflows
+
+Officers may **browse** issues and resolution attachments without an active shared shift (**Tier B**). Assignment, status changes, and field-report writes are **Tier C**: active officers need `hub_active_until` in the future or they receive **403** `hub_active_required`. Users and managers are not subject to hub-active gating but cannot call officer-only write endpoints (they receive **403** `This action is unauthorized.`).
+
+Officer write paths use a **validate-after-lock** pattern: cheap visibility and district checks run before the transaction; assignee, transition, assignability, and duplicate-resolution checks run on the row after `lockForUpdate()`. Officer-resolution attachment uploads (POST/PATCH) enforce the cumulative cap (max **3**) and perform disk I/O inside the same locked transaction so concurrent requests cannot exceed the limit.
+
+**District scoping:** An officer may act only on issues whose `district_id` matches one of their `district_officer` pivot assignments. Otherwise **403** `officer_not_in_district`. The demo officer is seeded in the **Cool** wijk (`district_id: 1`).
+
+**Self-assign / unassign**
+
+| Method | Path | Who | Notes |
+|--------|------|-----|-------|
+| `POST` | `/api/issues/{issue}/assign-self` | Active officer | Idempotent when already assigned to self. **409** `issue_already_assigned` when another officer owns it (no takeover). **422** `issue_not_assignable` when status is `opgelost` or `gesloten`. Open issues also transition to `in_behandeling` with one status history row. |
+| `POST` | `/api/issues/{issue}/unassign-self` | Current assignee only | Clears `assigned_officer_id`; status unchanged. **403** `not_assigned_officer` for non-assignees. |
+
+`assigned_officer_id` is read-only on user-owned create/update; use assign-self/unassign-self instead.
+
+**Status PATCH**
+
+| Method | Path | Who | Notes |
+|--------|------|-----|-------|
+| `PATCH` | `/api/issues/{issue}/status` | Assigned active officer | Body: `{ "status": "...", "note": "..." }`. Directed transitions only: `open` → `in_behandeling`; `in_behandeling` → `opgelost`; `opgelost` → `gesloten`. Same status or invalid transitions → **422**. Sets `resolved_at` on first transition to `opgelost`. Appends one status history row (no GPS coordinates). |
+
+**Officer resolution (field report)**
+
+Distinct from user satisfaction feedback in `issue_resolutions`. At most **one** officer report per issue (`officer_issue_resolutions.issue_id` unique).
+
+| Method | Path | Who | Notes |
+|--------|------|-----|-------|
+| `GET` | `/api/issues/{issue}/officer-resolution` | Any actor who can view the issue | **404** when no report exists. |
+| `POST` | `/api/issues/{issue}/officer-resolution` | Current assignee (multipart) | **409** `officer_resolution_exists` on duplicate; use PATCH to update. **422** `issue_closed` when status is `gesloten`; `opgelost` remains writable. Attachment cap enforcement and upload disk I/O run inside the locked transaction. |
+| `PATCH` | `/api/issues/{issue}/officer-resolution` | Current assignee (multipart) | Update title/content; optional `remove_attachment_ids` and new `files`. `officer_id` is overwritten with the editing officer (last editor). **422** `issue_closed` when status is `gesloten`; `opgelost` remains writable. **422** on `remove_attachment_ids` when ids do not belong to the resolution. Attachment cap enforcement and upload disk I/O run inside the locked transaction. |
+| `GET` | `/api/issues/{issue}/officer-resolution/attachments/{attachment}/download` | Any actor who can view the issue (Tier B) | Visibility-only auth (`IssueVisibilityQuery::canViewIssue`, Q8 / D15-A) in `authorize()`; users probing hidden issues they do not own receive **404**; other unauthorized actors receive **403**. Attachment must belong to the route resolution; missing backing file → **404**. Streams from non-public local storage. |
+
+Attachment limits: up to **3** images (`jpg`, `jpeg`, `png`, `gif`, `webp`) per resolution, **5 MB** each. PATCH validates `existing − removals + new_files ≤ 3` under row lock (including upload disk I/O). Uploads are content-validated (Symfony MIME sniff for images; issue user attachments also accept PDF via `%PDF-` magic bytes). Invalid `remove_attachment_ids` (not owned by the resolution) return **422** with a field error on `remove_attachment_ids`.
+
+**Issue embeds:** `GET /api/issues` includes `officer_resolution` (with officer and attachments when present) and omits `status_history`. `GET /api/issues/{issue}` includes the same `officer_resolution` embed plus `status_history` for officers and managers only (newest first, no lat/lon); regular users never receive `status_history`. Prefer the dedicated GET path for resolution-only reads.
+
+**Structured error codes (officer workflows)**
+
+| Code | HTTP | When |
+|------|------|------|
+| `hub_active_required` | 403 | Officer on Tier C without active shared shift |
+| `officer_not_in_district` | 403 | Officer workflow on issue outside assigned districts |
+| `not_assigned_officer` | 403 | Status/unassign/resolution write without assignee ownership |
+| `issue_already_assigned` | 409 | Self-assign when another officer already owns the issue |
+| `officer_resolution_exists` | 409 | Duplicate POST on officer resolution |
+| `issue_not_assignable` | 422 | Self-assign on `opgelost` or `gesloten` issues |
+| `issue_closed` | 422 | Resolution POST/PATCH when issue status is `gesloten` |
 
 Common auth status codes are:
 
@@ -172,7 +222,7 @@ After `php artisan migrate:fresh --seed` and starting the server on port 8001:
 1. **Hub login starts shift** — Login as `demo.officer@example.com` at Cluster Centrum coords. Expect `hub_active: true`, `hub_active_until` ~10h ahead. `GET /api/issues` → 200.
 2. **Re-login at hub does not extend** — Note `hub_active_until`. Hub login again immediately. Expect same `hub_active_until` (not extended).
 3. **Outside login preserves shift** — With active shift, login from distant coords. Expect `hub_active: true` (shared shift). `GET /api/issues` → 200. `GET /api/auth/me` → `hub_active: true`.
-4. **Outside login without shift** — Officer with expired/null shift, remote login. Expect `hub_active: false`. `GET /api/issues` → 403 `hub_active_required`.
+4. **Outside login without shift** — Officer with expired/null shift, remote login. Expect `hub_active: false`. `GET /api/issues` → 200 (Tier B browse). `POST /api/issues/{id}/assign-self` → 403 `hub_active_required`.
 5. **Registration does not start shift** — `POST /api/auth/register/officer` at hub coords. Expect `hub_active: false`, `hub_active_until: null`.
 6. **Start shift route** — Authenticated officer at hub, no active shift: `POST /api/auth/start-shift` with coords → 200. Repeat → 422 `shift_already_active`. Remote coords → 403 `outside_hub_radius`. Officer with no `hub_id` → 403 `hub_not_assigned`.
 7. **Logout preserves shift** — Device A starts shift. Device B logs in (any coords). Logout device B. Device A `GET /api/issues` still 200 until TTL.
@@ -184,6 +234,26 @@ After `php artisan migrate:fresh --seed` and starting the server on port 8001:
 13. **Manager session list** — `GET /api/officer-sessions` still works; audit fields populated; response does **not** include `personal_access_token_id`.
 14. **Inactive actor structured 403** — Disable an officer but retain a stale token. `GET /api/issues` → 403 with `code: account_inactive`. Whitelisted `GET /api/auth/me` still works.
 15. **Profile PATCH hub fields rejected** — `PATCH /api/auth/me` with `hub_id` or `hub_active_until` → 422 (prohibited).
+
+### Manual Officer Issue Workflow Checklist
+
+After hub login as `demo.officer@example.com` (Cool wijk / `district_id: 1`):
+
+1. **Assign-self** — `POST /api/issues/{unassigned_open_issue}/assign-self` → 200, `assigned_officer_id` set; open issues also become `in_behandeling`.
+2. **District block** — Officer without issue district → 403 `officer_not_in_district`.
+3. **Conflict** — Second officer assigns same issue → 409 `issue_already_assigned`.
+3b. **Terminal assign block** — `POST .../assign-self` on `opgelost`/`gesloten` issue → 422 `issue_not_assignable`.
+4. **Unassign** — Current assignee `POST .../unassign-self` → 200, assignee cleared, status unchanged.
+5. **Status** — `PATCH /api/issues/{id}/status` with `{ "status": "opgelost", "note": "Fixed" }` → 200, history row, `resolved_at` set.
+6. **Invalid transition** — Direct `open` → `opgelost` → 422. Direct `in_behandeling` → `gesloten` → 422.
+7. **Not assigned** — Another officer PATCH status → 403 `not_assigned_officer`.
+8. **List vs show embeds** — `GET /api/issues` includes `officer_resolution` when present and omits `status_history`. Officer/manager `GET /api/issues/{id}` adds `status_history` (newest first, no lat/lon); user GET omits `status_history`.
+9. **Resolution create** — Multipart POST with title, content, images → 201; second POST → 409.
+10. **Resolution update** — PATCH with new title/content, remove one attachment, add one → 200, ≤3 attachments total.
+10b. **Resolution blocked on gesloten** — PATCH (or POST) on issue with status `gesloten` → 422 `issue_closed`; `opgelost` issues remain writable.
+11. **Resolution read** — User, officer, manager who can view issue → GET `/officer-resolution` 200; hidden issue → 404.
+12. **Download** — Same visibility as show.
+13. **Browse without shift** — Officer with expired shift → `GET /api/issues` and `GET /api/issues/{id}` still 200; Tier C writes → 403 `hub_active_required`.
 
 For manual API testing, import the Postman collection and local environment from [`../../docs/postman`](../../docs/postman/README.md):
 

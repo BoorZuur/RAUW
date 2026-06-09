@@ -4,6 +4,7 @@ namespace App\Http\Requests\Issues;
 
 use App\Models\Issue;
 use App\Models\User;
+use App\Support\UploadedFileValidator;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -80,6 +81,20 @@ class StoreIssueAttachmentRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
+            UploadedFileValidator::validateUploadedFiles(
+                $validator,
+                $this->file('files'),
+                UploadedFileValidator::assertAllowedIssueAttachment(...),
+            );
+
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
             $issue = $this->route('issue');
 
             if (! $issue instanceof Issue) {

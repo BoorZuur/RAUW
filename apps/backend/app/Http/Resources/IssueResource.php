@@ -6,7 +6,11 @@ use App\Models\Category;
 use App\Models\Department;
 use App\Models\District;
 use App\Models\Issue;
+use App\Models\Manager;
+use App\Models\Officer;
+use App\Models\OfficerIssueResolution;
 use App\Models\User;
+use App\Support\IssueVisibilityQuery;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -48,8 +52,21 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *
  * Assignee
  * --------
- * The nullable integer `assigned_officer_id` is read-only in API responses.
- * Clients cannot set or change it through user-owned create or update requests.
+ * The nullable integer `assigned_officer_id` is read-only in user-facing create
+ * and update requests. Active officers may set or clear it through
+ * POST /issues/{issue}/assign-self and POST /issues/{issue}/unassign-self.
+ *
+ * Status history
+ * --------------
+ * The `status_history` array is included only for active officers and managers
+ * when the controller has eager-loaded the relation. Regular users never receive
+ * status history in issue payloads.
+ *
+ * Officer resolution
+ * ------------------
+ * The optional `officer_resolution` object is included when the controller has
+ * eager-loaded the relation and the actor may view the issue. GET
+ * `/issues/{issue}/officer-resolution` is the primary read path.
  *
  * @mixin Issue
  */
@@ -71,7 +88,7 @@ class IssueResource extends JsonResource
         /** @var Issue $issue */
         $issue = $this->resource;
 
-        return [
+        return array_merge([
             'id' => $issue->id,
             'title' => $issue->title,
             'content' => $issue->content,
@@ -96,7 +113,7 @@ class IssueResource extends JsonResource
             'created_at' => $issue->created_at,
             'updated_at' => $issue->updated_at,
             'resolved_at' => $issue->resolved_at,
-        ];
+        ], $this->maybeStatusHistory($issue, $request), $this->maybeOfficerResolution($issue, $request));
     }
 
     /**
@@ -195,6 +212,54 @@ class IssueResource extends JsonResource
         }
 
         return IssueAttachmentResource::collection($issue->getRelation('attachments'))->resolve();
+    }
+
+    /**
+     * Include status history only for officers and managers when eager loaded.
+     *
+     * @return array<string, mixed>
+     */
+    protected function maybeStatusHistory(Issue $issue, Request $request): array
+    {
+        $actor = $request->user();
+
+        if (! ($actor instanceof Officer || $actor instanceof Manager)) {
+            return [];
+        }
+
+        if (! $issue->relationLoaded('statusHistory')) {
+            return [];
+        }
+
+        return [
+            'status_history' => IssueStatusHistoryResource::collection($issue->getRelation('statusHistory'))->resolve(),
+        ];
+    }
+
+    /**
+     * Include officer resolution when eager loaded and the actor may view the issue.
+     *
+     * @return array<string, mixed>
+     */
+    protected function maybeOfficerResolution(Issue $issue, Request $request): array
+    {
+        if (! IssueVisibilityQuery::canViewIssue($issue, $request->user())) {
+            return [];
+        }
+
+        if (! $issue->relationLoaded('officerResolution')) {
+            return [];
+        }
+
+        $resolution = $issue->getRelation('officerResolution');
+
+        if (! $resolution instanceof OfficerIssueResolution) {
+            return ['officer_resolution' => null];
+        }
+
+        return [
+            'officer_resolution' => (new OfficerIssueResolutionResource($resolution))->resolve(),
+        ];
     }
 
     /**

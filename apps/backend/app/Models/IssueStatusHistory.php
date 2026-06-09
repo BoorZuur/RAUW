@@ -13,8 +13,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'changed_by_officer_id',
     'old_status',
     'new_status',
-    'officer_lat',
-    'officer_lng',
     'note',
     'changed_at',
 ])]
@@ -34,8 +32,6 @@ class IssueStatusHistory extends Model
         return [
             'old_status' => IssueStatus::class,
             'new_status' => IssueStatus::class,
-            'officer_lat' => 'decimal:8',
-            'officer_lng' => 'decimal:8',
             'changed_at' => 'datetime',
         ];
     }
