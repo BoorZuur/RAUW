@@ -256,6 +256,7 @@ Table issue_participants {
   joined_via       varchar(10)  [not null, default: 'manual', note: 'creator (normal issue create) | manual (POST join) | duplicate (create with duplicate_of_id)']
   via_issue_id     int          [ref: > issues.id]
   joined_at        datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  is_anonymous     tinyint(1)   [not null, default: 0, note: 'When true, participant list redacts user_id/username; display_name uses issue alias or Deelnemer#NNNNNN']
 
   indexes {
     (issue_id, user_id) [unique]

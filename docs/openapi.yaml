@@ -28,10 +28,14 @@ info:
     **Officer shared shift:** Officers share one shift clock via
     `officers.hub_active_until`. **Tier C** workflow writes require `is_active`
     and a future `hub_active_until` — not the bearer token's Sanctum `hub-active`
-    ability (audit-only). **Tier B** browse reads work without an active shift:
+    ability (audit-only).     **Tier B** browse reads work without an active shift:
     `GET /api/issues`, `GET /api/issues/{issueId}` (embeds `officer_resolution`
-    when present), `GET /api/issues/{issueId}/officer-resolution`, and
-    authenticated issue/resolution attachment downloads. Officers must send
+    when present), `GET /api/issues/{issueId}/duplicates`,
+    `GET /api/issues/{issueId}/participants`,
+    `GET /api/issues/{issueId}/officer-resolution`, and authenticated
+    issue/resolution attachment downloads. Issue list/show/duplicates/participants
+    are district-scoped for officers and ordinary managers; main managers are
+    city-wide. Officers must send
     `latitude` and `longitude` on `POST /api/auth/login`; hub-eligible login or
     `POST /api/auth/start-shift` starts the shift for **10 hours**
     (`OFFICER_HUB_ACTIVE_TTL_HOURS`, default 10). Outside-radius login does not
@@ -775,6 +779,33 @@ paths:
         required: true
         schema:
           type: integer
+    get:
+      tags: [ Managers ]
+      summary: Show a main manager profile
+      description: >-
+        Return a single main manager profile with eager-loaded departments,
+        districts, and hub. Active officers and active managers only; users
+        receive **403** (`This action is unauthorized.`). Route binding limits
+        the target to rows with `is_main_manager=true`; ordinary managers and
+        unknown ids return **404**. Hub scoping applies: the actor and target
+        `hub_id` must both be non-null and equal (no main-manager city-wide
+        bypass); hub mismatch returns **404**. Inactive actors receive **403**
+        from global middleware.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Main manager profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manager'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
     patch:
       tags: [ Managers ]
       summary: Update a main manager
@@ -1063,6 +1094,33 @@ paths:
         required: true
         schema:
           type: integer
+    get:
+      tags: [ Managers ]
+      summary: Show an ordinary manager profile
+      description: >-
+        Return a single ordinary manager profile with eager-loaded departments,
+        districts, and hub. Active officers and active managers only; users
+        receive **403** (`This action is unauthorized.`). Route binding limits
+        the target to rows with `is_main_manager=false`; main managers and
+        unknown ids return **404**. Hub scoping applies: the actor and target
+        `hub_id` must both be non-null and equal (no main-manager city-wide
+        bypass); hub mismatch returns **404**. Inactive actors receive **403**
+        from global middleware.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Ordinary manager profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manager'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
     patch:
       tags: [ Managers ]
       summary: Update an ordinary manager
@@ -1460,15 +1518,18 @@ paths:
       summary: List officers
       description: >-
         List officers for an authenticated active officer or manager. Results are
-        ordered by username ascending and include each officer's departments and
-        districts as compact arrays. Soft-deleted officers are always excluded.
-        When `is_active` is omitted, only active officers are returned. Use
-        `is_active=true` or `is_active=1` to request active officers explicitly,
-        or `is_active=false` or `is_active=0` to request inactive officers only.
-        Optional `district_id` and `department_id` filters narrow results through
-        the officer's district_officer and department_officer pivots. Users and
-        inactive actors receive 403. Pagination is backend-driven using page and
-        per_page, with a default per_page of 20 and maximum of 100.
+        hub-scoped for officers and ordinary managers (same `hub_id` only; null
+        `hub_id` yields no rows); main managers see all officers city-wide.
+        Results are ordered by username ascending and include each officer's
+        departments and districts as compact arrays. Soft-deleted officers are
+        always excluded. When `is_active` is omitted, only active officers are
+        returned. Use `is_active=true` or `is_active=1` to request active
+        officers explicitly, or `is_active=false` or `is_active=0` to request
+        inactive officers only. Optional `district_id` and `department_id`
+        filters narrow the hub-scoped result set through the officer's
+        district_officer and department_officer pivots. Users and inactive actors
+        receive 403. Pagination is backend-driven using page and per_page, with
+        a default per_page of 20 and maximum of 100.
       security:
         - bearerAuth: [ ]
       parameters:
@@ -1552,6 +1613,38 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
 
+  /api/officers/{officerId}:
+    parameters:
+      - name: officerId
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags: [ Officers ]
+      summary: Show an officer profile
+      description: >-
+        Return a single officer profile with eager-loaded departments, districts,
+        and hub. Available to any authenticated active actor (users, officers,
+        and managers). Results are city-wide with no hub scoping. Soft-deleted
+        officers return 404 from route model binding. Inactive actors receive
+        403 from global middleware.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Officer profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Officer'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InactiveAccount'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /api/officers/{officerId}/disable:
     parameters:
       - name: officerId
@@ -1566,8 +1659,11 @@ paths:
         Deactivate an officer as an authenticated active manager by setting
         is_active to false while preserving the row and associations. This does
         not soft-delete the officer. Only an authenticated active manager may
-        call this endpoint. Users, officers, inactive managers, and
-        unauthenticated requests receive 403. Soft-deleted officers return 404.
+        call this endpoint. Ordinary managers may administer only officers in
+        the same hub; main managers may administer any officer city-wide. Hub
+        mismatch returns 404 (not 403) to avoid leaking officer existence.
+        Users, officers, inactive managers, and unauthenticated requests receive
+        403. Soft-deleted officers return 404.
       security:
         - bearerAuth: [ ]
       responses:
@@ -1597,9 +1693,11 @@ paths:
       description: >-
         Reactivate an officer as an authenticated active manager by setting
         is_active to true. This does not restore a soft-deleted officer. Only an
-        authenticated active manager may call this endpoint. Users, officers,
-        inactive managers, and unauthenticated requests receive 403.
-        Re-enabling an already active officer is idempotent and returns 200.
+        authenticated active manager may call this endpoint. Ordinary managers
+        may administer only officers in the same hub; main managers may
+        administer any officer city-wide. Hub mismatch returns 404 (not 403).
+        Users, officers, inactive managers, and unauthenticated requests receive
+        403. Re-enabling an already active officer is idempotent and returns 200.
         Soft-deleted officers return 404.
       security:
         - bearerAuth: [ ]
@@ -1632,7 +1730,9 @@ paths:
         Does **not** revoke Sanctum tokens; officers retain authentication but
         Tier C workflow routes return **403** `hub_active_required` until a new
         shift is started. Only an authenticated active manager may call this
-        endpoint. Empty request body.
+        endpoint. Ordinary managers may administer only officers in the same
+        hub; main managers may administer any officer city-wide. Hub mismatch
+        returns 404 (not 403). Empty request body.
       security:
         - bearerAuth: [ ]
       responses:
@@ -1707,11 +1807,13 @@ paths:
         Manager-admin district assignment endpoint. Replaces the target officer's
         district assignments with the supplied district_ids array and returns that
         officer's refreshed profile. Only an authenticated active manager may
-        call this endpoint. Users, officers, inactive managers, and unauthenticated
-        requests cannot update officer districts. When the target officer has a
-        `hub_id`, every district ID must belong to that hub; cross-hub districts
-        return **422**. The endpoint updates only the district_officer pivot and
-        never modifies issues.district_id.
+        call this endpoint. Ordinary managers may administer only officers in the
+        same hub; main managers may administer any officer city-wide. Hub mismatch
+        returns 404 (not 403). Users, officers, inactive managers, and
+        unauthenticated requests cannot update officer districts. When the target
+        officer has a `hub_id`, every district ID must belong to that hub;
+        cross-hub districts return **422**. The endpoint updates only the
+        district_officer pivot and never modifies issues.district_id.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -1951,9 +2053,12 @@ paths:
         List issues for any authenticated active actor. Results are visibility-scoped
         by actor type before optional filters: active users receive issues with
         `visibility = visible` or issues they own (`issues.user_id` match), including
-        their own hidden issues; other users' hidden issues are excluded. Active
-        officers and active managers receive all issues, including hidden issues from
-        any user.         Filters are optional and composable (AND with visibility): district_id,
+        their own hidden issues, or canonical issues they participate on (content
+        redaction is applied at the resource layer); other users' hidden issues are
+        excluded. Active officers and ordinary managers receive issues in their
+        assigned districts only, including hidden issues in those districts. Main
+        managers (`is_main_manager = true`) receive all issues city-wide. Filters
+        are optional and composable (AND with visibility): district_id,
         department, category_id, status, assigned_officer_id, unassigned, mine, and visibility
         may be combined in a single request to narrow the result set. Query param status
         accepts any IssueStatus enum value (`open`, `in_behandeling`, `opgelost`, `gesloten`)
@@ -2195,11 +2300,13 @@ paths:
         with `visibility = visible` or issues they own (`issues.user_id` match),
         including their own hidden issues, or canonical issues they participate on
         (title/content/location/author/attachments redacted at the resource layer).
-        Active officers and active managers may view any issue, including hidden
-        issues owned by other users. Inactive actors receive 403 from global
+        Active officers and ordinary managers may view issues in their assigned
+        districts only, including hidden issues in those districts. Main managers
+        may view any issue city-wide. Inactive actors receive 403 from global
         middleware. When the issue exists but is not visible to the caller (for
-        example a hidden issue owned by another user), the backend returns 404
-        rather than 403 to avoid leaking existence.
+        example a hidden issue owned by another user, or an issue outside the
+        actor's district scope), the backend returns 404 rather than 403 to avoid
+        leaking existence.
         `officer_resolution` is embedded with officer and attachments when a
         report exists. Active officers and managers also receive `status_history`
         (newest first, without coordinates); regular users never receive
@@ -2400,11 +2507,28 @@ paths:
         receive **403** (`This action is unauthorized.`). The route id must be a
         canonical issue; duplicate child ids return **422**
         `cannot_join_duplicate_child`. The issue must be visible to the actor;
-        otherwise **404**. First join returns **201** with the canonical issue
-        payload; repeat joins are idempotent and return **200** without creating
-        a second participant row or incrementing `participant_count`.
+        otherwise **404**. Optional JSON body field `is_anonymous` (boolean) marks
+        the participation row anonymous; identity is redacted in participant list
+        responses (`GET /api/issues/{issueId}/participants`). First join returns
+        **201** with the canonical issue payload; repeat joins are idempotent and
+        return **200** without creating a second participant row or incrementing
+        `participant_count`.
       security:
         - bearerAuth: [ ]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                is_anonymous:
+                  type: boolean
+                  description: >-
+                    When true, the participation row is marked anonymous and
+                    user identity is redacted in participant list responses.
+            example:
+              is_anonymous: true
       responses:
         '200':
           description: Already participating (idempotent join)
@@ -2485,10 +2609,14 @@ paths:
         Paginated list of duplicate child issues for a canonical parent, ordered
         oldest-first by `created_at` then `id`. Active officers and active
         managers only; users receive **403** (`This action is unauthorized.`).
-        The target must be a canonical issue; duplicate child route ids return
-        **422** `issue_not_canonical`. Issues not visible to the actor return
-        **404**. Each child uses the full `Issue` resource without participant
-        redaction.
+        District-scoped like issue browse: officers and ordinary managers see
+        duplicates only when the canonical is in an assigned district; main
+        managers are city-wide. The target must be a canonical issue; duplicate
+        child route ids return **422** `issue_not_canonical`. Issues not visible
+        to the actor (including outside district scope) return **404**. Each
+        child uses the full `Issue` resource without participant redaction.
+        **Officer shared shift:** This is a **Tier B** browse read — officers
+        without an active shared shift may still call this endpoint.
       security:
         - bearerAuth: [ ]
       parameters:
@@ -2535,6 +2663,94 @@ paths:
               example:
                 message: The target issue is not a canonical issue.
                 code: issue_not_canonical
+
+  /api/issues/{issueId}/participants:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags: [ Issues ]
+      summary: List participants for a canonical issue
+      description: >-
+        Paginated list of participants on a canonical issue, ordered oldest-first
+        by `joined_at` then `id`. Active officers and active managers only; users
+        receive **403** (`This action is unauthorized.`). Duplicate child route
+        ids resolve to the canonical parent. District-scoped like issue browse:
+        officers and ordinary managers see participants only when the canonical
+        is in an assigned district; main managers are city-wide. Issues not
+        visible to the actor (including outside district scope) return **404**.
+        Anonymous participants expose `is_anonymous: true` and a stable
+        `display_name` alias instead of `user_id`/`username`. **Officer shared
+        shift:** This is a **Tier B** browse read — officers without an active
+        shared shift may still call this endpoint.
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Backend-paginated issue participants
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/IssueParticipant'
+                  links:
+                    type: object
+                    additionalProperties: true
+                  meta:
+                    type: object
+                    properties:
+                      current_page:
+                        type: integer
+                      per_page:
+                        type: integer
+                      total:
+                        type: integer
+                      last_page:
+                        type: integer
+              example:
+                data:
+                  - id: 1
+                    joined_via: creator
+                    via_issue_id: null
+                    joined_at: '2026-06-01T10:00:00+00:00'
+                    is_anonymous: false
+                    user:
+                      id: 5
+                      username: demo.user
+                  - id: 2
+                    joined_via: manual
+                    via_issue_id: null
+                    joined_at: '2026-06-02T14:30:00+00:00'
+                    is_anonymous: true
+                    user:
+                      is_anonymous: true
+                      display_name: Deelnemer#000002
+                links:
+                  first: /api/issues/42/participants?page=1
+                  last: /api/issues/42/participants?page=1
+                  prev: null
+                  next: null
+                meta:
+                  current_page: 1
+                  per_page: 20
+                  total: 2
+                  last_page: 1
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /api/issues/{issueId}/attachments:
     parameters:
@@ -5492,6 +5708,62 @@ components:
             Username for non-anonymous authors when the user relation is loaded;
             stable anonymous alias (e.g. Melder#A1B2C3D4) for anonymous issues.
           example: Melder#A1B2C3D4
+
+    IssueParticipant:
+      type: object
+      description: >-
+        Participant row on a canonical issue. Returned by GET
+        `/api/issues/{issueId}/participants` for officers and managers.
+      properties:
+        id:
+          type: integer
+        joined_via:
+          type: string
+          enum: [ creator, manual, duplicate ]
+          description: >-
+            How the user joined: `creator` (normal issue create),
+            `manual` (POST join), or `duplicate` (create with duplicate_of_id).
+        via_issue_id:
+          type: integer
+          nullable: true
+          description: Duplicate child issue id when joined_via is `duplicate`.
+        joined_at:
+          type: string
+          format: date-time
+        is_anonymous:
+          type: boolean
+          description: >-
+            When true, the `user` object exposes only `is_anonymous` and
+            `display_name`; `user_id` and `username` are not returned.
+        user:
+          oneOf:
+            - $ref: '#/components/schemas/IssueParticipantUserIdentified'
+            - $ref: '#/components/schemas/IssueParticipantUserAnonymous'
+
+    IssueParticipantUserIdentified:
+      type: object
+      description: Identified participant user summary.
+      required: [ id ]
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+
+    IssueParticipantUserAnonymous:
+      type: object
+      description: Anonymous participant user summary.
+      required: [ is_anonymous, display_name ]
+      properties:
+        is_anonymous:
+          type: boolean
+          enum: [ true ]
+        display_name:
+          type: string
+          description: >-
+            Stable alias derived from the canonical issue, duplicate child, or
+            participant id (e.g. Melder#A1B2C3D4 or Deelnemer#000042).
+          example: Deelnemer#000042
 
     IssueAttachment:
       type: object
