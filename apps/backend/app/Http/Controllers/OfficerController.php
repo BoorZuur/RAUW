@@ -8,7 +8,9 @@ use App\Http\Requests\Officers\DisableOfficerRequest;
 use App\Http\Requests\Officers\EnableOfficerRequest;
 use App\Http\Requests\Officers\IndexOfficerRequest;
 use App\Http\Resources\OfficerResource;
+use App\Models\Manager;
 use App\Models\Officer;
+use App\Support\ManagerOfficerHubAccess;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class OfficerController extends Controller
@@ -66,13 +68,16 @@ class OfficerController extends Controller
     /**
      * Disable an officer without removing the row.
      *
-     * Authorization is enforced by DisableOfficerRequest, which restricts this
-     * action to an authenticated, active manager. Setting `is_active = false`
-     * preserves the officer record and historical associations without
-     * soft-deleting the row.
+     * Authorization is enforced by DisableOfficerRequest (active manager only;
+     * wrong actor type 403). Hub scoping via ManagerOfficerHubAccess returns
+     * 404 when the ordinary manager cannot administer the target officer.
      */
     public function disable(DisableOfficerRequest $request, Officer $officer): OfficerResource
     {
+        /** @var Manager $manager */
+        $manager = $request->user();
+        ManagerOfficerHubAccess::assertManagerCanManageOfficer($manager, $officer);
+
         $officer->update(['is_active' => false]);
 
         $this->revokeOfficerHubActive->revoke($officer);
@@ -86,13 +91,16 @@ class OfficerController extends Controller
     /**
      * Enable an officer without restoring a soft-deleted row.
      *
-     * Authorization is enforced by EnableOfficerRequest, which restricts this
-     * action to an authenticated, active manager. Setting `is_active = true`
-     * reactivates the officer. Re-enabling an already active officer is
-     * idempotent and returns 200.
+     * Authorization is enforced by EnableOfficerRequest (active manager only;
+     * wrong actor type 403). Hub scoping via ManagerOfficerHubAccess returns
+     * 404 when the ordinary manager cannot administer the target officer.
      */
     public function enable(EnableOfficerRequest $request, Officer $officer): OfficerResource
     {
+        /** @var Manager $manager */
+        $manager = $request->user();
+        ManagerOfficerHubAccess::assertManagerCanManageOfficer($manager, $officer);
+
         $officer->update(['is_active' => true]);
 
         $officer->load(['departments', 'districts', 'hub']);

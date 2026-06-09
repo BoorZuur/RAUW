@@ -10,9 +10,10 @@ class DisableOfficerRequest extends FormRequest
     /**
      * Only an authenticated, active manager may disable an officer.
      *
-     * Users, officers, and inactive managers are all rejected with a 403
-     * response. Any active manager (not just a main manager) may deactivate
-     * officers by setting is_active to false without soft-deleting the row.
+     * Users, officers, and inactive managers are rejected with 403. Hub scoping
+     * (ordinary managers may only administer officers in the same hub; main
+     * managers are city-wide) is enforced in the controller via
+     * ManagerOfficerHubAccess; hub mismatch or null hub returns 404.
      */
     public function authorize(): bool
     {

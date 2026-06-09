@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Actions\Auth\BuildOfficerAuthProfile;
 use App\Enums\ActorType;
 use App\Http\Requests\DistrictAssignments\UpdateOfficerDistrictsRequest;
+use App\Models\Manager;
 use App\Models\Officer;
+use App\Support\ManagerOfficerHubAccess;
 use Illuminate\Http\JsonResponse;
 
 class OfficerDistrictController extends Controller
@@ -19,9 +21,10 @@ class OfficerDistrictController extends Controller
      * Sync a target officer's district assignments on behalf of an active
      * manager and return the officer's refreshed profile payload.
      *
-     * Authorization is enforced by {@see UpdateOfficerDistrictsRequest}, which
-     * restricts this action to an authenticated, active manager; users,
-     * officers, and inactive managers all receive a 403. The officer is
+     * Authorization is enforced by {@see UpdateOfficerDistrictsRequest} (active
+     * manager only; wrong actor type 403). Hub scoping via
+     * ManagerOfficerHubAccess returns 404 when the ordinary manager cannot
+     * administer the target officer. The officer is
      * resolved through route model binding, their `districts()` relation is
      * replaced wholesale with the validated, de-duplicated set, and the
      * response reuses the canonical {@see AuthProfileResource} officer shape.
@@ -31,6 +34,10 @@ class OfficerDistrictController extends Controller
      */
     public function update(UpdateOfficerDistrictsRequest $request, Officer $officer): JsonResponse
     {
+        /** @var Manager $manager */
+        $manager = $request->user();
+        ManagerOfficerHubAccess::assertManagerCanManageOfficer($manager, $officer);
+
         $officer->districts()->sync($request->districtIds());
 
         // Reload the relations the profile resource embeds so the response

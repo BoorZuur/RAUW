@@ -156,23 +156,29 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
 
     // Manager-protected officer disable and enable. Authorization is narrowed
     // inside DisableOfficerRequest and EnableOfficerRequest to an authenticated,
-    // active manager; users, officers, and inactive managers receive a 403. Any
-    // active manager may toggle the target officer's is_active flag without
-    // soft-deleting or restoring the row. Soft-deleted officers return 404.
+    // active manager; users, officers, and inactive managers receive 403. The
+    // controller enforces hub scoping via ManagerOfficerHubAccess: ordinary
+    // managers may only administer officers in the same hub (both hub_id
+    // non-null and equal); hub mismatch or null hub on either side returns 404.
+    // Main managers may toggle any officer city-wide. Soft-deleted officers
+    // return 404 from route model binding.
     Route::patch('officers/{officer}/disable', [OfficerController::class, 'disable'])->name('officers.disable');
     Route::patch('officers/{officer}/enable', [OfficerController::class, 'enable'])->name('officers.enable');
 
     // Manager-protected officer end-shift. Authorization is narrowed inside
-    // EndOfficerShiftRequest to an authenticated, active manager. Clears the
-    // shared shift clock without revoking tokens.
+    // EndOfficerShiftRequest to an authenticated, active manager (403 for wrong
+    // actor type). The controller enforces hub scoping via
+    // ManagerOfficerHubAccess (404 on hub mismatch or null hub; main managers
+    // city-wide). Clears the shared shift clock without revoking tokens.
     Route::patch('officers/{officer}/end-shift', OfficerEndShiftController::class)->name('officers.end-shift');
 
     // Manager-protected officer district assignment. Authorization is narrowed
-    // inside UpdateOfficerDistrictsRequest to an authenticated, active manager;
-    // users, officers, and inactive managers receive a 403. Any active manager
-    // may sync the target officer's districts wholesale from the validated
-    // `district_ids` array. The endpoint only touches the officer-side district
-    // pivot and never reassigns `issues.district_id`.
+    // inside UpdateOfficerDistrictsRequest to an authenticated, active manager
+    // (403 for wrong actor type). The controller enforces hub scoping via
+    // ManagerOfficerHubAccess (404 on hub mismatch or null hub; main managers
+    // city-wide). Syncs the target officer's districts wholesale from the
+    // validated `district_ids` array. The endpoint only touches the officer-side
+    // district pivot and never reassigns `issues.district_id`.
     Route::patch('officers/{officer}/districts', [OfficerDistrictController::class, 'update'])->name('officers.districts.update');
     // Manager-protected officer hub assignment. Authorization is narrowed inside
     // UpdateOfficerHubRequest to an authenticated, active manager. Setting an
