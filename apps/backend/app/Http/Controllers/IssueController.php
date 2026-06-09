@@ -12,6 +12,8 @@ use App\Support\IssueVisibilityQuery;
 use App\Http\Resources\IssueResource;
 use App\Models\Category;
 use App\Models\Issue;
+use App\Models\Manager;
+use App\Models\Officer;
 use App\Models\User;
 use App\Support\IssuePriorityResolver;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -27,9 +29,21 @@ class IssueController extends Controller
     /**
      * The relations eager loaded for every issue payload to avoid N+1 queries.
      *
+     * Includes `officerResolution` with nested `officer` and `attachments` on
+     * list and show so `officer_resolution` is embedded when a report exists.
+     * `statusHistory` is loaded separately on show for officers and managers only.
+     *
      * @var array<int, string>
      */
-    private const ISSUE_RELATIONS = ['user', 'category', 'district', 'departments', 'attachments'];
+    private const ISSUE_RELATIONS = [
+        'user',
+        'category',
+        'district',
+        'departments',
+        'attachments',
+        'officerResolution.officer',
+        'officerResolution.attachments',
+    ];
 
     /**
      * List issues with composable filters, visibility scoping, and pagination.
@@ -42,9 +56,10 @@ class IssueController extends Controller
      * conditionally and cumulatively (AND with visibility), so any
      * subset (or all) of the filters may be combined to narrow the result set.
      * The `department` filter is resolved through the issue departments
-     * relationship with any-match semantics. Results are eager loaded, ordered
-     * newest-first by `created_at` then `id`, and paginated with a safe default
-     * `per_page`.
+     * relationship with any-match semantics. Results are eager loaded (including
+     * `officer_resolution` with officer and attachments when a report exists;
+     * `status_history` is omitted on list), ordered newest-first by `created_at`
+     * then `id`, and paginated with a safe default `per_page`.
      */
     public function index(IndexIssueRequest $request): AnonymousResourceCollection
     {
@@ -164,6 +179,8 @@ class IssueController extends Controller
      * Visibility is enforced after route binding: users may view visible issues
      * or their own issues (any visibility); officers and managers may view any
      * issue. Unauthorized or invisible issues return 404 to avoid leaking existence.
+     * Embeds `officer_resolution` when a report exists. Active officers and
+     * managers also receive `status_history` (newest first); regular users do not.
      */
     public function show(ShowIssueRequest $request, Issue $issue): IssueResource
     {
@@ -171,7 +188,16 @@ class IssueController extends Controller
             abort(404);
         }
 
+        $actor = $request->user();
         $issue->load(self::ISSUE_RELATIONS);
+
+        if ($actor instanceof Officer || $actor instanceof Manager) {
+            $issue->load([
+                'statusHistory' => fn ($query) => $query
+                    ->with('changedByOfficer')
+                    ->orderByDesc('changed_at'),
+            ]);
+        }
 
         return new IssueResource($issue);
     }

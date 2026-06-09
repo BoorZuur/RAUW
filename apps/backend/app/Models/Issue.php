@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Collection;
 
 #[Fillable([
@@ -170,6 +171,11 @@ class Issue extends Model
     public function resolutions(): HasMany
     {
         return $this->hasMany(IssueResolution::class);
+    }
+
+    public function officerResolution(): HasOne
+    {
+        return $this->hasOne(OfficerIssueResolution::class);
     }
 
     public function domainNotifications(): HasMany

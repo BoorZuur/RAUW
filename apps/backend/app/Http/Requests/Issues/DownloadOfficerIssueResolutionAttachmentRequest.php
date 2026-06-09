@@ -7,20 +7,21 @@ use App\Models\User;
 use App\Support\IssueVisibilityQuery;
 use Illuminate\Foundation\Http\FormRequest;
 
-class DownloadIssueAttachmentRequest extends FormRequest
+class DownloadOfficerIssueResolutionAttachmentRequest extends FormRequest
 {
     /**
      * Stream downloads use visibility-only authorization (Q8 / D15-A): any actor
-     * who may view the parent issue may download its attachments.
+     * who may view the parent issue may download its resolution attachments.
      *
      * IssueVisibilityQuery::canViewIssue() mirrors show/index scoping — active users
      * may download when the issue is visible or they own it; active officers and
-     * managers may download any issue attachment.
+     * managers may download any issue attachment. Matches
+     * DownloadIssueAttachmentRequest (same visibility-only rules).
      *
      * A user probing a hidden issue they do not own receives 404 (no enumeration).
      * Other unauthorized actors receive 403 with a message. Whether the attachment
-     * belongs to the route issue is enforced in the controller, which returns 404
-     * on a mismatch.
+     * belongs to the issue's resolution is enforced in the controller, which
+     * returns 404 on a mismatch.
      */
     public function authorize(): bool
     {

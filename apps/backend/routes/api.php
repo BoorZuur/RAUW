@@ -17,6 +17,10 @@ use App\Http\Controllers\ManagerHubController;
 use App\Http\Controllers\OfficerHubController;
 use App\Http\Controllers\IssueAttachmentController;
 use App\Http\Controllers\IssueController;
+use App\Http\Controllers\IssueOfficerAssignmentController;
+use App\Http\Controllers\IssueOfficerStatusController;
+use App\Http\Controllers\OfficerIssueResolutionAttachmentController;
+use App\Http\Controllers\OfficerIssueResolutionController;
 use App\Http\Controllers\MainManagerController;
 use App\Http\Controllers\ManagerController;
 use App\Http\Controllers\ManagerDepartmentController;
@@ -244,8 +248,10 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     Route::delete('districts/{district}', [DistrictController::class, 'destroy'])->name('districts.destroy');
 
     // Issue management. Listing and reads are available to any authenticated
-    // actor, while writes are authorized inside the issue FormRequests to the
-    // authenticated, active regular user who owns the issue. Issues remain
+    // actor; officers may browse without a hub-active shift (Tier B whitelist
+    // in officer.hub-active). Writes are authorized inside the issue
+    // FormRequests to the authenticated, active regular user who owns the issue.
+    // Issues remain
     // user-owned through `issues.user_id` even when reported anonymously, so the
     // author can keep managing their own report; anonymous reports are displayed
     // through a stable, server-generated `anonymous_alias`. Deleting an issue
@@ -261,6 +267,39 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     // UpdateIssueVisibilityRequest; the controller enforces visibility scope
     // (404 when the issue is not viewable, matching show).
     Route::patch('issues/{issue}/visibility', [IssueController::class, 'updateVisibility'])->name('issues.visibility.update');
+    // Officer self-assign and unassign (Tier C: hub-active required). Authorization
+    // is narrowed inside AssignIssueToOfficerRequest and UnassignIssueFromOfficerRequest
+    // to active officers only; users, managers, and inactive officers receive 403.
+    // The controller enforces visibility scope (404 when not viewable), district
+    // scoping via OfficerIssueDistrictAccess (403 officer_not_in_district), and
+    // assignment rules: self-assign is idempotent when already assigned to the
+    // requesting officer, returns 409 issue_already_assigned when assigned to
+    // another officer (no takeover), and open issues transition to in_behandeling
+    // with one status history row. Unassign clears assigned_officer_id only;
+    // status is unchanged. Only the current assignee may unassign (403
+    // not_assigned_officer otherwise); already-unassigned is idempotent.
+    Route::post('issues/{issue}/assign-self', [IssueOfficerAssignmentController::class, 'store'])->name('issues.assign-self');
+    Route::post('issues/{issue}/unassign-self', [IssueOfficerAssignmentController::class, 'destroy'])->name('issues.unassign-self');
+    // Officer status updates (Tier C: hub-active required). Authorization is
+    // narrowed inside UpdateIssueStatusRequest to active officers only with
+    // field rules (status, note). District access (403 officer_not_in_district),
+    // assignee checks (403 not_assigned_officer), and directed transitions (422)
+    // are enforced in IssueOfficerStatusController: district access before
+    // locking; assignee and transition validation on the locked row via
+    // OfficerIssueRowLock. The controller enforces visibility scope (404 when not
+    // viewable), persists one status history row per change without coordinates,
+    // and sets resolved_at on the first transition to opgelost.
+    Route::patch('issues/{issue}/status', [IssueOfficerStatusController::class, 'update'])->name('issues.status.update');
+    // Officer resolution. Show and attachment download are Tier B (browse without
+    // shift); POST/PATCH are Tier C (hub-active required). One resolution per
+    // issue; create is assignee-only with district scoping (403
+    // officer_not_in_district), duplicate POST returns 409
+    // officer_resolution_exists; update via PATCH. Show and attachment download
+    // use IssueVisibilityQuery (404 when not viewable).
+    Route::get('issues/{issue}/officer-resolution', [OfficerIssueResolutionController::class, 'show'])->name('issues.officer-resolution.show');
+    Route::post('issues/{issue}/officer-resolution', [OfficerIssueResolutionController::class, 'store'])->name('issues.officer-resolution.store');
+    Route::patch('issues/{issue}/officer-resolution', [OfficerIssueResolutionController::class, 'update'])->name('issues.officer-resolution.update');
+    Route::get('issues/{issue}/officer-resolution/attachments/{attachment}/download', [OfficerIssueResolutionAttachmentController::class, 'download'])->name('issues.officer-resolution.attachments.download');
     Route::delete('issues/{issue}', [IssueController::class, 'destroy'])->name('issues.destroy');
 
     // Issue attachments. Uploads are authorized inside StoreIssueAttachmentRequest
@@ -269,9 +308,10 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     // managing their report. Files are stored on a non-public local disk for
     // development (never served from `public`), capped at 5 files of up to 5 MB
     // each, and an issue may hold at most 5 attachments in total. Downloads
-    // (GET `/issues/{issue}/attachments/{attachment}/download`) are authorized
-    // inside DownloadIssueAttachmentRequest to the issue owner (active user),
-    // any active officer, or any active manager; the controller confirms the
+    // (GET `/issues/{issue}/attachments/{attachment}/download`) are Tier B for
+    // officers (browse without shift). Authorized inside
+    // DownloadIssueAttachmentRequest to the issue owner (active user), any active
+    // officer, or any active manager; the controller confirms the
     // attachment belongs to the route issue (404 otherwise) and streams from
     // the non-public local disk, so files are never exposed through a public URL.
     // Deletes (DELETE `/issues/{issue}/attachments/{attachment}`) are authorized

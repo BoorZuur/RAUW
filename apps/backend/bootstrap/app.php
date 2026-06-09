@@ -2,10 +2,13 @@
 
 use App\Http\Middleware\EnsureActorIsActive;
 use App\Http\Middleware\EnsureOfficerHubActive;
+use App\Support\OfficerIssueConflict;
+use App\Support\OfficerIssueResolutionIntegrity;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -64,9 +67,50 @@ return Application::configure(basePath: dirname(__DIR__))
             ], Response::HTTP_FORBIDDEN);
         });
 
-        $exceptions->render(function (QueryException $exception, Request $request) use ($isIntegrityConstraint) {
-            if (config('app.debug') || ! $request->is('api/*')) {
+        $exceptions->render(function (OfficerIssueConflict $exception, Request $request) use ($expectsApiJson) {
+            if (config('app.debug') || ! $expectsApiJson($request)) {
                 return null;
+            }
+
+            return response()->json([
+                'message' => $exception->getMessage(),
+                'code' => $exception->code,
+            ], $exception->status);
+        });
+
+        // Officer workflow conflicts (assignee, district, terminal assign, duplicate
+        // resolution) are thrown as OfficerIssueConflict and rendered above. Only
+        // integrity races on officer_issue_resolutions.issue_id are mapped here.
+        $renderDuplicateOfficerResolution = static function (QueryException $exception, Request $request) use ($expectsApiJson) {
+            if (config('app.debug') || ! $expectsApiJson($request)) {
+                return null;
+            }
+
+            if (! OfficerIssueResolutionIntegrity::isDuplicateIssueIdViolation($exception)) {
+                return null;
+            }
+
+            return response()->json([
+                'message' => 'An officer resolution already exists for this issue.',
+                'code' => 'officer_resolution_exists',
+            ], Response::HTTP_CONFLICT);
+        };
+
+        $exceptions->render(function (UniqueConstraintViolationException $exception, Request $request) use ($renderDuplicateOfficerResolution) {
+            return $renderDuplicateOfficerResolution($exception, $request);
+        });
+
+        $exceptions->render(function (QueryException $exception, Request $request) use ($expectsApiJson, $isIntegrityConstraint, $renderDuplicateOfficerResolution) {
+            if (config('app.debug') || ! $expectsApiJson($request)) {
+                return null;
+            }
+
+            // Map duplicate officer_issue_resolutions.issue_id to structured 409
+            // (OfficerIssueConflict also handles this; this covers race paths).
+            $duplicateResolution = $renderDuplicateOfficerResolution($exception, $request);
+
+            if ($duplicateResolution !== null) {
+                return $duplicateResolution;
             }
 
             Log::error('Database query exception on API route.', [
@@ -94,6 +138,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 || $exception instanceof AuthenticationException
                 || $exception instanceof ModelNotFoundException
                 || $exception instanceof AuthorizationException
+                || $exception instanceof OfficerIssueConflict
                 || $exception instanceof QueryException
                 || $exception instanceof HttpExceptionInterface
             ) {
