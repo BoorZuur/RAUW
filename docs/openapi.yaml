@@ -2785,6 +2785,175 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/issues/{issueId}/officer-updates:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags: [ Issues ]
+      summary: List officer updates for an issue
+      description: >-
+        List updates for a specific issue. Requires authentication. Any actor
+        who can view the issue may view updates. **Tier B** browse: officers without
+        an active shift may read updates. Returns updates in chronological order.
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Paginated list of updates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/OfficerIssueUpdate'
+                  links:
+                    type: object
+                  meta:
+                    type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [ Issues ]
+      summary: Create officer update
+      description: >-
+        Add a new progress update for an issue. Active officers only; only the
+        assigned officer may post updates. Requires a hub-active shift (Tier C).
+        District scoping applies. Up to 3 image attachments (jpg, jpeg, png,
+        gif, webp), max 5 MB each.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OfficerIssueUpdateCreate'
+      responses:
+        '201':
+          description: Created update
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfficerIssueUpdate'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/issues/{issueId}/officer-updates/{officerUpdateId}:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: officerUpdateId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Issues ]
+      summary: Update officer update
+      description: >-
+        Update title, content, or attachments of an existing update. Only the
+        authoring officer (who must be the assignee) may update it. Requires
+        hub-active shift (Tier C).
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OfficerIssueUpdateUpdate'
+      responses:
+        '200':
+          description: Updated update
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfficerIssueUpdate'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [ Issues ]
+      summary: Delete officer update
+      description: >-
+        Delete an update and its attachments. Only the authoring officer (who
+        must be the assignee) may perform this delete. Requires active shift
+        (Tier C).
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '204':
+          description: Update deleted; no response body
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/issues/{issueId}/officer-updates/attachments/{attachmentId}/download:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: attachmentId
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags: [ Issues ]
+      summary: Download officer update attachment
+      description: >-
+        Stream an update attachment from non-public storage. Any actor who can
+        view the parent issue may download (Tier B).
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Attachment file stream
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /api/issues/{issueId}/comments:
     parameters:
       - name: issueId
@@ -5487,4 +5656,107 @@ components:
           type: string
           enum: [ visible, hidden ]
           description: Target visibility for the comment.
+
+    OfficerIssueUpdate:
+      type: object
+      description: >-
+        Officer update posted during issue handling. Can have multiple updates
+        per issue.
+      properties:
+        id:
+          type: integer
+        issue_id:
+          type: integer
+        officer_id:
+          type: integer
+          nullable: true
+        title:
+          type: string
+        content:
+          type: string
+        officer:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            username:
+              type: string
+        attachments:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/OfficerIssueUpdateAttachment'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    OfficerIssueUpdateCreate:
+      type: object
+      required: [ title, content ]
+      description: Payload to create an officer update. Assignee only.
+      properties:
+        title:
+          type: string
+          maxLength: 255
+        content:
+          type: string
+          maxLength: 10000
+        files:
+          type: array
+          maxItems: 3
+          items:
+            type: string
+            format: binary
+          description: Optional images (jpg, jpeg, png, gif, webp). Max 3, 5 MB each.
+
+    OfficerIssueUpdateUpdate:
+      type: object
+      required: [ title, content ]
+      description: Payload to update an officer update. Author assignee only.
+      properties:
+        title:
+          type: string
+          maxLength: 255
+        content:
+          type: string
+          maxLength: 10000
+        files:
+          type: array
+          maxItems: 3
+          items:
+            type: string
+            format: binary
+          description: Optional new attachments. Max 3 total after removals.
+        remove_attachment_ids:
+          type: array
+          items:
+            type: integer
+          description: Attachment IDs to delete before upload.
+
+    OfficerIssueUpdateAttachment:
+      type: object
+      description: Update attachment metadata.
+      properties:
+        id:
+          type: integer
+        issue_id:
+          type: integer
+        original_name:
+          type: string
+          nullable: true
+        file_type:
+          type: string
+          nullable: true
+        file_size:
+          type: integer
+          nullable: true
+        uploaded_at:
+          type: string
+          format: date-time
+        download_url:
+          type: string
 

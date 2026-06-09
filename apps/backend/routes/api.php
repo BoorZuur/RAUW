@@ -22,6 +22,8 @@ use App\Http\Controllers\IssueOfficerAssignmentController;
 use App\Http\Controllers\IssueOfficerStatusController;
 use App\Http\Controllers\OfficerIssueResolutionAttachmentController;
 use App\Http\Controllers\OfficerIssueResolutionController;
+use App\Http\Controllers\OfficerIssueUpdateController;
+use App\Http\Controllers\OfficerIssueUpdateAttachmentController;
 use App\Http\Controllers\MainManagerController;
 use App\Http\Controllers\ManagerController;
 use App\Http\Controllers\ManagerDepartmentController;
@@ -301,6 +303,15 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     Route::post('issues/{issue}/officer-resolution', [OfficerIssueResolutionController::class, 'store'])->name('issues.officer-resolution.store');
     Route::patch('issues/{issue}/officer-resolution', [OfficerIssueResolutionController::class, 'update'])->name('issues.officer-resolution.update');
     Route::get('issues/{issue}/officer-resolution/attachments/{attachment}/download', [OfficerIssueResolutionAttachmentController::class, 'download'])->name('issues.officer-resolution.attachments.download');
+
+    // Officer updates. Index and attachment download are Tier B (can browse without active shift);
+    // store, update, and destroy are Tier C (require active shift).
+    Route::get('issues/{issue}/officer-updates', [OfficerIssueUpdateController::class, 'index'])->name('issues.officer-updates.index');
+    Route::post('issues/{issue}/officer-updates', [OfficerIssueUpdateController::class, 'store'])->name('issues.officer-updates.store');
+    Route::patch('issues/{issue}/officer-updates/{officer_update}', [OfficerIssueUpdateController::class, 'update'])->name('issues.officer-updates.update');
+    Route::delete('issues/{issue}/officer-updates/{officer_update}', [OfficerIssueUpdateController::class, 'destroy'])->name('issues.officer-updates.destroy');
+    Route::get('issues/{issue}/officer-updates/attachments/{attachment}/download', [OfficerIssueUpdateAttachmentController::class, 'download'])->name('issues.officer-updates.attachments.download');
+
     Route::delete('issues/{issue}', [IssueController::class, 'destroy'])->name('issues.destroy');
 
     // Issue attachments. Uploads are authorized inside StoreIssueAttachmentRequest

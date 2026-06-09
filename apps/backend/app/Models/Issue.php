@@ -178,6 +178,11 @@ class Issue extends Model
         return $this->hasOne(OfficerIssueResolution::class);
     }
 
+    public function officerUpdates(): HasMany
+    {
+        return $this->hasMany(OfficerIssueUpdate::class);
+    }
+
     public function domainNotifications(): HasMany
     {
         return $this->hasMany(DomainNotification::class);

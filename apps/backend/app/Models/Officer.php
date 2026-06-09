@@ -97,6 +97,11 @@ class Officer extends Authenticatable
         return $this->hasMany(OfficerIssueResolution::class);
     }
 
+    public function officerUpdates(): HasMany
+    {
+        return $this->hasMany(OfficerIssueUpdate::class);
+    }
+
     public function chatClosedIssues(): HasMany
     {
         return $this->hasMany(Issue::class, 'chat_closed_by_officer_id');
