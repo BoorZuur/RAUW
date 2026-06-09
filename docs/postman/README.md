@@ -909,3 +909,36 @@ Logout revokes **only the current bearer token**. For officers, the shared shift
 Common error response:
 
 - `401 Unauthorized` when the bearer token is missing, invalid, or revoked.
+
+### Issue Comments
+
+Comment endpoints require `Authorization: Bearer <token>`. Listing comments is available to any authenticated active actor who has permission to view the parent issue. Writing, updating, deleting, or moderating comments is restricted based on actor roles and shift status.
+
+Common requests:
+
+- `GET {{base_url}}/api/issues/{issue}/comments` — list comments. Eager-loads author profiles. Sorted oldest first. Paginated. Users see visible comments + comments they authored. Officers/Managers see all. Officers may call this without a hub-active shift (Tier B).
+- `POST {{base_url}}/api/issues/{issue}/comments` — add a comment. Active users and active officers only. Requires active shift for officers (Tier C).
+- `PATCH {{base_url}}/api/issues/{issue}/comments/{comment}` — update comment content. Only the comment author may perform this. Requires active shift for officers (Tier C).
+- `DELETE {{base_url}}/api/issues/{issue}/comments/{comment}` — delete a comment. Only the author or any active manager may perform this action. Requires active shift for officers (Tier C).
+- `PATCH {{base_url}}/api/issues/{issue}/comments/{comment}/visibility` — change comment visibility (`visible` or `hidden`). Active officers and active managers only. Requires active shift for officers (Tier C).
+
+Successful comment response shape:
+
+```json
+{
+  "id": 1,
+  "issue_id": 1,
+  "author_type": "user",
+  "content": "Dit is een nieuwe opmerking op de melding.",
+  "is_flagged": false,
+  "visibility": "visible",
+  "author": {
+    "id": 1,
+    "username": "demo.user",
+    "display_name": "demo.user"
+  },
+  "created_at": "2026-06-09T11:45:00.000000Z",
+  "updated_at": "2026-06-09T11:45:00.000000Z"
+}
+```
+

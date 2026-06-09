@@ -2785,6 +2785,195 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/issues/{issueId}/comments:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags: [ Comments ]
+      summary: List comments for an issue
+      description: >-
+        List comments on a specific issue. Eager-loads author profiles safely.
+        Returns comments sorted chronologically (oldest first). Users can only view
+        visible comments and comments they authored. Officers/Managers see all.
+        Officers may call this without a hub-active shift (Tier B).
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Paginated list of comments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/IssueComment'
+                  links:
+                    type: object
+                    additionalProperties: true
+                  meta:
+                    type: object
+                    properties:
+                      current_page:
+                        type: integer
+                      per_page:
+                        type: integer
+                      total:
+                        type: integer
+                      last_page:
+                        type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [ Comments ]
+      summary: Add a comment to an issue
+      description: >-
+        Add a new comment to a specific issue. Active users and active officers only.
+        Requires a hub-active shift for officers (Tier C).
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueCommentCreate'
+            example:
+              content: Dit is een nieuwe opmerking op de melding.
+      responses:
+        '201':
+          description: Created comment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueComment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/issues/{issueId}/comments/{commentId}:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: commentId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Comments ]
+      summary: Update own comment
+      description: >-
+        Update comment content. Only the author of the comment may perform this
+        update. Requires active shift for officers (Tier C).
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueCommentUpdate'
+            example:
+              content: Dit is de bijgewerkte tekst van de opmerking.
+      responses:
+        '200':
+          description: Updated comment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueComment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [ Comments ]
+      summary: Delete a comment
+      description: >-
+        Delete a comment. Only the author or any active manager may perform this action.
+        Requires active shift for officers (Tier C).
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '204':
+          description: Comment deleted; no response body
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/issues/{issueId}/comments/{commentId}/visibility:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: commentId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Comments ]
+      summary: Set comment visibility
+      description: >-
+        Set a comment's visibility to `visible` or `hidden`. Active officers and
+        active managers only. Requires active shift for officers (Tier C).
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueCommentVisibilityUpdate'
+            example:
+              visibility: hidden
+      responses:
+        '200':
+          description: Updated comment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueComment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
   /api/categories:
     get:
       tags: [ Categories ]
@@ -5230,4 +5419,72 @@ components:
         download_url:
           type: string
           description: Authenticated download endpoint for this attachment.
+
+    IssueComment:
+      type: object
+      description: >-
+        Comment posted on an issue by a user or an officer.
+      required: [ id, issue_id, author_type, content, is_flagged, visibility, author, created_at, updated_at ]
+      properties:
+        id:
+          type: integer
+        issue_id:
+          type: integer
+        author_type:
+          type: string
+          enum: [ user, officer ]
+        content:
+          type: string
+        is_flagged:
+          type: boolean
+        visibility:
+          type: string
+          enum: [ visible, hidden ]
+        author:
+          $ref: '#/components/schemas/IssueCommentAuthor'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    IssueCommentAuthor:
+      type: object
+      description: Summary of the comment's author. Exposes the author's real identity (id and username).
+      required: [ id ]
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+          nullable: true
+        display_name:
+          type: string
+          nullable: true
+
+    IssueCommentCreate:
+      type: object
+      required: [ content ]
+      properties:
+        content:
+          type: string
+          description: Plain text content of the comment.
+
+    IssueCommentUpdate:
+      type: object
+      required: [ content ]
+      properties:
+        content:
+          type: string
+          description: Updated plain text content of the comment.
+
+    IssueCommentVisibilityUpdate:
+      type: object
+      required: [ visibility ]
+      properties:
+        visibility:
+          type: string
+          enum: [ visible, hidden ]
+          description: Target visibility for the comment.
 
