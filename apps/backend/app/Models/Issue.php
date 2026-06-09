@@ -148,6 +148,26 @@ class Issue extends Model
         return $this->hasMany(IssueParticipant::class);
     }
 
+    /**
+     * The actor's participation row when this issue is the canonical target.
+     *
+     * Controllers may also set this relation on duplicate children after resolving
+     * participation against the parent canonical id.
+     */
+    public function actorParticipant(): HasOne
+    {
+        return $this->hasOne(IssueParticipant::class, 'issue_id');
+    }
+
+    /**
+     * Participation row for a specific user on this canonical issue.
+     */
+    public function participationFor(User $user): HasOne
+    {
+        return $this->hasOne(IssueParticipant::class, 'issue_id')
+            ->where('user_id', $user->getKey());
+    }
+
     public function comments(): HasMany
     {
         return $this->hasMany(IssueComment::class);

@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Enums\Visibility;
 use App\Models\Issue;
+use App\Models\IssueParticipant;
 use App\Models\Manager;
 use App\Models\Officer;
 use App\Models\User;
@@ -51,8 +52,9 @@ class IssueVisibilityQuery
      * Whether the actor may view a single issue (show).
      *
      * Mirrors {@see applyVisibilityScope()} for one row: users may view visible
-     * issues or their own issues regardless of visibility; officers and managers
-     * may view any issue.
+     * issues, their own issues regardless of visibility, or canonical issues
+     * they participate on (content redaction is applied at the resource layer).
+     * Officers and managers may view any issue.
      */
     public static function canViewIssue(Issue $issue, Model $actor): bool
     {
@@ -61,8 +63,22 @@ class IssueVisibilityQuery
         }
 
         if ($actor instanceof User) {
-            return $issue->visibility === Visibility::Visible
-                || $issue->user_id === $actor->getKey();
+            if ($issue->visibility === Visibility::Visible) {
+                return true;
+            }
+
+            if ($issue->user_id === $actor->getKey()) {
+                return true;
+            }
+
+            if ($issue->duplicate_of_id === null) {
+                return IssueParticipant::query()
+                    ->where('issue_id', $issue->getKey())
+                    ->where('user_id', $actor->getKey())
+                    ->exists();
+            }
+
+            return false;
         }
 
         return false;

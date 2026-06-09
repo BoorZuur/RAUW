@@ -10,6 +10,7 @@ use App\Models\Manager;
 use App\Models\Officer;
 use App\Models\OfficerIssueResolution;
 use App\Models\User;
+use App\Support\Issues\IssueParticipantVisibility;
 use App\Support\IssueVisibilityQuery;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -68,6 +69,13 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * eager-loaded the relation and the actor may view the issue. GET
  * `/issues/{issue}/officer-resolution` is the primary read path.
  *
+ * Participant visibility
+ * ----------------------
+ * Participants viewing a canonical they joined (but do not own) receive status,
+ * resolution, counters, and participation context while title, content,
+ * location, author, and attachments are redacted. Officers and managers are never
+ * redacted; owners always receive the full payload for issues they own.
+ *
  * @mixin Issue
  */
 class IssueResource extends JsonResource
@@ -87,11 +95,13 @@ class IssueResource extends JsonResource
     {
         /** @var Issue $issue */
         $issue = $this->resource;
+        $visibility = IssueParticipantVisibility::for($issue, $request->user());
+        $redact = $visibility->shouldRedactCanonicalContent();
 
         return array_merge([
             'id' => $issue->id,
-            'title' => $issue->title,
-            'content' => $issue->content,
+            'title' => $redact ? null : $issue->title,
+            'content' => $redact ? null : $issue->content,
             'category_id' => $issue->category_id,
             'district_id' => $issue->district_id,
             'departments' => $this->compactDepartments($issue),
@@ -99,21 +109,23 @@ class IssueResource extends JsonResource
             'assigned_officer_id' => $issue->assigned_officer_id,
             'visibility' => $issue->visibility->value,
             'priority' => $issue->priority,
-            'postal_code' => $issue->postal_code,
-            'address' => $issue->address,
-            'latitude' => $issue->latitude,
-            'longitude' => $issue->longitude,
-            'is_anonymous' => (bool) $issue->is_anonymous,
-            'author' => $this->compactAuthor($issue),
+            'postal_code' => $redact ? null : $issue->postal_code,
+            'address' => $redact ? null : $issue->address,
+            'latitude' => $redact ? null : $issue->latitude,
+            'longitude' => $redact ? null : $issue->longitude,
+            'is_anonymous' => $redact ? null : (bool) $issue->is_anonymous,
+            'author' => $redact
+                ? ['is_participant' => true]
+                : $this->compactAuthor($issue),
             'participant_count' => (int) $issue->participant_count,
             'duplicate_count' => (int) $issue->duplicate_count,
             'category' => $this->compactCategory($issue),
             'district' => $this->compactDistrict($issue),
-            'attachments' => $this->compactAttachments($issue),
+            'attachments' => $redact ? null : $this->compactAttachments($issue),
             'created_at' => $issue->created_at,
             'updated_at' => $issue->updated_at,
             'resolved_at' => $issue->resolved_at,
-        ], $this->maybeStatusHistory($issue, $request), $this->maybeOfficerResolution($issue, $request));
+        ], $this->maybeDuplicateOfId($issue, $visibility), $visibility->contextFlags(), $this->maybeStatusHistory($issue, $request), $this->maybeOfficerResolution($issue, $request));
     }
 
     /**
@@ -151,6 +163,22 @@ class IssueResource extends JsonResource
         return [
             'is_anonymous' => false,
             'id' => $issue->user_id,
+        ];
+    }
+
+    /**
+     * Expose duplicate linkage to owners of child issues and to officers/managers.
+     *
+     * @return array<string, mixed>
+     */
+    protected function maybeDuplicateOfId(Issue $issue, IssueParticipantVisibility $visibility): array
+    {
+        if (! $visibility->canExposeDuplicateOfId()) {
+            return [];
+        }
+
+        return [
+            'duplicate_of_id' => $issue->duplicate_of_id,
         ];
     }
 

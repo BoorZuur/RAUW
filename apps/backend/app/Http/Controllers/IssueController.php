@@ -15,6 +15,7 @@ use App\Support\IssueVisibilityQuery;
 use App\Http\Resources\IssueResource;
 use App\Models\Category;
 use App\Models\Issue;
+use App\Models\IssueParticipant;
 use App\Models\Manager;
 use App\Models\Officer;
 use App\Models\User;
@@ -173,11 +174,13 @@ class IssueController extends Controller
     /**
      * Show a single issue with its eager-loaded relations.
      *
-     * Visibility is enforced after route binding: users may view visible issues
-     * or their own issues (any visibility); officers and managers may view any
-     * issue. Unauthorized or invisible issues return 404 to avoid leaking existence.
-     * Embeds `officer_resolution` when a report exists. Active officers and
-     * managers also receive `status_history` (newest first); regular users do not.
+     * Visibility is enforced after route binding: users may view visible issues,
+     * their own issues (any visibility), or canonical issues they participate on
+     * (with canonical content redacted at the resource layer); officers and
+     * managers may view any issue. Unauthorized or invisible issues return 404
+     * to avoid leaking existence. Embeds `officer_resolution` when a report
+     * exists. Active officers and managers also receive `status_history` (newest
+     * first); regular users do not.
      */
     public function show(ShowIssueRequest $request, Issue $issue): IssueResource
     {
@@ -187,6 +190,10 @@ class IssueController extends Controller
 
         $actor = $request->user();
         $issue->load(self::ISSUE_RELATIONS);
+
+        if ($actor instanceof User) {
+            $this->loadActorParticipationContext($issue, $actor);
+        }
 
         if ($actor instanceof Officer || $actor instanceof Manager) {
             $issue->load([
@@ -312,6 +319,24 @@ class IssueController extends Controller
         $issue->delete();
 
         return response()->json([], Response::HTTP_NO_CONTENT);
+    }
+
+    /**
+     * Eager-load the actor's participation row against the canonical issue id.
+     *
+     * Duplicate children resolve participation on the parent canonical so
+     * `IssueParticipantVisibility` can avoid an extra query on show.
+     */
+    private function loadActorParticipationContext(Issue $issue, User $actor): void
+    {
+        $canonicalId = $issue->duplicate_of_id ?? $issue->getKey();
+
+        $participant = IssueParticipant::query()
+            ->where('issue_id', $canonicalId)
+            ->where('user_id', $actor->getKey())
+            ->first();
+
+        $issue->setRelation('actorParticipant', $participant);
     }
 
     /**
