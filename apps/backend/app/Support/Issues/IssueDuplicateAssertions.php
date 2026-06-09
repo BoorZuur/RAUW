@@ -35,4 +35,37 @@ class IssueDuplicateAssertions
             throw IssueDuplicateConflict::issueIsDuplicateChild();
         }
     }
+
+    public static function assertNoDuplicateChildren(Issue $issue): void
+    {
+        if ($issue->duplicate_count > 0 || $issue->duplicates()->exists()) {
+            throw IssueDuplicateConflict::issueHasDuplicates();
+        }
+    }
+
+    public static function assertLinkableChild(Issue $issue): void
+    {
+        if (! in_array($issue->status, [IssueStatus::Open, IssueStatus::InProgress], true)) {
+            throw IssueDuplicateConflict::issueNotLinkable();
+        }
+
+        if ($issue->assigned_officer_id !== null) {
+            throw IssueDuplicateConflict::issueNotLinkable();
+        }
+
+        $issue->loadMissing('officerResolution');
+
+        if ($issue->officerResolution !== null) {
+            throw IssueDuplicateConflict::issueNotLinkable();
+        }
+    }
+
+    public static function assertNotSameIssue(Issue $child, Issue $canonical): void
+    {
+        if ($child->getKey() === $canonical->getKey()) {
+            throw IssueDuplicateConflict::cannotDuplicateSelf(
+                'An issue cannot be marked as a duplicate of itself.',
+            );
+        }
+    }
 }

@@ -96,4 +96,24 @@ class IssueDuplicateConflict extends Exception
             status: Response::HTTP_UNPROCESSABLE_ENTITY,
         );
     }
+
+    public static function issueNotLinkable(
+        string $message = 'The issue cannot be linked as a duplicate in its current state.',
+    ): self {
+        return new self(
+            conflictCode: 'issue_not_linkable',
+            message: $message,
+            status: Response::HTTP_UNPROCESSABLE_ENTITY,
+        );
+    }
+
+    public static function issueHasDuplicates(
+        string $message = 'The issue has duplicate children and cannot be linked as a duplicate.',
+    ): self {
+        return new self(
+            conflictCode: 'issue_has_duplicates',
+            message: $message,
+            status: Response::HTTP_UNPROCESSABLE_ENTITY,
+        );
+    }
 }

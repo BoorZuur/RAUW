@@ -302,6 +302,13 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     // issue_not_canonical on duplicate children). Children are paginated
     // oldest-first with full IssueResource payloads.
     Route::get('issues/{issue}/duplicates', [IssueDuplicateController::class, 'index'])->name('issues.duplicates.index');
+    // Mark-duplicate links an existing issue to a canonical target (Tier C:
+    // hub-active required for officers). Officers need district access on both
+    // child and canonical (403 officer_not_in_district); managers use visibility
+    // scope only. Different owners re-parent as hidden duplicate; same owner
+    // merges participants and deletes the child. Returns IssueResource for the
+    // child (re-parent) or canonical (merge).
+    Route::post('issues/{issue}/mark-duplicate', [IssueDuplicateController::class, 'store'])->name('issues.mark-duplicate');
     // Participant list is officer/manager-only and authorized inside
     // IndexIssueParticipantsRequest (Tier B). Duplicate child route ids resolve
     // to the canonical parent. Participants are paginated oldest-first by

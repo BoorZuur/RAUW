@@ -2,11 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Issues\MarkIssueAsDuplicate;
+use App\Actions\Issues\ResolveCanonicalIssue;
 use App\Http\Requests\Issues\IndexIssueDuplicatesRequest;
+use App\Http\Requests\Issues\MarkIssueAsDuplicateRequest;
 use App\Http\Resources\IssueResource;
 use App\Models\Issue;
+use App\Models\Officer;
 use App\Support\IssueVisibilityQuery;
 use App\Support\Issues\IssueDuplicateAssertions;
+use App\Support\Issues\IssueDuplicateConflict;
+use App\Support\OfficerIssueDistrictAccess;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class IssueDuplicateController extends Controller
@@ -54,5 +60,49 @@ class IssueDuplicateController extends Controller
             ->withQueryString();
 
         return IssueResource::collection($duplicates);
+    }
+
+    /**
+     * Link an existing issue to a canonical duplicate target.
+     *
+     * Officers must be assigned to both the child and canonical districts
+     * (403 officer_not_in_district). Managers rely on IssueVisibilityQuery
+     * only. Different owners re-parent the child as a hidden duplicate; same
+     * owner merges participants onto the canonical and hard-deletes the child.
+     * Tier C: hub-active session required for officers.
+     */
+    public function store(
+        MarkIssueAsDuplicateRequest $request,
+        Issue $issue,
+        MarkIssueAsDuplicate $markIssueAsDuplicate,
+        ResolveCanonicalIssue $resolveCanonicalIssue,
+    ): IssueResource {
+        $actor = $request->user();
+
+        if (! IssueVisibilityQuery::canViewIssue($issue, $actor)) {
+            throw IssueDuplicateConflict::duplicateTargetNotFound();
+        }
+
+        if ($actor instanceof Officer) {
+            OfficerIssueDistrictAccess::assertOfficerInIssueDistrict($actor, $issue);
+        }
+
+        $duplicateOfId = (int) $request->validated('duplicate_of_id');
+
+        $target = Issue::query()->find($duplicateOfId);
+
+        if ($target === null || ! IssueVisibilityQuery::canViewIssue($target, $actor)) {
+            throw IssueDuplicateConflict::duplicateTargetNotFound();
+        }
+
+        $canonical = $resolveCanonicalIssue->resolve($target);
+
+        if ($actor instanceof Officer) {
+            OfficerIssueDistrictAccess::assertOfficerInIssueDistrict($actor, $canonical);
+        }
+
+        $result = $markIssueAsDuplicate->mark($actor, $issue, $duplicateOfId);
+
+        return new IssueResource($result->load(self::ISSUE_RELATIONS));
     }
 }
