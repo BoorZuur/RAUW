@@ -26,15 +26,22 @@
 
 }
 
+.app-layout {
+    display: flex;
+    min-height: 100vh;
+    background-color: var(--main-bg);
+}
+
 .main-content {
-    position: relative;
-    margin-left: 180px;
+    flex-grow: 1;
+    box-sizing: border-box;
     padding: 40px;
+    min-width: 0;
+    overflow-x: hidden;
+    margin-left: 260px;
+    width: auto;
     background-color: var(--main-bg);
     min-height: 100vh;
-    box-sizing: border-box;
-    overflow-x: hidden;
-    width: 93%;
 }
 
 /* Header elements */

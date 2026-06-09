@@ -5,6 +5,7 @@ import "./Handhaver_styling.css"
 export default function SectorSettings() {
     return (
         <>
+            <div className="app-layout">
             <HM_Nav></HM_Nav>
             <main className="main-content">
                 <header className="page-header">
@@ -136,6 +137,7 @@ export default function SectorSettings() {
                     </div>
                 </section>
             </main>
+            </div>
         </>
     );
 }

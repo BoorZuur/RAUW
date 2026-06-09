@@ -1,11 +1,12 @@
 import "../App.css";
 import React from 'react';
 import ReportCard from "../components/H_SignalCard.jsx";
+import HM_Nav from "../components/HM_Nav.jsx";
 
 function CommandCenter() {
     return (
         <div className="p-4 space-y-6">
-            <h1 className="text-xl font-bold text-stone-800 mb-4">Command Center</h1>
+            <HM_Nav></HM_Nav>
 
             <div className="grid gap-4">
                 <ReportCard
