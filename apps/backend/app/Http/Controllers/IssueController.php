@@ -10,6 +10,7 @@ use App\Http\Requests\Issues\ShowIssueRequest;
 use App\Http\Requests\Issues\StoreIssueRequest;
 use App\Http\Requests\Issues\UpdateIssueRequest;
 use App\Http\Requests\Issues\UpdateIssueVisibilityRequest;
+use App\Support\Issues\IssueListScope;
 use App\Support\IssueVisibilityQuery;
 use App\Http\Resources\IssueResource;
 use App\Models\Category;
@@ -51,12 +52,17 @@ class IssueController extends Controller
      * List issues with composable filters, visibility scoping, and pagination.
      *
      * Results are visibility-scoped per actor type before optional filters:
-     * users see visible issues or their own issues (any visibility); officers
-     * and managers see all issues including hidden. A single Eloquent query
+     * users see visible canonicals, their own issues (any visibility), or
+     * canonicals they participate on; officers and managers see all issues
+     * including hidden. Duplicate child rows are excluded by default per actor
+     * (`IssueListScope`); users may use `participating=1` for owned children
+     * with canonical participation, and officers/managers may use
+     * `include_duplicates=1` to include children. A single Eloquent query
      * applies the optional `district_id`, `department`, `category_id`, `status`,
-     * `assigned_officer_id`, `unassigned`, `mine`, and `visibility` filters
-     * conditionally and cumulatively (AND with visibility), so any
-     * subset (or all) of the filters may be combined to narrow the result set.
+     * `assigned_officer_id`, `unassigned`, `mine`, `participating`,
+     * `include_duplicates`, and `visibility` filters conditionally and
+     * cumulatively (AND with visibility), so any subset (or all) of the
+     * filters may be combined to narrow the result set.
      * The `department` filter is resolved through the issue departments
      * relationship with any-match semantics. Results are eager loaded (including
      * `officer_resolution` with officer and attachments when a report exists;
@@ -65,9 +71,13 @@ class IssueController extends Controller
      */
     public function index(IndexIssueRequest $request): AnonymousResourceCollection
     {
-        $issues = IssueVisibilityQuery::applyVisibilityScope(
-            Issue::query()->with(self::ISSUE_RELATIONS),
+        $issues = IssueListScope::apply(
+            IssueVisibilityQuery::applyVisibilityScope(
+                Issue::query()->with(self::ISSUE_RELATIONS),
+                $request->user(),
+            ),
             $request->user(),
+            $request,
         )
             ->when(
                 $request->filled('district_id'),

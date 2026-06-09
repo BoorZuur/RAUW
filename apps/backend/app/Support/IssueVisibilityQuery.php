@@ -15,10 +15,11 @@ class IssueVisibilityQuery
     /**
      * Restrict issue queries to rows the actor may list or show.
      *
-     * Active users see issues with `visibility = visible` or issues they own
-     * (`issues.user_id`). Active officers and managers see all issues including
-     * hidden. Assumes the actor is active; inactive actors are blocked by
-     * middleware before this runs.
+     * Active users see visible canonical issues, issues they own (any
+     * visibility), or canonical issues they participate on (content redaction
+     * is applied at the resource layer). Active officers and managers see all
+     * issues including hidden. Assumes the actor is active; inactive actors are
+     * blocked by middleware before this runs.
      */
     public static function applyVisibilityScope(Builder $query, Model $actor): Builder
     {
@@ -29,7 +30,17 @@ class IssueVisibilityQuery
         if ($actor instanceof User) {
             return $query->where(function (Builder $scoped) use ($actor): void {
                 $scoped->where('visibility', Visibility::Visible)
-                    ->orWhere('user_id', $actor->getKey());
+                    ->orWhere('user_id', $actor->getKey())
+                    ->orWhere(function (Builder $participantCanonical) use ($actor): void {
+                        $participantCanonical
+                            ->whereNull('duplicate_of_id')
+                            ->whereExists(function ($participantQuery) use ($actor): void {
+                                $participantQuery->selectRaw('1')
+                                    ->from('issue_participants')
+                                    ->whereColumn('issue_participants.issue_id', 'issues.id')
+                                    ->where('issue_participants.user_id', $actor->getKey());
+                            });
+                    });
             });
         }
 
