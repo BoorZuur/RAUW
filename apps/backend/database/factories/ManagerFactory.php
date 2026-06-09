@@ -39,6 +39,7 @@ class ManagerFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'password' => static::$password ??= 'password',
             'remember_token' => Str::random(10),
+            'hub_id' => null,
             'is_active' => true,
         ];
     }

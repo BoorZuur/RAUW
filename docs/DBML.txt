@@ -15,12 +15,26 @@ Table users {
   updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
 }
 
+Table hubs {
+  id               int          [pk, increment]
+  name             varchar(100) [not null, unique, note: 'Bv. Cluster Centrum, Cluster Noord']
+  address          varchar(255) [not null]
+  postal_code      varchar(10)  [not null]
+  latitude         decimal(10,8) [not null]
+  longitude        decimal(11,8) [not null]
+  is_active        tinyint(1)   [not null, default: 0, note: 'Nieuwe hubs standaard inactief; vier geseede clusters worden in HubSeeder geactiveerd. Veilige deactivatie via PATCH /api/hubs/{id} met is_active=false (main manager); geen /disable route']
+  radius_meters    int          [not null, default: 100, note: 'Hub-login radius (Haversine); niet hetzelfde als districts.radius_meters voor wijktoewijzing']
+  created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+}
+
 Table districts {
   id               int          [pk, increment]
+  hub_id           int          [not null, ref: > hubs.id, note: 'Elke wijk behoort tot precies één cluster-hub']
   name             varchar(100) [not null, unique]
-  postal_prefix    varchar(10)  [note: 'Bv. 3241 voor Middelharnis']
-  center_lat       decimal(10,8)
-  center_lng       decimal(11,8)
+  postal_prefix    varchar(10)  [note: 'Bv. 3012 voor Cool (Rotterdam)']
+  center_lat       decimal(10,8) [not null]
+  center_lng       decimal(11,8) [not null]
   radius_meters    int          [note: 'Straal voor automatische toewijzing']
   is_active        tinyint(1)   [not null, default: 1]
   created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
@@ -33,9 +47,11 @@ Table officers {
   email            varchar(255) [not null, unique]
   password_hash    varchar(255) [not null]
   badge_number     varchar(20)  [not null, unique]
-  // Wijken via district_officer; een BOA kan aan meerdere wijken gekoppeld zijn.
+  hub_id           int          [ref: > hubs.id, note: 'Thuishub (cluster); wijken via district_officer binnen dezelfde hub']
+  // Wijken via district_officer; een BOA kan aan meerdere wijken gekoppeld zijn (zelfde hub als hub_id).
   // Afdelingen via department_officer; een BOA kan aan meerdere afdelingen gekoppeld zijn.
   is_active        tinyint(1)   [not null, default: 1]
+  hub_active_until datetime     [note: 'Denormalized hub-active vervaltijd van laatste hub-active login; middleware checkt ook token ability hub-active']
   deleted_at       datetime
   created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
   updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
@@ -46,8 +62,9 @@ Table managers {
   username         varchar(50)  [not null, unique]
   email            varchar(255) [not null, unique]
   password_hash    varchar(255) [not null]
+  hub_id           int          [ref: > hubs.id, note: 'Thuishub (cluster); wijken via district_manager binnen dezelfde hub']
   // Afdelingen via department_manager; een manager kan aan meerdere afdelingen gekoppeld zijn.
-  // Wijken via district_manager; een manager kan aan meerdere wijken gekoppeld zijn.
+  // Wijken via district_manager; een manager kan aan meerdere wijken gekoppeld zijn (zelfde hub als hub_id).
   // is_main_manager: alleen via seeding/admin; nooit via publieke API. Route-niveau (geen extra kolommen):
   //   GET/PATCH/PATCH disable /api/main-managers — alleen actieve main manager; binding op is_main_manager = true.
   //   GET/POST/PATCH/PATCH disable /api/managers — alleen actieve main manager; binding op is_main_manager = false.
@@ -124,24 +141,48 @@ Table department_manager {
   }
 }
 
-Table officer_sessions {
+Table personal_access_tokens {
   id               int          [pk, increment]
-  officer_id       int          [not null, ref: > officers.id]
-  shift_start      datetime     [not null, default: `CURRENT_TIMESTAMP`]
-  shift_end        datetime
-  start_lat        decimal(10,8)
-  start_lng        decimal(11,8)
-  last_lat         decimal(10,8)
-  last_lng         decimal(11,8)
-  last_seen_at     datetime
-  is_active        tinyint(1)   [not null, default: 1]
+  tokenable_type   varchar(255) [not null, note: 'Polymorf: User | Officer | Manager (Laravel Sanctum)']
+  tokenable_id     int          [not null, note: 'Polymorf FK naar tokenable_type']
+  name             text         [not null]
+  token            varchar(64)  [not null, unique]
+  abilities        text         [note: 'JSON-serialized abilities, bv. hub-active']
+  last_used_at     datetime
+  expires_at       datetime
+  created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (tokenable_type, tokenable_id)
+    expires_at
+  }
+}
+
+Table officer_sessions {
+  id                        int          [pk, increment]
+  officer_id                int          [not null, ref: > officers.id, note: 'Cascade delete']
+  personal_access_token_id  int          [unique, ref: > personal_access_tokens.id, note: 'Sanctum token voor deze login; nullable unique']
+  hub_id                    int          [ref: > hubs.id, note: 'Officer thuishub op moment van login; nullOnDelete']
+  shift_start               datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  shift_end                 datetime     [note: 'Gezet bij logout of officer disable']
+  start_lat                 decimal(10,8) [note: 'Client-GPS bij login']
+  start_lng                 decimal(11,8) [note: 'Client-GPS bij login']
+  distance_meters_at_login  int          [note: 'Haversine-afstand tot hub bij login; null als coords ontbreken']
+  is_hub_active             tinyint(1)   [not null, default: 0, note: 'True wanneer login binnen hub radius_meters']
+  hub_active_until          datetime     [note: 'Vervaltijd hub-active sessie (now + OFFICER_HUB_ACTIVE_TTL_HOURS)']
+  last_lat                  decimal(10,8)
+  last_lng                  decimal(11,8)
+  last_seen_at              datetime
+  is_active                 tinyint(1)   [not null, default: 1, note: 'Open sessie; false na logout/disable']
+  created_at                datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at                datetime     [not null, default: `CURRENT_TIMESTAMP`]
 }
 
 Table categories {
   id               int          [pk, increment]
   name             varchar(100) [not null]
-  weight           tinyint      [note: 'Subcategorie-volgorde; lager getal = hogere prioriteit; NULL voor hoofdcategorie']
-  priority         tinyint      [note: 'Hoofdcategorie-volgorde; lager getal = hogere prioriteit; NULL voor subcategorie']
+  priority         tinyint      [note: 'Hoofdcategorie-volgorde; lager getal = hogere prioriteit; NULL voor subcategorie. Subcategorieën sorteren alfabetisch op name.']
   parent_id        int          [ref: > categories.id, note: 'NULL = hoofdcategorie; subcategorie verwijst naar een hoofdcategorie. Hoofdcategorie kan pas hard deleted worden als er geen subcategorieën meer zijn.']
   is_active        tinyint(1)   [not null, default: 1]
   created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]

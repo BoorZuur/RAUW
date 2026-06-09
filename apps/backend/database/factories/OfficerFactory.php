@@ -40,6 +40,7 @@ class OfficerFactory extends Factory
             'password' => static::$password ??= 'password',
             'remember_token' => Str::random(10),
             'badge_number' => fake()->unique()->bothify('BOA-####'),
+            'hub_id' => null,
             'is_active' => true,
         ];
     }

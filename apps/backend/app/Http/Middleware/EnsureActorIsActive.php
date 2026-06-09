@@ -33,7 +33,10 @@ class EnsureActorIsActive
                 return $next($request);
             }
 
-            abort(403, 'This account is inactive.');
+            return response()->json([
+                'message' => 'This account is inactive.',
+                'code' => 'account_inactive',
+            ], Response::HTTP_FORBIDDEN);
         }
 
         return $next($request);

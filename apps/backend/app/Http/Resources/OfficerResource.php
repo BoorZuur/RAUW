@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Enums\ActorType;
 use App\Models\Department;
 use App\Models\District;
+use App\Models\Hub;
 use App\Models\Officer;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -43,9 +44,25 @@ class OfficerResource extends JsonResource
             'email' => $officer->email,
             'badge_number' => $officer->badge_number,
             'is_active' => (bool) $officer->is_active,
+            'hub_id' => $officer->hub_id,
+            'hub' => $this->compactHub($officer),
             'departments' => $this->compactDepartments($officer),
             'districts' => $this->compactDistricts($officer),
         ];
+    }
+
+    /**
+     * Return the officer's hub when the relation has already been loaded.
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function compactHub(Officer $officer): ?array
+    {
+        if (! $officer->relationLoaded('hub') || ! $officer->hub instanceof Hub) {
+            return null;
+        }
+
+        return (new HubResource($officer->hub))->resolve();
     }
 
     /**

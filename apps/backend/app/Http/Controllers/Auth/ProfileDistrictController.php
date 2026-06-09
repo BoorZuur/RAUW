@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Actions\Auth\BuildOfficerAuthProfile;
 use App\Enums\ActorType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\DistrictAssignments\UpdateOwnDistrictsRequest;
@@ -12,6 +13,11 @@ use Illuminate\Http\JsonResponse;
 
 class ProfileDistrictController extends Controller
 {
+    public function __construct(
+        private readonly BuildOfficerAuthProfile $buildOfficerAuthProfile,
+    ) {
+    }
+
     /**
      * Sync the authenticated actor's own district assignments and return the
      * refreshed canonical auth profile payload.
@@ -36,13 +42,15 @@ class ProfileDistrictController extends Controller
 
         // Reload the relations the profile resource embeds so the response
         // reflects the freshly synced districts without lazy queries.
-        $actor->load('departments', 'districts');
+        $actor->load('departments', 'districts', 'hub');
 
         $type = $actor instanceof Manager ? ActorType::Manager : ActorType::Officer;
 
         return response()->json([
             'actor_type' => $type->value,
-            'profile' => (new AuthProfileResource($actor))->toArray($request),
+            'profile' => $actor instanceof Officer
+                ? $this->buildOfficerAuthProfile->build($actor, $request)
+                : (new AuthProfileResource($actor))->toArray($request),
         ]);
     }
 }

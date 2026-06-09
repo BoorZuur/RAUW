@@ -33,6 +33,11 @@
                   "    pm.expect(response.profile.district_id).to.be.undefined;",
                   "});",
                   "",
+                  "pm.test('Registration does not start shared shift', function () {",
+                  "    pm.expect(response.hub_active).to.eql(false);",
+                  "    pm.expect(response.hub_active_until).to.be.oneOf([null, undefined]);",
+                  "});",
+                  "",
                   "if (response.access_token) {",
                   "    pm.collectionVariables.set('access_token', response.access_token);",
                   "",
@@ -60,7 +65,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"new-officer\",\n  \"email\": \"new.officer@example.com\",\n  \"password\": \"password123\",\n  \"confirm_password\": \"password123\",\n  \"badge_number\": \"BOA-1234\",\n  \"department_ids\": [1],\n  \"district_ids\": [1]\n}",
+              "raw": "{\n  \"username\": \"new-officer\",\n  \"email\": \"new.officer@example.com\",\n  \"password\": \"password123\",\n  \"confirm_password\": \"password123\",\n  \"badge_number\": \"BOA-1234\",\n  \"department_ids\": [1],\n  \"district_ids\": [1],\n  \"latitude\": 51.9106846,\n  \"longitude\": 4.4814932\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -79,7 +84,7 @@
                 "officer"
               ]
             },
-            "description": "Register a backend API-only officer account with username, email, password, confirm_password, badge_number, department_ids, and optional district_ids. department_ids is required, must contain at least one active department ID (is_active=true), and cannot contain duplicates; inactive or unknown department IDs return 422. district_ids may be omitted or empty, must contain active existing district IDs when present, and cannot contain duplicates; assignments are stored through district_officer. The 201 response includes token_type, access_token, actor_type, and a cleaned safe officer profile with departments and districts as compact arrays. The test script stores access_token in collection and active environment variables. Change username, email, and badge_number before rerunning because username and badge_number must be unique within officers and email must be unique across users, officers, and managers."
+            "description": "Register a backend API-only officer account with username, email, password, confirm_password, badge_number, department_ids, latitude, longitude, and optional district_ids. latitude and longitude are required for validation and audit session rows. Registration does **not** start a shared shift — expect hub_active: false and hub_active_until: null even at hub coordinates. department_ids is required, must contain at least one active department ID (is_active=true), and cannot contain duplicates. district_ids may be omitted or empty. Registration does not require hub_id; officers without a hub cannot use POST /api/auth/login until a manager assigns one. Change username, email, and badge_number before rerunning."
           },
           "response": []
         },
@@ -369,6 +374,214 @@
           "response": []
         },
         {
+          "name": "Login Officer at Hub",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Officer hub login succeeded', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Officer received hub-active session', function () {",
+                  "    pm.expect(response.actor_type).to.eql('officer');",
+                  "    pm.expect(response.hub_active).to.eql(true);",
+                  "    pm.expect(response.hub_active_until).to.be.a('string').and.not.empty;",
+                  "    pm.expect(response.profile.hub_active).to.eql(true);",
+                  "});",
+                  "",
+                  "if (response.access_token) {",
+                  "    pm.collectionVariables.set('access_token', response.access_token);",
+                  "    pm.collectionVariables.set('officer_hub_active_token', response.access_token);",
+                  "",
+                  "    if (pm.environment.name) {",
+                  "        pm.environment.set('access_token', response.access_token);",
+                  "        pm.environment.set('officer_hub_active_token', response.access_token);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"demo.officer@example.com\",\n  \"password\": \"password\",\n  \"latitude\": 51.9106846,\n  \"longitude\": 4.4814932\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": [ "{{base_url}}" ],
+              "path": [ "api", "auth", "login" ]
+            },
+            "description": "Log in as demo.officer@example.com at Cluster Centrum coords (hub_id 3). Hub-eligible login starts the shared shift: hub_active: true, hub_active_until ~10h ahead. Re-login at hub does not extend an existing shift. Sanctum hub-active ability is audit-only. Stores access_token and officer_hub_active_token."
+          },
+          "response": []
+        },
+        {
+          "name": "Login Officer Remote",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Officer remote login succeeded', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Officer remote login without active shift', function () {",
+                  "    pm.expect(response.actor_type).to.eql('officer');",
+                  "    // Run on fresh seed or after shift ended. If hub_active is true, a shared shift from a prior hub login is still active.",
+                  "    if (response.hub_active === false) {",
+                  "        pm.expect(response.hub_active_until).to.be.oneOf([null, undefined]);",
+                  "        pm.expect(response.profile.hub_active).to.eql(false);",
+                  "    } else {",
+                  "        pm.expect(response.hub_active).to.eql(true);",
+                  "        pm.expect(response.profile.hub_active).to.eql(true);",
+                  "    }",
+                  "});",
+                  "",
+                  "if (response.access_token) {",
+                  "    pm.collectionVariables.set('access_token', response.access_token);",
+                  "    pm.collectionVariables.set('officer_remote_token', response.access_token);",
+                  "",
+                  "    if (pm.environment.name) {",
+                  "        pm.environment.set('access_token', response.access_token);",
+                  "        pm.environment.set('officer_remote_token', response.access_token);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"demo.officer@example.com\",\n  \"password\": \"password\",\n  \"latitude\": 52.3676,\n  \"longitude\": 4.9041\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": [ "{{base_url}}" ],
+              "path": [ "api", "auth", "login" ]
+            },
+            "description": "Log in as demo.officer@example.com with coordinates far outside the hub radius (Amsterdam). Login always succeeds. Without an active shared shift: hub_active false, workflow blocked. With an active shared shift (run Login Officer at Hub first): hub_active true, workflow allowed. Stores officer_remote_token for workflow smoke test when no shift is active."
+          },
+          "response": []
+        },
+        {
+          "name": "Start Shift",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Start shift succeeded', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Shared shift started', function () {",
+                  "    pm.expect(response.hub_active).to.eql(true);",
+                  "    pm.expect(response.hub_active_until).to.be.a('string').and.not.empty;",
+                  "    pm.expect(response.profile.hub_active).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{access_token}}", "type": "string" }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 51.9106846,\n  \"longitude\": 4.4814932\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/start-shift",
+              "host": [ "{{base_url}}" ],
+              "path": [ "api", "auth", "start-shift" ]
+            },
+            "description": "Start the officer's shared shift at the assigned hub. Requires an authenticated officer with no active shift (422 shift_already_active if shift already active). Cluster Centrum coordinates locally. Remote coords return 403 outside_hub_radius; missing hub_id returns 403 hub_not_assigned. Does not issue a new token. Run Auth / Login as officer first (without hub-eligible login) or after manager end-shift."
+          },
+          "response": []
+        },
+        {
+          "name": "Officer Workflow Blocked (403 Smoke)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Workflow blocked without hub-active', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "",
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Response includes hub_active_required code', function () {",
+                  "    pm.expect(response.code).to.eql('hub_active_required');",
+                  "    pm.expect(response.message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{officer_remote_token}}", "type": "string" }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/issues?page=1&per_page=20",
+              "host": [ "{{base_url}}" ],
+              "path": [ "api", "issues" ],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "per_page", "value": "20" }
+              ]
+            },
+            "description": "Smoke test for shared-shift gate on Tier C routes. Run Auth / Login Officer Remote when the officer has no active shared shift (fresh seed or after end-shift). Expects 403 hub_active_required on GET /api/issues. Profile, start-shift, and reference reads remain available without an active shift."
+          },
+          "response": []
+        },
+        {
           "name": "Current Profile",
           "request": {
             "auth": {
@@ -576,7 +789,7 @@
                 "logout"
               ]
             },
-            "description": "Invalidate all Sanctum personal access tokens for the authenticated actor (every session ends, not only the bearer token on this request). Requires Authorization: Bearer <token>. Inactive actors may still call logout (whitelisted). After 200, previously issued tokens—including tokens stored in other clients—no longer authenticate."
+            "description": "Revoke only the current bearer token. For officers, closes the open officer_sessions row for that token; shared shift (hub_active_until) is preserved and other devices remain authenticated. Inactive actors may still call logout (whitelisted). After 200, this token no longer authenticates; other tokens for the same officer still work until revoked or expired."
           },
           "response": []
         }
@@ -1015,7 +1228,30 @@
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
             "body": { "mode": "raw", "raw": "{\n  \"district_ids\": [1, 2]\n}", "options": { "raw": { "language": "json" } } },
             "url": { "raw": "{{base_url}}/api/officers/1/districts", "host": [ "{{base_url}}" ], "path": [ "api", "officers", "1", "districts" ] },
-            "description": "Manager-admin district assignment endpoint. Replace an officer's district assignments as an authenticated active manager. Users, officers, inactive managers, and unauthenticated requests cannot update officer districts. district_ids must be present, may be empty to clear assignments, must contain active existing district IDs, and cannot contain duplicates. Returns the officer's refreshed profile with districts. This only updates district_officer and never modifies issues.district_id."
+            "description": "Manager-admin district assignment endpoint. Replace an officer's district assignments as an authenticated active manager. Users, officers, inactive managers, and unauthenticated requests cannot update officer districts. district_ids must be present, may be empty to clear assignments, must contain active existing district IDs in the officer's hub when hub_id is set, and cannot contain duplicates; cross-hub IDs return 422. Returns the officer's refreshed profile with districts. This only updates district_officer and never modifies issues.district_id."
+          },
+          "response": []
+        },
+        {
+          "name": "Set Officer Hub",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "PATCH",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"hub_id\": {{hub_id}}\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/officers/1/hub", "host": [ "{{base_url}}" ], "path": [ "api", "officers", "1", "hub" ] },
+            "description": "Assign an active hub to an officer and clear district_officer pivot. Also ends the shared shift (hub_active_until cleared) without revoking tokens. hub_id must reference an active hub (is_active=true). Active manager only."
+          },
+          "response": []
+        },
+        {
+          "name": "End Officer Shift",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "PATCH",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+            "url": { "raw": "{{base_url}}/api/officers/1/end-shift", "host": [ "{{base_url}}" ], "path": [ "api", "officers", "1", "end-shift" ] },
+            "description": "End an officer's shared shift as an authenticated active manager. Clears hub_active_until without revoking Sanctum tokens; Tier C routes return 403 hub_active_required until a new shift is started. Empty body. Use demo.officer (id 1) after Login as Main Manager or any active manager login."
           },
           "response": []
         },
@@ -1051,7 +1287,31 @@
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
             "body": { "mode": "raw", "raw": "{\n  \"district_ids\": [1, 2]\n}", "options": { "raw": { "language": "json" } } },
             "url": { "raw": "{{base_url}}/api/managers/{{manager_id}}/districts", "host": [ "{{base_url}}" ], "path": [ "api", "managers", "{{manager_id}}", "districts" ] },
-            "description": "Main-manager-only district assignment endpoint. Replace a manager's district assignments as an authenticated active main manager. district_ids must be present, may be [] to clear all assignments, must reference active district IDs (is_active=true), and cannot contain duplicates; inactive or unknown IDs return 422. Returns the refreshed Manager resource (flat manager profile with departments and districts). The path target must have is_main_manager=false; main managers and unknown ids return 404. Soft-deleted managers return 404. This only updates district_manager and never modifies issues.district_id or officer district pivots. Use the main manager token from Auth / Login (demo.manager@example.com locally). Ordinary managers receive 403."
+            "description": "Main-manager-only district assignment endpoint. Replace a manager's district assignments as an authenticated active main manager. district_ids must be present, may be [] to clear all assignments, must reference active district IDs (is_active=true) in the manager's hub when hub_id is set, and cannot contain duplicates; cross-hub or unknown IDs return 422. Returns the refreshed Manager resource (flat manager profile with departments and districts). The path target must have is_main_manager=false; main managers and unknown ids return 404. Soft-deleted managers return 404. This only updates district_manager and never modifies issues.district_id or officer district pivots. Use the main manager token from Auth / Login (demo.manager@example.com locally). Ordinary managers receive 403."
+          },
+          "response": []
+        },
+        {
+          "name": "Set Main Manager Hub",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{main_manager_access_token}}", "type": "string" } ] },
+            "method": "PATCH",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"hub_id\": {{hub_id}}\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/main-managers/1/hub", "host": [ "{{base_url}}" ], "path": [ "api", "main-managers", "1", "hub" ] },
+            "description": "Assign an active hub to a main manager and clear district_manager pivot. hub_id must reference an active hub (is_active=true); inactive or unknown hub IDs return 422. Main manager only. Path target must have is_main_manager=true."
+          },
+          "response": []
+        },
+        {
+          "name": "Set Manager Hub",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{main_manager_access_token}}", "type": "string" } ] },
+            "method": "PATCH",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"hub_id\": {{hub_id}}\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/managers/{{manager_id}}/hub", "host": [ "{{base_url}}" ], "path": [ "api", "managers", "{{manager_id}}", "hub" ] },
+            "description": "Assign an active hub to an ordinary manager and clear district_manager pivot. hub_id must reference an active hub (is_active=true); inactive or unknown hub IDs return 422. Main manager only. Path target must have is_main_manager=false."
           },
           "response": []
         }
@@ -1061,6 +1321,35 @@
     {
       "name": "Officers",
       "item": [
+        {
+          "name": "List Officer Sessions",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{main_manager_access_token}}", "type": "string" }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/officer-sessions?page=1&per_page=20",
+              "host": [ "{{base_url}}" ],
+              "path": [ "api", "officer-sessions" ],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "per_page", "value": "20" },
+                { "key": "officer_id", "value": "1", "disabled": true },
+                { "key": "hub_id", "value": "3", "disabled": true },
+                { "key": "is_hub_active", "value": "1", "disabled": true, "description": "Filter hub-active sessions only when enabled." }
+              ]
+            },
+            "description": "List officer login sessions as an authenticated active manager. Run Auth / Login as Main Manager first. Returns paginated audit rows with officer/hub summaries, login coordinates, distance_meters_at_login, is_hub_active, and hub_active_until. Optional filters: officer_id, hub_id, is_hub_active. Users and officers receive 403."
+          },
+          "response": []
+        },
         {
           "name": "List officers",
           "request": {
@@ -1118,7 +1407,7 @@
           "response": []
         }
       ],
-      "description": "Officer-focused request examples. List officers is available to active officers and managers. Disable and enable officer require an active manager token (access_token after Login as a manager). The district self-service update entry is implemented for active officers."
+      "description": "Officer-focused request examples. List Officer Sessions requires main_manager_access_token. List officers is available to active officers and managers. Disable and enable officer require an active manager token (access_token after Login as a manager). The district self-service update entry is implemented for active officers."
     },
     {
       "name": "Categories",
@@ -1130,7 +1419,7 @@
             "method": "GET",
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
             "url": { "raw": "{{base_url}}/api/categories", "host": [ "{{base_url}}" ], "path": [ "api", "categories" ] },
-            "description": "List categories as any authenticated actor. Main categories are ordered by priority and children by weight; lower numbers mean higher priority. Responses include assigned departments from the category_department pivot."
+            "description": "List categories as any authenticated actor. Main categories are ordered by priority (lower = higher urgency); subcategories are ordered alphabetically by name. Responses include assigned departments from the category_department pivot."
           },
           "response": []
         },
@@ -1151,7 +1440,7 @@
             "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{main_manager_access_token}}", "type": "string" } ] },
             "method": "POST",
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
-            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Openbare ruimte\",\n  \"parent_id\": null,\n  \"department_ids\": [1],\n  \"priority\": 10,\n  \"is_active\": true\n}", "options": { "raw": { "language": "json" } } },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Parkeeroverlast\",\n  \"parent_id\": null,\n  \"department_ids\": [2],\n  \"priority\": 1,\n  \"is_active\": true\n}", "options": { "raw": { "language": "json" } } },
             "url": { "raw": "{{base_url}}/api/categories", "host": [ "{{base_url}}" ], "path": [ "api", "categories" ] },
             "description": "Create a main category as an authenticated active main manager (is_main_manager=true). Ordinary managers receive 403. Main categories use priority; lower values sort first. department_ids must contain existing departments."
           },
@@ -1163,9 +1452,9 @@
             "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{main_manager_access_token}}", "type": "string" } ] },
             "method": "POST",
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
-            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Losliggende stoeptegel\",\n  \"parent_id\": 1,\n  \"department_ids\": [1, 2],\n  \"weight\": 5,\n  \"is_active\": true\n}", "options": { "raw": { "language": "json" } } },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Parkeren op stoep\",\n  \"parent_id\": 1,\n  \"department_ids\": [2],\n  \"is_active\": true\n}", "options": { "raw": { "language": "json" } } },
             "url": { "raw": "{{base_url}}/api/categories", "host": [ "{{base_url}}" ], "path": [ "api", "categories" ] },
-            "description": "Create a subcategory under an active main category as an authenticated active main manager. Ordinary managers receive 403. Nested subcategories are rejected. Subcategories use weight; lower values sort first."
+            "description": "Create a subcategory under an active main category as an authenticated active main manager. Ordinary managers receive 403. Nested subcategories are rejected. Subcategories order alphabetically by name; weight is rejected with 422."
           },
           "response": []
         },
@@ -1175,7 +1464,7 @@
             "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{main_manager_access_token}}", "type": "string" } ] },
             "method": "PATCH",
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
-            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Openbare ruimte bijgewerkt\",\n  \"department_ids\": [1, 2],\n  \"priority\": 1\n}", "options": { "raw": { "language": "json" } } },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Parkeeroverlast bijgewerkt\",\n  \"department_ids\": [2],\n  \"priority\": 1\n}", "options": { "raw": { "language": "json" } } },
             "url": { "raw": "{{base_url}}/api/categories/1", "host": [ "{{base_url}}" ], "path": [ "api", "categories", "1" ] },
             "description": "Partially update a category as an authenticated active main manager. Ordinary managers receive 403. If department_ids is present, it replaces the category's pivot assignments. parent_id may only reference a main category; subcategories cannot have children."
           },
@@ -1228,7 +1517,94 @@
           "response": []
         }
       ],
-      "description": "Category management requests. Reads work for any authenticated actor; POST/PATCH/PUT/DELETE require an authenticated active main manager (main_manager_access_token). Categories use a two-level hierarchy (main + subcategory only). Activation and deactivation use generic PATCH with is_active; hard delete is guarded."
+      "description": "Category management requests. Reads work for any authenticated actor; POST/PATCH/PUT/DELETE require an authenticated active main manager (main_manager_access_token). Categories use a two-level hierarchy (main + subcategory only). Main categories use priority; subcategories order alphabetically by name. Activation and deactivation use generic PATCH with is_active; hard delete is guarded."
+    },
+    {
+      "name": "Hubs",
+      "item": [
+        {
+          "name": "List Hubs",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "GET",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+            "url": { "raw": "{{base_url}}/api/hubs", "host": [ "{{base_url}}" ], "path": [ "api", "hubs" ] },
+            "description": "List Rotterdam cluster hubs ordered by name with district, officer, and manager reference counts. Any authenticated actor may call this endpoint."
+          },
+          "response": []
+        },
+        {
+          "name": "Show Hub",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+            "method": "GET",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+            "url": { "raw": "{{base_url}}/api/hubs/{{hub_id}}", "host": [ "{{base_url}}" ], "path": [ "api", "hubs", "{{hub_id}}" ] },
+            "description": "Show one hub with reference counts. Any authenticated actor may call this endpoint. Locally hub_id 3 is Cluster Centrum."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Hub",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{main_manager_access_token}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Cluster Test\",\n  \"address\": \"Teststraat 1\",\n  \"postal_code\": \"3011 AA\",\n  \"latitude\": 51.92,\n  \"longitude\": 4.48\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/hubs", "host": [ "{{base_url}}" ], "path": [ "api", "hubs" ] },
+            "description": "Create a hub as an authenticated active main manager. Required: name, address, postal_code, latitude, longitude (not geocoded server-side). New hubs default to is_active=false when the field is omitted; send is_active: true to create an already-active hub. Ordinary managers receive 403."
+          },
+          "response": []
+        },
+        {
+          "name": "Deactivate Hub",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{main_manager_access_token}}", "type": "string" } ] },
+            "method": "PATCH",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"is_active\": false\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/hubs/{{hub_id}}", "host": [ "{{base_url}}" ], "path": [ "api", "hubs", "{{hub_id}}" ] },
+            "description": "Deactivate a hub via PATCH with is_active=false (no /disable route). Returns 422 when active districts or active officers remain assigned to the hub. Managers assigned to the hub do not block deactivation. Main manager only."
+          },
+          "response": []
+        },
+        {
+          "name": "Reactivate Hub",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{main_manager_access_token}}", "type": "string" } ] },
+            "method": "PATCH",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"is_active\": true\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/hubs/{{hub_id}}", "host": [ "{{base_url}}" ], "path": [ "api", "hubs", "{{hub_id}}" ] },
+            "description": "Reactivate a hub via PATCH with is_active=true. Main manager only."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Hub",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{main_manager_access_token}}", "type": "string" } ] },
+            "method": "PATCH",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"address\": \"Zalmstraat 7-9\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/hubs/{{hub_id}}", "host": [ "{{base_url}}" ], "path": [ "api", "hubs", "{{hub_id}}" ] },
+            "description": "Partially update a hub as an authenticated active main manager."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Hub",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{main_manager_access_token}}", "type": "string" } ] },
+            "method": "DELETE",
+            "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+            "url": { "raw": "{{base_url}}/api/hubs/{{hub_id}}", "host": [ "{{base_url}}" ], "path": [ "api", "hubs", "{{hub_id}}" ] },
+            "description": "Hard delete an eligible hub as an authenticated active main manager. Returns 409 when districts, officers, or managers still reference the hub."
+          },
+          "response": []
+        }
+      ],
+      "description": "Hub CRUD requests. Reads work for any authenticated actor; POST/PATCH/PUT/DELETE require main_manager_access_token. New hubs default inactive on create; seeded hubs (Cluster Zuid, Cluster Buitengebieden, Cluster Centrum id 3, Cluster Noord) are active. Deactivate via PATCH is_active=false; returns 422 when active districts or active officers remain assigned. Hub assignments require an active hub_id."
     },
     {
       "name": "Districts",
@@ -1240,7 +1616,7 @@
             "method": "GET",
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
             "url": { "raw": "{{base_url}}/api/districts", "host": [ "{{base_url}}" ], "path": [ "api", "districts" ] },
-            "description": "List districts ordered by name with manager/officer assignment counts and issue reference counts. Requires authentication in the protected API group. Managers and officers use many-to-many district pivots; issues.district_id remains a singular issue location/reference field."
+            "description": "List districts ordered by name with hub metadata, manager/officer assignment counts, and issue reference counts. Requires authentication in the protected API group. Managers and officers use many-to-many district pivots; issues.district_id remains a singular issue location/reference field."
           },
           "response": []
         },
@@ -1261,9 +1637,9 @@
             "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
             "method": "POST",
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
-            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Nieuwe Wijk\",\n  \"postal_prefix\": \"3248\",\n  \"center_lat\": 51.75,\n  \"center_lng\": 4.16,\n  \"radius_meters\": 2500,\n  \"is_active\": true\n}", "options": { "raw": { "language": "json" } } },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Nieuwe Wijk\",\n  \"hub_id\": {{hub_id}},\n  \"postal_prefix\": \"3017\",\n  \"center_lat\": 51.91,\n  \"center_lng\": 4.48,\n  \"radius_meters\": 1200,\n  \"is_active\": true\n}", "options": { "raw": { "language": "json" } } },
             "url": { "raw": "{{base_url}}/api/districts", "host": [ "{{base_url}}" ], "path": [ "api", "districts" ] },
-            "description": "Create a district as an authenticated active main manager (is_main_manager=true). Users, officers, ordinary managers, inactive managers, and unauthenticated requests receive 403. Use main_manager_access_token; manager_access_token from a non-main manager should fail with 403."
+            "description": "Create a district as an authenticated active main manager (is_main_manager=true). Required: name, hub_id, center_lat, center_lng (not geocoded server-side). hub_id must reference an active hub (is_active=true; use hub_id env var, Cluster Centrum=3 locally). Inactive or unknown hub IDs return 422. Users, officers, ordinary managers, inactive managers, and unauthenticated requests receive 403. Use main_manager_access_token; manager_access_token from a non-main manager should fail with 403."
           },
           "response": []
         },
@@ -1275,7 +1651,7 @@
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
             "body": { "mode": "raw", "raw": "{\n  \"name\": \"Nieuwe Wijk bijgewerkt\"\n}", "options": { "raw": { "language": "json" } } },
             "url": { "raw": "{{base_url}}/api/districts/1", "host": [ "{{base_url}}" ], "path": [ "api", "districts", "1" ] },
-            "description": "Update a district as an authenticated active main manager. Ordinary managers receive 403. Supports partial updates for name, postal_prefix, center_lat, center_lng, and radius_meters."
+            "description": "Update a district as an authenticated active main manager. Ordinary managers receive 403. Supports partial updates for name, hub_id, postal_prefix, center_lat, center_lng, and radius_meters."
           },
           "response": []
         },
@@ -1348,7 +1724,7 @@
             "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
             "method": "POST",
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
-            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Losliggende stoeptegel\",\n  \"content\": \"Er ligt een stoeptegel los bij de bushalte.\",\n  \"category_id\": {{category_id}},\n  \"district_id\": {{district_id}},\n  \"postal_code\": \"3241AB\",\n  \"address\": \"Voorstraat 1, Middelharnis\",\n  \"latitude\": 51.7575,\n  \"longitude\": 4.165,\n  \"is_anonymous\": true\n}", "options": { "raw": { "language": "json" } } },
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Parkeren op stoep\",\n  \"content\": \"Er staat een auto op de stoep bij Coolsingel.\",\n  \"category_id\": {{category_id}},\n  \"district_id\": {{district_id}},\n  \"postal_code\": \"3012AB\",\n  \"address\": \"Coolsingel 1, Rotterdam\",\n  \"latitude\": 51.91712,\n  \"longitude\": 4.47834,\n  \"is_anonymous\": true\n}", "options": { "raw": { "language": "json" } } },
             "url": { "raw": "{{base_url}}/api/issues", "host": [ "{{base_url}}" ], "path": [ "api", "issues" ] },
             "description": "Create an issue as an authenticated active user. Required fields are title, content, category_id, and district_id. Do not send department: issue departments are derived server-side from the selected category, stored through the department_issue pivot, and returned as a read-only departments array. Optional location fields are postal_code, address, latitude, and longitude. Removed legacy locality fields are not accepted. Anonymous issues remain owned through issues.user_id; the backend generates a stable alias such as Melder#A1B2C3D4 and does not accept anonymous_alias from clients. The test stores issue_id for follow-up requests."
           },
@@ -1720,6 +2096,11 @@
       "type": "string"
     },
     {
+      "key": "hub_id",
+      "value": "3",
+      "type": "string"
+    },
+    {
       "key": "district_id",
       "value": "1",
       "type": "string"
@@ -1767,6 +2148,16 @@
     {
       "key": "department_id",
       "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "officer_hub_active_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "officer_remote_token",
+      "value": "",
       "type": "string"
     }
   ]

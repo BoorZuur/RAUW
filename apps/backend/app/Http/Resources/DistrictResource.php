@@ -35,6 +35,8 @@ class DistrictResource extends JsonResource
 
         return [
             'id' => $district->id,
+            'hub_id' => $district->hub_id,
+            'hub' => $this->compactHub($district),
             'name' => $district->name,
             'postal_prefix' => $district->postal_prefix,
             'center_lat' => $district->center_lat,
@@ -47,6 +49,20 @@ class DistrictResource extends JsonResource
             'created_at' => $district->created_at,
             'updated_at' => $district->updated_at,
         ];
+    }
+
+    /**
+     * Return the district's hub when the relation has already been loaded.
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function compactHub(District $district): ?array
+    {
+        if (! $district->relationLoaded('hub') || $district->hub === null) {
+            return null;
+        }
+
+        return (new HubResource($district->hub))->resolve();
     }
 
     /**

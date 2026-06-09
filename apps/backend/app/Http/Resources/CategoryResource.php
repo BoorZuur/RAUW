@@ -11,9 +11,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *
  * The payload exposes the category hierarchy (`parent_id` with a compact
  * parent summary, and nested children when loaded), the active state, the
- * assigned departments, and both ordering fields. Main categories (where
- * `parent_id` is null) order themselves with `priority`; subcategories use
- * `weight`. For both fields a LOWER number means a HIGHER priority.
+ * assigned departments, and the `priority` ordering field for main categories.
+ * Subcategories order by `name` only. A lower `priority` means higher urgency.
  *
  * @mixin Category
  */
@@ -41,10 +40,8 @@ class CategoryResource extends JsonResource
             'is_active' => (bool) $category->is_active,
             'parent_id' => $category->parent_id,
             'is_main_category' => $category->parent_id === null,
-            // Lower number = higher priority. `priority` is meaningful for main
-            // categories; `weight` is meaningful for subcategories.
+            // Lower number = higher priority. `priority` applies to main categories only.
             'priority' => $category->priority,
-            'weight' => $category->weight,
             'parent' => $this->compactParent($category),
             'departments' => $this->compactDepartments($category),
             'children' => $this->compactChildren($category),
