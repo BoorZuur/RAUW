@@ -65,11 +65,20 @@ class OfficerIssueConflict extends Exception implements HttpExceptionInterface
         );
     }
 
-    public static function issueClosed(): self
+    public static function notUpdateAuthor(): self
+    {
+        return new self(
+            code: 'not_update_author',
+            message: 'Only the officer who authored this update may modify or delete it.',
+            status: Response::HTTP_FORBIDDEN,
+        );
+    }
+
+    public static function issueClosed(?string $message = null): self
     {
         return new self(
             code: 'issue_closed',
-            message: 'Cannot create or update a resolution on a closed issue.',
+            message: $message ?? 'Cannot create or update a resolution on a closed issue.',
             status: Response::HTTP_UNPROCESSABLE_ENTITY,
         );
     }
