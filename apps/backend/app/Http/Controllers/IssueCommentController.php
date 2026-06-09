@@ -11,6 +11,7 @@ use App\Http\Requests\IssueComments\UpdateCommentVisibilityRequest;
 use App\Http\Resources\IssueCommentResource;
 use App\Models\Issue;
 use App\Models\IssueComment;
+use App\Models\Manager;
 use App\Models\Officer;
 use App\Models\User;
 use App\Support\CommentVisibilityQuery;
@@ -25,8 +26,8 @@ class IssueCommentController extends Controller
      * List comments for a given issue.
      *
      * Validates that the issue is visible to the actor, and applies visibility-scoping
-     * to the comment query builder. Eager-loads user/officer authors, and returns
-     * comments sorted chronologically (oldest first).
+     * to the comment query builder. Eager-loads user/officer/manager authors and
+     * the parent issue, and returns comments sorted chronologically (oldest first).
      */
     public function index(IndexCommentRequest $request, Issue $issue): AnonymousResourceCollection
     {
@@ -35,7 +36,7 @@ class IssueCommentController extends Controller
         }
 
         $comments = CommentVisibilityQuery::applyVisibilityScope(
-            IssueComment::query()->with(['user', 'officer']),
+            IssueComment::query()->with(['user', 'officer', 'manager', 'issue']),
             $request->user(),
         )
             ->where('issue_id', $issue->id)
@@ -48,7 +49,7 @@ class IssueCommentController extends Controller
     }
 
     /**
-     * Create a comment on behalf of the authenticated active user or officer.
+     * Create a comment on behalf of the authenticated active user, officer, or manager.
      *
      * Validates that the issue is visible to the actor before creating the comment.
      */
@@ -60,15 +61,31 @@ class IssueCommentController extends Controller
 
         $actor = $request->user();
 
-        $comment = IssueComment::create([
+        $attributes = [
             'issue_id' => $issue->id,
-            'author_type' => $actor instanceof User ? ActorType::User : ActorType::Officer,
-            'user_id' => $actor instanceof User ? $actor->getKey() : null,
-            'officer_id' => $actor instanceof Officer ? $actor->getKey() : null,
-            'content' => $request->input('content'),
-        ]);
+            'content' => $request->validated('content'),
+        ];
 
-        $comment->load(['user', 'officer']);
+        if ($actor instanceof User) {
+            $attributes['author_type'] = ActorType::User;
+            $attributes['user_id'] = $actor->getKey();
+            $attributes['officer_id'] = null;
+            $attributes['manager_id'] = null;
+        } elseif ($actor instanceof Officer) {
+            $attributes['author_type'] = ActorType::Officer;
+            $attributes['user_id'] = null;
+            $attributes['officer_id'] = $actor->getKey();
+            $attributes['manager_id'] = null;
+        } elseif ($actor instanceof Manager) {
+            $attributes['author_type'] = ActorType::Manager;
+            $attributes['user_id'] = null;
+            $attributes['officer_id'] = null;
+            $attributes['manager_id'] = $actor->getKey();
+        }
+
+        $comment = IssueComment::create($attributes);
+
+        $comment->load(['user', 'officer', 'manager', 'issue']);
 
         return (new IssueCommentResource($comment))
             ->response()
@@ -96,7 +113,7 @@ class IssueCommentController extends Controller
 
         $comment->update($request->safe()->only(['content']));
 
-        $comment->refresh()->load(['user', 'officer']);
+        $comment->refresh()->load(['user', 'officer', 'manager', 'issue']);
 
         return new IssueCommentResource($comment);
     }
@@ -105,8 +122,9 @@ class IssueCommentController extends Controller
      * Hard delete a comment.
      *
      * Ownership/manager permission is enforced in DeleteCommentRequest.
+     * Returns an empty 204 No Content response.
      */
-    public function destroy(DeleteCommentRequest $request, Issue $issue, IssueComment $comment): JsonResponse
+    public function destroy(DeleteCommentRequest $request, Issue $issue, IssueComment $comment): Response
     {
         if ($comment->issue_id !== $issue->id) {
             abort(404);
@@ -122,7 +140,7 @@ class IssueCommentController extends Controller
 
         $comment->delete();
 
-        return response()->json([], Response::HTTP_NO_CONTENT);
+        return response()->noContent();
     }
 
     /**
@@ -146,7 +164,7 @@ class IssueCommentController extends Controller
 
         $comment->update($request->safe()->only(['visibility']));
 
-        $comment->refresh()->load(['user', 'officer']);
+        $comment->refresh()->load(['user', 'officer', 'manager', 'issue']);
 
         return new IssueCommentResource($comment);
     }
