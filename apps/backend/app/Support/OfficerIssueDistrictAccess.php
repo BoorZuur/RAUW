@@ -14,13 +14,7 @@ class OfficerIssueDistrictAccess
      */
     public static function officerInIssueDistrict(Officer $officer, Issue $issue): bool
     {
-        if ($issue->district_id === null) {
-            return false;
-        }
-
-        return $officer->districts()
-            ->where('districts.id', $issue->district_id)
-            ->exists();
+        return ActorDistrictAccess::actorInIssueDistrict($officer, $issue);
     }
 
     /**
