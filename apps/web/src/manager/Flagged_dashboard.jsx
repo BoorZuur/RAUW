@@ -66,7 +66,7 @@ export default function FlagsDashboardPage() {
                 <div className="p-6 border-b border-stone-100 bg-stone-50/50 flex justify-between items-center">
                     <div>
                         <h2 className="text-xl font-bold text-stone-900 tracking-tight">Content Moderatie & Flags</h2>
-                        <p className="text-sm text-stone-500 mt-0.5">Overzicht van gerapporteerde signalen die een
+                        <p className="text-sm text-stone-500 mt-0.5">Overzicht van alle gerapporteerde signalen die een
                             review vereisen.</p>
                     </div>
                     <span
