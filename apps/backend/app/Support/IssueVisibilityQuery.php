@@ -18,14 +18,16 @@ class IssueVisibilityQuery
      *
      * Active users see visible canonical issues, issues they own (any
      * visibility), or canonical issues they participate on (content redaction
-     * is applied at the resource layer). Active officers and managers see all
-     * issues including hidden. Assumes the actor is active; inactive actors are
-     * blocked by middleware before this runs.
+     * is applied at the resource layer). Active officers and ordinary managers
+     * see issues in their assigned districts, including hidden issues in those
+     * districts. Main managers (`is_main_manager = true`) see all issues
+     * city-wide. Assumes the actor is active; inactive actors are blocked by
+     * middleware before this runs.
      */
     public static function applyVisibilityScope(Builder $query, Model $actor): Builder
     {
         if ($actor instanceof Officer || $actor instanceof Manager) {
-            return $query;
+            return ActorDistrictAccess::applyDistrictScope($query, $actor);
         }
 
         if ($actor instanceof User) {
@@ -54,12 +56,14 @@ class IssueVisibilityQuery
      * Mirrors {@see applyVisibilityScope()} for one row: users may view visible
      * issues, their own issues regardless of visibility, or canonical issues
      * they participate on (content redaction is applied at the resource layer).
-     * Officers and managers may view any issue.
+     * Officers and ordinary managers may view issues in their assigned
+     * districts, including hidden issues in those districts. Main managers may
+     * view any issue city-wide.
      */
     public static function canViewIssue(Issue $issue, Model $actor): bool
     {
         if ($actor instanceof Officer || $actor instanceof Manager) {
-            return true;
+            return ActorDistrictAccess::actorInIssueDistrict($actor, $issue);
         }
 
         if ($actor instanceof User) {

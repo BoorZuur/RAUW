@@ -252,8 +252,11 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
 
     // Issue management. Listing and reads are available to any authenticated
     // actor; officers may browse without a hub-active shift (Tier B whitelist
-    // in officer.hub-active). Writes are authorized inside the issue
-    // FormRequests to the authenticated, active regular user who owns the issue.
+    // in officer.hub-active). List/show visibility is district-scoped for
+    // officers and ordinary managers (assigned districts only, including hidden
+    // issues therein); main managers see all issues city-wide. Writes are
+    // authorized inside the issue FormRequests to the authenticated, active
+    // regular user who owns the issue.
     // Issues remain
     // user-owned through `issues.user_id` even when reported anonymously, so the
     // author can keep managing their own report; anonymous reports are displayed
@@ -277,7 +280,8 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     // oldest-first with full IssueResource payloads.
     Route::get('issues/{issue}/duplicates', [IssueDuplicateController::class, 'index'])->name('issues.duplicates.index');
     // Show returns 404 when the issue is not visible to the actor (e.g. hidden
-    // and not owned by an active user); officers and managers may view all issues.
+    // and not owned by an active user, or outside assigned districts for
+    // officers/ordinary managers). Main managers may view any issue city-wide.
     Route::get('issues/{issue}', [IssueController::class, 'show'])->name('issues.show');
     Route::match(['put', 'patch'], 'issues/{issue}', [IssueController::class, 'update'])->name('issues.update');
     // Visibility writes are officer/manager-only and authorized inside

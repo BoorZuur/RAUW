@@ -55,8 +55,9 @@ class IssueController extends Controller
      *
      * Results are visibility-scoped per actor type before optional filters:
      * users see visible canonicals, their own issues (any visibility), or
-     * canonicals they participate on; officers and managers see all issues
-     * including hidden. Duplicate child rows are excluded by default per actor
+     * canonicals they participate on; officers and ordinary managers see issues
+     * in assigned districts (including hidden); main managers see all issues
+     * city-wide. Duplicate child rows are excluded by default per actor
      * (`IssueListScope`); users may use `participating=1` for owned children
      * with canonical participation, and officers/managers may use
      * `include_duplicates=1` to include children. A single Eloquent query
@@ -178,7 +179,8 @@ class IssueController extends Controller
      * Visibility is enforced after route binding: users may view visible issues,
      * their own issues (any visibility), or canonical issues they participate on
      * (with canonical content redacted at the resource layer); officers and
-     * managers may view any issue. Unauthorized or invisible issues return 404
+     * ordinary managers may view issues in assigned districts; main managers
+     * may view any issue city-wide. Unauthorized or invisible issues return 404
      * to avoid leaking existence. Embeds `officer_resolution` when a report
      * exists. Active officers and managers also receive `status_history` (newest
      * first); regular users do not.

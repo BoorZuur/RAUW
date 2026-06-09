@@ -6,6 +6,7 @@ use App\Enums\IssueStatus;
 use App\Enums\Visibility;
 use App\Models\Manager;
 use App\Models\Officer;
+use App\Support\ActorDistrictAccess;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -27,7 +28,8 @@ class IndexIssueRequest extends FormRequest
      * Listing issues is available to any authenticated active actor; route
      * middleware enforces authentication. Results are visibility-scoped in the
      * controller: users see visible issues or their own issues (any visibility);
-     * officers and managers see all issues including hidden.
+     * officers and ordinary managers see issues in assigned districts only;
+     * main managers see all issues city-wide.
      */
     public function authorize(): bool
     {
@@ -38,7 +40,8 @@ class IndexIssueRequest extends FormRequest
      * Validation rules for the composable issue list filters and pagination.
      *
      * List results are visibility-scoped per actor type before these filters
-     * (users: visible issues or own issues; officers/managers: all issues).
+     * (users: visible issues or own issues; officers/ordinary managers:
+     * assigned districts; main managers: city-wide).
      * Filters are optional and composable: `district_id`, `department`,
      * `category_id`, `status`, `assigned_officer_id`, `unassigned`, `mine`,
      * `participating`, `include_duplicates`, and `visibility` may be combined
@@ -212,6 +215,23 @@ class IndexIssueRequest extends FormRequest
                     'unassigned',
                     'The unassigned filter cannot be used together with the assigned officer id filter.',
                 );
+            }
+
+            if (
+                $this->filled('district_id')
+                && (
+                    $actor instanceof Officer
+                    || ($actor instanceof Manager && ! ActorDistrictAccess::isMainManager($actor))
+                )
+            ) {
+                $districtId = $this->integer('district_id');
+
+                if (! in_array($districtId, ActorDistrictAccess::assignedDistrictIds($actor), true)) {
+                    $validator->errors()->add(
+                        'district_id',
+                        'The selected district is not assigned to you.',
+                    );
+                }
             }
         });
     }
