@@ -38,8 +38,10 @@ class StoreIssueRequest extends FormRequest
      * `anonymous_alias` is generated server-side and is never accepted from the
      * client. The integer `priority` is derived server-side from the selected
      * category's main-category priority and is prohibited in the request.
-     * Triage-owned fields (status, assignment, counters) are intentionally not
-     * accepted here.
+     * Triage-owned fields (status, assignment, counters, visibility) are
+     * intentionally not accepted here. Optional `duplicate_of_id` links the new
+     * report as a duplicate child of an existing canonical issue; category
+     * mismatch with the canonical is allowed.
      *
      * @return array<string, array<int, mixed>>
      */
@@ -55,7 +57,13 @@ class StoreIssueRequest extends FormRequest
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'is_anonymous' => ['sometimes', 'boolean'],
+            'duplicate_of_id' => ['nullable', 'integer', Rule::exists('issues', 'id')],
             'priority' => ['prohibited'],
+            'status' => ['prohibited'],
+            'visibility' => ['prohibited'],
+            'assigned_officer_id' => ['prohibited'],
+            'duplicate_count' => ['prohibited'],
+            'participant_count' => ['prohibited'],
         ];
     }
 }

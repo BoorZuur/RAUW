@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Issues\CreateIssue;
+use App\Actions\Issues\CreateIssueAsDuplicate;
 use App\Http\Requests\Issues\DeleteIssueRequest;
 use App\Http\Requests\Issues\IndexIssueRequest;
 use App\Http\Requests\Issues\ShowIssueRequest;
@@ -119,23 +121,23 @@ class IssueController extends Controller
      * Create an issue on behalf of the authenticated regular user.
      *
      * Authorization (active user only) and validation are enforced by
-     * StoreIssueRequest. The issue remains user-owned through `user_id` even
-     * when reported anonymously, so the author can still manage it later. The
-     * issue's departments are auto-assigned from the selected category's
-     * department assignments via the pivot source of truth (supporting multiple
-     * departments per issue); they are never accepted from the client. Integer
-     * `priority` is derived from the category's main-category priority and is
-     * never accepted from the client. When `is_anonymous` is true a stable,
-     * `anonymous_alias` is generated server-side and persisted once at creation;
-     * it is never accepted from the client and never regenerated on subsequent
-     * reads or updates. When the report is not anonymous the alias stays null.
+     * StoreIssueRequest. Normal creates delegate to {@see CreateIssue} (creator
+     * participant, `participant_count = 1`). When `duplicate_of_id` is present,
+     * {@see CreateIssueAsDuplicate} creates a hidden child linked to the
+     * canonical target and returns the child resource. The issue remains
+     * user-owned through `user_id` even when reported anonymously. Departments
+     * and `priority` are derived server-side from the selected category.
+     * Anonymous reports receive a stable server-generated `anonymous_alias`.
      */
-    public function store(StoreIssueRequest $request): JsonResponse
-    {
+    public function store(
+        StoreIssueRequest $request,
+        CreateIssue $createIssue,
+        CreateIssueAsDuplicate $createIssueAsDuplicate,
+    ): JsonResponse {
         /** @var User $author */
         $author = $request->user();
 
-        $attributes = $request->safe()->only([
+        $validated = $request->safe()->only([
             'title',
             'content',
             'category_id',
@@ -147,24 +149,9 @@ class IssueController extends Controller
             'is_anonymous',
         ]);
 
-        $attributes['user_id'] = $author->getKey();
-
-        $isAnonymous = (bool) ($attributes['is_anonymous'] ?? false);
-        $attributes['is_anonymous'] = $isAnonymous;
-
-        $category = Category::query()
-            ->with('departments')
-            ->findOrFail($attributes['category_id']);
-
-        $attributes['priority'] = IssuePriorityResolver::fromCategory($category);
-
-        $issue = $isAnonymous
-            ? $this->withUniqueAnonymousAlias(
-                fn (string $alias): Issue => Issue::create([...$attributes, 'anonymous_alias' => $alias]),
-            )
-            : Issue::create([...$attributes, 'anonymous_alias' => null]);
-
-        $issue->syncDepartments($category->departmentIds());
+        $issue = $request->filled('duplicate_of_id')
+            ? $createIssueAsDuplicate->create($author, $validated, $request->integer('duplicate_of_id'))
+            : $createIssue->create($author, $validated);
 
         $issue->load(self::ISSUE_RELATIONS);
 
