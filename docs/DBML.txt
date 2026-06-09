@@ -265,12 +265,13 @@ Table issue_participants {
 Table issue_comments {
   id               int          [pk, increment]
   issue_id         int          [not null, ref: > issues.id]
-  author_type      varchar(10)  [not null, note: 'user | officer']
+  author_type      varchar(10)  [not null, note: 'user | officer | manager']
   user_id          int          [ref: > users.id]
   officer_id       int          [ref: > officers.id]
-  content          text         [not null]
+  manager_id       int          [ref: > managers.id]
+  content          text         [not null, note: 'Max 2000 chars (application validation)']
   is_flagged       tinyint(1)   [not null, default: 0]
-  visibility       varchar(20)  [not null, default: 'visible', note: 'visible | hidden_pending | hidden_removed | visible_approved']
+  visibility       varchar(20)  [not null, default: 'visible', note: 'visible | hidden']
   created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
   updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
 }

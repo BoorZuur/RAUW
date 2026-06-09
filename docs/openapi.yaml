@@ -28,10 +28,11 @@ info:
     **Officer shared shift:** Officers share one shift clock via
     `officers.hub_active_until`. **Tier C** workflow writes require `is_active`
     and a future `hub_active_until` — not the bearer token's Sanctum `hub-active`
-    ability (audit-only). **Tier B** browse reads work without an active shift:
+    ability (audit-only).     **Tier B** browse reads work without an active shift:
     `GET /api/issues`, `GET /api/issues/{issueId}` (embeds `officer_resolution`
     when present), `GET /api/issues/{issueId}/officer-resolution`,
-    `GET /api/issues/{issueId}/officer-updates`, and authenticated
+    `GET /api/issues/{issueId}/officer-updates`,
+    `GET /api/issues/{issueId}/comments`, and authenticated
     issue/resolution/officer-update attachment downloads. Officers must send
     `latitude` and `longitude` on `POST /api/auth/login`; hub-eligible login or
     `POST /api/auth/start-shift` starts the shift for **10 hours**
@@ -3124,8 +3125,10 @@ paths:
       tags: [ Comments ]
       summary: Add a comment to an issue
       description: >-
-        Add a new comment to a specific issue. Active users and active officers only.
-        Requires a hub-active shift for officers (Tier C).
+        Add a new comment to a specific issue. Active users, active officers, and
+        active managers may create comments. Requires a hub-active shift for
+        officers only (Tier C). User-authored comments on anonymous issues by the
+        issue owner are redacted in responses (see `IssueCommentAuthor`).
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -4004,8 +4007,8 @@ components:
         shift (`hub_active_until` null or past) receive **403** with
         `code: hub_active_required` on Tier C (workflow write) routes. Tier B
         browse routes remain available without a shift: issue list/show,
-        officer-resolution show, officer-updates index, and issue/resolution/officer-update
-        attachment downloads.
+        officer-resolution show, officer-updates index, comments index, and
+        issue/resolution/officer-update attachment downloads.
         Whitelisted routes also include profile, start-shift, and reference reads.
         See `#/components/responses/InactiveAccount`,
         `#/components/responses/Forbidden`, and `#/components/responses/HubActiveRequired`.
@@ -5708,7 +5711,7 @@ components:
     IssueComment:
       type: object
       description: >-
-        Comment posted on an issue by a user or an officer.
+        Comment posted on an issue by a user, officer, or manager.
       required: [ id, issue_id, author_type, content, is_flagged, visibility, author, created_at, updated_at ]
       properties:
         id:
@@ -5717,9 +5720,10 @@ components:
           type: integer
         author_type:
           type: string
-          enum: [ user, officer ]
+          enum: [ user, officer, manager ]
         content:
           type: string
+          maxLength: 2000
         is_flagged:
           type: boolean
         visibility:
@@ -5736,17 +5740,31 @@ components:
 
     IssueCommentAuthor:
       type: object
-      description: Summary of the comment's author. Exposes the author's real identity (id and username).
-      required: [ id ]
+      description: >-
+        Ownership-safe author summary for a comment. User-authored comments on
+        anonymous issues by the issue owner are redacted at the response layer —
+        all viewers see only `is_anonymous=true` and `display_name` with the
+        issue's stable alias; `id` and `username` are omitted. Officer and
+        manager authors always expose real identity (`is_anonymous=false` with
+        `id` and `username` when the relation is loaded). Mirrors the anonymity
+        branch of `IssueAuthor`.
       properties:
+        is_anonymous:
+          type: boolean
         id:
           type: integer
+          nullable: true
         username:
           type: string
           nullable: true
         display_name:
           type: string
           nullable: true
+          description: >-
+            Username for non-anonymous authors when the relation is loaded;
+            stable anonymous alias (e.g. Melder#A1B2C3D4) for redacted
+            user-authored comments on anonymous issues.
+          example: Melder#A1B2C3D4
 
     IssueCommentCreate:
       type: object
@@ -5754,7 +5772,8 @@ components:
       properties:
         content:
           type: string
-          description: Plain text content of the comment.
+          maxLength: 2000
+          description: Plain text content of the comment (max 2000 characters).
 
     IssueCommentUpdate:
       type: object
@@ -5762,7 +5781,8 @@ components:
       properties:
         content:
           type: string
-          description: Updated plain text content of the comment.
+          maxLength: 2000
+          description: Updated plain text content of the comment (max 2000 characters).
 
     IssueCommentVisibilityUpdate:
       type: object
