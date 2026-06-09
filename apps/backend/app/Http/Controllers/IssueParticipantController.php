@@ -5,14 +5,17 @@ namespace App\Http\Controllers;
 use App\Actions\Issues\JoinIssueAsParticipant;
 use App\Actions\Issues\LeaveIssueParticipation;
 use App\Actions\Issues\ResolveCanonicalIssue;
+use App\Http\Requests\Issues\IndexIssueParticipantsRequest;
 use App\Http\Requests\Issues\JoinIssueRequest;
 use App\Http\Requests\Issues\LeaveIssueRequest;
+use App\Http\Resources\IssueParticipantResource;
 use App\Http\Resources\IssueResource;
 use App\Models\Issue;
 use App\Models\User;
 use App\Support\IssueVisibilityQuery;
 use App\Support\Issues\IssueDuplicateConflict;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 
 class IssueParticipantController extends Controller
@@ -31,6 +34,36 @@ class IssueParticipantController extends Controller
         'officerResolution.officer',
         'officerResolution.attachments',
     ];
+
+    /**
+     * List participants for a canonical issue.
+     *
+     * Authorization is enforced by IndexIssueParticipantsRequest, which restricts
+     * this action to an authenticated, active officer or manager. Duplicate child
+     * route ids resolve to the canonical parent. Issues not visible to the actor
+     * return 404. Participants are ordered by joined_at ascending and paginated
+     * with IssueParticipantResource payloads.
+     */
+    public function index(
+        IndexIssueParticipantsRequest $request,
+        Issue $issue,
+        ResolveCanonicalIssue $resolveCanonicalIssue,
+    ): AnonymousResourceCollection {
+        $canonical = $resolveCanonicalIssue->resolve($issue);
+
+        if (! IssueVisibilityQuery::canViewIssue($canonical, $request->user())) {
+            abort(404);
+        }
+
+        $participants = $canonical->participants()
+            ->with(['user', 'viaIssue', 'issue'])
+            ->orderBy('joined_at')
+            ->orderBy('id')
+            ->paginate($request->perPage())
+            ->withQueryString();
+
+        return IssueParticipantResource::collection($participants);
+    }
 
     /**
      * Join a canonical issue as a participant.

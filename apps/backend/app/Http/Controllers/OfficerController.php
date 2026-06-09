@@ -7,6 +7,7 @@ use App\Actions\Auth\RevokeOfficerHubActive;
 use App\Http\Requests\Officers\DisableOfficerRequest;
 use App\Http\Requests\Officers\EnableOfficerRequest;
 use App\Http\Requests\Officers\IndexOfficerRequest;
+use App\Http\Requests\Officers\ShowOfficerRequest;
 use App\Http\Resources\OfficerResource;
 use App\Models\Manager;
 use App\Models\Officer;
@@ -73,6 +74,20 @@ class OfficerController extends Controller
             ->withQueryString();
 
         return OfficerResource::collection($officers);
+    }
+
+    /**
+     * Show a single officer profile.
+     *
+     * Authorization is enforced by ShowOfficerRequest, which is available to any
+     * authenticated active actor. Results are city-wide with no hub scoping.
+     * Soft-deleted officers return 404 from route model binding.
+     */
+    public function show(ShowOfficerRequest $request, Officer $officer): OfficerResource
+    {
+        $officer->load(['departments', 'districts', 'hub']);
+
+        return new OfficerResource($officer);
     }
 
     /**

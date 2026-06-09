@@ -102,6 +102,12 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     // receive a 403. Results include only rows with `is_main_manager = true`,
     // ordered by username ascending, with departments and districts eager loaded.
     Route::get('main-managers', [MainManagerController::class, 'index'])->name('main-managers.index');
+    // Officer/manager show for main managers. Authorization is narrowed inside
+    // ShowMainManagerRequest to an authenticated, active officer or manager.
+    // Route binding limits `{manager}` to rows with `is_main_manager = true`.
+    // Hub scoping returns 404 when actor and target are not in the same hub
+    // (no main-manager city-wide bypass).
+    Route::get('main-managers/{manager}', [MainManagerController::class, 'show'])->name('main-managers.show');
     // Main-manager-protected main manager update, disable, and enable. Authorization
     // is narrowed inside the main-manager FormRequests to an authenticated, active
     // main manager only. Route binding limits `{manager}` to rows with
@@ -124,6 +130,11 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     // 403. Results include only rows with `is_main_manager = false`, ordered by
     // username ascending, with departments and districts eager loaded.
     Route::get('managers', [ManagerController::class, 'index'])->name('managers.index');
+    // Officer/manager show for ordinary managers. Authorization is narrowed
+    // inside ShowManagerRequest to an authenticated, active officer or manager.
+    // Route binding limits `{manager}` to rows with `is_main_manager = false`.
+    // Hub scoping returns 404 when actor and target are not in the same hub.
+    Route::get('managers/{manager}', [ManagerController::class, 'show'])->name('managers.show');
     Route::post('managers', [ManagerController::class, 'store'])->name('managers.store');
     // Main-manager-protected ordinary manager update, disable, and enable.
     // Authorization is narrowed inside the manager FormRequests to an
@@ -155,6 +166,10 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     // officers only when `is_active` is omitted. Optional district_id and
     // department_id filters intersect with hub scope through officer pivots.
     Route::get('officers', [OfficerController::class, 'index'])->name('officers.index');
+    // Officer show is available to any authenticated active actor (Tier B).
+    // Results are city-wide with no hub scoping. Soft-deleted officers return
+    // 404 from route model binding.
+    Route::get('officers/{officer}', [OfficerController::class, 'show'])->name('officers.show');
 
     // Manager-protected officer disable and enable. Authorization is narrowed
     // inside DisableOfficerRequest and EnableOfficerRequest to an authenticated,
@@ -287,6 +302,11 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     // issue_not_canonical on duplicate children). Children are paginated
     // oldest-first with full IssueResource payloads.
     Route::get('issues/{issue}/duplicates', [IssueDuplicateController::class, 'index'])->name('issues.duplicates.index');
+    // Participant list is officer/manager-only and authorized inside
+    // IndexIssueParticipantsRequest (Tier B). Duplicate child route ids resolve
+    // to the canonical parent. Participants are paginated oldest-first by
+    // joined_at with anonymous alias redaction in IssueParticipantResource.
+    Route::get('issues/{issue}/participants', [IssueParticipantController::class, 'index'])->name('issues.participants.index');
     // Show returns 404 when the issue is not visible to the actor (e.g. hidden
     // and not owned by an active user, or outside assigned districts for
     // officers/ordinary managers). Main managers may view any issue city-wide.

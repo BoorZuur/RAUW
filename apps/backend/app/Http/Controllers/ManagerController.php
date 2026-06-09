@@ -5,10 +5,13 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Managers\DisableManagerRequest;
 use App\Http\Requests\Managers\EnableManagerRequest;
 use App\Http\Requests\Managers\IndexManagerRequest;
+use App\Http\Requests\Managers\ShowManagerRequest;
 use App\Http\Requests\Managers\StoreManagerRequest;
 use App\Http\Requests\Managers\UpdateManagerRequest;
 use App\Http\Resources\ManagerResource;
 use App\Models\Manager;
+use App\Models\Officer;
+use App\Support\OfficerHubScope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
@@ -34,6 +37,29 @@ class ManagerController extends Controller
             ->withQueryString();
 
         return ManagerResource::collection($managers);
+    }
+
+    /**
+     * Show a single ordinary manager profile.
+     *
+     * Authorization is enforced by ShowManagerRequest, which restricts this
+     * action to an authenticated, active officer or manager. Route binding
+     * limits the target to rows with `is_main_manager = false`. Hub scoping
+     * returns 404 when the actor cannot view the manager in the same hub,
+     * including for main managers (no city-wide bypass).
+     */
+    public function show(ShowManagerRequest $request, Manager $manager): ManagerResource
+    {
+        /** @var Officer|Manager $actor */
+        $actor = $request->user();
+
+        if (! OfficerHubScope::actorCanViewInHub($actor, $manager)) {
+            abort(404);
+        }
+
+        $manager->load(['departments', 'districts', 'hub']);
+
+        return new ManagerResource($manager);
     }
 
     /**
