@@ -1,22 +1,44 @@
-import React, {useState} from 'react';
-import {Link, useLocation, useNavigate} from 'react-router-dom';
-import {Bell, LayoutGrid, Map, Megaphone, Moon, Newspaper, Sun, User, X} from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Bell, Map, Megaphone, Moon, Newspaper, Sun, User, X } from 'lucide-react';
 import RauwLogoImg from '../assets/LogoRAUW.png';
-import {useTheme} from '../ThemeContext.jsx'; // Aangepaste import
+import { useTheme } from '../ThemeContext.jsx';
+import GoogleTranslator from './GoogleTranslator.jsx';
+
 
 export default function Navbar() {
-    const {isDark, toggleTheme} = useTheme();
+    const { isDark, toggleTheme } = useTheme();
     const location = useLocation();
     const navigate = useNavigate();
     const [showNotifications, setShowNotifications] = useState(false);
 
+    // Google Translate Script dynamisch inladen via useEffect
+    useEffect(() => {
+        if (!document.getElementById('google-translate-script')) {
+            window.googleTranslateElementInit = () => {
+                new window.google.translate.TranslateElement(
+                    {
+                        pageLanguage: 'nl', // Je database/app basistaal is Nederlands
+                        layout: window.google.translate.TranslateElement.InlineLayout.SIMPLE,
+                    },
+                    'google_translate_element'
+                );
+            };
+
+            const script = document.createElement('script');
+            script.id = 'google-translate-script';
+            script.src = '//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+            script.async = true;
+            document.body.appendChild(script);
+        }
+    }, []);
+
     const isActive = (path) => location.pathname === path;
 
     const tabs = [
-        {name: 'Feed', path: '/feed', icon: LayoutGrid},
-        {name: 'Nieuws', path: '/nieuws', icon: Newspaper},
-        {name: 'Melden', path: '/meld', icon: Megaphone},
-        {name: 'Kaart', path: '/map', icon: Map}
+        { name: 'Nieuws', path: '/nieuws', icon: Newspaper },
+        { name: 'Melden', path: '/meld', icon: Megaphone },
+        { name: 'Kaart', path: '/map', icon: Map }
     ];
 
     return (
@@ -31,7 +53,7 @@ export default function Navbar() {
                  onClick={() => navigate('/feed')}
                  role="button"
                  aria-label="Ga naar de homepage">
-                <img src={RauwLogoImg} alt="RAUW Logo" className="h-12 w-auto object-contain"/>
+                <img src={RauwLogoImg} alt="RAUW Logo" translate="no" className="h-12 w-auto object-contain"/>
             </div>
 
             {/* Tabs */}
@@ -51,6 +73,10 @@ export default function Navbar() {
 
             {/* Utilities */}
             <div className="flex items-center gap-2 text-primary-text">
+
+                {/* GOOGLE TRANSLATE KNOP */}
+                <GoogleTranslator />
+
                 <button onClick={toggleTheme}
                         aria-label={isDark ? "Schakel over naar lichte modus" : "Schakel over naar donkere modus"}
                         className="p-3 rounded-2xl hover:bg-black/10 dark:hover:bg-white/10 transition-all">
