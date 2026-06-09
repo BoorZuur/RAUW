@@ -8,6 +8,7 @@ export default function SectorSettings() {
             <div className="app-layout">
             <HM_Nav></HM_Nav>
             <main className="main-content">
+                {/*🌟: the header has the cards in them, we might wanna make these into components*/}
                 <header className="page-header">
                     <div className="header-left">
                         <div className="header-icon">
@@ -44,6 +45,7 @@ export default function SectorSettings() {
                     <p className="instruction">Klik op een wijk om deze aan jouw zorggebied toe te voegen of te
                         verwijderen</p>
 
+                    {/*🌟: Need to connect this to the back-end!*/}
                     <div className="wijken-grid">
                         <button className="wijk-item">Achterveld</button>
                         <button className="wijk-item">Afrikaanderwijk</button>

@@ -48,6 +48,7 @@ function CommandCenter() {
 
                 <div className="dashboard-workspace">
 
+                    {/*🌟: replace with working map*/}
                     <div className="map-panel">
                         <div className="map-placeholder">
                             <p>[ Map Component Placeholder ]</p>
