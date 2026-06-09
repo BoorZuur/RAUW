@@ -56,10 +56,10 @@ export default function Register() {
                 <div className="w-full max-w-sm mx-auto">
 
                     <div className="mb-8 text-center md:text-left">
-                        <h2 className="text-3xl font-black tracking-tight mb-2 text-[#1A2530]">
+                        <h2 className="text-3xl font-black tracking-tight mb-2">
                             Account aanmaken
                         </h2>
-                        <p className="text-sm text-[#657381]">
+                        <p className="text-sm">
                             Word actief lid van je Rotterdamse buurt.
                         </p>
                     </div>
@@ -95,7 +95,13 @@ export default function Register() {
                                 </div>
                             </div>
                         ))}
-                        <button type="submit" className="w-full h-12 mt-4 bg-primary-text hover:bg-primary-accent text-white font-medium rounded-xl transition-all shadow-md active:scale-[0.98]">Registreren</button>
+
+                        <button
+                            type="submit"
+                            className="w-full h-12 mt-4 bg-primary-text text-primary-bg hover:bg-primary-accent font-black uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-[0.98]"
+                        >
+                            Registreren
+                        </button>
                     </form>
 
                     <p className="mt-6 text-sm text-center text-secondary-text">

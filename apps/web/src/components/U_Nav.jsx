@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Bell, LayoutGrid, Map, Megaphone, Moon, Newspaper, Sun, User, X, Languages } from 'lucide-react';
+import { Bell, Map, Megaphone, Moon, Newspaper, Sun, User, X } from 'lucide-react';
 import RauwLogoImg from '../assets/LogoRAUW.png';
 import { useTheme } from '../ThemeContext.jsx';
 import GoogleTranslator from './GoogleTranslator.jsx';
@@ -36,7 +36,6 @@ export default function Navbar() {
     const isActive = (path) => location.pathname === path;
 
     const tabs = [
-        { name: 'Feed', path: '/feed', icon: LayoutGrid },
         { name: 'Nieuws', path: '/nieuws', icon: Newspaper },
         { name: 'Melden', path: '/meld', icon: Megaphone },
         { name: 'Kaart', path: '/map', icon: Map }

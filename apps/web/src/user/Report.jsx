@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import U_Nav from '../components/U_Nav';
 import NativeLeafletMap from '../components/MapComponent.jsx';
-import { useNavigate } from 'react-router-dom';
+import Footer from '../components/Footer.jsx'
 
 const apiClient = axios.create({
     baseURL: 'http://localhost:8001',
@@ -221,12 +221,18 @@ export default function ReportIssue() {
                             </div>
                         </div>
 
-                        <button onClick={() => setShowConfirm(true)} className="w-full h-12 mt-4 bg-primary-text hover:bg-primary-accent text-white font-black rounded-xl uppercase">
+                        <button
+                            onClick={() => setShowConfirm(true)}
+                            className="w-full h-12 mt-4 bg-primary-text text-primary-bg hover:bg-primary-accent font-black uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-[0.98]"
+                        >
                             Verstuur melding
                         </button>
                     </div>
                 </section>
             </main>
+
+            <Footer/>
+
         </div>
     );
 }

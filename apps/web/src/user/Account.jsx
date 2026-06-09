@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { MapPin, Settings, User, Loader2 } from 'lucide-react';
 import U_Nav from '../components/U_Nav';
 import axios from 'axios';
+import Footer from "../components/Footer.jsx";
 
 export default function Dashboard() {
     const navigate = useNavigate();
@@ -155,6 +156,9 @@ export default function Dashboard() {
                     </div>
                 </section>
             </main>
+
+            <Footer/>
+
         </div>
     );
 }

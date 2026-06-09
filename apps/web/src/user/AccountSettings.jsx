@@ -4,8 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../ThemeContext.jsx';
 import U_Nav from '../components/U_Nav';
 import axios from 'axios';
+import Footer from "../components/Footer.jsx";
 
 export default function Instellingen() {
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const navigate = useNavigate();
     const { isDark } = useTheme();
     const [loading, setLoading] = useState(false);
@@ -42,6 +45,19 @@ export default function Instellingen() {
             setStatus({ type: 'error', message: 'Opslaan mislukt.' });
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDeleteAccount = async () => {
+        setIsDeleting(true);
+        try {
+            await apiClient.delete('/api/user/account');
+            localStorage.removeItem('auth_token');
+            window.location.href = '/login';
+        } catch (err) {
+            setError("Kon account niet verwijderen. Probeer het later opnieuw.");
+            setIsDeleting(false);
+            setShowDeleteConfirm(false);
         }
     };
 
@@ -117,10 +133,39 @@ export default function Instellingen() {
                 {/* Danger Zone */}
                 <section className="p-8 bg-primary-bg-cards border border-red-500/30 rounded-2xl">
                     <h2 className="text-sm font-black uppercase tracking-widest text-red-500 mb-6">Danger Zone</h2>
-                    <button className="flex items-center gap-3 text-red-500 font-bold hover:text-red-600 transition-all">
+
+                    <button
+                        onClick={() => setShowDeleteConfirm(true)}
+                        className="flex items-center justify-center w-full gap-3 text-red-500 font-bold hover:text-red-600 transition-all active:scale-[0.98]"
+                    >
                         <Trash2 size={18} /> Account definitief verwijderen
                     </button>
                     <p className="text-xs text-secondary-text mt-4">Dit is een onomkeerbare actie.</p>
+
+                    {/* Bevestigings-pop-up */}
+                    {showDeleteConfirm && (
+                        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                            <div className="bg-primary-bg-cards p-8 rounded-3xl border-2 border-red-500/30 shadow-2xl max-w-sm w-full">
+                                <h3 className="text-xl font-black uppercase mb-4 text-red-500">Weet je het zeker?</h3>
+                                <p className="text-sm opacity-70 mb-8">Deze actie is onomkeerbaar. Al je gegevens worden permanent verwijderd.</p>
+                                <div className="flex gap-4">
+                                    <button
+                                        onClick={() => setShowDeleteConfirm(false)}
+                                        className="flex-1 p-3 border-2 border-primary-border rounded-xl"
+                                    >
+                                        Annuleren
+                                    </button>
+                                    <button
+                                        onClick={handleDeleteAccount}
+                                        disabled={isDeleting}
+                                        className="flex-1 p-3 bg-red-600 text-white rounded-xl font-black uppercase tracking-widest hover:bg-red-700 disabled:opacity-50"
+                                    >
+                                        {isDeleting ? 'Bezig...' : 'Verwijder'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </section>
 
                 <button onClick={handleSave} className="w-full h-12 mt-4 bg-primary-text hover:bg-primary-accent text-white font-medium rounded-xl transition-all shadow-md active:scale-[0.98]">
@@ -129,6 +174,9 @@ export default function Instellingen() {
 
                 {status.message && <p className="text-center text-xs font-bold text-primary-text">{status.message}</p>}
             </main>
+
+            <Footer/>
+
         </div>
     );
 }
