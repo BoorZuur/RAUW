@@ -363,6 +363,10 @@ Table officer_issue_updates {
   created_at       datetime
   updated_at       datetime
   note: 'Officer field updates made during the issue handling.'
+
+  indexes {
+    (issue_id, created_at) [name: 'officer_issue_updates_issue_created_at_idx']
+  }
 }
 
 Table officer_issue_update_attachments {

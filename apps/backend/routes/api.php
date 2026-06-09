@@ -305,7 +305,8 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     Route::get('issues/{issue}/officer-resolution/attachments/{attachment}/download', [OfficerIssueResolutionAttachmentController::class, 'download'])->name('issues.officer-resolution.attachments.download');
 
     // Officer updates. Index and attachment download are Tier B (can browse without active shift);
-    // store, update, and destroy are Tier C (require active shift).
+    // store, update, and destroy are Tier C (require active shift). Writes return 403
+    // not_assigned_officer / not_update_author and 422 issue_closed when applicable.
     Route::get('issues/{issue}/officer-updates', [OfficerIssueUpdateController::class, 'index'])->name('issues.officer-updates.index');
     Route::post('issues/{issue}/officer-updates', [OfficerIssueUpdateController::class, 'store'])->name('issues.officer-updates.store');
     Route::patch('issues/{issue}/officer-updates/{officer_update}', [OfficerIssueUpdateController::class, 'update'])->name('issues.officer-updates.update');
