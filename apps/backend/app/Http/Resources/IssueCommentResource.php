@@ -3,13 +3,17 @@
 namespace App\Http\Resources;
 
 use App\Enums\ActorType;
+use App\Models\Issue;
 use App\Models\IssueComment;
+use App\Models\Manager;
 use App\Models\Officer;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
+ * Serializes issue comments with ownership-safe author redaction.
+ *
  * @mixin IssueComment
  */
 class IssueCommentResource extends JsonResource
@@ -45,18 +49,34 @@ class IssueCommentResource extends JsonResource
     /**
      * Return an author summary based on author_type.
      *
-     * Eager loads the user or officer details safely to prevent N+1 queries.
+     * User comments on anonymous issues by the issue owner expose only the
+     * stable alias and never the user's identity. Officer and manager comments
+     * always expose real identity. All viewers see the same redacted shape.
+     *
+     * Eager-load issue for user-authored redaction; user, officer, or manager
+     * for full author details.
      *
      * @return array<string, mixed>
      */
     protected function compactAuthor(IssueComment $comment): array
     {
         if ($comment->author_type === ActorType::User) {
+            if ($this->shouldRedactAsAnonymous($comment)) {
+                /** @var Issue $issue */
+                $issue = $comment->getRelation('issue');
+
+                return [
+                    'is_anonymous' => true,
+                    'display_name' => $issue->anonymous_alias,
+                ];
+            }
+
             if ($comment->relationLoaded('user')) {
                 $user = $comment->getRelation('user');
 
                 if ($user instanceof User) {
                     return [
+                        'is_anonymous' => false,
                         'id' => $user->id,
                         'username' => $user->username,
                         'display_name' => $user->username,
@@ -75,6 +95,7 @@ class IssueCommentResource extends JsonResource
 
                 if ($officer instanceof Officer) {
                     return [
+                        'is_anonymous' => false,
                         'id' => $officer->id,
                         'username' => $officer->username,
                         'display_name' => $officer->username,
@@ -83,10 +104,54 @@ class IssueCommentResource extends JsonResource
             }
 
             return [
+                'is_anonymous' => false,
                 'id' => $comment->officer_id,
             ];
         }
 
+        if ($comment->author_type === ActorType::Manager) {
+            if ($comment->relationLoaded('manager')) {
+                $manager = $comment->getRelation('manager');
+
+                if ($manager instanceof Manager) {
+                    return [
+                        'is_anonymous' => false,
+                        'id' => $manager->id,
+                        'username' => $manager->username,
+                        'display_name' => $manager->username,
+                    ];
+                }
+            }
+
+            return [
+                'is_anonymous' => false,
+                'id' => $comment->manager_id,
+            ];
+        }
+
         return [];
+    }
+
+    /**
+     * Whether a user-authored comment should expose the issue alias instead of identity.
+     */
+    protected function shouldRedactAsAnonymous(IssueComment $comment): bool
+    {
+        if ($comment->author_type !== ActorType::User) {
+            return false;
+        }
+
+        if (! $comment->relationLoaded('issue')) {
+            return false;
+        }
+
+        $issue = $comment->getRelation('issue');
+
+        if (! $issue instanceof Issue) {
+            return false;
+        }
+
+        return (bool) $issue->is_anonymous === true
+            && $comment->user_id === $issue->user_id;
     }
 }
