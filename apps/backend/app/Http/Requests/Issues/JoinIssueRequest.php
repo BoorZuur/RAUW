@@ -23,6 +23,8 @@ class JoinIssueRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [];
+        return [
+            'is_anonymous' => ['sometimes', 'boolean'],
+        ];
     }
 }

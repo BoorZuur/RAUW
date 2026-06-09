@@ -17,9 +17,9 @@ class JoinIssueAsParticipant
      *
      * @return array{issue: Issue, created: bool}
      */
-    public function join(User $user, Issue $canonical): array
+    public function join(User $user, Issue $canonical, bool $isAnonymous = false): array
     {
-        return IssueRowLock::withLockedIssue($canonical, function (Issue $lockedCanonical) use ($user): array {
+        return IssueRowLock::withLockedIssue($canonical, function (Issue $lockedCanonical) use ($user, $isAnonymous): array {
             $alreadyParticipant = IssueParticipant::query()
                 ->where('issue_id', $lockedCanonical->getKey())
                 ->where('user_id', $user->getKey())
@@ -35,6 +35,7 @@ class JoinIssueAsParticipant
             IssueParticipant::query()->create([
                 'issue_id' => $lockedCanonical->getKey(),
                 'user_id' => $user->getKey(),
+                'is_anonymous' => $isAnonymous,
                 'joined_via' => JoinedVia::Manual,
                 'via_issue_id' => null,
                 'joined_at' => now(),

@@ -36,6 +36,7 @@ class CreateIssue
             IssueParticipant::query()->create([
                 'issue_id' => $issue->getKey(),
                 'user_id' => $author->getKey(),
+                'is_anonymous' => (bool) $issue->is_anonymous,
                 'joined_via' => JoinedVia::Creator,
                 'via_issue_id' => null,
                 'joined_at' => now(),

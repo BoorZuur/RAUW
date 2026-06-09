@@ -73,6 +73,7 @@ class CreateIssueAsDuplicate
                 IssueParticipant::query()->create([
                     'issue_id' => $lockedCanonical->getKey(),
                     'user_id' => $author->getKey(),
+                    'is_anonymous' => (bool) $child->is_anonymous,
                     'joined_via' => JoinedVia::Duplicate,
                     'via_issue_id' => $child->getKey(),
                     'joined_at' => now(),

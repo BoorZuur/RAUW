@@ -53,7 +53,7 @@ class IssueParticipantController extends Controller
             abort(404);
         }
 
-        $result = $joinIssueAsParticipant->join($actor, $issue);
+        $result = $joinIssueAsParticipant->join($actor, $issue, $request->boolean('is_anonymous'));
         $result['issue']->load(self::ISSUE_RELATIONS);
 
         return (new IssueResource($result['issue']))
