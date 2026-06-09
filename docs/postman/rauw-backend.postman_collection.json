@@ -1866,6 +1866,30 @@
               "response": []
             },
             {
+              "name": "Mark Issue as Duplicate",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "method": "POST",
+                "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+                "body": { "mode": "raw", "raw": "{\n  \"duplicate_of_id\": {{canonical_issue_id}}\n}", "options": { "raw": { "language": "json" } } },
+                "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/mark-duplicate", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "mark-duplicate" ] },
+                "description": "Officer/manager Tier C workflow: link an existing issue (issue_id path) to canonical duplicate_of_id. Different owners: 200 returns re-parented child Issue (hidden, duplicate_of_id set). Same owner: 200 returns canonical Issue (child hard-deleted). Officers need hub-active. Child must be linkable (open/in_behandeling, unassigned, no resolution, no duplicate children). Conflicts: 404 duplicate_target_not_found; 422 issue_not_linkable, issue_has_duplicates, issue_is_duplicate_child, cannot_duplicate_self, issue_not_matchable."
+              },
+              "response": []
+            },
+            {
+              "name": "Mark Issue as Duplicate",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "method": "POST",
+                "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+                "body": { "mode": "raw", "raw": "{\n  \"duplicate_of_id\": {{canonical_issue_id}}\n}", "options": { "raw": { "language": "json" } } },
+                "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/mark-duplicate", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "mark-duplicate" ] },
+                "description": "Officer/manager workflow: link route issue_id as duplicate of canonical_issue_id. Tier C: hub-active required for officers. Different owners: re-parent child (hidden, duplicate_of_id set) and return child Issue. Same owner: merge participants onto canonical, hard-delete child, return canonical Issue. Child must be linkable (open/in_behandeling, unassigned, no resolution). Log in as demo.officer@example.com with an active shift. Use two distinct open issues in the officer district for different-owner branch."
+              },
+              "response": []
+            },
+            {
               "name": "Delete Duplicate Child (Keep Participation)",
               "request": {
                 "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
@@ -2151,6 +2175,25 @@
               ]
             },
             {
+              "name": "List Status History",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "method": "GET",
+                "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{issue_id}}/status-history?page={{page}}&per_page={{per_page}}",
+                  "host": [ "{{base_url}}" ],
+                  "path": [ "api", "issues", "{{issue_id}}", "status-history" ],
+                  "query": [
+                    { "key": "page", "value": "{{page}}" },
+                    { "key": "per_page", "value": "{{per_page}}", "description": "Default 20, max 100" }
+                  ]
+                },
+                "description": "Officer/manager-only paginated status history, newest first. Tier B (no hub-active required). Duplicate child route ids resolve to canonical parent. Users receive 403. per_page defaults to 20, capped at 100."
+              },
+              "response": []
+            },
+            {
               "name": "Unassign Self from Issue",
               "request": {
                 "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
@@ -2410,9 +2453,39 @@
                 "description": "Download a resolution attachment from non-public local storage. Visibility-only authorization (IssueVisibilityQuery::canViewIssue, Q8 / D15-A): any actor who can view the parent issue may download; Tier B (no active shared shift required). Users probing hidden issues they do not own receive 404 (no enumeration); other unauthorized actors receive 403. The attachment must belong to the issue's officer resolution in the route; missing backing file returns 404. Run Create Officer Resolution first to populate officer_resolution_attachment_id."
               },
               "response": []
+            },
+            {
+              "name": "Delete Officer Resolution Attachment",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "method": "DELETE",
+                "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+                "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/officer-resolution/attachments/{{officer_resolution_attachment_id}}", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "officer-resolution", "attachments", "{{officer_resolution_attachment_id}}" ] },
+                "description": "Delete one resolution attachment. Tier C: hub-active required. Current assignee only (403 not_assigned_officer). Removes attachment row and backing file; returns 204. Repeat DELETE returns 404. Blocked when issue status is gesloten (422 issue_closed). Run Create Officer Resolution and Assign Self first."
+              },
+              "response": []
+            },
+            {
+              "name": "List Issue Status History",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "method": "GET",
+                "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{issue_id}}/status-history?page={{page}}&per_page={{per_page}}",
+                  "host": [ "{{base_url}}" ],
+                  "path": [ "api", "issues", "{{issue_id}}", "status-history" ],
+                  "query": [
+                    { "key": "page", "value": "{{page}}" },
+                    { "key": "per_page", "value": "{{per_page}}", "description": "Default 20, max 100" }
+                  ]
+                },
+                "description": "Officer/manager-only paginated status history (newest first). Tier B: no active shift required. Duplicate child route ids resolve to canonical. Users receive 403. Run after Assign Self and Update Issue Status to populate rows."
+              },
+              "response": []
             }
           ],
-          "description": "Officer issue workflow requests. Tier B browse (list/show, resolution show, downloads) works without a shift; Tier C writes (assign-self, unassign-self, status, resolution POST/PATCH) require hub-active. Log in with Auth / Login Officer at Hub before Tier C writes. Use issue_id in the officer's assigned district (demo: Cool / district_id 1). Run Assign Self before status or resolution writes."
+          "description": "Officer issue workflow requests. Tier B browse (list/show, status-history, resolution show, downloads) works without a shift; Tier C writes (assign-self, unassign-self, status, mark-duplicate, resolution POST/PATCH, resolution attachment DELETE) require hub-active. Log in with Auth / Login Officer at Hub before Tier C writes. Use issue_id in the officer's assigned district (demo: Cool / district_id 1). Run Assign Self before status or resolution writes."
         }
       ],
       "description": "Authenticated issue CRUD and attachment examples. Issue creation requires district_id and no longer accepts client-supplied department or removed legacy locality fields. Departments are derived from the selected category, stored in department_issue, and exposed as a read-only departments array. List filters are composable: district_id, department (code), category_id, mine (users only), and visibility (officers/managers only). Department filtering uses any-match semantics; pagination is backend-driven. Show returns 404 when the issue is not visible to the actor (e.g. another user's hidden issue). Anonymous issues retain user_id ownership while exposing only a stable alias. Attachment deletion is owner-only for replacement workflows. Issue deletion is hard delete and attachments cascade with the issue."

@@ -185,7 +185,14 @@ Citizens can link a new report to an existing canonical issue instead of creatin
 
 **Officer duplicates list** (`GET /api/issues/{canonical}/duplicates`, officers and managers only) paginates duplicate children oldest-first with full `IssueResource` payloads. District-scoped like issue browse: officers and ordinary managers see duplicates only when the canonical is in an assigned district; main managers are city-wide. Issues outside scope return **404**. Child route ids return **422** `issue_not_canonical`; users receive **403**. **Tier B** — officers may call without an active shared shift.
 
-**Officer mark-duplicate** (`POST /api/issues/{issue}/mark-duplicate`, officers and managers only) links an existing issue to a canonical target (`duplicate_of_id` in body). Different owners: re-parent child as hidden duplicate. Same owner: merge participants onto canonical and hard-delete child. District-scoped for officers; managers use visibility rules. **Tier C** — officers need an active shared shift (`hub_active_required` without one).
+**Officer mark-duplicate** (`POST /api/issues/{issue}/mark-duplicate`, officers and managers only) links an existing **child** issue (route `{issue}`) to a canonical target (`duplicate_of_id` in body). Officers must be assigned to both child and canonical districts; managers rely on `IssueVisibilityQuery`. If `duplicate_of_id` points at a duplicate child, the server resolves to the canonical parent first. Child must be linkable: status `open` or `in_behandeling`, unassigned, no officer resolution, not already a duplicate child, and no duplicate children of its own. Canonical must be `open` or `in_behandeling`. **Tier C** — officers need an active shared shift (`hub_active_required` without one).
+
+| Branch | When | Server behavior | Response body (`IssueResource`) |
+|--------|------|-----------------|-------------------------------|
+| Re-parent | `child.user_id !== canonical.user_id` | Set child `duplicate_of_id`, `visibility = hidden`; increment canonical `duplicate_count`; add child owner as canonical participant (`joined_via = duplicate`) when missing | **Child** issue (hidden, still exists) |
+| Same-owner merge | `child.user_id === canonical.user_id` | Migrate participants onto canonical (dedupe by `user_id`), recalculate `participant_count`, hard-delete child | **Canonical** issue (child id gone) |
+
+Both branches return **200**. Missing or invisible child/target/canonical → **404** `duplicate_target_not_found`. Linkability conflicts → **422** (`issue_not_linkable`, `issue_is_duplicate_child`, `issue_has_duplicates`, `issue_not_matchable`, `cannot_duplicate_self`).
 
 **Structured error codes (duplicates and participants)**
 
@@ -198,6 +205,8 @@ Citizens can link a new report to an existing canonical issue instead of creatin
 | `not_participant` | 422 | Leave when not participating on canonical |
 | `issue_not_canonical` | 422 | Officer duplicates list on duplicate child id |
 | `issue_is_duplicate_child` | 422 | Operation requires canonical issue |
+| `issue_not_linkable` | 422 | Child not linkable (status, assignee, or resolution) |
+| `issue_has_duplicates` | 422 | Child has duplicate children |
 
 ### Officer issue workflows
 
@@ -221,6 +230,8 @@ Officer write paths use a **validate-after-lock** pattern: cheap visibility and 
 | Method | Path | Who | Notes |
 |--------|------|-----|-------|
 | `PATCH` | `/api/issues/{issue}/status` | Assigned active officer | Body: `{ "status": "...", "note": "..." }`. Directed transitions only: `open` → `in_behandeling`; `in_behandeling` → `opgelost`; `opgelost` → `gesloten`. Same status or invalid transitions → **422**. Sets `resolved_at` on first transition to `opgelost`. Appends one status history row (no GPS coordinates). |
+| `POST` | `/api/issues/{issue}/mark-duplicate` | Active officer or manager | Body: `{ "duplicate_of_id": <canonical id> }`. Re-parent (different owners) returns child; same-owner merge returns canonical. **Tier C** for officers. See duplicates section for branch details. |
+| `GET` | `/api/issues/{issue}/status-history` | Active officer or manager | Paginated `IssueStatusHistoryResource` (`per_page` default 20, max 100), newest first. Child route ids resolve to canonical. **Tier B**. |
 
 **Officer resolution (field report)**
 
@@ -236,7 +247,9 @@ Distinct from user satisfaction feedback in `issue_resolutions`. At most **one**
 
 Attachment limits: up to **3** images (`jpg`, `jpeg`, `png`, `gif`, `webp`) per resolution, **5 MB** each. PATCH validates `existing − removals + new_files ≤ 3` under row lock (including upload disk I/O). Uploads are content-validated (Symfony MIME sniff for images; issue user attachments also accept PDF via `%PDF-` magic bytes). Invalid `remove_attachment_ids` (not owned by the resolution) return **422** with a field error on `remove_attachment_ids`.
 
-**Status history** (`GET /api/issues/{issue}/status-history`, officers and managers only) returns a paginated `IssueStatusHistoryResource` collection, newest first. Duplicate child route ids resolve to the canonical parent before querying. Users receive **403**. **Tier B** — officers may call without an active shared shift.
+**Status history** (`GET /api/issues/{issue}/status-history`, officers and managers only) returns a paginated `IssueStatusHistoryResource` collection (`data`, `links`, `meta`), newest first by `changed_at`. Default `per_page` **20**, max **100**. Duplicate child route ids resolve to the canonical parent before querying. District-scoped like issue browse (officers/ordinary managers: assigned districts; main managers: city-wide); invisible issues → **404**. Users receive **403**. **Tier B** — officers may call without an active shared shift.
+
+Each row: `id`, `issue_id`, `changed_by_officer_id`, `old_status`, `new_status`, `note`, `changed_at`, and compact `officer` (`id`, `username`) when eager-loaded. GPS coordinates are omitted.
 
 **Issue embeds:** `GET /api/issues` includes `officer_resolution` (with officer and attachments when present) and omits `status_history`. `GET /api/issues/{issue}` includes the same `officer_resolution` embed plus an unpaginated `status_history` embed for officers and managers only (newest first, no lat/lon); regular users never receive `status_history`. Prefer the dedicated status-history and officer-resolution paths for paginated or resolution-only reads.
 
@@ -299,6 +312,10 @@ After hub login as `demo.officer@example.com` (Cool wijk / `district_id: 1`):
 11. **Resolution read** — User, officer, manager who can view issue → GET `/officer-resolution` 200; hidden issue → 404.
 12. **Download** — Same visibility as show.
 13. **Browse without shift** — Officer with expired shift → `GET /api/issues` and `GET /api/issues/{id}` still 200; Tier C writes → 403 `hub_active_required`.
+14. **Status history (paginated)** — `GET /api/issues/{id}/status-history?page=1&per_page=20` → 200, newest first; duplicate child route id returns canonical history. Works without shift (Tier B).
+15. **Mark duplicate (re-parent)** — `POST /api/issues/{child}/mark-duplicate` with `{ "duplicate_of_id": <canonical> }` for different owners → 200 child `IssueResource` with `duplicate_of_id` set and `visibility: hidden`.
+16. **Mark duplicate (merge)** — Same-owner child + canonical → 200 canonical `IssueResource`; child id returns 404 on subsequent GET.
+17. **Resolution attachment delete** — Assignee `DELETE /api/issues/{id}/officer-resolution/attachments/{attachment}` → 204; repeat → 404. Requires hub-active (Tier C).
 
 For manual API testing, import the Postman collection and local environment from [`../../docs/postman`](../../docs/postman/README.md):
 
