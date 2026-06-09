@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['issue_id', 'user_id', 'joined_via', 'via_issue_id', 'joined_at'])]
+#[Fillable(['issue_id', 'user_id', 'is_anonymous', 'joined_via', 'via_issue_id', 'joined_at'])]
 class IssueParticipant extends Model
 {
     use HasFactory;
@@ -23,6 +23,7 @@ class IssueParticipant extends Model
     protected function casts(): array
     {
         return [
+            'is_anonymous' => 'boolean',
             'joined_via' => JoinedVia::class,
             'joined_at' => 'datetime',
         ];

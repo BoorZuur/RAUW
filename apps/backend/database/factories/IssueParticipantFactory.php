@@ -23,6 +23,7 @@ class IssueParticipantFactory extends Factory
         return [
             'issue_id' => Issue::factory(),
             'user_id' => User::factory(),
+            'is_anonymous' => false,
             'joined_via' => JoinedVia::Manual,
             'via_issue_id' => null,
             'joined_at' => now(),
@@ -50,6 +51,13 @@ class IssueParticipantFactory extends Factory
         return $this->state(fn (): array => [
             'joined_via' => JoinedVia::Duplicate,
             'via_issue_id' => $viaChild->id,
+        ]);
+    }
+
+    public function anonymous(): static
+    {
+        return $this->state(fn (): array => [
+            'is_anonymous' => true,
         ]);
     }
 }
