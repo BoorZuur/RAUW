@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Actions\Issues\CreateIssue;
 use App\Actions\Issues\CreateIssueAsDuplicate;
+use App\Actions\Issues\DeleteDuplicateChild;
+use App\Actions\Issues\ReparentOnCanonicalDelete;
 use App\Http\Requests\Issues\DeleteIssueRequest;
 use App\Http\Requests\Issues\IndexIssueRequest;
 use App\Http\Requests\Issues\ShowIssueRequest;
@@ -15,7 +17,6 @@ use App\Support\IssueVisibilityQuery;
 use App\Http\Resources\IssueResource;
 use App\Models\Category;
 use App\Models\Issue;
-use App\Models\IssueParticipant;
 use App\Models\Manager;
 use App\Models\Officer;
 use App\Models\User;
@@ -192,7 +193,7 @@ class IssueController extends Controller
         $issue->load(self::ISSUE_RELATIONS);
 
         if ($actor instanceof User) {
-            $this->loadActorParticipationContext($issue, $actor);
+            $issue->loadActorParticipant($actor);
         }
 
         if ($actor instanceof Officer || $actor instanceof Manager) {
@@ -309,34 +310,30 @@ class IssueController extends Controller
     /**
      * Hard delete an owner's issue.
      *
-     * Ownership and authorization are enforced by DeleteIssueRequest. This is a
-     * hard delete, not a soft delete: the normal Eloquent delete removes the
-     * row outright and the database foreign-key cascade removes the issue's
-     * attachments automatically.
+     * Owner-only: officers and managers cannot delete issues they do not own
+     * (enforced by {@see DeleteIssueRequest}). Duplicate children delegate to
+     * {@see DeleteDuplicateChild} with optional `leave_participation` in the
+     * request body (default false — keep canonical participation). Canonical
+     * issues delegate to {@see ReparentOnCanonicalDelete}, which promotes the
+     * oldest child when duplicates exist. This is a hard delete, not a soft
+     * delete: rows are removed outright and attachment FK cascades apply.
      */
-    public function destroy(DeleteIssueRequest $request, Issue $issue): JsonResponse
-    {
-        $issue->delete();
+    public function destroy(
+        DeleteIssueRequest $request,
+        Issue $issue,
+        DeleteDuplicateChild $deleteDuplicateChild,
+        ReparentOnCanonicalDelete $reparentOnCanonicalDelete,
+    ): JsonResponse {
+        /** @var User $actor */
+        $actor = $request->user();
+
+        if ($issue->duplicate_of_id !== null) {
+            $deleteDuplicateChild->delete($actor, $issue, $request->leaveParticipation());
+        } else {
+            $reparentOnCanonicalDelete->delete($issue);
+        }
 
         return response()->json([], Response::HTTP_NO_CONTENT);
-    }
-
-    /**
-     * Eager-load the actor's participation row against the canonical issue id.
-     *
-     * Duplicate children resolve participation on the parent canonical so
-     * `IssueParticipantVisibility` can avoid an extra query on show.
-     */
-    private function loadActorParticipationContext(Issue $issue, User $actor): void
-    {
-        $canonicalId = $issue->duplicate_of_id ?? $issue->getKey();
-
-        $participant = IssueParticipant::query()
-            ->where('issue_id', $canonicalId)
-            ->where('user_id', $actor->getKey())
-            ->first();
-
-        $issue->setRelation('actorParticipant', $participant);
     }
 
     /**

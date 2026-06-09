@@ -168,6 +168,27 @@ class Issue extends Model
             ->where('user_id', $user->getKey());
     }
 
+    /**
+     * Eager-set the actor's participation row against the canonical issue id.
+     *
+     * For duplicate children, participation lives on the parent canonical row,
+     * not the child issue id. Controllers call this before serializing so
+     * {@see IssueParticipantVisibility} avoids per-request queries on show.
+     */
+    public function loadActorParticipant(User $user): self
+    {
+        $canonicalId = $this->duplicate_of_id ?? $this->getKey();
+
+        $participant = IssueParticipant::query()
+            ->where('issue_id', $canonicalId)
+            ->where('user_id', $user->getKey())
+            ->first();
+
+        $this->setRelation('actorParticipant', $participant);
+
+        return $this;
+    }
+
     public function comments(): HasMany
     {
         return $this->hasMany(IssueComment::class);
