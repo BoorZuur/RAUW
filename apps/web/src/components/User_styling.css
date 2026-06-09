@@ -1,0 +1,139 @@
+/* --- Base Resets & Fonts --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+:root {
+    --bg-color: #ffffff;
+    --text-dark: #2c3e35; /* Dark forest green tone matching the image */
+    --text-muted: #7a8a82;
+    --accent-color: #d1a153; /* Golden yellow dot color */
+    --border-color: #f0f2f1;
+}
+
+
+/* --- Navbar Container --- */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--bg-color);
+    padding: 0.75rem 2rem;
+    border-bottom: 1px solid var(--border-color);
+    height: 70px;
+}
+
+/* --- Left Side: Branding --- */
+.nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.logo-icon {
+    background-color: var(--text-dark);
+    color: #ffffff;
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.logo-icon .target-eye {
+    font-size: 1.5rem;
+}
+
+.brand-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.brand-name {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--text-dark);
+    letter-spacing: 0.5px;
+    line-height: 1.1;
+}
+
+.brand-sub {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+}
+
+/* --- Center Side: Menu links --- */
+.nav-menu {
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: color 0.2s ease;
+}
+
+.nav-link:hover, .nav-link.active {
+    color: var(--text-dark);
+}
+
+.icon-small {
+    font-size: 1.25rem !important;
+}
+
+/* --- Right Side: Utilities --- */
+.nav-utilities {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.util-btn {
+    background: none;
+    border: none;
+    color: var(--text-dark);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    position: relative;
+    transition: transform 0.1s ease;
+}
+
+.util-btn:active {
+    transform: scale(0.95);
+}
+
+/* Yellow notification badge */
+.notification-btn {
+    position: relative;
+}
+
+.notification-dot {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 7px;
+    height: 7px;
+    background-color: var(--accent-color);
+    border-radius: 50%;
+}
+
+/* Material Icon font tuning */
+.material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+}

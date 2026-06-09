@@ -3335,10 +3335,10 @@ paths:
         '409':
           $ref: '#/components/responses/ConflictError'
 
-  /api/districts:
+  /api/hubs:
     get:
-      tags: [ Districts ]
-      summary: List districts
+      tags: [ Hubs ]
+      summary: List hubs
       description: >-
         List districts ordered by name, each with hub metadata, manager/officer
         assignment counts, and issue reference counts when available. Requires
