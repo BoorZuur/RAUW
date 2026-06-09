@@ -30,8 +30,9 @@ info:
     and a future `hub_active_until` — not the bearer token's Sanctum `hub-active`
     ability (audit-only). **Tier B** browse reads work without an active shift:
     `GET /api/issues`, `GET /api/issues/{issueId}` (embeds `officer_resolution`
-    when present), `GET /api/issues/{issueId}/officer-resolution`, and
-    authenticated issue/resolution attachment downloads. Officers must send
+    when present), `GET /api/issues/{issueId}/officer-resolution`,
+    `GET /api/issues/{issueId}/officer-updates`, and authenticated
+    issue/resolution/officer-update attachment downloads. Officers must send
     `latitude` and `longitude` on `POST /api/auth/login`; hub-eligible login or
     `POST /api/auth/start-shift` starts the shift for **10 hours**
     (`OFFICER_HUB_ACTIVE_TTL_HOURS`, default 10). Outside-radius login does not
@@ -61,11 +62,12 @@ info:
     | `hub_not_assigned` | 403 | Officer login or start-shift when `hub_id` is null |
     | `outside_hub_radius` | 403 | Start-shift outside hub radius / ineligible hub |
     | `officer_not_in_district` | 403 | Officer workflow on an issue outside assigned districts |
-    | `not_assigned_officer` | 403 | Officer status/unassign/resolution write without assignee ownership |
+    | `not_assigned_officer` | 403 | Officer status/unassign/resolution/officer-update write without assignee ownership |
+    | `not_update_author` | 403 | PATCH/DELETE officer update when officer is assignee but not the authoring officer |
     | `issue_already_assigned` | 409 | Self-assign when another officer already owns the issue |
     | `officer_resolution_exists` | 409 | Duplicate POST on officer resolution (use PATCH to update) |
     | `issue_not_assignable` | 422 | Self-assign when issue status is `opgelost` or `gesloten` |
-    | `issue_closed` | 422 | Resolution POST/PATCH when issue status is `gesloten` |
+    | `issue_closed` | 422 | Resolution or officer-update POST/PATCH/DELETE when issue status is `gesloten` |
     | `shift_already_active` | 422 | Start-shift when shift already active |
     | `account_inactive` | 403 | Inactive actor on a non-whitelisted route |
 
@@ -2830,10 +2832,17 @@ paths:
       tags: [ Issues ]
       summary: Create officer update
       description: >-
-        Add a new progress update for an issue. Active officers only; only the
-        assigned officer may post updates. Requires a hub-active shift (Tier C).
-        District scoping applies. Up to 3 image attachments (jpg, jpeg, png,
-        gif, webp), max 5 MB each.
+        Add a new progress update for an issue. Multipart upload. Only the
+        authenticated active officer currently assigned to the issue may create
+        it (**403** `not_assigned_officer` otherwise). Officers without an
+        active shared shift receive **403** `hub_active_required`. District
+        scoping applies (**403** `officer_not_in_district`). Blocked when issue
+        status is `gesloten` (**422** `issue_closed`); issues in `opgelost`
+        remain writable. Up to **3** image attachments (`jpg`, `jpeg`, `png`,
+        `gif`, `webp`), each at most **5 MB**. After extension rules pass,
+        uploads are content-sniffed as allowed images; mismatches return **422**.
+        Files are stored on non-public local storage and served only through
+        authenticated download endpoints.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -2852,11 +2861,37 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          $ref: '#/components/responses/Forbidden'
+          description: Forbidden (see assign-self for structured codes)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/AccountInactiveError'
+                  - $ref: '#/components/schemas/HubError'
+                  - $ref: '#/components/schemas/OfficerWorkflowError'
+                  - $ref: '#/components/schemas/Error'
+              examples:
+                notAssignedOfficer:
+                  summary: Officer is not the current assignee
+                  value:
+                    message: Only the assigned officer may submit updates for this issue.
+                    code: not_assigned_officer
         '404':
           $ref: '#/components/responses/NotFound'
         '422':
-          $ref: '#/components/responses/ValidationError'
+          description: >-
+            Validation failure, or issue status is `gesloten` (`issue_closed`).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/IssueWorkflowUnprocessableError'
+                  - $ref: '#/components/schemas/ValidationError'
+              examples:
+                issue_closed:
+                  value:
+                    message: Cannot create, update, or delete an officer update on a closed issue.
+                    code: issue_closed
 
   /api/issues/{issueId}/officer-updates/{officerUpdateId}:
     parameters:
@@ -2874,9 +2909,19 @@ paths:
       tags: [ Issues ]
       summary: Update officer update
       description: >-
-        Update title, content, or attachments of an existing update. Only the
-        authoring officer (who must be the assignee) may update it. Requires
-        hub-active shift (Tier C).
+        Update title, content, and image attachments on an existing officer
+        update. Multipart upload. Only the authenticated active officer
+        currently assigned to the issue may update it (**403**
+        `not_assigned_officer` otherwise). Only the officer who authored the
+        update may modify it (**403** `not_update_author` otherwise). Officers
+        without an active shared shift receive **403** `hub_active_required`.
+        District scoping applies (**403** `officer_not_in_district`). Blocked
+        when issue status is `gesloten` (**422** `issue_closed`); issues in
+        `opgelost` remain writable. Send `remove_attachment_ids` to delete
+        owned attachments before uploading replacements. Total attachments after
+        removals plus new files must not exceed **3**. New uploads are
+        content-sniffed as allowed images. Returns **404** when the update does
+        not exist on the issue.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -2895,18 +2940,56 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          $ref: '#/components/responses/Forbidden'
+          description: Forbidden (see assign-self for structured codes)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/AccountInactiveError'
+                  - $ref: '#/components/schemas/HubError'
+                  - $ref: '#/components/schemas/OfficerWorkflowError'
+                  - $ref: '#/components/schemas/Error'
+              examples:
+                notAssignedOfficer:
+                  summary: Officer is not the current assignee
+                  value:
+                    message: Only the assigned officer may submit updates for this issue.
+                    code: not_assigned_officer
+                notUpdateAuthor:
+                  summary: Officer is assignee but not the update author
+                  value:
+                    message: Only the officer who authored this update may modify or delete it.
+                    code: not_update_author
         '404':
           $ref: '#/components/responses/NotFound'
         '422':
-          $ref: '#/components/responses/ValidationError'
+          description: >-
+            Validation failure, invalid `remove_attachment_ids`, or issue status
+            is `gesloten` (`issue_closed`).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/IssueWorkflowUnprocessableError'
+                  - $ref: '#/components/schemas/ValidationError'
+              examples:
+                issue_closed:
+                  value:
+                    message: Cannot create, update, or delete an officer update on a closed issue.
+                    code: issue_closed
     delete:
       tags: [ Issues ]
       summary: Delete officer update
       description: >-
-        Delete an update and its attachments. Only the authoring officer (who
-        must be the assignee) may perform this delete. Requires active shift
-        (Tier C).
+        Delete an officer update and its attachments. Only the authenticated
+        active officer currently assigned to the issue may delete it (**403**
+        `not_assigned_officer` otherwise). Only the officer who authored the
+        update may delete it (**403** `not_update_author` otherwise). Officers
+        without an active shared shift receive **403** `hub_active_required`.
+        District scoping applies (**403** `officer_not_in_district`). Blocked
+        when issue status is `gesloten` (**422** `issue_closed`); issues in
+        `opgelost` remain writable. Returns **404** when the update does not
+        exist on the issue.
       security:
         - bearerAuth: [ ]
       responses:
@@ -2915,9 +2998,40 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          $ref: '#/components/responses/Forbidden'
+          description: Forbidden (see assign-self for structured codes)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/AccountInactiveError'
+                  - $ref: '#/components/schemas/HubError'
+                  - $ref: '#/components/schemas/OfficerWorkflowError'
+                  - $ref: '#/components/schemas/Error'
+              examples:
+                notAssignedOfficer:
+                  summary: Officer is not the current assignee
+                  value:
+                    message: Only the assigned officer may submit updates for this issue.
+                    code: not_assigned_officer
+                notUpdateAuthor:
+                  summary: Officer is assignee but not the update author
+                  value:
+                    message: Only the officer who authored this update may modify or delete it.
+                    code: not_update_author
         '404':
           $ref: '#/components/responses/NotFound'
+        '422':
+          description: >-
+            Issue status is `gesloten` (`issue_closed`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueWorkflowUnprocessableError'
+              examples:
+                issue_closed:
+                  value:
+                    message: Cannot create, update, or delete an officer update on a closed issue.
+                    code: issue_closed
 
   /api/issues/{issueId}/officer-updates/attachments/{attachmentId}/download:
     parameters:
@@ -3890,7 +4004,8 @@ components:
         shift (`hub_active_until` null or past) receive **403** with
         `code: hub_active_required` on Tier C (workflow write) routes. Tier B
         browse routes remain available without a shift: issue list/show,
-        officer-resolution show, and issue/resolution attachment downloads.
+        officer-resolution show, officer-updates index, and issue/resolution/officer-update
+        attachment downloads.
         Whitelisted routes also include profile, start-shift, and reference reads.
         See `#/components/responses/InactiveAccount`,
         `#/components/responses/Forbidden`, and `#/components/responses/HubActiveRequired`.
@@ -3957,7 +4072,8 @@ components:
         inactive or `hub_active_until` is null or in the past. The middleware
         does not inspect the bearer token's Sanctum `hub-active` ability.
         Tier B browse routes (issue list/show, officer-resolution show,
-        attachment downloads) and other whitelisted routes (profile, start-shift,
+        officer-updates index, attachment downloads) and other whitelisted routes
+        (profile, start-shift,
         reference reads) do not require an active shift.
       content:
         application/json:
@@ -4060,15 +4176,15 @@ components:
       type: object
       description: >-
         Officer issue workflow error with stable machine-readable `code`.
-        Returned when district scoping or assignee ownership checks fail on
-        officer workflow routes.
+        Returned when district scoping, assignee ownership, or update-author
+        checks fail on officer workflow routes.
       required: [ message, code ]
       properties:
         message:
           type: string
         code:
           type: string
-          enum: [ not_assigned_officer, officer_not_in_district ]
+          enum: [ not_assigned_officer, not_update_author, officer_not_in_district ]
 
     IssueWorkflowConflictError:
       type: object
