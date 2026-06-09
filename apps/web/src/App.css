@@ -3,73 +3,202 @@
 @theme {
     --color-primary-text: var(--primary-text);
     --color-secondary-text: var(--secondary-text);
-
     --color-primary-bg: var(--primary-bg);
     --color-primary-bg-cards: var(--primary-bg-cards);
-
-    --color-primary-border: var(--primary-border-cards);
-
+    --color-primary-border: var(--primary-border);
     --color-primary-accent: var(--primary-accent);
     --color-secondary-accent: var(--secondary-accent);
-
     --font-headline: "Roboto Flex", serif;
     --font-body: "Literata", serif;
     --font-label: "Work Sans", sans-serif;
 }
 
 :root {
-    --font-family-headline: Roboto Flex;
-    --font-family-body: Literata;
-    --font-family-label: Work Sans;
-
-    --primary-text: #1A2530;
-    --secondary-text: #657381;
-
-    --primary-accent: #2D483E;
-    --secondary-accent: #26a059;
-
-    --primary-bg: #f8f6f1;
-
-    --primary-bg-cards: #f9f8f5;
-    --primary-border-cards: #e4e1dc;
+    --primary-bg: #f8f6f2;
+    --primary-bg-cards: #edeae5;
+    --primary-border: #d4cfc8;
+    --primary-text: #2a2724;
+    --secondary-text: #615a53;
+    --primary-accent: #b8860b;
+    --secondary-accent: #2d4c38;
+    color-scheme: light dark;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 .dark {
-    --primary-text: #e6e4df;
-    --secondary-text: #a8a39d;
+    --primary-bg: #0d0d0c;
+    --primary-bg-cards: #171614;
+    --primary-border: #3d3a33;
+    --primary-text: #e6e1da;
+    --secondary-text: #a8a39a;
+    --primary-accent: #d4af37;
+    --secondary-accent: #6ee7b7;
+}
 
-    --primary-accent: #4ade80;
-    --secondary-accent: #D4AF37;
+.mode-protanopia {
+    --primary-bg: #f5f5f5;
+    --primary-bg-cards: #e8e8e8;
+    --primary-border: #595959;
+    --primary-text: #000000;
+    --secondary-text: #262626;
+    --primary-accent: #005fbc;
+    --secondary-accent: #1e3a2e;
+}
 
-    --primary-bg: #0d1210;
+.mode-deuteranopia {
+    --primary-bg: #f5f5f5;
+    --primary-bg-cards: #e0e0e0;
+    --primary-border: #666666;
+    --primary-text: #000000;
+    --secondary-text: #212121;
+    --primary-accent: #007bbd;
+    --secondary-accent: #2d4c38;
+}
 
-    --primary-bg-cards: #1a221f;
-    --primary-border-cards: #2d3833;
+.mode-tritanopia {
+    --primary-bg: #fdfaf0;
+    --primary-bg-cards: #f0e6d2;
+    --primary-border: #7a7a7a;
+    --primary-text: #1a1a1a;
+    --secondary-text: #333333;
+    --primary-accent: #cc3333;
+    --secondary-accent: #4a1e1e;
+}
+
+.mode-achromatopsia {
+    --primary-bg: #ffffff;
+    --primary-bg-cards: #f2f2f2;
+    --primary-border: #000000;
+    --primary-text: #000000;
+    --secondary-text: #333333;
+    --primary-accent: #000000;
+    --secondary-accent: #000000;
+}
+
+.mode-protanopia.dark {
+    --primary-bg: #0d0d0c;
+    --primary-bg-cards: #1a1a1a;
+    --primary-border: #4d4d4d;
+    --primary-text: #e6e1da;
+    --secondary-text: #b3b3b3;
+    --primary-accent: #4da6ff;
+    --secondary-accent: #4ade80;
+}
+
+.mode-deuteranopia.dark {
+    --primary-bg: #0d0d0c;
+    --primary-bg-cards: #1a1a1a;
+    --primary-border: #4d4d4d;
+    --primary-text: #e6e1da;
+    --secondary-text: #b3b3b3;
+    --primary-accent: #3399ff;
+    --secondary-accent: #4ade80;
+}
+
+.mode-tritanopia.dark {
+    --primary-bg: #0d0d0c;
+    --primary-bg-cards: #1a1a1a;
+    --primary-border: #505050;
+    --primary-text: #e6e1da;
+    --secondary-text: #b3b3b3;
+    --primary-accent: #ff6666;
+    --secondary-accent: #ff9999;
+}
+
+.mode-achromatopsia.dark {
+    --primary-bg: #000000;
+    --primary-bg-cards: #1a1a1a;
+    --primary-border: #ffffff;
+    --primary-text: #ffffff;
+    --secondary-text: #cccccc;
+    --primary-accent: #ffffff;
+    --secondary-accent: #ffffff;
 }
 
 body {
     background-color: var(--primary-bg);
-    color: var(--primary-text);
-    transition: background-color 0.3s, color 0.3s;
-    font-family: var(--font-family-label), serif;
+    transition: background-color 0.2s, color 0.2s;
+    font-family: var(--font-label), sans-serif;
+    margin: 0;
 }
 
-h1 { font-family: var(--font-family-headline), serif; }
-h2 { font-family: var(--font-family-body), serif; color: #1A2530; }
-h3, h4, p { font-family: var(--font-family-label), serif; }
 
-.data-collection {
-    display: flex;
-    flex-direction: row;
-    width: 80vw;
+h1 {
+    font-family: var(--font-headline), serif;
+    font-size: 3rem;
+    line-height: 1.2;
 }
-
+h2 {
+    font-family: var(--font-body), serif;
+    font-size: 1.5rem;
+}
+p {
+    font-family: var(--font-label), sans-serif;
+    line-height: 1.6;
+}
 
 .icon {
-    width: 3vw;
-    height: 7vh;
-    background-color: var(--primary-border-cards);
-    padding: 2%;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    background-color: var(--primary-border);
+}
+
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--primary-bg);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--primary-border);
+    border-radius: 5px;
+    border: 2px solid var(--primary-bg);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-accent);
+}
+
+/* Sloop de Google Translate balken, popups en frames volledig */
+iframe[class*="goog"],
+iframe[id*="goog"],
+.goog-te-banner-frame,
+#goog-gt-tt,
+.goog-te-balloon-frame,
+.goog-tooltip,
+.goog-tooltip-back {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    width: 0 !important;
+    border: none !important;
+}
+
+html {
+    top: 0 !important;
+}
+
+/* Verberg de 'Originele tekst tonen' popups bij hover over vertaalde teksten */
+.goog-text-highlight {
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+/* Handige scrollbar styling voor je talenlijstje */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.1);
     border-radius: 10px;
-    align-self: center;
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
 }

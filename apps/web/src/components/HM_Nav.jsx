@@ -1,5 +1,6 @@
 import React from 'react';
 import {Link, useLocation} from 'react-router-dom'; // Toegevoegd voor de werking van de links
+import "./HM_styling.css"
 
 export default function HM_Nav(){
     const location = useLocation(); // Slaat de huidige actieve route op

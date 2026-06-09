@@ -16,8 +16,11 @@ export default function Login() {
         e.preventDefault();
         try {
             const response = await axios.post('http://localhost:8001/api/auth/login', { email, password });
-            if (response.data.token) localStorage.setItem('auth_token', response.data.token);
-            navigate('/feed');
+            if (response.data.access_token) {
+                localStorage.setItem('auth_token', response.data.access_token);
+            }
+            localStorage.setItem('user_type', 'user');
+            navigate('/account');
         } catch (err) { setError('Inloggen mislukt.'); }
     };
 
@@ -45,7 +48,7 @@ export default function Login() {
                 <div className="w-full max-w-sm mx-auto">
 
                     <div className="mb-8 text-center md:text-left">
-                        <h2 className="text-3xl font-black tracking-tight mb-2">
+                        <h2 className="text-3xl tracking-tight mb-2">
                             Welkom terug
                         </h2>
                         <p className="text-sm text-secondary-text">
@@ -82,7 +85,12 @@ export default function Login() {
                                 </div>
                             </div>
                         ))}
-                        <button type="submit" className="w-full h-12 mt-4 bg-primary-text hover:bg-primary-accent text-white font-medium rounded-xl transition-all shadow-md active:scale-[0.98]">Inloggen</button>
+                        <button
+                            type="submit"
+                            className="w-full h-12 mt-4 bg-primary-text text-primary-bg hover:bg-primary-accent font-black uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-[0.98]"
+                        >
+                            Inloggen
+                        </button>
                     </form>
 
                     <p className="mt-6 text-sm text-center text-secondary-text">
