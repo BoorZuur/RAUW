@@ -78,6 +78,106 @@ function CommandCenter() {
                                         reporter="Sandra de Vries"
                                         tags={["Surveillance gewenst"]}
                                     />
+                                    <ReportCard
+                                        title="Groep jongeren intimiderend..."
+                                        status="In behandeling"
+                                        priority="green"
+                                        description="Al weken lang staat er een groep van 5-8 jongeren..."
+                                        location="Marconiplein, Rotterdam-West"
+                                        time="08:08"
+                                        reporter="Sandra de Vries"
+                                        tags={["Surveillance gewenst"]}
+                                    />
+                                    <ReportCard
+                                        title="Groep jongeren intimiderend..."
+                                        status="In behandeling"
+                                        priority="green"
+                                        description="Al weken lang staat er een groep van 5-8 jongeren..."
+                                        location="Marconiplein, Rotterdam-West"
+                                        time="08:08"
+                                        reporter="Sandra de Vries"
+                                        tags={["Surveillance gewenst"]}
+                                    />
+                                    <ReportCard
+                                        title="Groep jongeren intimiderend..."
+                                        status="Afgehandeld"
+                                        priority="red"
+                                        description="Al weken lang staat er een groep van 5-8 jongeren..."
+                                        location="Marconiplein, Rotterdam-West"
+                                        time="08:08"
+                                        reporter="Sandra de Vries"
+                                        tags={["Surveillance gewenst"]}
+                                    />
+                                    <ReportCard
+                                        title="Groep jongeren intimiderend..."
+                                        status="Afgehandeld"
+                                        priority="red"
+                                        description="Al weken lang staat er een groep van 5-8 jongeren..."
+                                        location="Marconiplein, Rotterdam-West"
+                                        time="08:08"
+                                        reporter="Sandra de Vries"
+                                        tags={["Surveillance gewenst"]}
+                                    />
+                                    <ReportCard
+                                        title="Groep jongeren intimiderend..."
+                                        status="Afgehandeld"
+                                        priority="red"
+                                        description="Al weken lang staat er een groep van 5-8 jongeren..."
+                                        location="Marconiplein, Rotterdam-West"
+                                        time="08:08"
+                                        reporter="Sandra de Vries"
+                                        tags={["Surveillance gewenst"]}
+                                    />
+                                    <ReportCard
+                                        title="Groep jongeren intimiderend..."
+                                        status="Afgehandeld"
+                                        priority="red"
+                                        description="Al weken lang staat er een groep van 5-8 jongeren..."
+                                        location="Marconiplein, Rotterdam-West"
+                                        time="08:08"
+                                        reporter="Sandra de Vries"
+                                        tags={["Surveillance gewenst"]}
+                                    />
+                                    <ReportCard
+                                        title="Groep jongeren intimiderend..."
+                                        status="In behandeling"
+                                        priority="green"
+                                        description="Al weken lang staat er een groep van 5-8 jongeren..."
+                                        location="Marconiplein, Rotterdam-West"
+                                        time="08:08"
+                                        reporter="Sandra de Vries"
+                                        tags={["Surveillance gewenst"]}
+                                    />
+                                    <ReportCard
+                                        title="Groep jongeren intimiderend..."
+                                        status="In behandeling"
+                                        priority="green"
+                                        description="Al weken lang staat er een groep van 5-8 jongeren..."
+                                        location="Marconiplein, Rotterdam-West"
+                                        time="08:08"
+                                        reporter="Sandra de Vries"
+                                        tags={["Surveillance gewenst"]}
+                                    />
+                                    <ReportCard
+                                        title="Groep jongeren intimiderend..."
+                                        status="In behandeling"
+                                        priority="green"
+                                        description="Al weken lang staat er een groep van 5-8 jongeren..."
+                                        location="Marconiplein, Rotterdam-West"
+                                        time="08:08"
+                                        reporter="Sandra de Vries"
+                                        tags={["Surveillance gewenst"]}
+                                    />
+                                    <ReportCard
+                                        title="Groep jongeren intimiderend..."
+                                        status="In behandeling"
+                                        priority="green"
+                                        description="Al weken lang staat er een groep van 5-8 jongeren..."
+                                        location="Marconiplein, Rotterdam-West"
+                                        time="08:08"
+                                        reporter="Sandra de Vries"
+                                        tags={["Surveillance gewenst"]}
+                                    />
                                 </div>
                         </div>
                     </aside>
