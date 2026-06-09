@@ -17,6 +17,7 @@ use App\Http\Controllers\ManagerHubController;
 use App\Http\Controllers\OfficerHubController;
 use App\Http\Controllers\IssueAttachmentController;
 use App\Http\Controllers\IssueController;
+use App\Http\Controllers\IssueParticipantController;
 use App\Http\Controllers\IssueSimilarCheckController;
 use App\Http\Controllers\IssueOfficerAssignmentController;
 use App\Http\Controllers\IssueOfficerStatusController;
@@ -261,6 +262,14 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     Route::get('issues', [IssueController::class, 'index'])->name('issues.index');
     Route::post('issues', [IssueController::class, 'store'])->name('issues.store');
     Route::post('issues/similar-check', [IssueSimilarCheckController::class, 'store'])->name('issues.similar-check');
+    // Participant join/leave are active-user-only and authorized inside
+    // JoinIssueRequest and LeaveIssueRequest. Join requires a canonical issue id
+    // (422 cannot_join_duplicate_child on duplicate children); first join returns
+    // 201, repeat join is idempotent (200). Leave removes the actor's row on the
+    // canonical issue and decrements participant_count; child route ids resolve to
+    // the canonical parent. Not participating returns 422 not_participant.
+    Route::post('issues/{issue}/join', [IssueParticipantController::class, 'join'])->name('issues.join');
+    Route::delete('issues/{issue}/leave', [IssueParticipantController::class, 'leave'])->name('issues.leave');
     // Show returns 404 when the issue is not visible to the actor (e.g. hidden
     // and not owned by an active user); officers and managers may view all issues.
     Route::get('issues/{issue}', [IssueController::class, 'show'])->name('issues.show');
