@@ -4,6 +4,7 @@ namespace App\Enums;
 
 enum JoinedVia: string
 {
+    case Creator = 'creator';
     case Manual = 'manual';
     case Duplicate = 'duplicate';
 

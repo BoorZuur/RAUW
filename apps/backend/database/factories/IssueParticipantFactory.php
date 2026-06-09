@@ -28,4 +28,12 @@ class IssueParticipantFactory extends Factory
             'joined_at' => now(),
         ];
     }
+
+    public function creator(): static
+    {
+        return $this->state(fn (): array => [
+            'joined_via' => JoinedVia::Creator,
+            'via_issue_id' => null,
+        ]);
+    }
 }
