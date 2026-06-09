@@ -2,15 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Issues\DeleteOfficerIssueUpdateRequest;
 use App\Http\Requests\Issues\IndexOfficerIssueUpdateRequest;
 use App\Http\Requests\Issues\StoreOfficerIssueUpdateRequest;
 use App\Http\Requests\Issues\UpdateOfficerIssueUpdateRequest;
-use App\Http\Requests\Issues\DeleteOfficerIssueUpdateRequest;
 use App\Http\Resources\OfficerIssueUpdateResource;
 use App\Models\Issue;
 use App\Models\Officer;
 use App\Models\OfficerIssueUpdate;
 use App\Support\IssueVisibilityQuery;
+use App\Support\OfficerIssueConflict;
 use App\Support\OfficerIssueDistrictAccess;
 use App\Support\OfficerIssueRowLock;
 use App\Support\UploadedFileValidator;
@@ -30,6 +31,8 @@ class OfficerIssueUpdateController extends Controller
     private const DIRECTORY = 'officer-issue-update-attachments';
 
     private const MAX_COUNT = 3;
+
+    private const UPDATE_ASSIGNEE_MESSAGE = 'Only the assigned officer may submit updates for this issue.';
 
     /**
      * @var array<int, string>
@@ -80,7 +83,8 @@ class OfficerIssueUpdateController extends Controller
                 $files,
                 &$pathsWrittenDuringRequest,
             ) {
-                OfficerIssueRowLock::assertAssignee($officer, $lockedIssue, 'Only the assigned officer may submit updates for this issue.');
+                OfficerIssueRowLock::assertAssignee($officer, $lockedIssue, self::UPDATE_ASSIGNEE_MESSAGE);
+                OfficerIssueRowLock::assertResolutionWritable($lockedIssue, OfficerIssueRowLock::UPDATE_CLOSED_MESSAGE);
 
                 $update = $lockedIssue->officerUpdates()->create([
                     'officer_id' => $officer->getKey(),
@@ -144,10 +148,11 @@ class OfficerIssueUpdateController extends Controller
                 &$pathsToDelete,
                 &$pathsWrittenDuringRequest,
             ): void {
-                OfficerIssueRowLock::assertAssignee($officer, $lockedIssue, 'Only the assigned officer may update updates for this issue.');
+                OfficerIssueRowLock::assertAssignee($officer, $lockedIssue, self::UPDATE_ASSIGNEE_MESSAGE);
+                OfficerIssueRowLock::assertResolutionWritable($lockedIssue, OfficerIssueRowLock::UPDATE_CLOSED_MESSAGE);
 
                 if ($officer_update->officer_id !== $officer->getKey()) {
-                    abort(Response::HTTP_FORBIDDEN);
+                    throw OfficerIssueConflict::notUpdateAuthor();
                 }
 
                 self::assertAttachmentCapUnderLock($officer_update, $removeIds, count($files));
@@ -211,33 +216,30 @@ class OfficerIssueUpdateController extends Controller
 
         $pathsToDelete = [];
 
-        try {
-            OfficerIssueRowLock::withLockedIssue($issue, function (Issue $lockedIssue) use (
-                $officer,
-                $officer_update,
-                &$pathsToDelete,
-            ): void {
-                OfficerIssueRowLock::assertAssignee($officer, $lockedIssue, 'Only the assigned officer may delete updates for this issue.');
+        OfficerIssueRowLock::withLockedIssue($issue, function (Issue $lockedIssue) use (
+            $officer,
+            $officer_update,
+            &$pathsToDelete,
+        ): void {
+            OfficerIssueRowLock::assertAssignee($officer, $lockedIssue, self::UPDATE_ASSIGNEE_MESSAGE);
+            OfficerIssueRowLock::assertResolutionWritable($lockedIssue, OfficerIssueRowLock::UPDATE_CLOSED_MESSAGE);
 
-                if ($officer_update->officer_id !== $officer->getKey()) {
-                    abort(Response::HTTP_FORBIDDEN);
-                }
+            if ($officer_update->officer_id !== $officer->getKey()) {
+                throw OfficerIssueConflict::notUpdateAuthor();
+            }
 
-                $attachmentsToRemove = $officer_update->attachments()->get();
+            $attachmentsToRemove = $officer_update->attachments()->get();
 
-                $pathsToDelete = $attachmentsToRemove
-                    ->pluck('file_path')
-                    ->all();
+            $pathsToDelete = $attachmentsToRemove
+                ->pluck('file_path')
+                ->all();
 
-                foreach ($attachmentsToRemove as $attachment) {
-                    $attachment->delete();
-                }
+            foreach ($attachmentsToRemove as $attachment) {
+                $attachment->delete();
+            }
 
-                $officer_update->delete();
-            });
-        } catch (Throwable $exception) {
-            throw $exception;
-        }
+            $officer_update->delete();
+        });
 
         self::deleteDiskFiles($pathsToDelete);
 
