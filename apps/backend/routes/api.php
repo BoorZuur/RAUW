@@ -149,9 +149,11 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
 
     // Officer listing. Authorization is narrowed inside IndexOfficerRequest to
     // an authenticated, active officer or manager; users and inactive actors
-    // receive a 403. Results exclude soft-deleted officers and default to active
+    // receive a 403. Results are hub-scoped for officers and ordinary managers
+    // (same hub only; null hub yields no rows); main managers see all officers
+    // city-wide. Results exclude soft-deleted officers and default to active
     // officers only when `is_active` is omitted. Optional district_id and
-    // department_id filters narrow the result set through officer pivots.
+    // department_id filters intersect with hub scope through officer pivots.
     Route::get('officers', [OfficerController::class, 'index'])->name('officers.index');
 
     // Manager-protected officer disable and enable. Authorization is narrowed

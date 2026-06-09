@@ -26,7 +26,9 @@ class IndexOfficerRequest extends FormRequest
      * The authenticated actor is resolved from the Sanctum bearer token and
      * may be a User, Officer, or Manager. Listing is restricted to an active
      * Officer or an active Manager; users and inactive actors receive a 403
-     * response.
+     * response. Results are hub-scoped for officers and ordinary managers
+     * (same hub only; null hub yields no rows); main managers see all officers
+     * city-wide. Optional `district_id` intersects with hub scope.
      */
     public function authorize(): bool
     {

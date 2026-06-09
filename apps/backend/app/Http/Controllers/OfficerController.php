@@ -11,6 +11,7 @@ use App\Http\Resources\OfficerResource;
 use App\Models\Manager;
 use App\Models\Officer;
 use App\Support\ManagerOfficerHubAccess;
+use App\Support\OfficerHubScope;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class OfficerController extends Controller
@@ -25,18 +26,27 @@ class OfficerController extends Controller
      * List officers with pagination.
      *
      * Authorization is enforced by IndexOfficerRequest, which restricts this
-     * action to an authenticated, active officer or manager. Results exclude
-     * soft-deleted officers and default to active officers only when `is_active`
-     * is omitted. Optional `district_id` and `department_id` filters narrow the
-     * result set through the officer's district and department pivots. Results
-     * include eager-loaded departments and districts, ordered by username
-     * ascending. Pagination is bounded so `per_page` can never exceed a safe
-     * maximum.
+     * action to an authenticated, active officer or manager. Results are
+     * hub-scoped for officers and ordinary managers (same hub only; null hub
+     * yields no rows); main managers see all officers city-wide. Results
+     * exclude soft-deleted officers and default to active officers only when
+     * `is_active` is omitted. Optional `district_id` and `department_id`
+     * filters narrow the hub-scoped result set through the officer's district
+     * and department pivots. Results include eager-loaded departments and
+     * districts, ordered by username ascending. Pagination is bounded so
+     * `per_page` can never exceed a safe maximum.
      */
     public function index(IndexOfficerRequest $request): AnonymousResourceCollection
     {
-        $officers = Officer::query()
-            ->where('is_active', $request->wantsActiveOfficers())
+        $query = Officer::query()
+            ->where('is_active', $request->wantsActiveOfficers());
+
+        $actor = $request->user();
+        if ($actor instanceof Officer || $actor instanceof Manager) {
+            OfficerHubScope::applyHubScope($query, $actor);
+        }
+
+        $officers = $query
             ->when(
                 $request->filled('district_id'),
                 fn ($query) => $query->whereHas(
