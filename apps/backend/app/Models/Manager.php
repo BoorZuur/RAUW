@@ -114,6 +114,11 @@ class Manager extends Authenticatable
         return $this->hasMany(UserReview::class, 'reviewed_by_manager_id');
     }
 
+    public function comments(): HasMany
+    {
+        return $this->hasMany(IssueComment::class);
+    }
+
     /**
      * Resolve the manager for implicit route model binding.
      *
