@@ -94,10 +94,13 @@ export default function ReportIssue() {
             return;
         }
 
-        const isValidDistrict = districts.some(d =>
-            formData.neighborhood.toLowerCase().includes(d.name.toLowerCase())
-        );
+        console.log("Input buurt:", formData.neighborhood);
+        console.log("Beschikbare districten:", districts.map(d => d.name));
 
+        const isValidDistrict = districts.some(d =>
+            formData.neighborhood.toLowerCase().includes(d.name.toLowerCase()) ||
+            d.name.toLowerCase().includes(formData.neighborhood.toLowerCase())
+        );
         if (!isValidDistrict) {
             setError("De ingevulde buurt is niet geldig of niet bekend in ons systeem.");
             setShowConfirm(false);
@@ -160,7 +163,7 @@ export default function ReportIssue() {
 
             <div className="z-50 relative"><U_Nav /></div>
 
-            <main className="z-10 grow w-full max-w-6xl mx-auto px-6 pt-32 mt-8 pb-12 grid grid-cols-1 md:grid-cols-2 gap-10">
+            <main className="z-10 grow w-full max-w-6xl mx-auto px-6 pt-26 mt-8 pb-12 grid grid-cols-1 md:grid-cols-2 gap-10">
                 <section className="h-137.5 bg-primary-bg-cards border-2 border-primary-border rounded-3xl p-3 shadow-sm">
                     <div className="w-full h-full rounded-2xl overflow-hidden border border-primary-border/50">
                         <NativeLeafletMap position={position} setPosition={setPosition} setFormData={setFormData} />

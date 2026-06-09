@@ -99,7 +99,7 @@ export default function MapOverview() {
     return (
         <div className="min-h-screen w-full flex flex-col bg-primary-bg overflow-hidden">
             <header className="h-20 shrink-0"><U_Nav /></header>
-            <main className="flex-1 p-4 md:p-8 flex gap-6 overflow-hidden">
+            <main className="z-10 grow w-full max-w-6xl mx-auto px-6 pt-26 mt-8 pb-12 md:p-8 flex gap-6 overflow-hidden">
                 <section className="flex-1 bg-primary-bg-cards border-2 border-primary-border rounded-3xl overflow-hidden relative shadow-lg">
                     <div ref={mapRef} className="absolute inset-0" />
                 </section>
