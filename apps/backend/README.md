@@ -157,6 +157,42 @@ Issues are listed and shown to any authenticated actor. Create, update, and dele
 
 Issue attachments may be uploaded or deleted only by the issue owner (active user). Downloads use visibility-only authorization (`IssueVisibilityQuery::canViewIssue`): any actor who may view the issue may download. Users probing hidden issues they do not own receive `404`; other unauthorized actors receive `403`. Files are served only through the authenticated download endpoint, not via public URLs.
 
+### Issue duplicates and participants
+
+Citizens can link a new report to an existing canonical issue instead of creating a standalone duplicate thread. The flow is: **similar-check** → optional **create with `duplicate_of_id`** → optional **join/leave** on the canonical.
+
+**Similar-check** (`POST /api/issues/similar-check`, active users only) scores up to 50 open or `in_behandeling` canonical issues in the requested district and returns the top five in `own_matches` (actor-owned, `linkable: false`) and `matches` (other users, `linkable: true`). Scoring uses category match, recency, postal prefix, and optional GPS distance bands.
+
+**Create duplicate** (`POST /api/issues` with optional `duplicate_of_id`) creates a **hidden** child issue owned by the author (`visibility = hidden`, `duplicate_of_id` set). The canonical `duplicate_count` increments. When the author is not already a participant, a row is added on the canonical with `joined_via = duplicate` and `via_issue_id` pointing at the child; `participant_count` increments. Targets must be open or `in_behandeling` canonical issues visible to the author. Normal creates (no `duplicate_of_id`) add a creator participant row (`joined_via = creator`) with `participant_count = 1`.
+
+**Join / leave** (`POST /api/issues/{issue}/join`, `DELETE /api/issues/{issue}/leave`, active users only) manage manual participation on a **canonical** issue. Join on a duplicate child id returns **422** `cannot_join_duplicate_child`. First join returns **201**; repeat joins are idempotent (**200**). Leave resolves child route ids to the canonical parent, removes the participation row, and decrements `participant_count`; not participating returns **422** `not_participant`.
+
+**List filters:** `participating=1` (users only) lists owned duplicate children where the user still participates on the canonical. `include_duplicates=1` (officers/managers only) includes duplicate child rows. Default browse hides other users' duplicate children for citizens and hides all children for officers/managers unless `include_duplicates=1`. `mine` and `participating` are mutually exclusive.
+
+**Participant visibility:** Users who participate on a canonical they do not own receive status, resolution, counters, and participation context while title, content, location, author, and attachments are redacted (`author: { is_participant: true }`). Owners always see full payloads for issues they own; officers and managers are never redacted.
+
+**Delete semantics** (`DELETE /api/issues/{issue}`, optional JSON body `{ "leave_participation": false }`):
+
+| Target | Behavior |
+|--------|----------|
+| Duplicate child | Decrements canonical `duplicate_count`. `leave_participation: false` (default) keeps canonical participation; `true` removes the participation row and decrements `participant_count`. |
+| Canonical with children | Promotes oldest child to canonical, re-parents siblings, migrates participants, recalculates counters. |
+| Canonical without children | Simple hard delete. |
+
+**Officer duplicates list** (`GET /api/issues/{canonical}/duplicates`, officers and managers only) paginates duplicate children oldest-first with full `IssueResource` payloads. Child route ids return **422** `issue_not_canonical`; users receive **403**.
+
+**Structured error codes (duplicates and participants)**
+
+| Code | HTTP | When |
+|------|------|------|
+| `duplicate_target_not_found` | 404 | `duplicate_of_id` target missing or not visible to author |
+| `issue_not_matchable` | 422 | Target canonical not `open` or `in_behandeling` |
+| `cannot_duplicate_self` | 422 | Author owns the canonical target |
+| `cannot_join_duplicate_child` | 422 | Join attempted on duplicate child id |
+| `not_participant` | 422 | Leave when not participating on canonical |
+| `issue_not_canonical` | 422 | Officer duplicates list on duplicate child id |
+| `issue_is_duplicate_child` | 422 | Operation requires canonical issue |
+
 ### Officer issue workflows
 
 Officers may **browse** issues and resolution attachments without an active shared shift (**Tier B**). Assignment, status changes, and field-report writes are **Tier C**: active officers need `hub_active_until` in the future or they receive **403** `hub_active_required`. Users and managers are not subject to hub-active gating but cannot call officer-only write endpoints (they receive **403** `This action is unauthorized.`).

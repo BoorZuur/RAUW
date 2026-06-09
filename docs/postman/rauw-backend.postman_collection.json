@@ -1722,9 +1722,173 @@
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
             "body": { "mode": "raw", "raw": "{\n  \"title\": \"Parkeren op stoep\",\n  \"content\": \"Er staat een auto op de stoep bij Coolsingel.\",\n  \"category_id\": {{category_id}},\n  \"district_id\": {{district_id}},\n  \"postal_code\": \"3012AB\",\n  \"address\": \"Coolsingel 1, Rotterdam\",\n  \"latitude\": 51.91712,\n  \"longitude\": 4.47834,\n  \"is_anonymous\": true\n}", "options": { "raw": { "language": "json" } } },
             "url": { "raw": "{{base_url}}/api/issues", "host": [ "{{base_url}}" ], "path": [ "api", "issues" ] },
-            "description": "Create an issue as an authenticated active user. Required fields are title, content, category_id, and district_id. Do not send department: issue departments are derived server-side from the selected category, stored through the department_issue pivot, and returned as a read-only departments array. Optional location fields are postal_code, address, latitude, and longitude. Removed legacy locality fields are not accepted. Anonymous issues remain owned through issues.user_id; the backend generates a stable alias such as Melder#A1B2C3D4 and does not accept anonymous_alias from clients. The test stores issue_id for follow-up requests."
+            "description": "Create an issue as an authenticated active user. Required fields are title, content, category_id, and district_id. Do not send department: issue departments are derived server-side from the selected category, stored through the department_issue pivot, and returned as a read-only departments array. Optional location fields are postal_code, address, latitude, and longitude. Removed legacy locality fields are not accepted. Anonymous issues remain owned through issues.user_id; the backend generates a stable alias such as Melder#A1B2C3D4 and does not accept anonymous_alias from clients. Normal creates add a creator participant row (participant_count = 1). The test stores issue_id for follow-up requests."
           },
           "response": []
+        },
+        {
+          "name": "Duplicates & participants",
+          "item": [
+            {
+              "name": "Similar Check",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "method": "POST",
+                "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+                "body": { "mode": "raw", "raw": "{\n  \"district_id\": {{district_id}},\n  \"category_id\": {{category_id}},\n  \"postal_code\": \"3012AB\",\n  \"address\": \"Coolsingel 1, Rotterdam\",\n  \"latitude\": 51.91712,\n  \"longitude\": 4.47834\n}", "options": { "raw": { "language": "json" } } },
+                "url": { "raw": "{{base_url}}/api/issues/similar-check", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "similar-check" ] },
+                "description": "Score similar open canonical issues before create. Active users only. Returns own_matches (actor-owned, linkable false) and matches (other users, linkable true), capped at five per bucket. Use a user token from Auth / Login (demo.user@example.com locally)."
+              },
+              "response": []
+            },
+            {
+              "name": "Create Issue as Duplicate",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Duplicate child created', function () { pm.response.to.have.status(201); });",
+                      "const response = pm.response.json();",
+                      "if (response.id) {",
+                      "    pm.collectionVariables.set('duplicate_child_issue_id', response.id);",
+                      "    if (pm.environment.name) { pm.environment.set('duplicate_child_issue_id', response.id); }",
+                      "}",
+                      "pm.test('Child is hidden duplicate', function () {",
+                      "    pm.expect(response.visibility).to.eql('hidden');",
+                      "    pm.expect(response.duplicate_of_id).to.eql(Number(pm.collectionVariables.get('canonical_issue_id') || pm.variables.get('canonical_issue_id')));",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "method": "POST",
+                "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+                "body": { "mode": "raw", "raw": "{\n  \"title\": \"Zelfde parkeerprobleem\",\n  \"content\": \"Ook bij mij staat er een auto op de stoep.\",\n  \"category_id\": {{category_id}},\n  \"district_id\": {{district_id}},\n  \"postal_code\": \"3012AB\",\n  \"duplicate_of_id\": {{canonical_issue_id}}\n}", "options": { "raw": { "language": "json" } } },
+                "url": { "raw": "{{base_url}}/api/issues", "host": [ "{{base_url}}" ], "path": [ "api", "issues" ] },
+                "description": "Create a hidden duplicate child linked to canonical_issue_id. Requires a user token and a canonical target the actor does not own (set canonical_issue_id from another user's open issue or a seeded canonical issue). Returns 201 with visibility hidden and duplicate_of_id set; increments canonical duplicate_count and adds duplicate participation when needed. Stores duplicate_child_issue_id."
+              },
+              "response": []
+            },
+            {
+              "name": "Join Canonical Issue",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Join succeeded', function () { pm.expect([200, 201]).to.include(pm.response.code); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "method": "POST",
+                "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+                "url": { "raw": "{{base_url}}/api/issues/{{canonical_issue_id}}/join", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{canonical_issue_id}}", "join" ] },
+                "description": "Manually join a canonical issue as participant. Active users only. First join returns 201; repeat join is idempotent (200). Joining a duplicate child id returns 422 cannot_join_duplicate_child. Set canonical_issue_id to a visible canonical issue id."
+              },
+              "response": []
+            },
+            {
+              "name": "Leave Canonical Issue",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "method": "DELETE",
+                "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+                "url": { "raw": "{{base_url}}/api/issues/{{canonical_issue_id}}/leave", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{canonical_issue_id}}", "leave" ] },
+                "description": "Remove participation on the canonical issue. Active users only. Child route ids resolve to canonical. Returns 204 on success or 422 not_participant when not participating."
+              },
+              "response": []
+            },
+            {
+              "name": "List Participating Issues",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "method": "GET",
+                "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+                "url": {
+                  "raw": "{{base_url}}/api/issues?participating=1&page={{page}}&per_page={{per_page}}",
+                  "host": [ "{{base_url}}" ],
+                  "path": [ "api", "issues" ],
+                  "query": [
+                    { "key": "participating", "value": "1", "description": "Users only: owned duplicate children with active canonical participation" },
+                    { "key": "page", "value": "{{page}}" },
+                    { "key": "per_page", "value": "{{per_page}}" }
+                  ]
+                },
+                "description": "List owned duplicate children where the user still participates on the canonical parent. Requires a user token; officers and managers receive 422. Mutually exclusive with mine=1."
+              },
+              "response": []
+            },
+            {
+              "name": "List Issues - Include Duplicates",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "method": "GET",
+                "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+                "url": {
+                  "raw": "{{base_url}}/api/issues?include_duplicates=1&page={{page}}&per_page={{per_page}}",
+                  "host": [ "{{base_url}}" ],
+                  "path": [ "api", "issues" ],
+                  "query": [
+                    { "key": "include_duplicates", "value": "1", "description": "Officers and managers only: include duplicate child rows" },
+                    { "key": "page", "value": "{{page}}" },
+                    { "key": "per_page", "value": "{{per_page}}" }
+                  ]
+                },
+                "description": "Officer/manager browse including duplicate children. Log in as demo.officer@example.com or a manager before running. Users receive 422 when include_duplicates is set."
+              },
+              "response": []
+            },
+            {
+              "name": "List Duplicate Children",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "method": "GET",
+                "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{canonical_issue_id}}/duplicates?page={{page}}&per_page={{per_page}}",
+                  "host": [ "{{base_url}}" ],
+                  "path": [ "api", "issues", "{{canonical_issue_id}}", "duplicates" ],
+                  "query": [
+                    { "key": "page", "value": "{{page}}" },
+                    { "key": "per_page", "value": "{{per_page}}" }
+                  ]
+                },
+                "description": "Officer/manager-only paginated list of duplicate children for a canonical issue (oldest first, full Issue payloads). Child route ids return 422 issue_not_canonical. Users receive 403. Set canonical_issue_id to a canonical issue."
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Duplicate Child (Keep Participation)",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "method": "DELETE",
+                "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+                "body": { "mode": "raw", "raw": "{\n  \"leave_participation\": false\n}", "options": { "raw": { "language": "json" } } },
+                "url": { "raw": "{{base_url}}/api/issues/{{duplicate_child_issue_id}}", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{duplicate_child_issue_id}}" ] },
+                "description": "Hard delete an owned duplicate child while keeping canonical participation (default). Optional JSON body leave_participation false. Decrements canonical duplicate_count. Use duplicate_child_issue_id from Create Issue as Duplicate."
+              },
+              "response": []
+            },
+            {
+              "name": "Show Canonical as Participant",
+              "request": {
+                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "method": "GET",
+                "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+                "url": { "raw": "{{base_url}}/api/issues/{{canonical_issue_id}}", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{canonical_issue_id}}" ] },
+                "description": "Show a canonical issue as a participating user who does not own it. Expect redacted title/content/location/attachments and author { is_participant: true } while status and officer_resolution remain visible. Run after Join Canonical Issue with a user who is not the canonical owner."
+              },
+              "response": []
+            }
+          ]
         },
         {
           "name": "List Issues - Filtered Paginated",
@@ -1954,7 +2118,7 @@
             "method": "DELETE",
             "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
             "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}" ] },
-            "description": "Hard delete an issue owned by the authenticated active user. This is not a soft delete: the issue row is removed and attachments cascade with the issue. Run after attachment examples if you want to preserve issue_id for follow-up requests."
+            "description": "Hard delete an issue owned by the authenticated active user. This is not a soft delete: the issue row is removed and attachments cascade with the issue. Duplicate children accept optional JSON body leave_participation (default false). Canonical deletes with children re-parent the oldest child. See Issues / Duplicates & participants for duplicate-specific examples. Run after attachment examples if you want to preserve issue_id for follow-up requests."
           },
           "response": []
         },
@@ -2370,6 +2534,16 @@
     },
     {
       "key": "issue_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "canonical_issue_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "duplicate_child_issue_id",
       "value": "1",
       "type": "string"
     },

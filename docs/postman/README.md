@@ -80,6 +80,8 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 | `manager_id` | `2` | Ordinary manager path ID; overwritten by **Managers / Create Manager**. |
 | `department_id` | `1` | Department path ID for update, deactivate (PATCH `is_active`), and delete examples. |
 | `issue_id` | `1` | Filled automatically after **Issues / Create Issue**. Used by show, update, attachment, and delete examples. |
+| `canonical_issue_id` | `1` | Canonical issue id for **Issues / Duplicates & participants** (similar-check target, join/leave, officer duplicates list). Set manually to another user's open canonical issue when testing duplicate create. |
+| `duplicate_child_issue_id` | `1` | Filled automatically after **Issues / Duplicates & participants / Create Issue as Duplicate**. Used by delete-duplicate examples. |
 | `attachment_id` | `1` | Filled automatically after **Issues / Upload Attachments**. Used by authenticated download and delete. |
 | `attachment_download_url` | blank | Filled automatically after **Issues / Upload Attachments** for reference. |
 | `officer_resolution_attachment_id` | `1` | Filled automatically after **Issues / Officer workflows / Create Officer Resolution**. Used by update and download examples. |
@@ -107,6 +109,7 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 13. Run **Districts / Create District**, **Update District**, and **Delete District** with **Auth / Login as Main Manager** (`main_manager_access_token`). Ordinary managers receive `403` on district writes. District deletion returns `409 Conflict` while the district is assigned to managers/officers or referenced by issues.
 14. Run **Categories / List Categories** to find existing category IDs. Category reads work for any authenticated actor; mutations require an active main manager (`main_manager_access_token`).
 15. Run **Auth / Login** with `demo.user@example.com` and password `password`, then **Issues / Create Issue** (stores `issue_id`).
+15b. **Duplicates & participants:** Run **Issues / Duplicates & participants / Similar Check**, set `canonical_issue_id` to another user's open canonical issue, then **Create Issue as Duplicate** (stores `duplicate_child_issue_id`). Optionally run **Join Canonical Issue**, **List Participating Issues** (`participating=1`), and **Show Canonical as Participant** for redaction smoke tests. As an officer, run **List Issues - Include Duplicates** and **List Duplicate Children**.
 16. Use **Issues / List Issues - Filtered Paginated** to combine `district_id`, `department` (env `department_filter`), and `category_id`.
 17. **Officer issue workflows:** Run **Auth / Login Officer at Hub**, then **Issues / Create Issue** as a user (or pick a seeded issue in Cool / `district_id: 1`). Run **Issues / Officer workflows / Assign Self to Issue**, then **Update Issue Status**, **Create Officer Resolution**, **Show Officer Resolution**, **Update Officer Resolution**, and **Download Officer Resolution Attachment** in that order.
 18. To test ordinary-manager privileges, log in as a created manager and copy the token to `manager_access_token` before **Managers / Update Officer Districts** or to confirm category/district/department mutations return **403** (not for successful category writes).
