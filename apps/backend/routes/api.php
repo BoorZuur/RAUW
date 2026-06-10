@@ -413,6 +413,7 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     Route::post('issues/{issue}/comments', [IssueCommentController::class, 'store'])->name('issues.comments.store');
     Route::patch('issues/{issue}/comments/{comment}', [IssueCommentController::class, 'update'])->name('issues.comments.update');
     Route::delete('issues/{issue}/comments/{comment}', [IssueCommentController::class, 'destroy'])->name('issues.comments.destroy');
+    Route::patch('issues/{issue}/comments/{comment}/visibility', [IssueCommentController::class, 'updateVisibility'])->name('issues.comments.visibility.update');
     // Community Posts CRUD. Listing and reads are available to any authenticated actor
     // and rely on CommunityPostFeedQuery / CommunityPostVisibilityQuery for scoping.
     // Users require an active district subscription (feedDistricts) matching the post.
