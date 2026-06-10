@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Enums\ActorType;
 use App\Enums\ChatStatus;
+use App\Enums\IssueMessageSenderType;
+use App\Enums\IssueMessageType;
 use App\Enums\Department;
 use App\Enums\FlagAction;
 use App\Enums\FlagReason;
@@ -17,6 +19,7 @@ use App\Models\Category;
 use App\Models\ContentFlag;
 use App\Models\DomainNotification;
 use App\Models\Issue;
+use App\Models\IssueChat;
 use App\Models\IssueComment;
 use App\Models\IssueMessage;
 use App\Models\IssueParticipant;
@@ -35,7 +38,6 @@ class EnumCastingTest extends TestCase
     {
         $issue = $this->createIssue([
             'status' => IssueStatus::InProgress,
-            'chat_status' => ChatStatus::Open,
             'priority' => Priority::High,
             'department' => Department::BoaYouth,
             'visibility' => Visibility::Hidden,
@@ -44,7 +46,6 @@ class EnumCastingTest extends TestCase
         $issue->refresh();
 
         $this->assertSame(IssueStatus::InProgress, $issue->status);
-        $this->assertSame(ChatStatus::Open, $issue->chat_status);
         $this->assertSame(Priority::High, $issue->priority);
         $this->assertSame(Department::BoaYouth, $issue->department);
         $this->assertSame(Visibility::Hidden, $issue->visibility);
@@ -70,9 +71,17 @@ class EnumCastingTest extends TestCase
             'visibility' => Visibility::Hidden,
         ]);
 
-        $message = IssueMessage::create([
+        $chat = IssueChat::create([
             'issue_id' => $issue->id,
-            'sender_type' => ActorType::Officer,
+            'user_id' => $user->id,
+            'status' => ChatStatus::Open,
+        ]);
+
+        $message = IssueMessage::create([
+            'issue_chat_id' => $chat->id,
+            'issue_id' => $issue->id,
+            'message_type' => IssueMessageType::Message,
+            'sender_type' => IssueMessageSenderType::Officer,
             'content' => 'Message content',
         ]);
 
@@ -116,7 +125,9 @@ class EnumCastingTest extends TestCase
         $this->assertSame(JoinedVia::Duplicate, $participant->refresh()->joined_via);
         $this->assertSame(ActorType::User, $comment->refresh()->author_type);
         $this->assertSame(Visibility::Hidden, $comment->visibility);
-        $this->assertSame(ActorType::Officer, $message->refresh()->sender_type);
+        $this->assertSame(ChatStatus::Open, $chat->refresh()->status);
+        $this->assertSame(IssueMessageSenderType::Officer, $message->refresh()->sender_type);
+        $this->assertSame(IssueMessageType::Message, $message->message_type);
         $this->assertSame(IssueStatus::Open, $history->refresh()->old_status);
         $this->assertSame(IssueStatus::Resolved, $history->new_status);
         $this->assertSame(ActorType::Manager, $notification->refresh()->recipient_type);
@@ -141,7 +152,6 @@ class EnumCastingTest extends TestCase
             'title' => 'Broken street light',
             'content' => 'The street light is broken.',
             'status' => IssueStatus::Open,
-            'chat_status' => ChatStatus::Closed,
             'priority' => Priority::Low,
             'department' => Department::DistrictManagement,
             'visibility' => Visibility::Visible,
