@@ -91,10 +91,10 @@ export default function FlagsDashboardPage() {
                             <thead>
                             <tr className="border-b border-stone-200 text-stone-500 text-xs font-bold uppercase tracking-wider bg-stone-50/70">
                                 <th className="py-4 px-6 w-[65px]">ID</th>
-                                <th className="py-4 px-6 w-[15%]">Gekoppeld aan</th>
+                                <th className="py-4 px-6 w-[15%]">Melding</th>
                                 <th className="py-4 px-6 w-[22%]">Reden & Trigger</th>
                                 <th className="py-4 px-6 w-[22%]">Gebruiker</th>
-                                <th className="py-4 px-6 w-[17%]">Geflagged door</th>
+                                <th className="py-4 px-6 w-[17%]">Gemeld door</th>
                                 <th className="py-4 px-6 w-[12%]">Status</th>
                                 <th className="py-4 px-6 w-[12%] text-right">Acties</th>
                             </tr>

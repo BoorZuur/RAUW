@@ -6,8 +6,7 @@ export default function UserCard({flag, onAction}) {
 
     const isProblematicUser = flag.reported_user?.flag_count >= 3;
     const isProcessed = flag.action_taken !== "In afwachting";
-
-    // Sluit het dropdown-menu als je buiten de knop klikt
+    
     useEffect(() => {
         function handleClickOutside(event) {
             if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -38,7 +37,7 @@ export default function UserCard({flag, onAction}) {
 
     const handleMenuAction = (actionType) => {
         onAction(flag.id, actionType);
-        setIsMenuOpen(false); // Sluit menu direct na actie
+        setIsMenuOpen(false);
     };
 
     return (
@@ -64,9 +63,9 @@ export default function UserCard({flag, onAction}) {
             <td className="py-4 px-6">
                 <div className="font-semibold text-stone-800 truncate">{flag.flag_reason}</div>
                 {flag.matched_keyword ? (
-                    <div className="text-xs text-red-500 mt-0.5 font-medium truncate">
+                    <div className="text-xs text-stone-800 mt-0.5 font-medium truncate">
                         Trigger: <code
-                        className="bg-stone-900 text-white font-mono px-1.5 py-0.5 rounded text-[11px]">"{flag.matched_keyword}"</code>
+                        className=" text-red-500 font-mono px-1.5 py-0.5 rounded text-[11px]">"{flag.matched_keyword}"</code>
                     </div>
                 ) : (
                     <div className="text-xs text-stone-400 mt-0.5 italic">Geen triggerwoord</div>
@@ -111,7 +110,7 @@ export default function UserCard({flag, onAction}) {
                 </span>
             </td>
 
-            {/* 7. NIEUW: Compacte Selectie/Dropdown Actiecel */}
+            {/* 7. Dropdown */}
             <td className="py-4 px-6 text-right relative" menu-align-container="true">
                 {isProcessed ? (
                     <span className="text-xs text-stone-400 italic pr-2 font-medium">Afgehandeld</span>
@@ -129,8 +128,6 @@ export default function UserCard({flag, onAction}) {
                                       d="M19 9l-7 7-7-7"/>
                             </svg>
                         </button>
-
-                        {/* Zwevend dropdown menu */}
                         {isMenuOpen && (
                             <div
                                 className="absolute right-6 mt-1 w-44 bg-white rounded-xl border border-stone-200 shadow-lg z-50 overflow-hidden py-1 animate-in fade-in duration-100 text-left">
