@@ -9,6 +9,7 @@ use App\Http\Requests\DistrictAssignments\UpdateOwnDistrictsRequest;
 use App\Http\Resources\AuthProfileResource;
 use App\Models\Manager;
 use App\Models\Officer;
+use App\Support\ActorDistrictAccess;
 use Illuminate\Http\JsonResponse;
 
 class ProfileDistrictController extends Controller
@@ -39,6 +40,7 @@ class ProfileDistrictController extends Controller
         $actor = $request->user();
 
         $actor->districts()->sync($request->districtIds());
+        ActorDistrictAccess::forget($actor);
 
         // Reload the relations the profile resource embeds so the response
         // reflects the freshly synced districts without lazy queries.
