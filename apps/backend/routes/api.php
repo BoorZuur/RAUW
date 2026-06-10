@@ -37,6 +37,8 @@ use App\Http\Controllers\OfficerEndShiftController;
 use App\Http\Controllers\OfficerDepartmentController;
 use App\Http\Controllers\OfficerDistrictController;
 use App\Http\Controllers\OfficerSessionController;
+use App\Http\Controllers\IssueFeedbackController;
+use App\Http\Controllers\OfficerMeFeedbackController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -205,6 +207,9 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     // UpdateOfficerHubRequest to an authenticated, active manager. Setting an
     // officer's hub clears their district_officer pivot.
     Route::patch('officers/{officer}/hub', [OfficerHubController::class, 'update'])->name('officers.hub.update');
+
+    // Officer self-service reads (Tier B whitelist).
+    Route::get('officers/me/feedback', [OfficerMeFeedbackController::class, 'index'])->name('officers.me.feedback.index');
 
     // Main-manager-protected actor department assignment. Authorization is narrowed
     // inside the department assignment FormRequests to an authenticated, active
@@ -411,4 +416,11 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     Route::patch('issues/{issue}/comments/{comment}', [IssueCommentController::class, 'update'])->name('issues.comments.update');
     Route::delete('issues/{issue}/comments/{comment}', [IssueCommentController::class, 'destroy'])->name('issues.comments.destroy');
     Route::patch('issues/{issue}/comments/{comment}/visibility', [IssueCommentController::class, 'updateVisibility'])->name('issues.comments.visibility.update');
+
+    // Issue feedback. Listing (Index) is Tier B (can browse without active shift);
+    // store, update, and destroy are Tier C (require active shift for officers, though usually for users).
+    Route::get('issues/{issue}/feedback', [IssueFeedbackController::class, 'index'])->name('issues.feedback.index');
+    Route::post('issues/{issue}/feedback', [IssueFeedbackController::class, 'store'])->name('issues.feedback.store');
+    Route::patch('issues/{issue}/feedback/{feedback}', [IssueFeedbackController::class, 'update'])->name('issues.feedback.update');
+    Route::delete('issues/{issue}/feedback/{feedback}', [IssueFeedbackController::class, 'destroy'])->name('issues.feedback.destroy');
 });

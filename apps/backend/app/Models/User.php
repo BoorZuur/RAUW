@@ -67,9 +67,9 @@ class User extends Authenticatable
         return $this->hasMany(IssueMessage::class);
     }
 
-    public function resolutions(): HasMany
+    public function issueFeedbackGiven(): HasMany
     {
-        return $this->hasMany(IssueResolution::class);
+        return $this->hasMany(IssueFeedback::class, 'reviewer_user_id');
     }
 
     public function reviews(): HasMany

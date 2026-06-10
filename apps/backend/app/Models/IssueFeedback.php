@@ -2,28 +2,31 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['issue_id', 'user_id', 'is_satisfied', 'comment', 'answered_at'])]
-class IssueResolution extends Model
+class IssueFeedback extends Model
 {
     use HasFactory;
 
     public $timestamps = false;
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
+    protected $fillable = [
+        'issue_id',
+        'reviewer_user_id',
+        'is_satisfied',
+        'comment',
+        'submitted_at',
+        'updated_at',
+    ];
+
     protected function casts(): array
     {
         return [
             'is_satisfied' => 'boolean',
-            'answered_at' => 'datetime',
+            'submitted_at' => 'datetime',
+            'updated_at' => 'datetime',
         ];
     }
 
@@ -32,8 +35,8 @@ class IssueResolution extends Model
         return $this->belongsTo(Issue::class);
     }
 
-    public function user(): BelongsTo
+    public function reviewer(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'reviewer_user_id');
     }
 }

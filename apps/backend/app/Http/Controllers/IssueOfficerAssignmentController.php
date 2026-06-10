@@ -80,6 +80,13 @@ class IssueOfficerAssignmentController extends Controller
             }
 
             $lockedIssue->update($updates);
+
+            \App\Models\IssueOfficerAssignmentHistory::query()->firstOrCreate([
+                'issue_id' => $lockedIssue->getKey(),
+                'officer_id' => $officer->getKey(),
+            ], [
+                'assigned_at' => now(),
+            ]);
         });
 
         $issue->refresh()->load(self::ISSUE_RELATIONS);

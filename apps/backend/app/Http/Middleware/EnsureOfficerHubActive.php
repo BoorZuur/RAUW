@@ -45,6 +45,8 @@ class EnsureOfficerHubActive
         'issues.attachments.download',
         'issues.officer-updates.index',
         'issues.officer-updates.attachments.download',
+        'issues.feedback.index',
+        'officers.me.feedback.index',
     ];
 
     public function handle(Request $request, Closure $next): Response

@@ -196,6 +196,12 @@ class IssueController extends Controller
 
         if ($actor instanceof User) {
             $issue->loadActorParticipant($actor);
+
+            if ($issue->status === \App\Enums\IssueStatus::Closed) {
+                $issue->load(['feedback' => function ($query) use ($actor) {
+                    $query->where('reviewer_user_id', $actor->id)->with('reviewer');
+                }]);
+            }
         }
 
         if ($actor instanceof Officer || $actor instanceof Manager) {
@@ -204,6 +210,10 @@ class IssueController extends Controller
                     ->with('changedByOfficer')
                     ->orderByDesc('changed_at'),
             ]);
+
+            if ($actor instanceof Manager && $issue->status === \App\Enums\IssueStatus::Closed) {
+                $issue->load('feedback.reviewer');
+            }
         }
 
         return new IssueResource($issue);
