@@ -382,3 +382,30 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+ # # #   C o m m u n i t y   N e w s   F e e d 
+ 
+ T h e   C o m m u n i t y   N e w s   F e e d   a l l o w s   o f f i c e r s   t o   b r o a d c a s t   d i s t r i c t - s c o p e d   u p d a t e s   t o   u s e r s .   M a i n   m a n a g e r s   m a n a g e   c i t y - w i d e   p o s t s ,   w h i l e   o r d i n a r y   m a n a g e r s   a d m i n i s t e r   p o s t s   w i t h i n   t h e i r   a s s i g n e d   d i s t r i c t s . 
+ 
+ * * D i s t r i c t   S c o p i n g : * *   
+ -   * * U s e r s * *   s e l e c t   t h e i r   i n t e r e s t e d   d i s t r i c t s   v i a   ` P A T C H   / a p i / a u t h / m e / f e e d - d i s t r i c t s ` .   T h e y   c a n   o n l y   b r o w s e   p o s t s   f r o m   t h e s e   s e l e c t e d   d i s t r i c t s .   I f   a   u s e r   h a s   n o t   c o n f i g u r e d   a n y   f e e d   d i s t r i c t s ,   t h e y   w i l l   r e c e i v e   a   ` 4 2 2 `   e r r o r   o n   f e e d   e n d p o i n t s . 
+ -   * * O f f i c e r s * *   a u t o m a t i c a l l y   b r o w s e   p o s t s   i n   t h e i r   a s s i g n e d   d i s t r i c t s   ( ` d i s t r i c t _ o f f i c e r `   p i v o t ) .   T h e y   c a n   c r e a t e   p o s t s   f o r   a n y   a c t i v e   d i s t r i c t   t h e y   a r e   a s s i g n e d   t o . 
+ -   * * M a n a g e r s * *   b r o w s e   p o s t s   c i t y - w i d e   ( a l l   d i s t r i c t s   +   o r p h a n   p o s t s )   b y   d e f a u l t ,   b u t   c a n   f i l t e r   b y   ` d i s t r i c t _ i d ` .   O r d i n a r y   m a n a g e r s   c a n   o n l y   m o d i f y   t h e   v i s i b i l i t y   o f   p o s t s   w i t h i n   t h e i r   a s s i g n e d   d i s t r i c t s   ( ` d i s t r i c t _ m a n a g e r `   p i v o t ) .   M a i n   m a n a g e r s   c a n   m o d i f y   v i s i b i l i t y   f o r   a n y   p o s t   c i t y - w i d e . 
+ 
+ * * P o s t   V i s i b i l i t y   &   O r p h a n   P o s t s : * * 
+ -   P o s t s   h a v e   a   ` v i s i b i l i t y `   s t a t e :   ` v i s i b l e `   o r   ` h i d d e n ` .   U s e r s   o n l y   s e e   ` v i s i b l e `   p o s t s . 
+ -   I f   a   d i s t r i c t   i s   d e a c t i v a t e d   ( ` i s _ a c t i v e `   b e c o m e s   f a l s e ) ,   i t s   u s e r   f e e d   s u b s c r i p t i o n s   ( ` d i s t r i c t _ u s e r ` )   a r e   p r u n e d ,   a n d   t h e   ` d i s t r i c t _ i d `   o f   a l l   i t s   c o m m u n i t y   p o s t s   i s   s e t   t o   ` n u l l `   ( O r p h a n   p o s t s ) . 
+ -   O r p h a n   p o s t s   a r e   e x c l u d e d   f r o m   u s e r   f e e d s   a n d   o f f i c e r   f e e d s .   M a n a g e r s   c a n   s t i l l   s e e   t h e m   c i t y - w i d e .   T h e   o r i g i n a l   a u t h o r i n g   o f f i c e r   c a n   s t i l l   s h o w / u p d a t e / d e l e t e   t h e i r   o w n   o r p h a n   p o s t . 
+ 
+ * * S a v e d   P o s t s : * * 
+ -   U s e r s   c a n   s a v e   v i s i b l e   p o s t s   t o   t h e i r   p e r s o n a l   l i s t   v i a   ` P O S T   / a p i / c o m m u n i t y - p o s t s / { c o m m u n i t y _ p o s t } / s a v e ` . 
+ -   I f   a   s a v e d   p o s t   i s   s u b s e q u e n t l y   h i d d e n ,   t h e   s a v e   i s   a u t o m a t i c a l l y   d e t a c h e d   a n d   t h e   u s e r   c a n   n o   l o n g e r   v i e w   i t . 
+ 
+ * * A t t a c h m e n t s : * * 
+ -   C o m m u n i t y   p o s t s   s u p p o r t   u p   t o   * * 5   a t t a c h m e n t s * *   ( m a x   5   M B   e a c h ) .   A t t a c h m e n t s   c a n   b e   u p l o a d e d   d u r i n g   p o s t   c r e a t i o n   o r   l a t e r   v i a   ` P O S T   / a p i / c o m m u n i t y - p o s t s / { c o m m u n i t y _ p o s t } / a t t a c h m e n t s ` . 
+ 
+ * * H u b   A c t i v e   T i e r s : * * 
+ -   * * T i e r   B   ( N o   s h i f t   r e q u i r e d ) : * *   U s e r s ,   o f f i c e r s ,   a n d   m a n a g e r s   c a n   b r o w s e   p o s t s ,   r e a d   s p e c i f i c   p o s t s ,   v i e w   s a v e d   p o s t s ,   a n d   d o w n l o a d   a t t a c h m e n t s . 
+ -   * * T i e r   C   ( A c t i v e   s h i f t   r e q u i r e d ) : * *   O f f i c e r s   r e q u i r e   a n   a c t i v e   s h a r e d   s h i f t   ( ` h u b _ a c t i v e _ u n t i l `   i n   t h e   f u t u r e )   t o   c r e a t e ,   u p d a t e ,   d e l e t e   p o s t s ,   m o d i f y   v i s i b i l i t y ,   o r   m a n a g e   a t t a c h m e n t s . 
+  
+ 
