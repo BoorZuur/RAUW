@@ -238,8 +238,6 @@ Table issues {
   visibility           varchar(20)  [not null, default: 'visible', note: 'visible | hidden']
   is_anonymous         tinyint(1)   [not null, default: 0, note: 'User_id blijft eigenaar; publiek + BOA zien alleen alias']
   anonymous_alias      varchar(20)  [note: 'Bv. Melder#A1B2C3D4, stabiel server-generated alias getoond i.p.v. username; unique index (meerdere NULL toegestaan)']
-  chat_status          varchar(10)  [not null, default: 'closed', note: 'open | closed - alleen BOA bedient dit']
-  chat_closed_by_officer_id int     [ref: > officers.id]
   resolved_at          datetime
   created_at           datetime     [not null, default: `CURRENT_TIMESTAMP`]
   updated_at           datetime     [not null, default: `CURRENT_TIMESTAMP`]
@@ -275,18 +273,62 @@ Table issue_comments {
   visibility       varchar(20)  [not null, default: 'visible', note: 'visible | hidden']
   created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
   updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  note: 'Publieke thread op de melding (user/officer/manager). Geen 1:1 chat; managers mogen meelezen en modereren. Distinct van issue_messages (BOA↔burger chat per issue_chat).'
+}
+
+Table issue_chats {
+  id                    int          [pk, increment]
+  issue_id              int          [not null, ref: > issues.id, note: 'Canonical issue; cascade delete']
+  user_id               int          [not null, ref: > users.id, note: 'Eligible burger-partner (eigenaar of participant); max één chatrij per (issue, user)']
+  status                varchar(10)  [not null, default: 'closed', note: 'open | closed — alleen toegewezen BOA opent/sluit']
+  opened_by_officer_id  int          [ref: > officers.id, note: 'Laatste officer die chat opende; nullOnDelete']
+  closed_by_officer_id  int          [ref: > officers.id, note: 'Officer die chat sloot; nullOnDelete']
+  created_at            datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at            datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  note: 'Parallelle 1:1 chats per canonical issue (één rij per eligible user). Officer-only open/close; assignee only. Unassign sluit alle open chats zonder system message; gesloten status sluit met system message per chat. Managers hebben geen chat-toegang.'
+
+  indexes {
+    (issue_id, user_id) [unique, name: 'issue_chats_issue_user_unique']
+    (issue_id, status) [name: 'issue_chats_issue_status_idx']
+    (user_id, status) [name: 'issue_chats_user_status_idx']
+  }
 }
 
 Table issue_messages {
   id               int          [pk, increment]
-  issue_id         int          [not null, ref: > issues.id]
-  sender_type      varchar(10)  [not null, note: 'user | officer']
+  issue_chat_id    int          [not null, ref: > issue_chats.id, note: 'Cascade delete met chat']
+  issue_id         int          [not null, ref: > issues.id, note: 'Denormalized canonical issue id']
+  message_type     varchar(10)  [not null, default: 'message', note: 'message | system']
+  sender_type      varchar(10)  [not null, note: 'user | officer | system']
   user_id          int          [ref: > users.id]
   officer_id       int          [ref: > officers.id]
-  content          text         [not null]
+  content          text         [note: 'Nullable wanneer alleen bijlagen; max 2000 chars voor user/officer messages']
+  meta             json         [note: 'Alleen voor message_type=system, bv. code chat_closed_status_gesloten']
   is_flagged       tinyint(1)   [not null, default: 0]
-  is_read          tinyint(1)   [not null, default: 0]
+  is_read          tinyint(1)   [not null, default: 0, note: 'Read receipts binnen chat; mark-read alleen in open chat']
   created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  note: 'Chatberichten binnen één issue_chat. Geen edit/delete v1. Distinct van issue_comments (publieke thread).'
+
+  indexes {
+    (issue_chat_id, created_at) [name: 'issue_messages_chat_created_at_idx']
+    (issue_chat_id, is_read, created_at) [name: 'issue_messages_chat_read_created_at_idx']
+  }
+}
+
+Table issue_message_attachments {
+  id               int          [pk, increment]
+  issue_message_id int          [not null, ref: > issue_messages.id, note: 'Cascade delete met message']
+  file_path        varchar(500) [not null, note: 'Niet-publiek local storage path, bv. issue-message-attachments/{chat_id}/{hash}']
+  file_url         varchar(500) [note: 'Nullable legacy/display field; downloads lopen via authenticated endpoint']
+  original_name    varchar(255) [not null]
+  file_type        varchar(100) [not null, note: 'MIME type, bv. image/jpeg']
+  file_size        bigint       [not null, note: 'Bytes; max 5 MB per bestand, max 3 per message']
+  uploaded_at      datetime     [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    issue_message_id [name: 'issue_message_attachments_message_id_idx']
+  }
 }
 
 Table issue_attachments {
