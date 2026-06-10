@@ -25,7 +25,7 @@ body {
 }
 
 .sidebar {
-    position: fixed; /* Pin it to the viewport */
+    position: fixed;
     top: 0;
     left: 0;
     width: 260px;
@@ -188,3 +188,4 @@ input:checked + .slider:before {
 .logout-btn {
     margin-top: 8px;
 }
+
