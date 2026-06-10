@@ -35,4 +35,11 @@ class IssueChatFactory extends Factory
             'status' => ChatStatus::Open,
         ]);
     }
+
+    public function closed(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => ChatStatus::Closed,
+        ]);
+    }
 }

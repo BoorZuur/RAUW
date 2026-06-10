@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ChatStatus;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -64,5 +65,28 @@ class IssueChat extends Model
     public function messages(): HasMany
     {
         return $this->hasMany(IssueMessage::class);
+    }
+
+    public function isOpen(): bool
+    {
+        return $this->status === ChatStatus::Open;
+    }
+
+    /**
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeOpen(Builder $query): Builder
+    {
+        return $query->where('status', ChatStatus::Open);
+    }
+
+    /**
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeClosed(Builder $query): Builder
+    {
+        return $query->where('status', ChatStatus::Closed);
     }
 }
