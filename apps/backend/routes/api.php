@@ -413,5 +413,14 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     Route::post('issues/{issue}/comments', [IssueCommentController::class, 'store'])->name('issues.comments.store');
     Route::patch('issues/{issue}/comments/{comment}', [IssueCommentController::class, 'update'])->name('issues.comments.update');
     Route::delete('issues/{issue}/comments/{comment}', [IssueCommentController::class, 'destroy'])->name('issues.comments.destroy');
-    Route::patch('issues/{issue}/comments/{comment}/visibility', [IssueCommentController::class, 'updateVisibility'])->name('issues.comments.visibility.update');
+    // Community Posts CRUD. Listing and reads are available to any authenticated actor
+    // and rely on CommunityPostFeedQuery / CommunityPostVisibilityQuery for scoping.
+    // Writes are authorized inside the requests: managers can manage all posts,
+    // officers only their own posts (plus they must be assigned to the district).
+    Route::get('community-posts', [\App\Http\Controllers\CommunityPostController::class, 'index'])->name('community-posts.index');
+    Route::post('community-posts', [\App\Http\Controllers\CommunityPostController::class, 'store'])->name('community-posts.store');
+    Route::get('community-posts/{community_post}', [\App\Http\Controllers\CommunityPostController::class, 'show'])->name('community-posts.show');
+    Route::match(['put', 'patch'], 'community-posts/{community_post}', [\App\Http\Controllers\CommunityPostController::class, 'update'])->name('community-posts.update');
+    Route::delete('community-posts/{community_post}', [\App\Http\Controllers\CommunityPostController::class, 'destroy'])->name('community-posts.destroy');
+    Route::patch('community-posts/{community_post}/visibility', [\App\Http\Controllers\CommunityPostController::class, 'updateVisibility'])->name('community-posts.visibility.update');
 });
