@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom'; // Toegevoegd
+import { useNavigate } from 'react-router-dom';
 import U_Nav from '../components/U_Nav';
 import NativeLeafletMap from '../components/MapComponent.jsx';
 import Footer from '../components/Footer.jsx';
@@ -30,7 +30,7 @@ const getDistance = (lat1, lon1, lat2, lon2) => {
 };
 
 export default function ReportIssue() {
-    const navigate = useNavigate(); // TOEGEVOEGD
+    const navigate = useNavigate();
     const [formData, setFormData] = useState({
         title: '',
         category_id: 1,
@@ -65,9 +65,16 @@ export default function ReportIssue() {
             });
     }, []);
 
+    // Vlakke lijst maken van alle categorieën inclusief geneste children
+    const getAllCategoriesFlattened = () => {
+        return categories.flatMap(c => [
+            { ...c, isChild: false },
+            ...(c.children || []).map(child => ({ ...child, isChild: true }))
+        ]);
+    };
+
     const getSelectedCategoryName = () => {
-        const allCategories = categories.flatMap(c => [c, ...(c.children || [])]);
-        const found = allCategories.find(c => c.id === formData.category_id);
+        const found = getAllCategoriesFlattened().find(c => c.id === formData.category_id);
         return found ? found.name : "Selecteer een categorie...";
     };
 
@@ -84,9 +91,6 @@ export default function ReportIssue() {
                 const lon = parseFloat(result.lon);
 
                 setPosition({ lat, lng: lon });
-
-                const neighborhood = result.address?.suburb || result.address?.neighbourhood || "";
-                setFormData(prev => ({ ...prev, neighborhood }));
             }
         } catch (err) {
             setError("Kon locatie niet automatisch ophalen.");
@@ -94,7 +98,6 @@ export default function ReportIssue() {
     };
 
     const handleSubmit = async () => {
-        // 1. Zorg voor een actuele positie: als die er niet is, probeer geocode direct als backup
         let activePosition = position;
 
         if (!activePosition && formData.address) {
@@ -108,7 +111,6 @@ export default function ReportIssue() {
                         lat: parseFloat(response.data[0].lat),
                         lng: parseFloat(response.data[0].lon)
                     };
-                    // Update de state zodat de marker ook op de kaart verschijnt
                     setPosition(activePosition);
                 }
             } catch (err) {
@@ -118,14 +120,12 @@ export default function ReportIssue() {
             }
         }
 
-        // 2. Als er na de backup check nog steeds geen positie is, breek af
         if (!activePosition) {
             setError("Selecteer een locatie op de kaart of vul een geldig adres in.");
             setShowConfirm(false);
             return;
         }
 
-        // 3. Geofencing check met de verruimde marge (gebruik activePosition)
         let closestDistrict = null;
         let minDistance = Infinity;
 
@@ -145,7 +145,6 @@ export default function ReportIssue() {
             return;
         }
 
-        // 4. Data voorbereiden voor verzending
         const data = new FormData();
         Object.keys(formData).forEach(key => data.append(key, formData[key]));
         data.append('latitude', activePosition.lat);
@@ -210,46 +209,75 @@ export default function ReportIssue() {
                     <h2 className="text-xl font-black mb-6 uppercase tracking-widest text-primary-text">Signaal Melden</h2>
                     {error && <p className="text-red-600 font-bold mb-4 p-3 bg-red-100 rounded-lg text-sm">{error}</p>}
 
-                    <div className="space-y-4">
+                    <div className="space-y-6 p-2">
+                        {/* Titel */}
                         <div>
-                            <label className="block text-[9px] font-black mb-1 uppercase tracking-widest text-secondary-text">Titel</label>
-                            <input className="w-full p-3 bg-primary-bg border-2 border-primary-border rounded-lg text-sm"
+                            <label htmlFor="title" className="text-left block text-xs font-bold tracking-wider uppercase mb-1.5 text-primary-text">
+                                Titel
+                            </label>
+                            <input id="title" className="w-full p-3 bg-primary-bg border-2 border-primary-border rounded-lg text-sm focus:outline-none focus:border-primary-accent"
                                    value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
                         </div>
 
+                        {/* Categorie */}
                         <div className="relative">
-                            <label className="block text-[9px] font-black mb-1 uppercase tracking-widest text-secondary-text">Categorie</label>
-                            <div onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="w-full p-3 bg-primary-bg border-2 border-primary-border rounded-lg cursor-pointer flex justify-between items-center text-sm">
+                            <label id="category-label" className="text-left block text-xs font-bold tracking-wider uppercase mb-1.5 text-primary-text">
+                                Categorie
+                            </label>
+                            <button
+                                type="button"
+                                aria-haspopup="listbox"
+                                aria-expanded={isDropdownOpen}
+                                aria-labelledby="category-label"
+                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                className="w-full p-3 bg-primary-bg border-2 border-primary-border rounded-lg cursor-pointer flex justify-between items-center text-sm focus:outline-none focus:border-primary-accent"
+                            >
                                 <span>{getSelectedCategoryName()}</span>
-                            </div>
+                                <svg className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
                             {isDropdownOpen && (
-                                <div className="absolute z-50 w-full mt-1 max-h-48 overflow-y-auto bg-primary-bg border-2 border-primary-border rounded-lg p-1 shadow-xl text-xs">
-                                    {categories.map(mainCat => (
-                                        <div key={mainCat.id} onClick={() => { setFormData({...formData, category_id: mainCat.id}); setIsDropdownOpen(false); }} className="p-2 font-black uppercase cursor-pointer hover:bg-primary-border/20 rounded">
-                                            {mainCat.name}
+                                <div role="listbox" className="absolute z-50 w-full mt-1 max-h-56 overflow-y-auto bg-primary-bg-cards border-2 border-primary-border rounded-lg p-1 shadow-xl text-sm">
+                                    {getAllCategoriesFlattened().map(cat => (
+                                        <div
+                                            key={cat.id}
+                                            role="option"
+                                            aria-selected={formData.category_id === cat.id}
+                                            onClick={() => { setFormData({...formData, category_id: cat.id}); setIsDropdownOpen(false); }}
+                                            className={`p-2.5 cursor-pointer rounded transition-colors hover:bg-primary-border/40 ${cat.isChild ? 'pl-6 text-secondary-text text-xs' : 'font-bold uppercase text-primary-text'}`}
+                                        >
+                                            {cat.name}
                                         </div>
                                     ))}
                                 </div>
                             )}
                         </div>
 
+                        {/* Adres */}
                         <div>
-                            <div>
-                                <label className="block text-[9px] font-black mb-1 uppercase tracking-widest text-secondary-text">Adres</label>
-                                <input className="w-full p-3 bg-primary-bg border-2 border-primary-border rounded-lg text-sm"
-                                       value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} onBlur={handleGeocode} />
-                            </div>
+                            <label htmlFor="address" className="text-left block text-xs font-bold tracking-wider uppercase mb-1.5 text-primary-text">
+                                Adres
+                            </label>
+                            <input id="address" className="w-full p-3 bg-primary-bg border-2 border-primary-border rounded-lg text-sm focus:outline-none focus:border-primary-accent"
+                                   value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} onBlur={handleGeocode} />
                         </div>
 
+                        {/* Uitleg */}
                         <div>
-                            <label className="block text-[9px] font-black mb-1 uppercase tracking-widest text-secondary-text">Uitleg</label>
-                            <textarea className="w-full p-3 h-20 bg-primary-bg border-2 border-primary-border rounded-lg text-sm"
+                            <label htmlFor="content" className="text-left block text-xs font-bold tracking-wider uppercase mb-1.5 text-primary-text">
+                                Uitleg
+                            </label>
+                            <textarea id="content" className="w-full p-3 h-20 bg-primary-bg border-2 border-primary-border rounded-lg text-sm focus:outline-none focus:border-primary-accent"
                                       placeholder="Context & Behoefte" value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} />
                         </div>
 
                         <div>
-                            <label className="block text-[9px] font-black mb-1 uppercase tracking-widest text-secondary-text">Foto (optioneel)</label>
+                            <label htmlFor="file-upload" className="text-left block text-xs font-bold tracking-wider uppercase mb-1.5 text-primary-text">
+                                Foto (optioneel)
+                            </label>
                             <input
+                                id="file-upload"
                                 type="file"
                                 accept="image/*"
                                 onChange={(e) => setImages(Array.from(e.target.files))}
@@ -257,9 +285,37 @@ export default function ReportIssue() {
                             />
                         </div>
 
+                        <div className="relative flex items-center justify-between p-4 bg-primary-bg-cards border-2 border-primary-border rounded-2xl transition-all duration-200 hover:border-primary-accent/50 focus-within:ring-2 focus-within:ring-primary-accent/30 group">
+                            <div className="flex flex-col gap-0.5 select-none pr-4">
+                                <label htmlFor="is_anonymous" className="text-xs font-black uppercase tracking-widest text-primary-text cursor-pointer">
+                                    Anoniem melden
+                                </label>
+                            </div>
+
+                            <div className="relative flex items-center">
+                                <input
+                                    type="checkbox"
+                                    id="is_anonymous"
+                                    checked={formData.is_anonymous}
+                                    onChange={e => setFormData({...formData, is_anonymous: e.target.checked})}
+                                    className="peer appearance-none w-6 h-6 rounded-lg border-2 border-primary-border bg-primary-bg checked:bg-primary-text checked:border-primary-text transition-all duration-150 cursor-pointer focus:ring-0 focus:outline-none"
+                                />
+                                {/* Custom SVG Checkmark die oplicht/verschijnt bij actieve status */}
+                                <svg
+                                    className="absolute left-1.5 top-1.5 w-3 h-3 text-primary-bg pointer-events-none opacity-0 scale-50 peer-checked:opacity-100 peer-checked:scale-100 transition-all duration-150"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    strokeWidth={4}
+                                >
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                        </div>
+
                         <button
                             onClick={() => setShowConfirm(true)}
-                            className="w-full h-10 mt-2 bg-primary-text text-primary-bg hover:bg-primary-accent font-black uppercase text-xs tracking-widest rounded-lg transition-all shadow-md active:scale-[0.98]"
+                            className="w-full h-12 mt-4 bg-primary-text text-primary-bg hover:bg-primary-accent font-black uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-[0.98]"
                         >
                             Verstuur melding
                         </button>

@@ -10,16 +10,39 @@ export default function NativeLeafletMap({ position, setPosition, setFormData })
 
     useEffect(() => {
         if (!leafletMap.current) {
-            leafletMap.current = L.map(mapRef.current).setView([51.9225, 4.47917], 13);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(leafletMap.current);
+            // Definieer de grenzen voor Rotterdam e.o. (Hoek van Holland tot Rotterdam Centrum)
+            const rotterdamBounds = L.latLngBounds(
+                L.latLng(51.80, 4.00),
+                L.latLng(52.05, 4.65)
+            );
+
+            // Initialiseer kaart met restricties
+            leafletMap.current = L.map(mapRef.current, {
+                maxBounds: rotterdamBounds,
+                maxBoundsViscosity: 1.0, // Kaart "stopt" hard bij de rand
+                minZoom: 11,             // Voorkomt dat men te ver uitzoomt
+                maxZoom: 18
+            }).setView([51.9225, 4.47917], 13);
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap & CartoDB'
+            }).addTo(leafletMap.current);
+
             leafletMap.current.on('click', async (e) => {
                 const { lat, lng } = e.latlng;
                 setPosition({ lat, lng });
                 try {
-                    const res = await axios.get(`https://nominatim.openstreetmap.org/reverse`, { params: { lat, lon: lng, format: 'json' } });
+                    const res = await axios.get(`https://nominatim.openstreetmap.org/reverse`, {
+                        params: { lat, lon: lng, format: 'json' }
+                    });
                     const addr = res.data.address;
-                    setFormData(prev => ({ ...prev, address: [addr.road, addr.house_number].filter(Boolean).join(' ') }));
-                } catch (err) { console.error(err); }
+                    if (addr) {
+                        setFormData(prev => ({
+                            ...prev,
+                            address: [addr.road, addr.house_number].filter(Boolean).join(' ')
+                        }));
+                    }
+                } catch (err) { console.error("Fout bij ophalen adres:", err); }
             });
         }
     }, []);
