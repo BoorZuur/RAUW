@@ -5,6 +5,7 @@ namespace App\Actions\Issues;
 use App\Enums\IssueStatus;
 use App\Models\Issue;
 use App\Models\User;
+use App\Support\IssueVisibilityQuery;
 use App\Support\Issues\SimilarIssueScorer;
 use Illuminate\Support\Collection;
 
@@ -34,7 +35,7 @@ class FindSimilarIssues
      */
     public function find(User $actor, array $input): array
     {
-        $candidates = Issue::query()
+        $query = Issue::query()
             ->select([
                 'id',
                 'user_id',
@@ -48,7 +49,11 @@ class FindSimilarIssues
                 'postal_code',
                 'latitude',
                 'longitude',
-            ])
+            ]);
+
+        IssueVisibilityQuery::applyVisibilityScope($query, $actor);
+
+        $candidates = $query
             ->where('district_id', $input['district_id'])
             ->whereIn('status', [IssueStatus::Open, IssueStatus::InProgress])
             ->whereNull('duplicate_of_id')
