@@ -1,5 +1,6 @@
 import React, {useState} from 'react';
 import UserCard from '../components/UserCard.jsx';
+import HM_Nav from "../components/HM_Nav.jsx";
 
 export default function FlagsDashboardPage() {
     const [flags, setFlags] = useState([
@@ -47,8 +48,10 @@ export default function FlagsDashboardPage() {
         setFlags(prevFlags =>
             prevFlags.map(f => {
                 if (f.id === flagId) {
-                    if (action === 'review_user') {
-                        return {...f, action_taken: 'In Review gezet'};
+                    if (action === 'review_user' || action === 'delete_user') {
+                        return {...f, action_taken: 'User Verwijderd'};
+                    } else if (action === 'delete_content') {
+                        return {...f, action_taken: 'Content Verwijderd'};
                     } else if (action === 'negeren') {
                         return {...f, action_taken: 'Genegeerd'};
                     }
@@ -59,44 +62,52 @@ export default function FlagsDashboardPage() {
     };
 
     return (
-        <div className="min-h-screen bg-stone-100 py-10 px-4 sm:px-6 lg:px-8">
-            <div
-                className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden w-full max-w-7xl mx-auto">
+        <div className="flex flex-row min-h-screen w-full overflow-hidden bg-[#f4f4f3] app-layout">
+            <HM_Nav role="manager"/>
 
-                <div className="p-6 border-b border-stone-100 bg-stone-50/50 flex justify-between items-center">
-                    <div>
-                        <h2 className="text-xl font-bold text-stone-900 tracking-tight">Content Moderatie & Flags</h2>
-                        <p className="text-sm text-stone-500 mt-0.5">Overzicht van alle gerapporteerde signalen die een
-                            review vereisen.</p>
+            <main className="flex-1 min-w-0 h-screen overflow-y-auto p-8 box-border main-content dashboard-container">
+                <div
+                    className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden w-full max-w-7xl mx-auto">
+
+                    {/* Header */}
+                    <div
+                        className="p-6 border-b border-stone-100 bg-stone-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h2 className="text-xl font-bold text-stone-900 tracking-tight">Content Moderatie &
+                                Flags</h2>
+                            <p className="text-sm text-stone-500 mt-0.5">Overzicht van alle gerapporteerde signalen die
+                                een review vereisen.</p>
+                        </div>
+                        <span
+                            className="bg-red-50 text-red-700 font-semibold text-xs px-3 py-1 rounded-full border border-red-100 shadow-sm">
+                            {flags.filter(f => f.action_taken === "In afwachting").length} Openstaand
+                        </span>
                     </div>
-                    <span
-                        className="bg-red-50 text-red-700 font-semibold text-xs px-3 py-1 rounded-full border border-red-100">
-                        {flags.filter(f => f.action_taken === "In afwachting").length} Openstaand
-                    </span>
-                </div>
 
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                        <tr className="border-b border-stone-200 text-stone-500 text-xs font-bold uppercase tracking-wider bg-stone-50/70">
-                            <th className="py-3.5 px-6 whitespace-nowrap">ID</th>
-                            <th className="py-3.5 px-6 whitespace-nowrap">Gekoppeld aan</th>
-                            <th className="py-3.5 px-6 whitespace-nowrap">Reden & Trigger</th>
-                            <th className="py-3.5 px-6 whitespace-nowrap">Gebruiker</th>
-                            <th className="py-3.5 px-6 whitespace-nowrap">Geflagged door</th>
-                            <th className="py-3.5 px-6 whitespace-nowrap">Status</th>
-                            <th className="py-3.5 px-6 text-right whitespace-nowrap">Acties</th>
-                        </tr>
-                        </thead>
-                        <tbody className="divide-y divide-stone-100 text-sm text-stone-600">
-                        {flags.map((flag) => (
-                            <UserCard key={flag.id} flag={flag} onAction={handleFlagAction}/>
-                        ))}
-                        </tbody>
-                    </table>
-                </div>
+                    {/* Tabel Elementen */}
+                    <div className="overflow-x-auto w-full">
+                        <table className="w-full text-left border-collapse table-fixed min-w-[950px]">
+                            <thead>
+                            <tr className="border-b border-stone-200 text-stone-500 text-xs font-bold uppercase tracking-wider bg-stone-50/70">
+                                <th className="py-4 px-6 w-[65px]">ID</th>
+                                <th className="py-4 px-6 w-[15%]">Gekoppeld aan</th>
+                                <th className="py-4 px-6 w-[22%]">Reden & Trigger</th>
+                                <th className="py-4 px-6 w-[22%]">Gebruiker</th>
+                                <th className="py-4 px-6 w-[17%]">Geflagged door</th>
+                                <th className="py-4 px-6 w-[12%]">Status</th>
+                                <th className="py-4 px-6 w-[12%] text-right">Acties</th>
+                            </tr>
+                            </thead>
+                            <tbody className="divide-y divide-stone-100 text-sm text-stone-600">
+                            {flags.map((flag) => (
+                                <UserCard key={flag.id} flag={flag} onAction={handleFlagAction}/>
+                            ))}
+                            </tbody>
+                        </table>
+                    </div>
 
-            </div>
+                </div>
+            </main>
         </div>
     );
 }
