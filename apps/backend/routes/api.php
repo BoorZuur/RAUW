@@ -428,4 +428,8 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     Route::post('community-posts/{community_post}/attachments', [\App\Http\Controllers\CommunityPostAttachmentController::class, 'store'])->name('community-posts.attachments.store');
     Route::get('community-posts/{community_post}/attachments/{attachment}/download', [\App\Http\Controllers\CommunityPostAttachmentController::class, 'download'])->name('community-posts.attachments.download');
     Route::delete('community-posts/{community_post}/attachments/{attachment}', [\App\Http\Controllers\CommunityPostAttachmentController::class, 'destroy'])->name('community-posts.attachments.destroy');
+
+    // Saved Community Posts (User only)
+    Route::post('community-posts/{community_post}/save', [\App\Http\Controllers\Auth\UserSavedCommunityPostController::class, 'store'])->name('community-posts.save');
+    Route::delete('community-posts/{community_post}/save', [\App\Http\Controllers\Auth\UserSavedCommunityPostController::class, 'destroy'])->name('community-posts.unsave');
 });
