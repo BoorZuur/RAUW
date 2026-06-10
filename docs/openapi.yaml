@@ -28,20 +28,19 @@ info:
     **Officer shared shift:** Officers share one shift clock via
     `officers.hub_active_until`. **Tier C** workflow writes require `is_active`
     and a future `hub_active_until` — not the bearer token's Sanctum `hub-active`
-    ability (audit-only).     **Tier B** browse reads work without an active shift:
+    ability (audit-only). **Tier B** browse reads work without an active shift:
     `GET /api/issues`, `GET /api/issues/{issueId}` (embeds `officer_resolution`
     when present), `GET /api/issues/{issueId}/duplicates`,
     `GET /api/issues/{issueId}/participants`,
     `GET /api/issues/{issueId}/status-history`,
-    `GET /api/issues/{issueId}/officer-resolution`, `GET /api/officers/{officerId}`,
-    `GET /api/issues/{issueId}/chats`, `GET /api/issues/{issueId}/chats/{chatId}/messages`,
-    and authenticated issue/resolution attachment downloads. Issue list/show/duplicates/participants/status-history
-    are district-scoped for officers and ordinary managers; main managers are
-    city-wide. Officers must send
-    when present), `GET /api/issues/{issueId}/officer-resolution`,
+    `GET /api/issues/{issueId}/officer-resolution`,
     `GET /api/issues/{issueId}/officer-updates`,
-    `GET /api/issues/{issueId}/comments`, and authenticated
-    issue/resolution/officer-update attachment downloads. Officers must send
+    `GET /api/issues/{issueId}/comments`,
+    `GET /api/officers/{officerId}`,
+    `GET /api/issues/{issueId}/chats`, `GET /api/issues/{issueId}/chats/{chatId}/messages`,
+    and authenticated issue/resolution/officer-update attachment downloads.
+    Issue list/show/duplicates/participants/status-history are district-scoped
+    for officers and ordinary managers; main managers are city-wide. Officers must send
     `latitude` and `longitude` on `POST /api/auth/login`; hub-eligible login or
     `POST /api/auth/start-shift` starts the shift for **10 hours**
     (`OFFICER_HUB_ACTIVE_TTL_HOURS`, default 10). Outside-radius login does not
@@ -645,14 +644,25 @@ paths:
       summary: Update my district assignments
       description: >-
         Self-service district assignment endpoint for active managers and active
-        officers. Replaces the authenticated actor's district assignments with
-        the supplied district_ids array and returns the refreshed auth profile.
-        Users receive **403** (`This action is unauthorized.`) because they do
-        not have district assignments. Inactive accounts receive **403**
-        (`This account is inactive.`) from global inactive-actor middleware
-        (not whitelisted). The request updates only actor district pivots and
-        never modifies the singular issues.district_id issue location/reference
-        field.
+        officers (including main managers). Replaces the authenticated actor's
+        district assignments with the supplied district_ids array and returns the
+        refreshed auth profile. Users receive **403** (`This action is
+        unauthorized.`) because they do not have district assignments. Inactive
+        accounts receive **403** (`This account is inactive.`) from global
+        inactive-actor middleware (not whitelisted). The request updates only
+        actor district pivots and never modifies the singular issues.district_id
+        issue location/reference field.
+
+        When the authenticated officer or manager has a non-null `hub_id`, every
+        `district_ids` entry must reference an **active** district within that
+        assigned hub (`districts.hub_id = actor.hub_id`). Cross-hub district IDs
+        return **422** validation errors on `district_ids.*`. When `hub_id` is
+        null, any active district is allowed. This hub boundary applies to
+        **self-service only**; main managers retain city-wide issue visibility
+        regardless of their district pivot assignments. Manager-admin district
+        updates (`PATCH /api/managers/{managerId}/districts`,
+        `PATCH /api/officers/{officerId}/districts`) enforce the target actor's
+        hub separately.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -731,7 +741,14 @@ paths:
                   value:
                     message: This account is inactive.
         '422':
-          $ref: '#/components/responses/ValidationError'
+          description: >-
+            Validation failed. Duplicate `district_ids`, unknown or inactive
+            districts, or — when `hub_id` is set — district IDs outside the
+            actor's assigned hub (`district_ids.*`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
 
   /api/main-managers:
     get:
@@ -2288,6 +2305,13 @@ paths:
         and optional GPS distance bands. Active regular users only; officers,
         managers, inactive users, and unauthenticated requests receive **403**
         (`This action is unauthorized.`). Does not persist an issue.
+
+        The candidate pool respects the same visibility rules as issue list/show
+        for users: `visibility = visible` canonical issues, the actor's own
+        issues (including hidden), and canonical issues the actor participates
+        on (same rules as `GET /api/issues/{issueId}`). Other users' hidden
+        issues are **excluded** from `matches`. The actor's own hidden issues may
+        appear in `own_matches` only (`linkable: false`).
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -2336,16 +2360,17 @@ paths:
       summary: Get an issue by id
       description: >-
         Return one issue with eager-loaded relations. Active users may view issues
-        with `visibility = visible` or issues they own (`issues.user_id` match),
-        including their own hidden issues, or canonical issues they participate on
-        (title/content/location/author/attachments redacted at the resource layer).
-        Active officers and ordinary managers may view issues in their assigned
-        districts only, including hidden issues in those districts. Main managers
-        may view any issue city-wide. Inactive actors receive 403 from global
-        middleware. When the issue exists but is not visible to the caller (for
-        example a hidden issue owned by another user, or an issue outside the
-        actor's district scope), the backend returns 404 rather than 403 to avoid
-        leaking existence.
+        with `visibility = visible`, issues they own (`issues.user_id` match,
+        including their own hidden issues), or canonical issues they participate
+        on (title/content/location/author/attachments redacted at the resource
+        layer). Hidden issues owned by other users are not visible and return
+        **404** (not 403) to avoid leaking existence — the same visibility pool
+        applies to `POST /api/issues/similar-check`. Active officers and ordinary
+        managers may view issues in their assigned districts only, including
+        hidden issues in those districts. Main managers may view any issue
+        city-wide. Inactive actors receive 403 from global middleware. When the
+        issue exists but is outside the actor's district scope, the backend also
+        returns 404 rather than 403.
         `officer_resolution` is embedded with officer and attachments when a
         report exists. Active officers and managers also receive `status_history`
         (newest first, without coordinates); regular users never receive
@@ -6294,10 +6319,13 @@ components:
           uniqueItems: true
           description: >-
             Full replacement set of active district IDs. Use an empty array to
-            clear all actor district assignments. When the target officer or
-            manager has a hub_id, every district must belong to that hub;
-            cross-hub IDs return **422**. Duplicate IDs and inactive or unknown
-            districts return validation errors.
+            clear all actor district assignments. When the actor (self-service)
+            or target (manager-admin) officer or manager has a non-null
+            `hub_id`, every district must be active and belong to that hub
+            (`districts.hub_id`); cross-hub IDs return **422** on
+            `district_ids.*`. When `hub_id` is null, any active district is
+            allowed. Duplicate IDs and inactive or unknown districts also return
+            validation errors.
           items:
             type: integer
 

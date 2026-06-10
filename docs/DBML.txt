@@ -1,12 +1,23 @@
 // ============================================================
 //  WIJK APP - DBML Schema voor dbdiagram.io
 // ============================================================
+//
+// API-validatie (geen DB-constraint): self-service PATCH /api/auth/me/districts
+// beperkt district_ids tot actieve wijken binnen actor.hub_id wanneer hub_id
+// gezet is; cross-hub IDs → 422 op district_ids.*. Zonder hub_id mag elke
+// actieve wijk. Main managers behouden city-wide issue-zichtbaarheid ongeacht
+// district-pivot. Zie ook district_officer / officers.hub_id notes.
+//
+// Laravel-frameworktabellen (cache, jobs, sessions, password_reset_tokens) staan
+// onderaan; niet onderdeel van het domain-ERD maar wel gemigreerd.
 
 Table users {
   id               int          [pk, increment]
   username         varchar(50)  [not null, unique]
   email            varchar(255) [not null, unique]
-  password_hash    varchar(255) [not null]
+  email_verified_at datetime    [note: 'Laravel default; nullable']
+  password_hash    varchar(255) [not null, note: 'DB-kolom: password']
+  remember_token   varchar(100) [note: 'Laravel remember-me; nullable']
   is_active        tinyint(1)   [not null, default: 1]
   flag_count       int          [not null, default: 0, note: 'Opgehoogd bij flags die meetellen voor review']
   is_under_review  tinyint(1)   [not null, default: 0, note: 'Auto-true bij drempel, manager-queue']
@@ -23,14 +34,14 @@ Table hubs {
   latitude         decimal(10,8) [not null]
   longitude        decimal(11,8) [not null]
   is_active        tinyint(1)   [not null, default: 0, note: 'Nieuwe hubs standaard inactief; vier geseede clusters worden in HubSeeder geactiveerd. Veilige deactivatie via PATCH /api/hubs/{id} met is_active=false (main manager); geen /disable route']
-  radius_meters    int          [not null, default: 100, note: 'Hub-login radius (Haversine); niet hetzelfde als districts.radius_meters voor wijktoewijzing']
+  radius_meters    smallint     [not null, default: 100, note: 'unsignedSmallInteger; hub-login radius (Haversine); niet hetzelfde als districts.radius_meters']
   created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
   updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
 }
 
 Table districts {
   id               int          [pk, increment]
-  hub_id           int          [not null, ref: > hubs.id, note: 'Elke wijk behoort tot precies één cluster-hub']
+  hub_id           int          [not null, ref: > hubs.id, note: 'Elke wijk behoort tot precies één cluster-hub; restrictOnDelete op FK']
   name             varchar(100) [not null, unique]
   postal_prefix    varchar(10)  [note: 'Bv. 3012 voor Cool (Rotterdam)']
   center_lat       decimal(10,8) [not null]
@@ -45,9 +56,10 @@ Table officers {
   id               int          [pk, increment]
   username         varchar(50)  [not null, unique]
   email            varchar(255) [not null, unique]
-  password_hash    varchar(255) [not null]
+  password_hash    varchar(255) [not null, note: 'DB-kolom: password']
+  remember_token   varchar(100) [note: 'Laravel remember-me; nullable']
   badge_number     varchar(20)  [not null, unique]
-  hub_id           int          [ref: > hubs.id, note: 'Thuishub (cluster); wijken via district_officer binnen dezelfde hub']
+  hub_id           int          [ref: > hubs.id, note: 'Thuishub (cluster); nullOnDelete; self-service PATCH /api/auth/me/districts: district_ids binnen deze hub wanneer gezet']
   // Wijken via district_officer; een BOA kan aan meerdere wijken gekoppeld zijn (zelfde hub als hub_id).
   // Afdelingen via department_officer; een BOA kan aan meerdere afdelingen gekoppeld zijn.
   is_active        tinyint(1)   [not null, default: 1]
@@ -61,8 +73,9 @@ Table managers {
   id               int          [pk, increment]
   username         varchar(50)  [not null, unique]
   email            varchar(255) [not null, unique]
-  password_hash    varchar(255) [not null]
-  hub_id           int          [ref: > hubs.id, note: 'Thuishub (cluster); wijken via district_manager binnen dezelfde hub']
+  password_hash    varchar(255) [not null, note: 'DB-kolom: password']
+  remember_token   varchar(100) [note: 'Laravel remember-me; nullable']
+  hub_id           int          [ref: > hubs.id, note: 'Thuishub (cluster); nullOnDelete; self-service PATCH /api/auth/me/districts: district_ids binnen deze hub wanneer gezet']
   // Afdelingen via department_manager; een manager kan aan meerdere afdelingen gekoppeld zijn.
   // Wijken via district_manager; een manager kan aan meerdere wijken gekoppeld zijn (zelfde hub als hub_id).
   // is_main_manager: alleen via seeding/admin; nooit via publieke API. Route-niveau (geen extra kolommen):
@@ -73,12 +86,12 @@ Table managers {
   is_active        tinyint(1)   [not null, default: 1]
   deleted_at       datetime
   created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
-  updated_at       datetime
+  updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
 }
 
 Table district_officer {
   id               int          [pk, increment]
-  district_id      int          [not null, ref: > districts.id, note: 'Cascade delete verwijdert alleen pivot-toewijzing']
+  district_id      int          [not null, ref: > districts.id, note: 'Cascade delete verwijdert alleen pivot-toewijzing; self-service sync valideert district.hub_id = officer.hub_id wanneer officer.hub_id gezet']
   officer_id       int          [not null, ref: > officers.id, note: 'Cascade delete verwijdert alleen pivot-toewijzing']
   created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
   updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
@@ -92,7 +105,7 @@ Table district_officer {
 
 Table district_manager {
   id               int          [pk, increment]
-  district_id      int          [not null, ref: > districts.id, note: 'Cascade delete verwijdert alleen pivot-toewijzing']
+  district_id      int          [not null, ref: > districts.id, note: 'Cascade delete verwijdert alleen pivot-toewijzing; self-service sync valideert district.hub_id = manager.hub_id wanneer manager.hub_id gezet']
   manager_id       int          [not null, ref: > managers.id, note: 'Cascade delete verwijdert alleen pivot-toewijzing']
   created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
   updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
@@ -177,6 +190,13 @@ Table officer_sessions {
   is_active                 tinyint(1)   [not null, default: 1, note: 'Open sessie; false na logout/disable']
   created_at                datetime     [not null, default: `CURRENT_TIMESTAMP`]
   updated_at                datetime     [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (shift_start, id) [name: 'officer_sessions_shift_start_id_idx']
+    (officer_id, is_active) [name: 'officer_sessions_officer_id_is_active_idx']
+    (officer_id, shift_start, id) [name: 'officer_sessions_officer_id_shift_start_id_idx']
+    (hub_id, shift_start, id) [name: 'officer_sessions_hub_id_shift_start_id_idx']
+  }
 }
 
 Table categories {
@@ -244,6 +264,21 @@ Table issues {
 
   indexes {
     anonymous_alias [unique, note: 'issues_anonymous_alias_unique; meerdere NULL toegestaan']
+    status [name: 'issues_status_idx']
+    priority [name: 'issues_priority_idx']
+    visibility [name: 'issues_visibility_idx']
+    user_id [name: 'issues_user_id_idx']
+    district_id [name: 'issues_district_id_idx']
+    category_id [name: 'issues_category_id_idx']
+    assigned_officer_id [name: 'issues_assigned_officer_id_idx']
+    duplicate_of_id [name: 'issues_duplicate_of_id_idx']
+    created_at [name: 'issues_created_at_idx']
+    resolved_at [name: 'issues_resolved_at_idx']
+    (district_id, created_at, id) [name: 'issues_district_created_at_id_idx']
+    (category_id, created_at, id) [name: 'issues_category_created_at_id_idx']
+    (status, district_id, created_at) [name: 'issues_status_district_created_at_idx']
+    (status, assigned_officer_id, created_at) [name: 'issues_status_assigned_officer_created_at_idx']
+    (visibility, created_at) [name: 'issues_visibility_created_at_idx']
   }
 }
 
@@ -258,6 +293,9 @@ Table issue_participants {
 
   indexes {
     (issue_id, user_id) [unique]
+    (user_id, issue_id) [name: 'issue_participants_user_issue_idx']
+    via_issue_id [name: 'issue_participants_via_issue_id_idx']
+    (joined_at, issue_id) [name: 'issue_participants_joined_at_issue_idx']
   }
 }
 
@@ -274,6 +312,15 @@ Table issue_comments {
   created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
   updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
   note: 'Publieke thread op de melding (user/officer/manager). Geen 1:1 chat; managers mogen meelezen en modereren. Distinct van issue_messages (BOA↔burger chat per issue_chat).'
+
+  indexes {
+    (issue_id, created_at) [name: 'issue_comments_issue_created_at_idx']
+    (visibility, created_at) [name: 'issue_comments_visibility_created_at_idx']
+    (is_flagged, created_at) [name: 'issue_comments_flagged_created_at_idx']
+    (user_id, created_at) [name: 'issue_comments_user_created_at_idx']
+    (officer_id, created_at) [name: 'issue_comments_officer_created_at_idx']
+    (manager_id, created_at) [name: 'issue_comments_manager_created_at_idx']
+  }
 }
 
 Table issue_chats {
@@ -313,6 +360,11 @@ Table issue_messages {
   indexes {
     (issue_chat_id, created_at) [name: 'issue_messages_chat_created_at_idx']
     (issue_chat_id, is_read, created_at) [name: 'issue_messages_chat_read_created_at_idx']
+    (issue_id, created_at) [name: 'issue_messages_issue_created_at_idx', note: 'legacy pre-chat migration']
+    (issue_id, is_read, created_at) [name: 'issue_messages_issue_read_created_at_idx', note: 'legacy']
+    (is_flagged, created_at) [name: 'issue_messages_flagged_created_at_idx', note: 'legacy']
+    (user_id, created_at) [name: 'issue_messages_user_created_at_idx', note: 'legacy']
+    (officer_id, created_at) [name: 'issue_messages_officer_created_at_idx', note: 'legacy']
   }
 }
 
@@ -438,75 +490,163 @@ Table blocked_keywords {
 // Universele moderatie-tabel: automatisch (woordfilter) + handmatig (BOA)
 Table content_flags {
   id                        int          [pk, increment]
-  issue_id                  int          [ref: > issues.id]
-  comment_id                int          [ref: > issue_comments.id]
-  message_id                int          [ref: > issue_messages.id]
+  issue_id                  int          [ref: > issues.id, note: 'nullOnDelete']
+  comment_id                int          [ref: > issue_comments.id, note: 'nullOnDelete']
+  message_id                int          [ref: > issue_messages.id, note: 'nullOnDelete']
+  flagged_by_officer_id     int          [ref: > officers.id, note: 'nullOnDelete; alleen bij flag_source = manual']
+  reviewed_by_manager_id    int          [ref: > managers.id, note: 'nullOnDelete']
   flag_source               varchar(10)  [not null, note: 'auto | manual']
   flag_reason               varchar(25)  [not null, note: 'woordfilter | nepmelding | ongepast_taalgebruik | spam | irrelevant | anders']
   matched_keyword           varchar(100) [note: 'Alleen bij flag_source = auto']
-  flagged_by_officer_id     int          [ref: > officers.id, note: 'Alleen bij flag_source = manual']
   counts_toward_review      tinyint(1)   [not null, default: 0, note: 'Telt mee voor user-review drempel']
-  reviewed_by_manager_id    int          [ref: > managers.id]
-  action_taken              varchar(50)
+  action_taken              varchar(20)  [note: 'nullable enum: pending | dismissed | content_hidden | user_warned | escalated']
   flagged_at                datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  created_at                datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at                datetime     [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (action_taken, flagged_at) [name: 'content_flags_action_flagged_at_idx']
+    (flag_source, flagged_at) [name: 'content_flags_source_flagged_at_idx']
+    (counts_toward_review, flagged_at) [name: 'content_flags_review_flagged_at_idx']
+    (reviewed_by_manager_id, flagged_at) [name: 'content_flags_reviewer_flagged_at_idx']
+    (issue_id, flagged_at) [name: 'content_flags_issue_flagged_at_idx']
+    comment_id [name: 'content_flags_comment_id_idx']
+    message_id [name: 'content_flags_message_id_idx']
+    flagged_by_officer_id [name: 'content_flags_flagged_by_officer_id_idx']
+  }
 }
 
 Table user_reviews {
   id                     int          [pk, increment]
-  user_id                int          [not null, ref: > users.id]
-  reviewed_by_manager_id int          [ref: > managers.id]
+  user_id                int          [not null, ref: > users.id, note: 'cascadeOnDelete']
+  reviewed_by_manager_id int          [ref: > managers.id, note: 'nullOnDelete']
   reason                 varchar(100) [not null, note: 'Bv. herhaalde nepmeldingen']
   outcome                varchar(15)  [not null, default: 'pending', note: 'pending | cleared | warned | suspended | banned']
   note                   text
-  created_at             datetime     [not null, default: `CURRENT_TIMESTAMP`]
   resolved_at            datetime
+  created_at             datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at             datetime     [not null, default: `CURRENT_TIMESTAMP`]
 }
 
-Table notifications {
+Table domain_notifications {
   id               int          [pk, increment]
   recipient_type   varchar(10)  [not null, note: 'user | officer | manager']
-  user_id          int          [ref: > users.id]
-  officer_id       int          [ref: > officers.id]
-  manager_id       int          [ref: > managers.id]
-  issue_id         int          [ref: > issues.id]
+  user_id          int          [ref: > users.id, note: 'nullOnDelete']
+  officer_id       int          [ref: > officers.id, note: 'nullOnDelete']
+  manager_id       int          [ref: > managers.id, note: 'nullOnDelete']
+  issue_id         int          [ref: > issues.id, note: 'nullOnDelete']
   type             varchar(50)  [not null, note: 'status_change | new_issue | priority_raised | new_message | flagged']
   title            varchar(255) [not null]
   body             text
   is_read          tinyint(1)   [not null, default: 0]
   created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (user_id, recipient_type, is_read, created_at) [name: 'domain_notifications_user_recipient_read_created_idx']
+    (officer_id, recipient_type, is_read, created_at) [name: 'domain_notifications_officer_recipient_read_created_idx']
+    (manager_id, recipient_type, is_read, created_at) [name: 'domain_notifications_manager_recipient_read_created_idx']
+    (issue_id, created_at) [name: 'domain_notifications_issue_created_at_idx']
+    (type, created_at) [name: 'domain_notifications_type_created_at_idx']
+  }
 }
 
-Table audit_log {
+Table audit_logs {
   id               int          [pk, increment]
   actor_type       varchar(10)  [not null, note: 'user | officer | manager | system']
-  actor_id         int
+  actor_id         bigint       [note: 'nullable unsignedBigInteger']
   action           varchar(100) [not null, note: 'Bv. keyword_added, issue_removed, identity_revealed']
   target_table     varchar(64)
-  target_id        int
+  target_id        bigint       [note: 'nullable unsignedBigInteger']
   details          text
   ip_address       varchar(45)
-  created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`, note: 'Geen updated_at; AuditLog model timestamps=false']
 }
 
 Table report_snapshots {
   id                        int          [pk, increment]
-  generated_by_manager_id   int          [ref: > managers.id]
-  period                    varchar(15)  [not null, note: 'wekelijks | maandelijks | kwartaal | jaarlijks | decennium']
+  generated_by_manager_id   int          [ref: > managers.id, note: 'nullOnDelete']
+  period                    varchar(15)  [not null, note: 'daily | weekly | monthly']
   period_start              date         [not null]
   period_end                date         [not null]
   total_issues              int          [not null, default: 0]
   open_issues               int          [not null, default: 0]
   resolved_issues           int          [not null, default: 0]
   avg_resolution_days       decimal(5,2)
-  count_laag                int          [not null, default: 0]
-  count_midden              int          [not null, default: 0]
-  count_zwaar               int          [not null, default: 0]
-  count_wijkbeheer          int          [not null, default: 0]
-  count_boa_jeugd           int          [not null, default: 0]
+  metrics                   json         [note: 'Aggregated breakdown metrics; nullable']
   satisfaction_rate         decimal(5,2) [note: 'Percentage tevreden indieners']
-  generated_at              datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  generated_at              datetime     [not null, default: `CURRENT_TIMESTAMP`, note: 'Geen Laravel timestamps']
 
   indexes {
     (period, period_start) [unique]
+    generated_by_manager_id [name: 'report_snapshots_generated_by_manager_id_idx']
+    generated_at [name: 'report_snapshots_generated_at_idx']
+    (period, generated_at) [name: 'report_snapshots_period_generated_at_idx']
+  }
+}
+
+// --- Laravel framework (niet domain-model) ---
+
+Table password_reset_tokens {
+  email            varchar(255) [pk]
+  token            varchar(255) [not null]
+  created_at       datetime
+}
+
+Table sessions {
+  id               varchar(255) [pk]
+  user_id          bigint       [ref: > users.id, note: 'nullable; index']
+  ip_address       varchar(45)
+  user_agent       text
+  payload          longtext     [not null]
+  last_activity    int          [not null, note: 'Unix timestamp; index']
+}
+
+Table cache {
+  key              varchar(255) [pk]
+  value            mediumtext   [not null]
+  expiration       bigint       [not null, note: 'index']
+}
+
+Table cache_locks {
+  key              varchar(255) [pk]
+  owner            varchar(255) [not null]
+  expiration       bigint       [not null, note: 'index']
+}
+
+Table jobs {
+  id               bigint       [pk, increment]
+  queue            varchar(255) [not null, note: 'index']
+  payload          longtext     [not null]
+  attempts         smallint     [not null, note: 'unsignedTinyInteger']
+  reserved_at      int          [note: 'unsignedInteger; nullable']
+  available_at     int          [not null, note: 'unsignedInteger']
+  created_at       int          [not null, note: 'unsignedInteger; geen Laravel timestamps']
+}
+
+Table job_batches {
+  id               varchar(255) [pk]
+  name             varchar(255) [not null]
+  total_jobs       int          [not null]
+  pending_jobs     int          [not null]
+  failed_jobs      int          [not null]
+  failed_job_ids   longtext     [not null]
+  options          mediumtext
+  cancelled_at     int          [note: 'nullable']
+  created_at       int          [not null]
+  finished_at      int          [note: 'nullable']
+}
+
+Table failed_jobs {
+  id               bigint       [pk, increment]
+  uuid             varchar(255) [not null, unique]
+  connection       text         [not null]
+  queue            text         [not null]
+  payload          longtext     [not null]
+  exception        longtext     [not null]
+  failed_at        datetime     [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (connection, queue, failed_at)
   }
 }
