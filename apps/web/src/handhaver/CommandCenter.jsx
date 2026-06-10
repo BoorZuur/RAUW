@@ -3,6 +3,8 @@ import React from 'react';
 import ReportCard from "../components/H_SignalCard.jsx";
 import HM_Nav from "../components/HM_Nav.jsx";
 import "./Handhaver_styling.css"
+import "../components/MapComponent.jsx"
+import NativeLeafletMap from "../components/MapComponent.jsx";
 
 function CommandCenter() {
     return (
@@ -51,7 +53,7 @@ function CommandCenter() {
                     {/*🌟: replace with working map*/}
                     <div className="map-panel">
                         <div className="map-placeholder">
-                            <p>[ Map Component Placeholder ]</p>
+                            <NativeLeafletMap/>
                         </div>
                     </div>
 
