@@ -18,7 +18,6 @@ class CommunityPostController extends Controller
 {
     public function __construct(
         private readonly CommunityPostFeedQuery $feedQuery,
-        private readonly CommunityPostVisibilityQuery $visibilityQuery,
     ) {
     }
 
@@ -92,7 +91,7 @@ class CommunityPostController extends Controller
      */
     public function show(CommunityPost $communityPost)
     {
-        if (! $this->visibilityQuery->isVisible(auth()->user(), $communityPost)) {
+        if (! CommunityPostVisibilityQuery::canViewPost($communityPost, auth()->user())) {
             abort(Response::HTTP_NOT_FOUND);
         }
 

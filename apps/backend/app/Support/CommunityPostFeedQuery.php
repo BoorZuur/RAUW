@@ -11,6 +11,40 @@ use Illuminate\Database\Eloquent\Model;
 class CommunityPostFeedQuery
 {
     /**
+     * Build the initial feed query based on the actor.
+     *
+     * @param Model $actor The User, Officer, or Manager
+     */
+    public function build(Model $actor): Builder
+    {
+        $query = \App\Models\CommunityPost::query();
+
+        if ($actor instanceof User) {
+            // Users see visible posts in their feed districts
+            $query->where('visibility', 'visible')
+                ->whereIn('district_id', $actor->feedDistricts()->select('districts.id'));
+            return $query;
+        }
+
+        if ($actor instanceof Officer) {
+            // Officers see posts in their assigned districts plus their own orphaned posts
+            $districtIds = $actor->districts()->select('districts.id');
+            $query->where(function ($q) use ($districtIds, $actor) {
+                $q->whereIn('district_id', $districtIds)
+                  ->orWhere('officer_id', $actor->id);
+            });
+            return $query;
+        }
+
+        if ($actor instanceof Manager) {
+            // Managers see everything
+            return $query;
+        }
+
+        return $query->whereRaw('0 = 1');
+    }
+
+    /**
      * Apply feed scope to a query based on the actor.
      *
      * @param Builder $query The CommunityPost query builder

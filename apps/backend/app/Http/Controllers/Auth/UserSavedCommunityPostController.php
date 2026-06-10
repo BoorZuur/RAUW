@@ -25,7 +25,7 @@ class UserSavedCommunityPostController extends Controller
         $user = $request->user();
 
         // Ensure user can see the post before saving
-        if (! $this->visibilityQuery->isVisible($user, $communityPost)) {
+        if (! CommunityPostVisibilityQuery::canViewPost($communityPost, $user)) {
             abort(Response::HTTP_NOT_FOUND);
         }
 

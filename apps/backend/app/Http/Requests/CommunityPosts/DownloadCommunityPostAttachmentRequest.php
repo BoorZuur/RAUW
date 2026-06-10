@@ -18,10 +18,7 @@ class DownloadCommunityPostAttachmentRequest extends FormRequest
         }
 
         // Anyone who can view the post can download its attachments
-        /** @var \App\Support\CommunityPostVisibilityQuery $visibilityQuery */
-        $visibilityQuery = app(\App\Support\CommunityPostVisibilityQuery::class);
-
-        return $visibilityQuery->isVisible($this->user(), $post);
+        return \App\Support\CommunityPostVisibilityQuery::canViewPost($post, $this->user());
     }
 
     /**
