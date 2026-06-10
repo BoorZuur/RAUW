@@ -16,15 +16,8 @@ class StoreCommentRequest extends FormRequest
     {
         $actor = $this->user();
 
-        if ($actor instanceof Officer && (bool) $actor->is_active === true) {
-            return true;
-        }
-
-        if ($actor instanceof Manager && (bool) $actor->is_active === true) {
-            return true;
-        }
-
-        return $actor instanceof User && (bool) $actor->is_active === true;
+        return ($actor instanceof User || $actor instanceof Officer || $actor instanceof Manager)
+            && (bool) $actor->is_active === true;
     }
 
     /**

@@ -12,8 +12,7 @@ use Illuminate\Foundation\Http\FormRequest;
 class UpdateCommentRequest extends FormRequest
 {
     /**
-     * Only the authenticated, active author of the comment may update it
-     * (user, officer, or manager matching author_type and author id).
+     * Only the authenticated, active author of the comment may update it (user, officer, or manager).
      */
     public function authorize(): bool
     {

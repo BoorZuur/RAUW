@@ -35,7 +35,7 @@ class IssueCommentFactory extends Factory
 
     public function forManager(): static
     {
-        return $this->state(fn () => [
+        return $this->state(fn (array $attributes): array => [
             'author_type' => ActorType::Manager,
             'manager_id' => Manager::factory(),
             'user_id' => null,

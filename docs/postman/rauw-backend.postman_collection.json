@@ -5081,7 +5081,7 @@
                 "comments"
               ]
             },
-            "description": "Add a new comment to a specific issue. Active users, active officers, and active managers may create comments. Content is required and limited to 2000 characters. Requires a hub-active shift for officers only (Tier C). User-authored comments on anonymous issues by the issue owner are redacted in responses (is_anonymous=true with the issue alias as display_name)."
+            "description": "Add a new comment to a specific issue. Active users, active officers, and active managers may create comments. Content max 2000 characters. Officers require a hub-active shift (Tier C); users and managers do not. When the issue owner comments on an anonymous issue, the response redacts the author to the issue's stable alias (is_anonymous: true, display_name only); there is no request flag for anonymity."
           },
           "response": []
         },

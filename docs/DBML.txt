@@ -269,7 +269,7 @@ Table issue_comments {
   user_id          int          [ref: > users.id]
   officer_id       int          [ref: > officers.id]
   manager_id       int          [ref: > managers.id]
-  content          text         [not null, note: 'Max 2000 chars (application validation)']
+  content          text         [not null, note: 'App validation max 2000 chars']
   is_flagged       tinyint(1)   [not null, default: 0]
   visibility       varchar(20)  [not null, default: 'visible', note: 'visible | hidden']
   created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]

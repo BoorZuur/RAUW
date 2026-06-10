@@ -12,12 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Issue comment API resource.
- *
- * Author anonymity: user-authored comments on anonymous issues by the issue
- * owner are redacted at the response layer — all viewers see the issue's
- * stable alias instead of the real username or id. Officer and manager
- * authors always expose real identity.
+ * Serializes issue comments with ownership-safe author redaction.
  *
  * @mixin IssueComment
  */
@@ -54,9 +49,12 @@ class IssueCommentResource extends JsonResource
     /**
      * Return an author summary based on author_type.
      *
-     * User authors on anonymous issues owned by that user are redacted to the
-     * issue alias when the `issue` relation is loaded. Otherwise eager-loaded
-     * user, officer, or manager details are exposed to prevent N+1 queries.
+     * User comments on anonymous issues by the issue owner expose only the
+     * stable alias and never the user's identity. Officer and manager comments
+     * always expose real identity. All viewers see the same redacted shape.
+     *
+     * Eager-load issue for user-authored redaction; user, officer, or manager
+     * for full author details.
      *
      * @return array<string, mixed>
      */
@@ -87,7 +85,6 @@ class IssueCommentResource extends JsonResource
             }
 
             return [
-                'is_anonymous' => false,
                 'id' => $comment->user_id,
             ];
         }
@@ -136,10 +133,14 @@ class IssueCommentResource extends JsonResource
     }
 
     /**
-     * Whether a user-authored comment should expose only the issue alias.
+     * Whether a user-authored comment should expose the issue alias instead of identity.
      */
     protected function shouldRedactAsAnonymous(IssueComment $comment): bool
     {
+        if ($comment->author_type !== ActorType::User) {
+            return false;
+        }
+
         if (! $comment->relationLoaded('issue')) {
             return false;
         }
@@ -150,8 +151,7 @@ class IssueCommentResource extends JsonResource
             return false;
         }
 
-        return $comment->author_type === ActorType::User
-            && (bool) $issue->is_anonymous === true
+        return (bool) $issue->is_anonymous === true
             && $comment->user_id === $issue->user_id;
     }
 }
