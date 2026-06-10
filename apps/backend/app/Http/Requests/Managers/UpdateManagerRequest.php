@@ -43,10 +43,11 @@ class UpdateManagerRequest extends FormRequest
     public function rules(): array
     {
         $manager = $this->targetManager();
+        $managerId = $manager ? $manager->id : 0;
 
         return [
-            'username' => ['sometimes', 'string', 'max:50', Rule::unique('managers', 'username')->ignore($manager->id)],
-            'email' => ['sometimes', 'email', new UniqueActorEmail('managers', $manager->id)],
+            'username' => ['sometimes', 'string', 'max:50', Rule::unique('managers', 'username')->ignore($managerId)],
+            'email' => ['sometimes', 'email', new UniqueActorEmail('managers', $managerId)],
             'password' => ['sometimes', 'string', Password::min(8)],
             'confirm_password' => ['required_with:password', 'string', 'same:password'],
             'department_ids' => ['prohibited'],
@@ -73,11 +74,11 @@ class UpdateManagerRequest extends FormRequest
     }
 
     /**
-     * The route-bound ordinary manager being updated.
+     * The route-bound manager being updated.
      */
-    public function targetManager(): Manager
+    public function targetManager(): ?Manager
     {
-        /** @var Manager $manager */
+        /** @var ?Manager $manager */
         $manager = $this->route('manager');
 
         return $manager;
