@@ -37,6 +37,8 @@ class RegisterUserController extends Controller
 
         $token = $user->createToken('api-login')->plainTextToken;
 
+        $user->loadMissing('feedDistricts');
+
         return response()->json([
             'token_type' => 'Bearer',
             'access_token' => $token,

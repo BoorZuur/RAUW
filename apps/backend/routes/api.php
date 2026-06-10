@@ -86,6 +86,9 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active'])->prefi
     // validated `district_ids` array and the refreshed auth profile is returned.
     Route::patch('me/districts', ProfileDistrictController::class)->name('auth.me.districts.update');
 
+    // Self-service feed districts update for users.
+    Route::patch('me/feed-districts', [\App\Http\Controllers\Auth\UserFeedDistrictController::class, 'update'])->name('user-feed-districts.update');
+
     // Self-service identity updates. Active users, officers, and managers may
     // PATCH their own username, email, and password; officers may also update
     // badge_number. Department, district, and privileged fields are rejected
