@@ -247,11 +247,21 @@ Distinct from user satisfaction feedback in `issue_resolutions`. At most **one**
 
 Attachment limits: up to **3** images (`jpg`, `jpeg`, `png`, `gif`, `webp`) per resolution, **5 MB** each. PATCH validates `existing − removals + new_files ≤ 3` under row lock (including upload disk I/O). Uploads are content-validated (Symfony MIME sniff for images; issue user attachments also accept PDF via `%PDF-` magic bytes). Invalid `remove_attachment_ids` (not owned by the resolution) return **422** with a field error on `remove_attachment_ids`.
 
-**Status history** (`GET /api/issues/{issue}/status-history`, officers and managers only) returns a paginated `IssueStatusHistoryResource` collection (`data`, `links`, `meta`), newest first by `changed_at`. Default `per_page` **20**, max **100**. Duplicate child route ids resolve to the canonical parent before querying. District-scoped like issue browse (officers/ordinary managers: assigned districts; main managers: city-wide); invisible issues → **404**. Users receive **403**. **Tier B** — officers may call without an active shared shift.
+**Officer issue updates (progress log)**
 
-Each row: `id`, `issue_id`, `changed_by_officer_id`, `old_status`, `new_status`, `note`, `changed_at`, and compact `officer` (`id`, `username`) when eager-loaded. GPS coordinates are omitted.
+Multiple updates per issue; PATCH/DELETE restricted to the authoring officer (who must also be the current assignee).
 
-**Issue embeds:** `GET /api/issues` includes `officer_resolution` (with officer and attachments when present) and omits `status_history`. `GET /api/issues/{issue}` includes the same `officer_resolution` embed plus an unpaginated `status_history` embed for officers and managers only (newest first, no lat/lon); regular users never receive `status_history`. Prefer the dedicated status-history and officer-resolution paths for paginated or resolution-only reads.
+| Method | Path | Who | Notes |
+|--------|------|-----|-------|
+| `GET` | `/api/issues/{issue}/officer-updates` | Any actor who can view the issue (Tier B) | Paginated, chronological. |
+| `POST` | `/api/issues/{issue}/officer-updates` | Current assignee (multipart) | **422** `issue_closed` when `gesloten`. Up to 3 images, 5 MB each. |
+| `PATCH` | `/api/issues/{issue}/officer-updates/{officer_update}` | Authoring assignee | **403** `not_update_author` if assignee but not author. **422** `issue_closed` when `gesloten`. |
+| `DELETE` | `/api/issues/{issue}/officer-updates/{officer_update}` | Authoring assignee | Same codes as PATCH. |
+| `GET` | `.../attachments/{attachment}/download` | Any actor who can view the issue (Tier B) | Visibility-only; streams from local storage. |
+
+Attachment limits match resolutions: up to **3** images, **5 MB** each. PATCH validates cumulative cap under row lock. Uploads are content-sniffed as allowed images.
+
+**Issue embeds:** `GET /api/issues` includes `officer_resolution` (with officer and attachments when present) and omits `status_history`. `GET /api/issues/{issue}` includes the same `officer_resolution` embed plus `status_history` for officers and managers only (newest first, no lat/lon); regular users never receive `status_history`. Prefer the dedicated GET path for resolution-only reads.
 
 **Structured error codes (officer workflows)**
 
@@ -259,11 +269,12 @@ Each row: `id`, `issue_id`, `changed_by_officer_id`, `old_status`, `new_status`,
 |------|------|------|
 | `hub_active_required` | 403 | Officer on Tier C without active shared shift |
 | `officer_not_in_district` | 403 | Officer workflow on issue outside assigned districts |
-| `not_assigned_officer` | 403 | Status/unassign/resolution write without assignee ownership |
+| `not_assigned_officer` | 403 | Status/unassign/resolution/officer-update write without assignee ownership |
+| `not_update_author` | 403 | PATCH/DELETE officer update when officer is assignee but not the authoring officer |
 | `issue_already_assigned` | 409 | Self-assign when another officer already owns the issue |
 | `officer_resolution_exists` | 409 | Duplicate POST on officer resolution |
 | `issue_not_assignable` | 422 | Self-assign on `opgelost` or `gesloten` issues |
-| `issue_closed` | 422 | Resolution POST/PATCH when issue status is `gesloten` |
+| `issue_closed` | 422 | Resolution or officer-update POST/PATCH/DELETE when issue status is `gesloten` |
 
 Common auth status codes are:
 

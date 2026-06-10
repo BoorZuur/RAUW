@@ -39,9 +39,12 @@ class EnsureOfficerHubActive
         'issues.duplicates.index',
         'issues.participants.index',
         'issues.status-history.index',
+        'issues.comments.index',
         'issues.officer-resolution.show',
         'issues.officer-resolution.attachments.download',
         'issues.attachments.download',
+        'issues.officer-updates.index',
+        'issues.officer-updates.attachments.download',
     ];
 
     public function handle(Request $request, Closure $next): Response

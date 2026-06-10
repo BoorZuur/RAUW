@@ -10,6 +10,8 @@ use Illuminate\Validation\ValidationException;
 
 class OfficerIssueRowLock
 {
+    public const UPDATE_CLOSED_MESSAGE = 'Cannot create, update, or delete an officer update on a closed issue.';
+
     /**
      * Run a callback inside a transaction with the issue row locked for update.
      *
@@ -58,10 +60,10 @@ class OfficerIssueRowLock
     /**
      * Assert the issue status allows resolution writes or throw 422.
      */
-    public static function assertResolutionWritable(Issue $locked): void
+    public static function assertResolutionWritable(Issue $locked, ?string $message = null): void
     {
         if (! $locked->status->isResolutionWritable()) {
-            throw OfficerIssueConflict::issueClosed();
+            throw OfficerIssueConflict::issueClosed($message);
         }
     }
 

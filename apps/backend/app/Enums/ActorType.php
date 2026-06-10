@@ -27,6 +27,14 @@ enum ActorType: string
     /**
      * @return list<string>
      */
+    public static function commentAuthorValues(): array
+    {
+        return [self::User->value, self::Officer->value, self::Manager->value];
+    }
+
+    /**
+     * @return list<string>
+     */
     public static function recipientValues(): array
     {
         return [self::User->value, self::Officer->value, self::Manager->value];

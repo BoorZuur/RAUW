@@ -23,14 +23,14 @@ export default function HM_Nav(){
 
                 <nav className="nav-menu">
                     {/* Command Center link */}
-                    <Link to="/commando_centrum"
-                          className={`nav-item ${location.pathname === '/command_centrum' ? 'active' : ''}`}>
+                    <Link to="/meldingen"
+                          className={`nav-item ${location.pathname === '/meldingen' ? 'active' : ''}`}>
                         <svg className="nav-icon" viewBox="0 0 24 24">
                             <path fill="currentColor"
                                   d="M4 13h6c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v8c0 .55.45 1 1 1zm0 8h6c.55 0 1-.45 1-1v-4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1zm10 0h6c.55 0 1-.45 1-1v-8c0-.55-.45-1-1-1h-6c-.55 0-1 .45-1 1v8c0 .55.45 1 1 1zM14 4v4c0 .55.45 1 1 1h6c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1h-6c-.55 0-1 .45-1 1z"/>
                         </svg>
                         <span>Command Center</span>
-                        {location.pathname === '/commando_centrum' && <span className="dot-indicator"></span>}
+                        {location.pathname === '/meldingen' && <span className="dot-indicator"></span>}
                     </Link>
 
                     {/* Dienstprofiel link */}
@@ -45,25 +45,25 @@ export default function HM_Nav(){
                     </Link>
 
                     {/* Sector Instellingen link */}
-                    <Link to="/sector_instellingen"
-                          className={`nav-item ${location.pathname === '/sector_instellingen' ? 'active' : ''}`}>
+                    <Link to="/sectorinstellingen"
+                          className={`nav-item ${location.pathname === '/sectorinstellingen' ? 'active' : ''}`}>
                         <svg className="nav-icon" viewBox="0 0 24 24">
                             <path fill="currentColor"
                                   d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3-1.07-3-3.5s1.07-3.5 3-3.5 3 1.07 3 3.5-1.07 3.5-3 3.5z"/>
                         </svg>
                         <span>Sector Instellingen</span>
-                        {location.pathname === '/sector_instellingen' && <span className="dot-indicator"></span>}
+                        {location.pathname === '/sectorinstellingen' && <span className="dot-indicator"></span>}
                     </Link>
 
                     {/* Rapporten link */}
-                    <Link to="/handhaver_rapport"
-                          className={`nav-item ${location.pathname === '/handhaver_rapport' ? 'active' : ''}`}>
+                    <Link to="/rapport"
+                          className={`nav-item ${location.pathname === '/rapport' ? 'active' : ''}`}>
                         <svg className="nav-icon" viewBox="0 0 24 24">
                             <path fill="currentColor"
                                   d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 16H6c-.55 0-1-.45-1-1V6c0-.55.45-1 1-1h12c.55 0 1 .45 1 1v12c0 .55-.45 1-1 1zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
                         </svg>
                         <span>Rapporten</span>
-                        {location.pathname === '/handhaver_rapport' && <span className="dot-indicator"></span>}
+                        {location.pathname === '/rapport' && <span className="dot-indicator"></span>}
                     </Link>
                 </nav>
 

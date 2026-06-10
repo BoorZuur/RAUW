@@ -16,6 +16,7 @@ use App\Http\Controllers\MainManagerHubController;
 use App\Http\Controllers\ManagerHubController;
 use App\Http\Controllers\OfficerHubController;
 use App\Http\Controllers\IssueAttachmentController;
+use App\Http\Controllers\IssueCommentController;
 use App\Http\Controllers\IssueController;
 use App\Http\Controllers\IssueDuplicateController;
 use App\Http\Controllers\IssueParticipantController;
@@ -25,6 +26,8 @@ use App\Http\Controllers\IssueOfficerAssignmentController;
 use App\Http\Controllers\IssueOfficerStatusController;
 use App\Http\Controllers\OfficerIssueResolutionAttachmentController;
 use App\Http\Controllers\OfficerIssueResolutionController;
+use App\Http\Controllers\OfficerIssueUpdateController;
+use App\Http\Controllers\OfficerIssueUpdateAttachmentController;
 use App\Http\Controllers\MainManagerController;
 use App\Http\Controllers\ManagerController;
 use App\Http\Controllers\ManagerDepartmentController;
@@ -368,6 +371,16 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     // the route resolution (404 otherwise). Repeat delete → 404 once the row is
     // removed. Returns 204 with row and backing file removed.
     Route::delete('issues/{issue}/officer-resolution/attachments/{attachment}', [OfficerIssueResolutionAttachmentController::class, 'destroy'])->name('issues.officer-resolution.attachments.destroy');
+
+    // Officer updates. Index and attachment download are Tier B (can browse without active shift);
+    // store, update, and destroy are Tier C (require active shift). Writes return 403
+    // not_assigned_officer / not_update_author and 422 issue_closed when applicable.
+    Route::get('issues/{issue}/officer-updates', [OfficerIssueUpdateController::class, 'index'])->name('issues.officer-updates.index');
+    Route::post('issues/{issue}/officer-updates', [OfficerIssueUpdateController::class, 'store'])->name('issues.officer-updates.store');
+    Route::patch('issues/{issue}/officer-updates/{officer_update}', [OfficerIssueUpdateController::class, 'update'])->name('issues.officer-updates.update');
+    Route::delete('issues/{issue}/officer-updates/{officer_update}', [OfficerIssueUpdateController::class, 'destroy'])->name('issues.officer-updates.destroy');
+    Route::get('issues/{issue}/officer-updates/attachments/{attachment}/download', [OfficerIssueUpdateAttachmentController::class, 'download'])->name('issues.officer-updates.attachments.download');
+
     Route::delete('issues/{issue}', [IssueController::class, 'destroy'])->name('issues.destroy');
 
     // Issue attachments. Uploads are authorized inside StoreIssueAttachmentRequest
@@ -390,4 +403,12 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     Route::post('issues/{issue}/attachments', [IssueAttachmentController::class, 'store'])->name('issues.attachments.store');
     Route::get('issues/{issue}/attachments/{attachment}/download', [IssueAttachmentController::class, 'download'])->name('issues.attachments.download');
     Route::delete('issues/{issue}/attachments/{attachment}', [IssueAttachmentController::class, 'destroy'])->name('issues.attachments.destroy');
+
+    // Issue comments. Listing (Index) is Tier B (can browse without active shift);
+    // store, update, destroy, and visibility update are Tier C (require active shift).
+    Route::get('issues/{issue}/comments', [IssueCommentController::class, 'index'])->name('issues.comments.index');
+    Route::post('issues/{issue}/comments', [IssueCommentController::class, 'store'])->name('issues.comments.store');
+    Route::patch('issues/{issue}/comments/{comment}', [IssueCommentController::class, 'update'])->name('issues.comments.update');
+    Route::delete('issues/{issue}/comments/{comment}', [IssueCommentController::class, 'destroy'])->name('issues.comments.destroy');
+    Route::patch('issues/{issue}/comments/{comment}/visibility', [IssueCommentController::class, 'updateVisibility'])->name('issues.comments.visibility.update');
 });
