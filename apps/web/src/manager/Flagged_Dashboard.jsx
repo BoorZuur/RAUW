@@ -65,7 +65,8 @@ export default function FlagsDashboardPage() {
         <div className="flex flex-row min-h-screen w-full overflow-hidden bg-[#f4f4f3] app-layout">
             <HM_Nav role="manager"/>
 
-            <main className="flex-1 min-w-0 h-screen overflow-y-auto p-8 box-border main-content dashboard-container">
+            <main
+                className="flex-1 ml-[260px] min-w-0 h-screen overflow-y-auto p-8 box-border main-content dashboard-container">
                 <div
                     className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden w-full max-w-7xl mx-auto">
 
