@@ -4,15 +4,29 @@ namespace App\Support;
 
 use Exception;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
-class OfficerIssueConflict extends Exception
+class OfficerIssueConflict extends Exception implements HttpExceptionInterface
 {
+    public $code;
+
     public function __construct(
-        public readonly string $code,
+        string $code,
         string $message,
         public readonly int $status,
     ) {
         parent::__construct($message);
+        $this->code = $code;
+    }
+
+    public function getStatusCode(): int
+    {
+        return $this->status;
+    }
+
+    public function getHeaders(): array
+    {
+        return [];
     }
 
     public static function issueAlreadyAssigned(): self
@@ -51,11 +65,20 @@ class OfficerIssueConflict extends Exception
         );
     }
 
-    public static function issueClosed(): self
+    public static function notUpdateAuthor(): self
+    {
+        return new self(
+            code: 'not_update_author',
+            message: 'Only the officer who authored this update may modify or delete it.',
+            status: Response::HTTP_FORBIDDEN,
+        );
+    }
+
+    public static function issueClosed(?string $message = null): self
     {
         return new self(
             code: 'issue_closed',
-            message: 'Cannot create or update a resolution on a closed issue.',
+            message: $message ?? 'Cannot create or update a resolution on a closed issue.',
             status: Response::HTTP_UNPROCESSABLE_ENTITY,
         );
     }

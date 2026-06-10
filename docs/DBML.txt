@@ -355,6 +355,36 @@ Table officer_issue_resolution_attachments {
   }
 }
 
+Table officer_issue_updates {
+  id               int          [pk, increment]
+  issue_id         int          [not null, ref: > issues.id, note: 'Cascade delete with issue']
+  officer_id       int          [ref: > officers.id, note: 'Nullable; officer who authored the update; nullOnDelete on FK']
+  title            varchar(255) [not null]
+  content          text         [not null]
+  created_at       datetime
+  updated_at       datetime
+  note: 'Officer field updates made during the issue handling.'
+
+  indexes {
+    (issue_id, created_at) [name: 'officer_issue_updates_issue_created_at_idx']
+  }
+}
+
+Table officer_issue_update_attachments {
+  id                            int          [pk, increment]
+  officer_issue_update_id       int          [not null, ref: > officer_issue_updates.id, note: 'Cascade delete with update']
+  file_path                     varchar(500) [not null, note: 'Niet-publiek local storage path, bv. officer-issue-update-attachments/{update_id}/{hash}']
+  file_url                      varchar(500) [note: 'Nullable legacy/display field; downloads lopen via authenticated endpoint']
+  original_name                 varchar(255) [note: 'Originele clientbestandsnaam']
+  file_type                     varchar(100) [note: 'MIME type, bv. image/jpeg']
+  file_size                     bigint       [note: 'Bestandsgrootte in bytes; uploadlimiet 5 MB per bestand, max 3 per update']
+  uploaded_at                   datetime     [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    officer_issue_update_id
+  }
+}
+
 Table blocked_keywords {
   id                    int          [pk, increment]
   keyword               varchar(100) [not null, unique]

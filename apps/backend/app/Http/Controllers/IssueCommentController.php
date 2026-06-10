@@ -26,8 +26,8 @@ class IssueCommentController extends Controller
      * List comments for a given issue.
      *
      * Validates that the issue is visible to the actor, and applies visibility-scoping
-     * to the comment query builder. Eager-loads user/officer/manager authors and the
-     * parent issue, and returns comments sorted chronologically (oldest first).
+     * to the comment query builder. Eager-loads user/officer/manager authors and
+     * the parent issue, and returns comments sorted chronologically (oldest first).
      */
     public function index(IndexCommentRequest $request, Issue $issue): AnonymousResourceCollection
     {

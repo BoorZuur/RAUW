@@ -84,6 +84,8 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 | `attachment_id` | `1` | Filled automatically after **Issues / Upload Attachments**. Used by authenticated download and delete. |
 | `attachment_download_url` | blank | Filled automatically after **Issues / Upload Attachments** for reference. |
 | `officer_resolution_attachment_id` | `1` | Filled automatically after **Issues / Officer workflows / Create Officer Resolution**. Used by update and download examples. |
+| `officer_update_id` | `1` | Filled automatically after **Issues / Officer workflows / Create Officer Update**. Used by update and delete examples. |
+| `officer_update_attachment_id` | `1` | Filled automatically after **Issues / Officer workflows / Create Officer Update** when the response includes attachments. Used by download example. |
 | `hub_id` | `3` | Cluster Centrum hub ID after seeding (used by hub and district create examples). |
 | `district_id` | `1` | Cool wijk ID after seeding (Cluster Centrum). |
 | `category_id` | `1` | Parkeeroverlast main category ID after seeding. |
@@ -95,7 +97,7 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 
 1. Run **Auth / Register User** or **Auth / Register Officer** to create a public actor and auto-login, or run **Auth / Login** with an existing demo account. Officer registration requires at least one existing department ID, **latitude**, and **longitude**; local seeded departments normally include IDs `1` and `2`.
 2. Run **Auth / Current Profile** to inspect the actor attached to the stored token.
-3. **Officer shared shift flow:** Run **Auth / Login Officer at Hub** to start the shared shift, then **Issues / Officer workflows** writes (assign-self, status, resolution). **Tier B browse** (`GET /api/issues`, show, officer-resolution show, attachment downloads) works without an active shift. Run **Auth / Start Shift** when logged in without an active shift. Run **Auth / Login Officer Remote** (no active shift) then **Auth / Officer Workflow Blocked (403 Smoke)** — expects `hub_active_required` on **Tier C** `POST .../assign-self`, not on issue list. **Managers / End Officer Shift** clears the shift without revoking tokens. Profile, start-shift, and reference reads work without an active shift.
+3. **Officer shared shift flow:** Run **Auth / Login Officer at Hub** to start the shared shift, then **Issues / Officer workflows** writes (assign-self, status, resolution). **Tier B browse** (`GET /api/issues`, show, officer-resolution show, comments index, attachment downloads) works without an active shift. Run **Auth / Start Shift** when logged in without an active shift. Run **Auth / Login Officer Remote** (no active shift) then **Auth / Officer Workflow Blocked (403 Smoke)** — expects `hub_active_required` on **Tier C** `POST .../assign-self`, not on issue list. **Managers / End Officer Shift** clears the shift without revoking tokens. Profile, start-shift, and reference reads work without an active shift.
 4. Run **Hubs / List Hubs**, **Districts / List Districts**, and **Departments / List Departments** to find local IDs for assignment examples.
 5. Run **Auth / Login as Main Manager** (`demo.manager@example.com` / `password`) to populate `main_manager_access_token` and `access_token` for manager administration.
 6. Run **Officers / List Officer Sessions** to inspect login audit rows (manager only).
@@ -110,8 +112,9 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 15. Run **Auth / Login** with `demo.user@example.com` and password `password`, then **Issues / Create Issue** (stores `issue_id`).
 16. Use **Issues / List Issues - Filtered Paginated** to combine `district_id`, `department` (env `department_filter`), and `category_id`.
 17. **Officer issue workflows:** Run **Auth / Login Officer at Hub**, then **Issues / Create Issue** as a user (or pick a seeded issue in Cool / `district_id: 1`). Run **Issues / Officer workflows / Assign Self to Issue**, then **Update Issue Status**, **Create Officer Resolution**, **Show Officer Resolution**, **Update Officer Resolution**, and **Download Officer Resolution Attachment** in that order.
-18. To test ordinary-manager privileges, log in as a created manager and copy the token to `manager_access_token` before **Managers / Update Officer Districts** or to confirm category/district/department mutations return **403** (not for successful category writes).
-19. Run **Auth / Logout** when finished.
+18. **Officer issue updates:** After assign-self (step 17), run **Create Officer Update** → **List Officer Updates** → **Update Officer Update** → **Download Officer Update Attachment** → **Delete Officer Update**. `officer_update_id` and `officer_update_attachment_id` are set automatically by **Create Officer Update** when the collection test script runs. Tier C writes require hub login; list and download work without an active shift (Tier B).
+19. To test ordinary-manager privileges, log in as a created manager and copy the token to `manager_access_token` before **Managers / Update Officer Districts** or to confirm category/district/department mutations return **403** (not for successful category writes).
+20. Run **Auth / Logout** when finished.
 
 The collection stores the returned `access_token` automatically after a successful login, user registration, or officer registration. Manager creation intentionally does not update `access_token` because it returns only the created manager profile. If you disable collection scripts or the token is not stored, copy the `access_token` value from the auth response into the active Postman environment's `access_token` variable before calling protected endpoints.
 
@@ -823,7 +826,7 @@ Issue responses include read-only `status`, `assigned_officer_id`, and `visibili
 
 ### Officer issue workflows
 
-**Tier B** (browse without shift): `GET /api/issues`, `GET /api/issues/{issue}`, `GET .../officer-resolution`, and attachment downloads. **Tier C** (hub-active required): assign-self, unassign-self, status PATCH, resolution POST/PATCH. Tier C without shift → **403** `hub_active_required`. District scoping on workflow writes: officer must be in the issue's district via `district_officer` or **403** `officer_not_in_district`. Officer writes use validate-after-lock (mutable checks after `lockForUpdate`). Resolution attachment uploads enforce the cumulative cap and perform disk I/O inside the same locked transaction.
+**Tier B** (browse without shift): `GET /api/issues`, `GET /api/issues/{issue}`, `GET .../officer-resolution`, `GET .../officer-updates`, `GET .../comments`, and attachment downloads (issue, resolution, and officer-update). **Tier C** (hub-active required): assign-self, unassign-self, status PATCH, resolution POST/PATCH, officer-update POST/PATCH/DELETE. Tier C without shift → **403** `hub_active_required`. District scoping on workflow writes: officer must be in the issue's district via `district_officer` or **403** `officer_not_in_district`. Officer writes use validate-after-lock (mutable checks after `lockForUpdate`). Resolution and officer-update attachment uploads enforce the cumulative cap and perform disk I/O inside the same locked transaction.
 
 **Self-assign / unassign**
 
@@ -854,7 +857,17 @@ Distinct from user satisfaction in `issue_resolutions`. One report per issue.
 
 Up to **3** images (`jpg`, `jpeg`, `png`, `gif`, `webp`), **5 MB** each. Uploads are content-sniffed after extension rules (issue user attachments also accept PDF via magic bytes).
 
-Postman folder: **Issues / Officer workflows**. Run **Auth / Login Officer at Hub** before Tier C writes; browse requests work after **Auth / Login Officer Remote**. Use an issue in the officer's district (demo: Cool / `district_id: 1`).
+**Officer issue updates (progress log)**
+
+Multiple updates per issue; PATCH/DELETE restricted to the authoring officer (who must also be the current assignee).
+
+- `GET {{base_url}}/api/issues/{issue}/officer-updates` — any actor who can view the issue; Tier B; paginated, chronological.
+- `POST {{base_url}}/api/issues/{issue}/officer-updates` — multipart; current assignee only; **403** `hub_active_required`, `officer_not_in_district`, or `not_assigned_officer`; **422** `issue_closed` when status is `gesloten` (`opgelost` remains writable). Up to 3 images, 5 MB each. Cap enforcement and upload I/O run under row lock.
+- `PATCH {{base_url}}/api/issues/{issue}/officer-updates/{officer_update}` — multipart; authoring assignee only; **403** `hub_active_required`, `officer_not_in_district`, `not_assigned_officer`, or `not_update_author` (assignee but not author); **422** `issue_closed` when status is `gesloten`. Optional `remove_attachment_ids` and new `files` (max 3 total).
+- `DELETE {{base_url}}/api/issues/{issue}/officer-updates/{officer_update}` — authoring assignee only; same **403** and **422** codes as PATCH.
+- `GET {{base_url}}/api/issues/{issue}/officer-updates/attachments/{attachment}/download` — visibility-only auth (`IssueVisibilityQuery::canViewIssue`); Tier B. Users probing hidden issues they do not own receive **404**; other unauthorized actors receive **403**.
+
+Postman folder: **Issues / Officer workflows**. Run **Auth / Login Officer at Hub** before Tier C writes; browse requests work after **Auth / Login Officer Remote**. Use an issue in the officer's district (demo: Cool / `district_id: 1`). Run **Assign Self to Issue** before officer-update writes. **Create Officer Update** auto-fills `officer_update_id` and `officer_update_attachment_id`.
 
 ### Issue Attachments
 

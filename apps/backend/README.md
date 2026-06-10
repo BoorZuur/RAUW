@@ -49,7 +49,7 @@ Officers share one shift clock across all devices via `officers.hub_active_until
 
 **Hub reassignment / manager end-shift:** `PATCH /api/officers/{officer}/hub` and `PATCH /api/officers/{officer}/end-shift` clear `hub_active_until` without revoking tokens. **Officer disable** revokes all tokens, closes all sessions, and ends the shift.
 
-**Middleware:** `officer.hub-active` gates Tier C workflow routes by reading `hub_active_until` on the officer row. **Tier B** (browse without an active shift): `GET /api/issues` (embeds `officer_resolution` when present; omits `status_history`), `GET /api/issues/{issue}` (same `officer_resolution` plus `status_history` for officers/managers), `GET /api/issues/{issue}/officer-resolution`, and authenticated attachment downloads (`GET .../attachments/.../download`, `GET .../officer-resolution/attachments/.../download`). **Tier C** (hub-active required): `POST .../assign-self`, `POST .../unassign-self`, `PATCH .../status`, and officer-resolution `POST`/`PATCH`. Also whitelisted without a shift: profile/auth (`GET/PATCH /api/auth/me`, logout, `POST /api/auth/start-shift`, district self-service), reference reads (hubs, districts, departments, categories), and `GET /api/officer-sessions` (authorization still requires an active manager).
+**Middleware:** `officer.hub-active` gates Tier C workflow routes by reading `hub_active_until` on the officer row. **Tier B** (browse without an active shift): `GET /api/issues` (embeds `officer_resolution` when present; omits `status_history`), `GET /api/issues/{issue}` (same `officer_resolution` plus `status_history` for officers/managers), `GET /api/issues/{issue}/officer-resolution`, `GET /api/issues/{issue}/officer-updates`, and authenticated attachment downloads (`GET .../attachments/.../download`, `GET .../officer-resolution/attachments/.../download`, `GET .../officer-updates/attachments/.../download`). **Tier C** (hub-active required): `POST .../assign-self`, `POST .../unassign-self`, `PATCH .../status`, officer-resolution `POST`/`PATCH`, and officer-update `POST`/`PATCH`/`DELETE`. Also whitelisted without a shift: profile/auth (`GET/PATCH /api/auth/me`, logout, `POST /api/auth/start-shift`, district self-service), reference reads (hubs, districts, departments, categories), and `GET /api/officer-sessions` (authorization still requires an active manager).
 
 **Error codes** (`message` + `code`):
 
@@ -193,6 +193,20 @@ Distinct from user satisfaction feedback in `issue_resolutions`. At most **one**
 
 Attachment limits: up to **3** images (`jpg`, `jpeg`, `png`, `gif`, `webp`) per resolution, **5 MB** each. PATCH validates `existing − removals + new_files ≤ 3` under row lock (including upload disk I/O). Uploads are content-validated (Symfony MIME sniff for images; issue user attachments also accept PDF via `%PDF-` magic bytes). Invalid `remove_attachment_ids` (not owned by the resolution) return **422** with a field error on `remove_attachment_ids`.
 
+**Officer issue updates (progress log)**
+
+Multiple updates per issue; PATCH/DELETE restricted to the authoring officer (who must also be the current assignee).
+
+| Method | Path | Who | Notes |
+|--------|------|-----|-------|
+| `GET` | `/api/issues/{issue}/officer-updates` | Any actor who can view the issue (Tier B) | Paginated, chronological. |
+| `POST` | `/api/issues/{issue}/officer-updates` | Current assignee (multipart) | **422** `issue_closed` when `gesloten`. Up to 3 images, 5 MB each. |
+| `PATCH` | `/api/issues/{issue}/officer-updates/{officer_update}` | Authoring assignee | **403** `not_update_author` if assignee but not author. **422** `issue_closed` when `gesloten`. |
+| `DELETE` | `/api/issues/{issue}/officer-updates/{officer_update}` | Authoring assignee | Same codes as PATCH. |
+| `GET` | `.../attachments/{attachment}/download` | Any actor who can view the issue (Tier B) | Visibility-only; streams from local storage. |
+
+Attachment limits match resolutions: up to **3** images, **5 MB** each. PATCH validates cumulative cap under row lock. Uploads are content-sniffed as allowed images.
+
 **Issue embeds:** `GET /api/issues` includes `officer_resolution` (with officer and attachments when present) and omits `status_history`. `GET /api/issues/{issue}` includes the same `officer_resolution` embed plus `status_history` for officers and managers only (newest first, no lat/lon); regular users never receive `status_history`. Prefer the dedicated GET path for resolution-only reads.
 
 **Structured error codes (officer workflows)**
@@ -201,11 +215,12 @@ Attachment limits: up to **3** images (`jpg`, `jpeg`, `png`, `gif`, `webp`) per 
 |------|------|------|
 | `hub_active_required` | 403 | Officer on Tier C without active shared shift |
 | `officer_not_in_district` | 403 | Officer workflow on issue outside assigned districts |
-| `not_assigned_officer` | 403 | Status/unassign/resolution write without assignee ownership |
+| `not_assigned_officer` | 403 | Status/unassign/resolution/officer-update write without assignee ownership |
+| `not_update_author` | 403 | PATCH/DELETE officer update when officer is assignee but not the authoring officer |
 | `issue_already_assigned` | 409 | Self-assign when another officer already owns the issue |
 | `officer_resolution_exists` | 409 | Duplicate POST on officer resolution |
 | `issue_not_assignable` | 422 | Self-assign on `opgelost` or `gesloten` issues |
-| `issue_closed` | 422 | Resolution POST/PATCH when issue status is `gesloten` |
+| `issue_closed` | 422 | Resolution or officer-update POST/PATCH/DELETE when issue status is `gesloten` |
 
 Common auth status codes are:
 

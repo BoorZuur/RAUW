@@ -4503,9 +4503,467 @@
                 "description": "Download a resolution attachment from non-public local storage. Visibility-only authorization (IssueVisibilityQuery::canViewIssue, Q8 / D15-A): any actor who can view the parent issue may download; Tier B (no active shared shift required). Users probing hidden issues they do not own receive 404 (no enumeration); other unauthorized actors receive 403. The attachment must belong to the issue's officer resolution in the route; missing backing file returns 404. Run Create Officer Resolution first to populate officer_resolution_attachment_id."
               },
               "response": []
+            },
+            {
+              "name": "List Officer Updates",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{issue_id}}/officer-updates",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{issue_id}}",
+                    "officer-updates"
+                  ]
+                },
+                "description": "List paginated updates for a specific issue. Tier B: any authenticated actor who can view the issue may read it without an active shift."
+              },
+              "response": []
+            },
+            {
+              "name": "Create Officer Update",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Officer update created', function () { pm.response.to.have.status(201); });",
+                      "const response = pm.response.json();",
+                      "if (response.id) {",
+                      "    pm.collectionVariables.set('officer_update_id', response.id);",
+                      "    if (pm.environment.name) { pm.environment.set('officer_update_id', response.id); }",
+                      "}",
+                      "const attachments = Array.isArray(response.attachments) ? response.attachments : [];",
+                      "if (attachments.length > 0) {",
+                      "    pm.collectionVariables.set('officer_update_attachment_id', attachments[0].id);",
+                      "    if (pm.environment.name) { pm.environment.set('officer_update_attachment_id', attachments[0].id); }",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "title",
+                      "value": "Onderzoek gestart",
+                      "type": "text"
+                    },
+                    {
+                      "key": "content",
+                      "value": "Eerste inspectie uitgevoerd, tegels besteld.",
+                      "type": "text"
+                    },
+                    {
+                      "key": "files[]",
+                      "type": "file",
+                      "src": [],
+                      "description": "Optional images: jpg/jpeg/png/gif/webp, up to 3 files, 5 MB each."
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{issue_id}}/officer-updates",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{issue_id}}",
+                    "officer-updates"
+                  ]
+                },
+                "description": "Create an intermediate update for an issue. Tier C: requires active shift. Multipart form. Current assignee only. Returns 403 hub_active_required without an active shift, 403 officer_not_in_district when the issue district is outside the officer pivot, or 403 not_assigned_officer for non-assignees. Blocked when issue status is gesloten (422 issue_closed); opgelost remains writable. Up to 3 images, 5 MB each, content-sniffed after extension rules. Attachment cap enforcement and upload disk I/O run inside the lockForUpdate transaction."
+              },
+              "response": [
+                {
+                  "name": "422 issue_closed",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/api/issues/{{issue_id}}/officer-updates",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "issues",
+                        "{{issue_id}}",
+                        "officer-updates"
+                      ]
+                    }
+                  },
+                  "status": "Unprocessable Entity",
+                  "code": 422,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"message\": \"Cannot create, update, or delete an officer update on a closed issue.\",\n  \"code\": \"issue_closed\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "Update Officer Update",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Officer update updated', function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "title",
+                      "value": "Onderzoek gestart (bijgewerkt)",
+                      "type": "text"
+                    },
+                    {
+                      "key": "content",
+                      "value": "Eerste inspectie uitgevoerd, tegels besteld en geleverd.",
+                      "type": "text"
+                    },
+                    {
+                      "key": "remove_attachment_ids[]",
+                      "value": "",
+                      "type": "text",
+                      "description": "Optional attachment ID(s) to remove"
+                    },
+                    {
+                      "key": "files[]",
+                      "type": "file",
+                      "src": [],
+                      "description": "Optional new images: jpg/jpeg/png/gif/webp, up to 3 files max cumulative."
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{issue_id}}/officer-updates/{{officer_update_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{issue_id}}",
+                    "officer-updates",
+                    "{{officer_update_id}}"
+                  ]
+                },
+                "description": "Update an existing officer update. Tier C: requires active shift. Authoring assignee only. Returns 403 hub_active_required without an active shift, 403 officer_not_in_district when the issue district is outside the officer pivot, 403 not_assigned_officer for non-assignees, or 403 not_update_author when the officer is assignee but not the update author. Blocked when issue status is gesloten (422 issue_closed); opgelost remains writable. Send remove_attachment_ids for owned attachments before uploading replacements. Total attachments after removals plus new files must not exceed 3. Cap enforcement and upload disk I/O run inside the lockForUpdate transaction."
+              },
+              "response": [
+                {
+                  "name": "403 not_update_author",
+                  "originalRequest": {
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/api/issues/{{issue_id}}/officer-updates/{{officer_update_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "issues",
+                        "{{issue_id}}",
+                        "officer-updates",
+                        "{{officer_update_id}}"
+                      ]
+                    }
+                  },
+                  "status": "Forbidden",
+                  "code": 403,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"message\": \"Only the officer who authored this update may modify or delete it.\",\n  \"code\": \"not_update_author\"\n}"
+                },
+                {
+                  "name": "422 issue_closed",
+                  "originalRequest": {
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/api/issues/{{issue_id}}/officer-updates/{{officer_update_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "issues",
+                        "{{issue_id}}",
+                        "officer-updates",
+                        "{{officer_update_id}}"
+                      ]
+                    }
+                  },
+                  "status": "Unprocessable Entity",
+                  "code": 422,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"message\": \"Cannot create, update, or delete an officer update on a closed issue.\",\n  \"code\": \"issue_closed\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "Download Officer Update Attachment",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/octet-stream",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{issue_id}}/officer-updates/attachments/{{officer_update_attachment_id}}/download",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{issue_id}}",
+                    "officer-updates",
+                    "attachments",
+                    "{{officer_update_attachment_id}}",
+                    "download"
+                  ]
+                },
+                "description": "Download an update attachment. Visibility-only authorization (IssueVisibilityQuery::canViewIssue): any actor who can view the parent issue may download; Tier B (no active shift required)."
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Officer Update",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Officer update deleted', function () { pm.response.to.have.status(204); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{issue_id}}/officer-updates/{{officer_update_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{issue_id}}",
+                    "officer-updates",
+                    "{{officer_update_id}}"
+                  ]
+                },
+                "description": "Delete an update. Tier C: requires active shift. Authoring assignee only. Returns 403 hub_active_required without an active shift, 403 officer_not_in_district when the issue district is outside the officer pivot, 403 not_assigned_officer for non-assignees, or 403 not_update_author when the officer is assignee but not the update author. Blocked when issue status is gesloten (422 issue_closed); opgelost remains writable."
+              },
+              "response": [
+                {
+                  "name": "403 not_update_author",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/api/issues/{{issue_id}}/officer-updates/{{officer_update_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "issues",
+                        "{{issue_id}}",
+                        "officer-updates",
+                        "{{officer_update_id}}"
+                      ]
+                    }
+                  },
+                  "status": "Forbidden",
+                  "code": 403,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"message\": \"Only the officer who authored this update may modify or delete it.\",\n  \"code\": \"not_update_author\"\n}"
+                },
+                {
+                  "name": "422 issue_closed",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/api/issues/{{issue_id}}/officer-updates/{{officer_update_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "issues",
+                        "{{issue_id}}",
+                        "officer-updates",
+                        "{{officer_update_id}}"
+                      ]
+                    }
+                  },
+                  "status": "Unprocessable Entity",
+                  "code": 422,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"message\": \"Cannot create, update, or delete an officer update on a closed issue.\",\n  \"code\": \"issue_closed\"\n}"
+                }
+              ]
             }
           ],
-          "description": "Officer issue workflow requests. Tier B browse (list/show, resolution show, downloads) works without a shift; Tier C writes (assign-self, unassign-self, status, resolution POST/PATCH) require hub-active. Log in with Auth / Login Officer at Hub before Tier C writes. Use issue_id in the officer's assigned district (demo: Cool / district_id 1). Run Assign Self before status or resolution writes."
+          "description": "Officer issue workflow requests. Tier B browse (list/show, resolution show, officer-updates index/download) works without a shift; Tier C writes (assign-self, unassign-self, status, resolution POST/PATCH, officer-update POST/PATCH/DELETE) require hub-active. Log in with Auth / Login Officer at Hub before Tier C writes. Use issue_id in the officer's assigned district (demo: Cool / district_id 1). Run Assign Self before status, resolution, or officer-update writes."
         }
       ],
       "description": "Authenticated issue CRUD and attachment examples. Issue creation requires district_id and no longer accepts client-supplied department or removed legacy locality fields. Departments are derived from the selected category, stored in department_issue, and exposed as a read-only departments array. List filters are composable: district_id, department (code), category_id, mine (users only), and visibility (officers/managers only). Department filtering uses any-match semantics; pagination is backend-driven. Show returns 404 when the issue is not visible to the actor (e.g. another user's hidden issue). Anonymous issues retain user_id ownership while exposing only a stable alias. Attachment deletion is owner-only for replacement workflows. Issue deletion is hard delete and attachments cascade with the issue."
@@ -5173,6 +5631,16 @@
     },
     {
       "key": "officer_resolution_attachment_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "officer_update_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "officer_update_attachment_id",
       "value": "1",
       "type": "string"
     },
