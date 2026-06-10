@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'author_type',
     'user_id',
     'officer_id',
+    'manager_id',
     'content',
     'visibility',
 ])]
@@ -59,6 +60,11 @@ class IssueComment extends Model
     public function officer(): BelongsTo
     {
         return $this->belongsTo(Officer::class);
+    }
+
+    public function manager(): BelongsTo
+    {
+        return $this->belongsTo(Manager::class);
     }
 
     public function contentFlags(): HasMany

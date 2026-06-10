@@ -33,6 +33,7 @@ class EnsureOfficerHubActive
         'officer-sessions.index',
         'issues.index',
         'issues.show',
+        'issues.comments.index',
         'issues.officer-resolution.show',
         'issues.officer-resolution.attachments.download',
         'issues.attachments.download',

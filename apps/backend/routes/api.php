@@ -16,6 +16,7 @@ use App\Http\Controllers\MainManagerHubController;
 use App\Http\Controllers\ManagerHubController;
 use App\Http\Controllers\OfficerHubController;
 use App\Http\Controllers\IssueAttachmentController;
+use App\Http\Controllers\IssueCommentController;
 use App\Http\Controllers\IssueController;
 use App\Http\Controllers\IssueOfficerAssignmentController;
 use App\Http\Controllers\IssueOfficerStatusController;
@@ -322,4 +323,12 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     Route::post('issues/{issue}/attachments', [IssueAttachmentController::class, 'store'])->name('issues.attachments.store');
     Route::get('issues/{issue}/attachments/{attachment}/download', [IssueAttachmentController::class, 'download'])->name('issues.attachments.download');
     Route::delete('issues/{issue}/attachments/{attachment}', [IssueAttachmentController::class, 'destroy'])->name('issues.attachments.destroy');
+
+    // Issue comments. Listing (Index) is Tier B (can browse without active shift);
+    // store, update, destroy, and visibility update are Tier C (require active shift).
+    Route::get('issues/{issue}/comments', [IssueCommentController::class, 'index'])->name('issues.comments.index');
+    Route::post('issues/{issue}/comments', [IssueCommentController::class, 'store'])->name('issues.comments.store');
+    Route::patch('issues/{issue}/comments/{comment}', [IssueCommentController::class, 'update'])->name('issues.comments.update');
+    Route::delete('issues/{issue}/comments/{comment}', [IssueCommentController::class, 'destroy'])->name('issues.comments.destroy');
+    Route::patch('issues/{issue}/comments/{comment}/visibility', [IssueCommentController::class, 'updateVisibility'])->name('issues.comments.visibility.update');
 });
