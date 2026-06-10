@@ -10,9 +10,11 @@ use Symfony\Component\HttpFoundation\Response;
 class EnsureOfficerHubActive
 {
     /**
-     * Routes officers may call without a hub-active session (profile/auth,
-     * reference reads, and issue browse). All other protected API routes
-     * return 403.
+     * Routes officers may call without a hub-active session (Tier B:
+     * profile/auth, reference reads, officer show, issue browse including
+     * duplicates, participants index, status history,
+     * and resolution attachment downloads). All other protected API routes
+     * return 403 (Tier C).
      *
      * @var list<string>
      */
@@ -31,8 +33,12 @@ class EnsureOfficerHubActive
         'categories.index',
         'categories.show',
         'officer-sessions.index',
+        'officers.show',
         'issues.index',
         'issues.show',
+        'issues.duplicates.index',
+        'issues.participants.index',
+        'issues.status-history.index',
         'issues.comments.index',
         'issues.officer-resolution.show',
         'issues.officer-resolution.attachments.download',

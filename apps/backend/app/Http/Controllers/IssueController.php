@@ -2,12 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Issues\CreateIssue;
+use App\Actions\Issues\CreateIssueAsDuplicate;
+use App\Actions\Issues\DeleteDuplicateChild;
+use App\Actions\Issues\ReparentOnCanonicalDelete;
 use App\Http\Requests\Issues\DeleteIssueRequest;
 use App\Http\Requests\Issues\IndexIssueRequest;
 use App\Http\Requests\Issues\ShowIssueRequest;
 use App\Http\Requests\Issues\StoreIssueRequest;
 use App\Http\Requests\Issues\UpdateIssueRequest;
 use App\Http\Requests\Issues\UpdateIssueVisibilityRequest;
+use App\Support\Issues\IssueListScope;
 use App\Support\IssueVisibilityQuery;
 use App\Http\Resources\IssueResource;
 use App\Models\Category;
@@ -49,12 +54,18 @@ class IssueController extends Controller
      * List issues with composable filters, visibility scoping, and pagination.
      *
      * Results are visibility-scoped per actor type before optional filters:
-     * users see visible issues or their own issues (any visibility); officers
-     * and managers see all issues including hidden. A single Eloquent query
+     * users see visible canonicals, their own issues (any visibility), or
+     * canonicals they participate on; officers and ordinary managers see issues
+     * in assigned districts (including hidden); main managers see all issues
+     * city-wide. Duplicate child rows are excluded by default per actor
+     * (`IssueListScope`); users may use `participating=1` for owned children
+     * with canonical participation, and officers/managers may use
+     * `include_duplicates=1` to include children. A single Eloquent query
      * applies the optional `district_id`, `department`, `category_id`, `status`,
-     * `assigned_officer_id`, `unassigned`, `mine`, and `visibility` filters
-     * conditionally and cumulatively (AND with visibility), so any
-     * subset (or all) of the filters may be combined to narrow the result set.
+     * `assigned_officer_id`, `unassigned`, `mine`, `participating`,
+     * `include_duplicates`, and `visibility` filters conditionally and
+     * cumulatively (AND with visibility), so any subset (or all) of the
+     * filters may be combined to narrow the result set.
      * The `department` filter is resolved through the issue departments
      * relationship with any-match semantics. Results are eager loaded (including
      * `officer_resolution` with officer and attachments when a report exists;
@@ -63,9 +74,13 @@ class IssueController extends Controller
      */
     public function index(IndexIssueRequest $request): AnonymousResourceCollection
     {
-        $issues = IssueVisibilityQuery::applyVisibilityScope(
-            Issue::query()->with(self::ISSUE_RELATIONS),
+        $issues = IssueListScope::apply(
+            IssueVisibilityQuery::applyVisibilityScope(
+                Issue::query()->with(self::ISSUE_RELATIONS),
+                $request->user(),
+            ),
             $request->user(),
+            $request,
         )
             ->when(
                 $request->filled('district_id'),
@@ -119,23 +134,23 @@ class IssueController extends Controller
      * Create an issue on behalf of the authenticated regular user.
      *
      * Authorization (active user only) and validation are enforced by
-     * StoreIssueRequest. The issue remains user-owned through `user_id` even
-     * when reported anonymously, so the author can still manage it later. The
-     * issue's departments are auto-assigned from the selected category's
-     * department assignments via the pivot source of truth (supporting multiple
-     * departments per issue); they are never accepted from the client. Integer
-     * `priority` is derived from the category's main-category priority and is
-     * never accepted from the client. When `is_anonymous` is true a stable,
-     * `anonymous_alias` is generated server-side and persisted once at creation;
-     * it is never accepted from the client and never regenerated on subsequent
-     * reads or updates. When the report is not anonymous the alias stays null.
+     * StoreIssueRequest. Normal creates delegate to {@see CreateIssue} (creator
+     * participant, `participant_count = 1`). When `duplicate_of_id` is present,
+     * {@see CreateIssueAsDuplicate} creates a hidden child linked to the
+     * canonical target and returns the child resource. The issue remains
+     * user-owned through `user_id` even when reported anonymously. Departments
+     * and `priority` are derived server-side from the selected category.
+     * Anonymous reports receive a stable server-generated `anonymous_alias`.
      */
-    public function store(StoreIssueRequest $request): JsonResponse
-    {
+    public function store(
+        StoreIssueRequest $request,
+        CreateIssue $createIssue,
+        CreateIssueAsDuplicate $createIssueAsDuplicate,
+    ): JsonResponse {
         /** @var User $author */
         $author = $request->user();
 
-        $attributes = $request->safe()->only([
+        $validated = $request->safe()->only([
             'title',
             'content',
             'category_id',
@@ -147,24 +162,9 @@ class IssueController extends Controller
             'is_anonymous',
         ]);
 
-        $attributes['user_id'] = $author->getKey();
-
-        $isAnonymous = (bool) ($attributes['is_anonymous'] ?? false);
-        $attributes['is_anonymous'] = $isAnonymous;
-
-        $category = Category::query()
-            ->with('departments')
-            ->findOrFail($attributes['category_id']);
-
-        $attributes['priority'] = IssuePriorityResolver::fromCategory($category);
-
-        $issue = $isAnonymous
-            ? $this->withUniqueAnonymousAlias(
-                fn (string $alias): Issue => Issue::create([...$attributes, 'anonymous_alias' => $alias]),
-            )
-            : Issue::create([...$attributes, 'anonymous_alias' => null]);
-
-        $issue->syncDepartments($category->departmentIds());
+        $issue = $request->filled('duplicate_of_id')
+            ? $createIssueAsDuplicate->create($author, $validated, $request->integer('duplicate_of_id'))
+            : $createIssue->create($author, $validated);
 
         $issue->load(self::ISSUE_RELATIONS);
 
@@ -176,11 +176,14 @@ class IssueController extends Controller
     /**
      * Show a single issue with its eager-loaded relations.
      *
-     * Visibility is enforced after route binding: users may view visible issues
-     * or their own issues (any visibility); officers and managers may view any
-     * issue. Unauthorized or invisible issues return 404 to avoid leaking existence.
-     * Embeds `officer_resolution` when a report exists. Active officers and
-     * managers also receive `status_history` (newest first); regular users do not.
+     * Visibility is enforced after route binding: users may view visible issues,
+     * their own issues (any visibility), or canonical issues they participate on
+     * (with canonical content redacted at the resource layer); officers and
+     * ordinary managers may view issues in assigned districts; main managers
+     * may view any issue city-wide. Unauthorized or invisible issues return 404
+     * to avoid leaking existence. Embeds `officer_resolution` when a report
+     * exists. Active officers and managers also receive `status_history` (newest
+     * first); regular users do not.
      */
     public function show(ShowIssueRequest $request, Issue $issue): IssueResource
     {
@@ -190,6 +193,10 @@ class IssueController extends Controller
 
         $actor = $request->user();
         $issue->load(self::ISSUE_RELATIONS);
+
+        if ($actor instanceof User) {
+            $issue->loadActorParticipant($actor);
+        }
 
         if ($actor instanceof Officer || $actor instanceof Manager) {
             $issue->load([
@@ -305,14 +312,28 @@ class IssueController extends Controller
     /**
      * Hard delete an owner's issue.
      *
-     * Ownership and authorization are enforced by DeleteIssueRequest. This is a
-     * hard delete, not a soft delete: the normal Eloquent delete removes the
-     * row outright and the database foreign-key cascade removes the issue's
-     * attachments automatically.
+     * Owner-only: officers and managers cannot delete issues they do not own
+     * (enforced by {@see DeleteIssueRequest}). Duplicate children delegate to
+     * {@see DeleteDuplicateChild} with optional `leave_participation` in the
+     * request body (default false — keep canonical participation). Canonical
+     * issues delegate to {@see ReparentOnCanonicalDelete}, which promotes the
+     * oldest child when duplicates exist. This is a hard delete, not a soft
+     * delete: rows are removed outright and attachment FK cascades apply.
      */
-    public function destroy(DeleteIssueRequest $request, Issue $issue): JsonResponse
-    {
-        $issue->delete();
+    public function destroy(
+        DeleteIssueRequest $request,
+        Issue $issue,
+        DeleteDuplicateChild $deleteDuplicateChild,
+        ReparentOnCanonicalDelete $reparentOnCanonicalDelete,
+    ): JsonResponse {
+        /** @var User $actor */
+        $actor = $request->user();
+
+        if ($issue->duplicate_of_id !== null) {
+            $deleteDuplicateChild->delete($actor, $issue, $request->leaveParticipation());
+        } else {
+            $reparentOnCanonicalDelete->delete($issue);
+        }
 
         return response()->json([], Response::HTTP_NO_CONTENT);
     }

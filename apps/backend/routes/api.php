@@ -18,6 +18,10 @@ use App\Http\Controllers\OfficerHubController;
 use App\Http\Controllers\IssueAttachmentController;
 use App\Http\Controllers\IssueCommentController;
 use App\Http\Controllers\IssueController;
+use App\Http\Controllers\IssueDuplicateController;
+use App\Http\Controllers\IssueParticipantController;
+use App\Http\Controllers\IssueSimilarCheckController;
+use App\Http\Controllers\IssueStatusHistoryController;
 use App\Http\Controllers\IssueOfficerAssignmentController;
 use App\Http\Controllers\IssueOfficerStatusController;
 use App\Http\Controllers\OfficerIssueResolutionAttachmentController;
@@ -102,6 +106,12 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     // receive a 403. Results include only rows with `is_main_manager = true`,
     // ordered by username ascending, with departments and districts eager loaded.
     Route::get('main-managers', [MainManagerController::class, 'index'])->name('main-managers.index');
+    // Officer/manager show for main managers. Authorization is narrowed inside
+    // ShowMainManagerRequest to an authenticated, active officer or manager.
+    // Route binding limits `{manager}` to rows with `is_main_manager = true`.
+    // Hub scoping returns 404 when actor and target are not in the same hub
+    // (no main-manager city-wide bypass).
+    Route::get('main-managers/{manager}', [MainManagerController::class, 'show'])->name('main-managers.show');
     // Main-manager-protected main manager update, disable, and enable. Authorization
     // is narrowed inside the main-manager FormRequests to an authenticated, active
     // main manager only. Route binding limits `{manager}` to rows with
@@ -124,6 +134,11 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     // 403. Results include only rows with `is_main_manager = false`, ordered by
     // username ascending, with departments and districts eager loaded.
     Route::get('managers', [ManagerController::class, 'index'])->name('managers.index');
+    // Officer/manager show for ordinary managers. Authorization is narrowed
+    // inside ShowManagerRequest to an authenticated, active officer or manager.
+    // Route binding limits `{manager}` to rows with `is_main_manager = false`.
+    // Hub scoping returns 404 when actor and target are not in the same hub.
+    Route::get('managers/{manager}', [ManagerController::class, 'show'])->name('managers.show');
     Route::post('managers', [ManagerController::class, 'store'])->name('managers.store');
     // Main-manager-protected ordinary manager update, disable, and enable.
     // Authorization is narrowed inside the manager FormRequests to an
@@ -149,30 +164,42 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
 
     // Officer listing. Authorization is narrowed inside IndexOfficerRequest to
     // an authenticated, active officer or manager; users and inactive actors
-    // receive a 403. Results exclude soft-deleted officers and default to active
+    // receive a 403. Results are hub-scoped for officers and ordinary managers
+    // (same hub only; null hub yields no rows); main managers see all officers
+    // city-wide. Results exclude soft-deleted officers and default to active
     // officers only when `is_active` is omitted. Optional district_id and
-    // department_id filters narrow the result set through officer pivots.
+    // department_id filters intersect with hub scope through officer pivots.
     Route::get('officers', [OfficerController::class, 'index'])->name('officers.index');
+    // Officer show is available to any authenticated active actor (Tier B).
+    // Results are city-wide with no hub scoping. Soft-deleted officers return
+    // 404 from route model binding.
+    Route::get('officers/{officer}', [OfficerController::class, 'show'])->name('officers.show');
 
     // Manager-protected officer disable and enable. Authorization is narrowed
     // inside DisableOfficerRequest and EnableOfficerRequest to an authenticated,
-    // active manager; users, officers, and inactive managers receive a 403. Any
-    // active manager may toggle the target officer's is_active flag without
-    // soft-deleting or restoring the row. Soft-deleted officers return 404.
+    // active manager; users, officers, and inactive managers receive 403. The
+    // controller enforces hub scoping via ManagerOfficerHubAccess: ordinary
+    // managers may only administer officers in the same hub (both hub_id
+    // non-null and equal); hub mismatch or null hub on either side returns 404.
+    // Main managers may toggle any officer city-wide. Soft-deleted officers
+    // return 404 from route model binding.
     Route::patch('officers/{officer}/disable', [OfficerController::class, 'disable'])->name('officers.disable');
     Route::patch('officers/{officer}/enable', [OfficerController::class, 'enable'])->name('officers.enable');
 
     // Manager-protected officer end-shift. Authorization is narrowed inside
-    // EndOfficerShiftRequest to an authenticated, active manager. Clears the
-    // shared shift clock without revoking tokens.
+    // EndOfficerShiftRequest to an authenticated, active manager (403 for wrong
+    // actor type). The controller enforces hub scoping via
+    // ManagerOfficerHubAccess (404 on hub mismatch or null hub; main managers
+    // city-wide). Clears the shared shift clock without revoking tokens.
     Route::patch('officers/{officer}/end-shift', OfficerEndShiftController::class)->name('officers.end-shift');
 
     // Manager-protected officer district assignment. Authorization is narrowed
-    // inside UpdateOfficerDistrictsRequest to an authenticated, active manager;
-    // users, officers, and inactive managers receive a 403. Any active manager
-    // may sync the target officer's districts wholesale from the validated
-    // `district_ids` array. The endpoint only touches the officer-side district
-    // pivot and never reassigns `issues.district_id`.
+    // inside UpdateOfficerDistrictsRequest to an authenticated, active manager
+    // (403 for wrong actor type). The controller enforces hub scoping via
+    // ManagerOfficerHubAccess (404 on hub mismatch or null hub; main managers
+    // city-wide). Syncs the target officer's districts wholesale from the
+    // validated `district_ids` array. The endpoint only touches the officer-side
+    // district pivot and never reassigns `issues.district_id`.
     Route::patch('officers/{officer}/districts', [OfficerDistrictController::class, 'update'])->name('officers.districts.update');
     // Manager-protected officer hub assignment. Authorization is narrowed inside
     // UpdateOfficerHubRequest to an authenticated, active manager. Setting an
@@ -252,8 +279,11 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
 
     // Issue management. Listing and reads are available to any authenticated
     // actor; officers may browse without a hub-active shift (Tier B whitelist
-    // in officer.hub-active). Writes are authorized inside the issue
-    // FormRequests to the authenticated, active regular user who owns the issue.
+    // in officer.hub-active). List/show visibility is district-scoped for
+    // officers and ordinary managers (assigned districts only, including hidden
+    // issues therein); main managers see all issues city-wide. Writes are
+    // authorized inside the issue FormRequests to the authenticated, active
+    // regular user who owns the issue.
     // Issues remain
     // user-owned through `issues.user_id` even when reported anonymously, so the
     // author can keep managing their own report; anonymous reports are displayed
@@ -262,8 +292,40 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     // foreign-key cascade to remove the issue's attachments.
     Route::get('issues', [IssueController::class, 'index'])->name('issues.index');
     Route::post('issues', [IssueController::class, 'store'])->name('issues.store');
+    Route::post('issues/similar-check', [IssueSimilarCheckController::class, 'store'])->name('issues.similar-check');
+    // Participant join/leave are active-user-only and authorized inside
+    // JoinIssueRequest and LeaveIssueRequest. Join requires a canonical issue id
+    // (422 cannot_join_duplicate_child on duplicate children); first join returns
+    // 201, repeat join is idempotent (200). Leave removes the actor's row on the
+    // canonical issue and decrements participant_count; child route ids resolve to
+    // the canonical parent. Not participating returns 422 not_participant.
+    Route::post('issues/{issue}/join', [IssueParticipantController::class, 'join'])->name('issues.join');
+    Route::delete('issues/{issue}/leave', [IssueParticipantController::class, 'leave'])->name('issues.leave');
+    // Duplicate children list is officer/manager-only and authorized inside
+    // IndexIssueDuplicatesRequest. The target must be a canonical issue (422
+    // issue_not_canonical on duplicate children). Children are paginated
+    // oldest-first with full IssueResource payloads.
+    Route::get('issues/{issue}/duplicates', [IssueDuplicateController::class, 'index'])->name('issues.duplicates.index');
+    // Mark-duplicate links an existing issue to a canonical target (Tier C:
+    // hub-active required for officers). Officers need district access on both
+    // child and canonical (403 officer_not_in_district); managers use visibility
+    // scope only. Different owners re-parent as hidden duplicate; same owner
+    // merges participants and deletes the child. Returns IssueResource for the
+    // child (re-parent) or canonical (merge).
+    Route::post('issues/{issue}/mark-duplicate', [IssueDuplicateController::class, 'store'])->name('issues.mark-duplicate');
+    // Participant list is officer/manager-only and authorized inside
+    // IndexIssueParticipantsRequest (Tier B). Duplicate child route ids resolve
+    // to the canonical parent. Participants are paginated oldest-first by
+    // joined_at with anonymous alias redaction in IssueParticipantResource.
+    Route::get('issues/{issue}/participants', [IssueParticipantController::class, 'index'])->name('issues.participants.index');
+    // Status history list is officer/manager-only and authorized inside
+    // IndexIssueStatusHistoryRequest (Tier B). Duplicate child route ids resolve
+    // to the canonical parent. Rows are paginated newest-first by changed_at with
+    // IssueStatusHistoryResource payloads (changedByOfficer eager loaded).
+    Route::get('issues/{issue}/status-history', [IssueStatusHistoryController::class, 'index'])->name('issues.status-history.index');
     // Show returns 404 when the issue is not visible to the actor (e.g. hidden
-    // and not owned by an active user); officers and managers may view all issues.
+    // and not owned by an active user, or outside assigned districts for
+    // officers/ordinary managers). Main managers may view any issue city-wide.
     Route::get('issues/{issue}', [IssueController::class, 'show'])->name('issues.show');
     Route::match(['put', 'patch'], 'issues/{issue}', [IssueController::class, 'update'])->name('issues.update');
     // Visibility writes are officer/manager-only and authorized inside
@@ -303,6 +365,12 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     Route::post('issues/{issue}/officer-resolution', [OfficerIssueResolutionController::class, 'store'])->name('issues.officer-resolution.store');
     Route::patch('issues/{issue}/officer-resolution', [OfficerIssueResolutionController::class, 'update'])->name('issues.officer-resolution.update');
     Route::get('issues/{issue}/officer-resolution/attachments/{attachment}/download', [OfficerIssueResolutionAttachmentController::class, 'download'])->name('issues.officer-resolution.attachments.download');
+    // Officer resolution attachment delete (Tier C: hub-active required).
+    // Assignee-only authorization on the locked row (403 not_assigned_officer);
+    // district scoping (403 officer_not_in_district); attachment must belong to
+    // the route resolution (404 otherwise). Repeat delete → 404 once the row is
+    // removed. Returns 204 with row and backing file removed.
+    Route::delete('issues/{issue}/officer-resolution/attachments/{attachment}', [OfficerIssueResolutionAttachmentController::class, 'destroy'])->name('issues.officer-resolution.attachments.destroy');
 
     // Officer updates. Index and attachment download are Tier B (can browse without active shift);
     // store, update, and destroy are Tier C (require active shift). Writes return 403

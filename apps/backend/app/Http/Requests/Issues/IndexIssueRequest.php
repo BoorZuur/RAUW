@@ -6,6 +6,7 @@ use App\Enums\IssueStatus;
 use App\Enums\Visibility;
 use App\Models\Manager;
 use App\Models\Officer;
+use App\Support\ActorDistrictAccess;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -27,7 +28,8 @@ class IndexIssueRequest extends FormRequest
      * Listing issues is available to any authenticated active actor; route
      * middleware enforces authentication. Results are visibility-scoped in the
      * controller: users see visible issues or their own issues (any visibility);
-     * officers and managers see all issues including hidden.
+     * officers and ordinary managers see issues in assigned districts only;
+     * main managers see all issues city-wide.
      */
     public function authorize(): bool
     {
@@ -38,20 +40,31 @@ class IndexIssueRequest extends FormRequest
      * Validation rules for the composable issue list filters and pagination.
      *
      * List results are visibility-scoped per actor type before these filters
-     * (users: visible issues or own issues; officers/managers: all issues).
+     * (users: visible issues or own issues; officers/ordinary managers:
+     * assigned districts; main managers: city-wide).
      * Filters are optional and composable: `district_id`, `department`,
-     * `category_id`, `status`, `assigned_officer_id`, `unassigned`, `mine`, and
-     * `visibility` may be combined to narrow the scoped
-     * result set (AND semantics). The `mine` filter (`mine=1` or equivalent truthy
-     * query values) restricts active users to issues they own (`issues.user_id`);
-     * officers and managers cannot use `mine` and receive 422. The `visibility`
-     * filter (`visible` or `hidden`) narrows officer/manager lists to one visibility
-     * value; when omitted they see all issues. Users cannot use `visibility` and
-     * receive 422. The `status` filter accepts any `IssueStatus` enum value and
-     * is available to all active actors. The `assigned_officer_id` and `unassigned`
-     * filters are available to officers and managers only; users receive 422.
-     * `assigned_officer_id` and `unassigned` are mutually exclusive (422 when both
-     * are set). The `department`
+     * `category_id`, `status`, `assigned_officer_id`, `unassigned`, `mine`,
+     * `participating`, `include_duplicates`, and `visibility` may be combined
+     * to narrow the scoped result set (AND semantics). The `mine` filter
+     * (`mine=1` or equivalent truthy query values) restricts active users to
+     * issues they own (`issues.user_id`), including owned duplicate children;
+     * officers and managers cannot use `mine` and receive 422. The
+     * `participating` filter (`participating=1`) restricts active users to
+     * owned duplicate children where they still participate on the canonical
+     * parent; officers and managers cannot use `participating` and receive 422.
+     * `mine` and `participating` are mutually exclusive (422 when both are set).
+     * The `include_duplicates` filter (`include_duplicates=1`) includes
+     * duplicate child rows for officers and managers; users cannot use it and
+     * receive 422. Default browse excludes others' duplicate children for users
+     * and duplicate children for officers/managers unless opted in. The
+     * `visibility` filter (`visible` or `hidden`) narrows officer/manager lists
+     * to one visibility value; when omitted they see all issues. Users cannot
+     * use `visibility` and receive 422. The `status` filter accepts any
+     * `IssueStatus` enum value and is available to all active actors. The
+     * `assigned_officer_id` and `unassigned` filters are available to officers
+     * and managers only; users receive 422. `assigned_officer_id` and
+     * `unassigned` are mutually exclusive (422 when both are set). The
+     * `department`
      * filter accepts a real department code and
      * is applied against the issue departments relationship with any-match
      * semantics. Pagination is bounded so `per_page` can never exceed a safe
@@ -69,6 +82,8 @@ class IndexIssueRequest extends FormRequest
             'assigned_officer_id' => ['sometimes', 'integer', Rule::exists('officers', 'id')],
             'unassigned' => ['sometimes', Rule::in(['1', 'true', true, 1])],
             'mine' => ['sometimes', Rule::in(['1', 'true', true, 1])],
+            'participating' => ['sometimes', Rule::in(['1', 'true', true, 1])],
+            'include_duplicates' => ['sometimes', Rule::in(['1', 'true', true, 1])],
             'visibility' => ['sometimes', Rule::enum(Visibility::class)],
             'page' => ['sometimes', 'integer', 'min:1'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:'.self::MAX_PER_PAGE],
@@ -88,6 +103,31 @@ class IndexIssueRequest extends FormRequest
     }
 
     /**
+     * Whether the client requested only owned duplicate children with active
+     * canonical participation.
+     */
+    public function wantsParticipating(): bool
+    {
+        if (! $this->filled('participating')) {
+            return false;
+        }
+
+        return in_array($this->input('participating'), ['1', 'true', true, 1], true);
+    }
+
+    /**
+     * Whether the client requested duplicate child rows in officer/manager lists.
+     */
+    public function wantsIncludeDuplicates(): bool
+    {
+        if (! $this->filled('include_duplicates')) {
+            return false;
+        }
+
+        return in_array($this->input('include_duplicates'), ['1', 'true', true, 1], true);
+    }
+
+    /**
      * Whether the client requested only issues with no assigned officer.
      */
     public function wantsUnassigned(): bool
@@ -100,9 +140,10 @@ class IndexIssueRequest extends FormRequest
     }
 
     /**
-     * Reject role-incompatible list filters: `mine` for officers/managers;
-     * `visibility`, `assigned_officer_id`, and `unassigned` for users; and
-     * mutually exclusive assignee filters.
+     * Reject role-incompatible list filters: `mine` and `participating` for
+     * officers/managers; `visibility`, `assigned_officer_id`, `unassigned`, and
+     * `include_duplicates` for users; mutually exclusive `mine` and
+     * `participating`; and mutually exclusive assignee filters.
      */
     public function withValidator(Validator $validator): void
     {
@@ -114,6 +155,32 @@ class IndexIssueRequest extends FormRequest
                 $validator->errors()->add(
                     'mine',
                     'The mine filter is only available to users.',
+                );
+            }
+
+            if ($this->wantsParticipating() && $isOfficerOrManager) {
+                $validator->errors()->add(
+                    'participating',
+                    'The participating filter is only available to users.',
+                );
+            }
+
+            if ($this->wantsIncludeDuplicates() && ! $isOfficerOrManager) {
+                $validator->errors()->add(
+                    'include_duplicates',
+                    'The include duplicates filter is only available to officers and managers.',
+                );
+            }
+
+            if ($this->wantsMine() && $this->wantsParticipating()) {
+                $validator->errors()->add(
+                    'mine',
+                    'The mine filter cannot be used together with the participating filter.',
+                );
+
+                $validator->errors()->add(
+                    'participating',
+                    'The participating filter cannot be used together with the mine filter.',
                 );
             }
 
@@ -148,6 +215,23 @@ class IndexIssueRequest extends FormRequest
                     'unassigned',
                     'The unassigned filter cannot be used together with the assigned officer id filter.',
                 );
+            }
+
+            if (
+                $this->filled('district_id')
+                && (
+                    $actor instanceof Officer
+                    || ($actor instanceof Manager && ! ActorDistrictAccess::isMainManager($actor))
+                )
+            ) {
+                $districtId = $this->integer('district_id');
+
+                if (! in_array($districtId, ActorDistrictAccess::assignedDistrictIds($actor), true)) {
+                    $validator->errors()->add(
+                        'district_id',
+                        'The selected district is not assigned to you.',
+                    );
+                }
             }
         });
     }

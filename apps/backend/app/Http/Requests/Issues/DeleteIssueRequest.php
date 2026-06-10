@@ -37,6 +37,18 @@ class DeleteIssueRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [];
+        return [
+            'leave_participation' => ['sometimes', 'boolean'],
+        ];
+    }
+
+    /**
+     * Whether deleting a duplicate child should also remove canonical participation.
+     *
+     * Defaults to false so participation is kept unless the client opts out.
+     */
+    public function leaveParticipation(): bool
+    {
+        return $this->boolean('leave_participation');
     }
 }

@@ -232,8 +232,8 @@ Table issues {
   longitude            decimal(11,8)
   status               varchar(20)  [not null, default: 'open', note: 'open | in_behandeling | opgelost | gesloten']
   priority             tinyint      [note: 'unsigned nullable; server-afgeleid uit hoofdcategorie priority (lager getal = hogere urgentie); client mag niet schrijven']
-  duplicate_count      int          [not null, default: 0]
-  participant_count    int          [not null, default: 0, note: 'Direct opgehoogd, nachtelijks gereconcilieerd']
+  duplicate_count      int          [not null, default: 0, note: 'Denormalized counter; incremented/decremented under row lock on canonical when children are created/deleted; recalculated on canonical re-parent']
+  participant_count    int          [not null, default: 0, note: 'Denormalized counter; incremented on create/join/duplicate-link and decremented on leave/delete when participation row removed; maintained under row lock on canonical']
   is_flagged           tinyint(1)   [not null, default: 0]
   visibility           varchar(20)  [not null, default: 'visible', note: 'visible | hidden']
   is_anonymous         tinyint(1)   [not null, default: 0, note: 'User_id blijft eigenaar; publiek + BOA zien alleen alias']
@@ -253,9 +253,10 @@ Table issue_participants {
   id               int          [pk, increment]
   issue_id         int          [not null, ref: > issues.id]
   user_id          int          [not null, ref: > users.id]
-  joined_via       varchar(10)  [not null, default: 'manual', note: 'creator | manual | duplicate']
+  joined_via       varchar(10)  [not null, default: 'manual', note: 'creator (normal issue create) | manual (POST join) | duplicate (create with duplicate_of_id)']
   via_issue_id     int          [ref: > issues.id]
   joined_at        datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  is_anonymous     tinyint(1)   [not null, default: 0, note: 'When true, participant list redacts user_id/username; display_name uses issue alias or Deelnemer#NNNNNN']
 
   indexes {
     (issue_id, user_id) [unique]

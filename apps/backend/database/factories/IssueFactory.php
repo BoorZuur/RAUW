@@ -69,4 +69,22 @@ class IssueFactory extends Factory
             'assigned_officer_id' => Officer::factory(),
         ]);
     }
+
+    public function withStatus(IssueStatus $status): static
+    {
+        return $this->state(fn (): array => [
+            'status' => $status,
+            'resolved_at' => in_array($status, [IssueStatus::Resolved, IssueStatus::Closed], true) ? now() : null,
+        ]);
+    }
+
+    public function asDuplicateOf(Issue $canonical): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'duplicate_of_id' => $canonical->id,
+            'district_id' => $canonical->district_id,
+            'category_id' => $canonical->category_id,
+            'visibility' => Visibility::Hidden,
+        ]);
+    }
 }

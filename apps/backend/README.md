@@ -49,7 +49,7 @@ Officers share one shift clock across all devices via `officers.hub_active_until
 
 **Hub reassignment / manager end-shift:** `PATCH /api/officers/{officer}/hub` and `PATCH /api/officers/{officer}/end-shift` clear `hub_active_until` without revoking tokens. **Officer disable** revokes all tokens, closes all sessions, and ends the shift.
 
-**Middleware:** `officer.hub-active` gates Tier C workflow routes by reading `hub_active_until` on the officer row. **Tier B** (browse without an active shift): `GET /api/issues` (embeds `officer_resolution` when present; omits `status_history`), `GET /api/issues/{issue}` (same `officer_resolution` plus `status_history` for officers/managers), `GET /api/issues/{issue}/officer-resolution`, `GET /api/issues/{issue}/officer-updates`, and authenticated attachment downloads (`GET .../attachments/.../download`, `GET .../officer-resolution/attachments/.../download`, `GET .../officer-updates/attachments/.../download`). **Tier C** (hub-active required): `POST .../assign-self`, `POST .../unassign-self`, `PATCH .../status`, officer-resolution `POST`/`PATCH`, and officer-update `POST`/`PATCH`/`DELETE`. Also whitelisted without a shift: profile/auth (`GET/PATCH /api/auth/me`, logout, `POST /api/auth/start-shift`, district self-service), reference reads (hubs, districts, departments, categories), and `GET /api/officer-sessions` (authorization still requires an active manager).
+**Middleware:** `officer.hub-active` gates Tier C workflow routes by reading `hub_active_until` on the officer row. **Tier B** (browse without an active shift): `GET /api/issues` (embeds `officer_resolution` when present; omits `status_history`), `GET /api/issues/{issue}` (same `officer_resolution` plus embedded `status_history` for officers/managers), `GET /api/issues/{issue}/status-history` (paginated dedicated read), `GET /api/issues/{issue}/duplicates`, `GET /api/issues/{issue}/participants`, `GET /api/issues/{issue}/officer-resolution`, and authenticated attachment downloads (`GET .../attachments/.../download`, `GET .../officer-resolution/attachments/.../download`). **Tier C** (hub-active required): `POST .../assign-self`, `POST .../unassign-self`, `PATCH .../status`, `POST .../mark-duplicate`, officer-resolution `POST`/`PATCH`, and `DELETE .../officer-resolution/attachments/{attachment}`. Also whitelisted without a shift: profile/auth (`GET/PATCH /api/auth/me`, logout, `POST /api/auth/start-shift`, district self-service), reference reads (hubs, districts, departments, categories), `GET /api/officers/{officer}` (`officers.show`, any authenticated actor), and `GET /api/officer-sessions` (authorization still requires an active manager).
 
 **Error codes** (`message` + `code`):
 
@@ -143,7 +143,9 @@ Hubs are Rotterdam BOA cluster locations. Each hub has a `radius_meters` column 
 
 New hubs default to inactive on create (`is_active=false`); the seeder activates the four Rotterdam cluster hubs. Deactivate or reactivate hubs via `PATCH` with `is_active`; there is no dedicated `/disable` route. Deactivation returns `422` when active districts or active officers remain assigned (managers assigned to the hub do not block deactivation). Deleting a hub is blocked with `409 Conflict` while districts, officers, or managers still reference it. Setting an actor's hub via `PATCH /api/officers/{officer}/hub`, `PATCH /api/managers/{manager}/hub`, or `PATCH /api/main-managers/{manager}/hub` requires an active hub (`is_active=true`) and clears their district pivot so assignments can be re-established within the new hub. Officer hub reassignment also ends the shared shift without revoking tokens.
 
-Manager creation uses the `departments` table through `department_ids`. Each manager must have at least one valid department, assignments are stored in the `department_manager` pivot table, and manager auth profiles return a `departments` array of compact objects (`id`, `code`, `name`). Officers keep the same `department_ids` / `department_officer` behavior and auth profiles also return departments in a `departments` array. Managers use the `district_manager` pivot, officers use the `district_officer` pivot, and both actor profile types return `districts` arrays of compact objects (`id`, `name`, `postal_prefix`) instead of a singular actor-side `district_id` or `district` object. When an actor has `hub_id`, manager-driven district assignment endpoints only accept districts in that hub; cross-hub IDs return `422`. Active managers and active officers can replace their own district assignments with `PATCH /api/auth/me/districts` and a JSON body such as `{"district_ids":[1,2]}`; an empty array clears all assignments. Active managers can also replace any officer's assignments with `PATCH /api/officers/{officer}/districts` using the same request body. Users do not have district assignments and receive `403 Forbidden` for self-service district updates. Department assignments are not self-service; use manager-protected department assignment endpoints instead.
+Manager creation uses the `departments` table through `department_ids`. Each manager must have at least one valid department, assignments are stored in the `department_manager` pivot table, and manager auth profiles return a `departments` array of compact objects (`id`, `code`, `name`). Officers keep the same `department_ids` / `department_officer` behavior and auth profiles also return departments in a `departments` array. Managers use the `district_manager` pivot, officers use the `district_officer` pivot, and both actor profile types return `districts` arrays of compact objects (`id`, `name`, `postal_prefix`) instead of a singular actor-side `district_id` or `district` object. When an actor has `hub_id`, manager-driven district assignment endpoints only accept districts in that hub; cross-hub IDs return `422`. Active managers and active officers can replace their own district assignments with `PATCH /api/auth/me/districts` and a JSON body such as `{"district_ids":[1,2]}`; an empty array clears all assignments. Active managers can also replace any officer's assignments with `PATCH /api/officers/{officer}/districts` using the same request body; ordinary managers may administer only officers in the same hub (hub mismatch → **404**), while main managers may administer any officer city-wide. Users do not have district assignments and receive `403 Forbidden` for self-service district updates. Department assignments are not self-service; use manager-protected department assignment endpoints instead.
+
+**Officer management:** `GET /api/officers` is hub-scoped for officers and ordinary managers (same `hub_id` only; null hub yields no rows); main managers see all officers city-wide. `GET /api/officers/{officer}` is available to any authenticated active actor with no hub filter (soft-deleted officers return **404**). `PATCH /api/officers/{officer}/disable`, `enable`, `end-shift`, and `districts` require an active manager; ordinary managers may target only same-hub officers (hub mismatch → **404**), main managers may target any officer city-wide. `GET /api/managers/{manager}` and `GET /api/main-managers/{manager}` are available to active officers and managers; route binding limits targets to ordinary vs main managers respectively. Both show endpoints are hub-scoped (actor and target `hub_id` must match; no main-manager city-wide bypass; mismatch → **404**).
 
 District records are managed through `/api/districts`. Each district belongs to one hub (`hub_id` required on create and must reference an active hub). District create requires `center_lat` and `center_lng` (not geocoded server-side). Authenticated actors can list and show districts. Only active main managers can create, update, or delete districts. Deactivate or reactivate districts via `PATCH` with `is_active` (no `/disable` route). Deleting a district is blocked with `409 Conflict` while it is assigned to managers, assigned to officers, or referenced by issues.
 
@@ -153,9 +155,58 @@ Department deletion is blocked while a department is assigned to any manager or 
 
 Categories are readable by any authenticated actor (`GET /api/categories`, `GET /api/categories/{category}`). Create, update, deactivate or reactivate via `PATCH` with `is_active`, and hard delete require an authenticated active main manager; users, officers, ordinary managers, and inactive managers receive `403`. There is no dedicated `/disable` route. Main categories use `priority` for ordering (lower number = higher urgency). Subcategories inherit the parent main category's `priority` for issue urgency and are listed in alphabetical order by `name`. The removed `weight` field is rejected with `422`.
 
-Issues are listed and shown to any authenticated actor. Create, update, and delete require the authenticated active user who owns the issue (`issues.user_id`). Issue departments are derived server-side from the selected category and returned as a read-only `departments` array; clients must not send department values in create or update bodies. Issue `priority` is a nullable unsigned integer on the same scale as main category `priority` (lower number = higher urgency). The server copies the main category's `priority` on create and whenever `category_id` changes; subcategory issues use the parent category's `priority`. Clients must not POST or PATCH `priority`.
+Issues are listed and shown to authenticated actors with visibility scoping before filters: users see visible canonicals, issues they own (any visibility), or canonicals they participate on; officers and ordinary managers see issues in their assigned districts (including hidden issues in those districts); main managers see all issues city-wide. Issues outside an actor's scope return **404** on show (not **403**) to avoid leaking existence. Create, update, and delete require the authenticated active user who owns the issue (`issues.user_id`). Issue departments are derived server-side from the selected category and returned as a read-only `departments` array; clients must not send department values in create or update bodies. Issue `priority` is a nullable unsigned integer on the same scale as main category `priority` (lower number = higher urgency). The server copies the main category's `priority` on create and whenever `category_id` changes; subcategory issues use the parent category's `priority`. Clients must not POST or PATCH `priority`.
 
 Issue attachments may be uploaded or deleted only by the issue owner (active user). Downloads use visibility-only authorization (`IssueVisibilityQuery::canViewIssue`): any actor who may view the issue may download. Users probing hidden issues they do not own receive `404`; other unauthorized actors receive `403`. Files are served only through the authenticated download endpoint, not via public URLs.
+
+### Issue duplicates and participants
+
+Citizens can link a new report to an existing canonical issue instead of creating a standalone duplicate thread. The flow is: **similar-check** → optional **create with `duplicate_of_id`** → optional **join/leave** on the canonical.
+
+**Similar-check** (`POST /api/issues/similar-check`, active users only) scores up to 50 open or `in_behandeling` canonical issues in the requested district and returns the top five in `own_matches` (actor-owned, `linkable: false`) and `matches` (other users, `linkable: true`). Scoring uses category match, recency, postal prefix, and optional GPS distance bands.
+
+**Create duplicate** (`POST /api/issues` with optional `duplicate_of_id`) creates a **hidden** child issue owned by the author (`visibility = hidden`, `duplicate_of_id` set). The canonical `duplicate_count` increments. When the author is not already a participant, a row is added on the canonical with `joined_via = duplicate` and `via_issue_id` pointing at the child; `participant_count` increments. Targets must be open or `in_behandeling` canonical issues visible to the author. Normal creates (no `duplicate_of_id`) add a creator participant row (`joined_via = creator`) with `participant_count = 1`.
+
+**Join / leave** (`POST /api/issues/{issue}/join`, `DELETE /api/issues/{issue}/leave`, active users only) manage manual participation on a **canonical** issue. Join accepts an optional JSON body `{ "is_anonymous": true }` to mark the participation row anonymous (identity redacted in participant list responses). Join on a duplicate child id returns **422** `cannot_join_duplicate_child`. First join returns **201**; repeat joins are idempotent (**200**). Leave resolves child route ids to the canonical parent, removes the participation row, and decrements `participant_count`; not participating returns **422** `not_participant`.
+
+**Participant list** (`GET /api/issues/{canonical}/participants`, officers and managers only) paginates participants oldest-first (`joined_at` then `id`) with `IssueParticipant` payloads. Duplicate child route ids resolve to the canonical parent. Issues outside the actor's district scope return **404**. Anonymous participants expose `is_anonymous: true` and a stable `display_name` alias instead of `user_id`/`username`. **Tier B** — officers may call without an active shared shift.
+
+**List filters:** `participating=1` (users only) lists owned duplicate children where the user still participates on the canonical. `include_duplicates=1` (officers/managers only) includes duplicate child rows. Default browse hides other users' duplicate children for citizens and hides all children for officers/managers unless `include_duplicates=1`. `mine` and `participating` are mutually exclusive.
+
+**Participant visibility:** Users who participate on a canonical they do not own receive status, resolution, counters, and participation context while title, content, location, author, and attachments are redacted (`author: { is_participant: true }`). Owners always see full payloads for issues they own; officers and managers are never redacted.
+
+**Delete semantics** (`DELETE /api/issues/{issue}`, optional JSON body `{ "leave_participation": false }`):
+
+| Target | Behavior |
+|--------|----------|
+| Duplicate child | Decrements canonical `duplicate_count`. `leave_participation: false` (default) keeps canonical participation; `true` removes the participation row and decrements `participant_count`. |
+| Canonical with children | Promotes oldest child to canonical, re-parents siblings, migrates participants, recalculates counters. |
+| Canonical without children | Simple hard delete. |
+
+**Officer duplicates list** (`GET /api/issues/{canonical}/duplicates`, officers and managers only) paginates duplicate children oldest-first with full `IssueResource` payloads. District-scoped like issue browse: officers and ordinary managers see duplicates only when the canonical is in an assigned district; main managers are city-wide. Issues outside scope return **404**. Child route ids return **422** `issue_not_canonical`; users receive **403**. **Tier B** — officers may call without an active shared shift.
+
+**Officer mark-duplicate** (`POST /api/issues/{issue}/mark-duplicate`, officers and managers only) links an existing **child** issue (route `{issue}`) to a canonical target (`duplicate_of_id` in body). Officers must be assigned to both child and canonical districts; managers rely on `IssueVisibilityQuery`. If `duplicate_of_id` points at a duplicate child, the server resolves to the canonical parent first. Child must be linkable: status `open` or `in_behandeling`, unassigned, no officer resolution, not already a duplicate child, and no duplicate children of its own. Canonical must be `open` or `in_behandeling`. **Tier C** — officers need an active shared shift (`hub_active_required` without one).
+
+| Branch | When | Server behavior | Response body (`IssueResource`) |
+|--------|------|-----------------|-------------------------------|
+| Re-parent | `child.user_id !== canonical.user_id` | Set child `duplicate_of_id`, `visibility = hidden`; increment canonical `duplicate_count`; add child owner as canonical participant (`joined_via = duplicate`) when missing | **Child** issue (hidden, still exists) |
+| Same-owner merge | `child.user_id === canonical.user_id` | Migrate participants onto canonical (dedupe by `user_id`), recalculate `participant_count`, hard-delete child | **Canonical** issue (child id gone) |
+
+Both branches return **200**. Missing or invisible child/target/canonical → **404** `duplicate_target_not_found`. Linkability conflicts → **422** (`issue_not_linkable`, `issue_is_duplicate_child`, `issue_has_duplicates`, `issue_not_matchable`, `cannot_duplicate_self`).
+
+**Structured error codes (duplicates and participants)**
+
+| Code | HTTP | When |
+|------|------|------|
+| `duplicate_target_not_found` | 404 | `duplicate_of_id` target missing or not visible to author |
+| `issue_not_matchable` | 422 | Target canonical not `open` or `in_behandeling` |
+| `cannot_duplicate_self` | 422 | Author owns the canonical target |
+| `cannot_join_duplicate_child` | 422 | Join attempted on duplicate child id |
+| `not_participant` | 422 | Leave when not participating on canonical |
+| `issue_not_canonical` | 422 | Officer duplicates list on duplicate child id |
+| `issue_is_duplicate_child` | 422 | Operation requires canonical issue |
+| `issue_not_linkable` | 422 | Child not linkable (status, assignee, or resolution) |
+| `issue_has_duplicates` | 422 | Child has duplicate children |
 
 ### Officer issue workflows
 
@@ -163,7 +214,7 @@ Officers may **browse** issues and resolution attachments without an active shar
 
 Officer write paths use a **validate-after-lock** pattern: cheap visibility and district checks run before the transaction; assignee, transition, assignability, and duplicate-resolution checks run on the row after `lockForUpdate()`. Officer-resolution attachment uploads (POST/PATCH) enforce the cumulative cap (max **3**) and perform disk I/O inside the same locked transaction so concurrent requests cannot exceed the limit.
 
-**District scoping:** An officer may act only on issues whose `district_id` matches one of their `district_officer` pivot assignments. Otherwise **403** `officer_not_in_district`. The demo officer is seeded in the **Cool** wijk (`district_id: 1`).
+**District scoping:** Officers and ordinary managers may browse and act only on issues whose `district_id` matches one of their `district_officer` or `district_manager` pivot assignments (including hidden issues in those districts). Main managers (`is_main_manager = true`) are city-wide for browse and workflows. Officer workflow writes outside assigned districts return **403** `officer_not_in_district`; browse/show/duplicates/participants outside scope return **404**. The demo officer is seeded in the **Cool** wijk (`district_id: 1`).
 
 **Self-assign / unassign**
 
@@ -179,6 +230,8 @@ Officer write paths use a **validate-after-lock** pattern: cheap visibility and 
 | Method | Path | Who | Notes |
 |--------|------|-----|-------|
 | `PATCH` | `/api/issues/{issue}/status` | Assigned active officer | Body: `{ "status": "...", "note": "..." }`. Directed transitions only: `open` → `in_behandeling`; `in_behandeling` → `opgelost`; `opgelost` → `gesloten`. Same status or invalid transitions → **422**. Sets `resolved_at` on first transition to `opgelost`. Appends one status history row (no GPS coordinates). |
+| `POST` | `/api/issues/{issue}/mark-duplicate` | Active officer or manager | Body: `{ "duplicate_of_id": <canonical id> }`. Re-parent (different owners) returns child; same-owner merge returns canonical. **Tier C** for officers. See duplicates section for branch details. |
+| `GET` | `/api/issues/{issue}/status-history` | Active officer or manager | Paginated `IssueStatusHistoryResource` (`per_page` default 20, max 100), newest first. Child route ids resolve to canonical. **Tier B**. |
 
 **Officer resolution (field report)**
 
@@ -190,6 +243,7 @@ Distinct from user satisfaction feedback in `issue_resolutions`. At most **one**
 | `POST` | `/api/issues/{issue}/officer-resolution` | Current assignee (multipart) | **409** `officer_resolution_exists` on duplicate; use PATCH to update. **422** `issue_closed` when status is `gesloten`; `opgelost` remains writable. Attachment cap enforcement and upload disk I/O run inside the locked transaction. |
 | `PATCH` | `/api/issues/{issue}/officer-resolution` | Current assignee (multipart) | Update title/content; optional `remove_attachment_ids` and new `files`. `officer_id` is overwritten with the editing officer (last editor). **422** `issue_closed` when status is `gesloten`; `opgelost` remains writable. **422** on `remove_attachment_ids` when ids do not belong to the resolution. Attachment cap enforcement and upload disk I/O run inside the locked transaction. |
 | `GET` | `/api/issues/{issue}/officer-resolution/attachments/{attachment}/download` | Any actor who can view the issue (Tier B) | Visibility-only auth (`IssueVisibilityQuery::canViewIssue`, Q8 / D15-A) in `authorize()`; users probing hidden issues they do not own receive **404**; other unauthorized actors receive **403**. Attachment must belong to the route resolution; missing backing file → **404**. Streams from non-public local storage. |
+| `DELETE` | `/api/issues/{issue}/officer-resolution/attachments/{attachment}` | Current assignee only | Removes attachment row and backing file. Repeat DELETE → **404**. **Tier C** — officers need an active shared shift. |
 
 Attachment limits: up to **3** images (`jpg`, `jpeg`, `png`, `gif`, `webp`) per resolution, **5 MB** each. PATCH validates `existing − removals + new_files ≤ 3` under row lock (including upload disk I/O). Uploads are content-validated (Symfony MIME sniff for images; issue user attachments also accept PDF via `%PDF-` magic bytes). Invalid `remove_attachment_ids` (not owned by the resolution) return **422** with a field error on `remove_attachment_ids`.
 
@@ -269,6 +323,10 @@ After hub login as `demo.officer@example.com` (Cool wijk / `district_id: 1`):
 11. **Resolution read** — User, officer, manager who can view issue → GET `/officer-resolution` 200; hidden issue → 404.
 12. **Download** — Same visibility as show.
 13. **Browse without shift** — Officer with expired shift → `GET /api/issues` and `GET /api/issues/{id}` still 200; Tier C writes → 403 `hub_active_required`.
+14. **Status history (paginated)** — `GET /api/issues/{id}/status-history?page=1&per_page=20` → 200, newest first; duplicate child route id returns canonical history. Works without shift (Tier B).
+15. **Mark duplicate (re-parent)** — `POST /api/issues/{child}/mark-duplicate` with `{ "duplicate_of_id": <canonical> }` for different owners → 200 child `IssueResource` with `duplicate_of_id` set and `visibility: hidden`.
+16. **Mark duplicate (merge)** — Same-owner child + canonical → 200 canonical `IssueResource`; child id returns 404 on subsequent GET.
+17. **Resolution attachment delete** — Assignee `DELETE /api/issues/{id}/officer-resolution/attachments/{attachment}` → 204; repeat → 404. Requires hub-active (Tier C).
 
 For manual API testing, import the Postman collection and local environment from [`../../docs/postman`](../../docs/postman/README.md):
 
