@@ -19,10 +19,19 @@ class StoreCommunityPostAttachmentRequest extends FormRequest
             return false;
         }
 
-        // Only the officer who created the post can add attachments
-        return $this->user() instanceof \App\Models\Officer
-            && $this->user()->is_active
-            && $this->user()->id === $post->officer_id;
+        // Only the officer who created the post or an officer in the post's district can add attachments
+        if (! $this->user() instanceof \App\Models\Officer || ! $this->user()->is_active) {
+            return false;
+        }
+        
+        /** @var \App\Models\Officer $officer */
+        $officer = $this->user();
+        
+        if ($post->district_id === null) {
+            return $officer->id === $post->officer_id;
+        }
+
+        return \App\Support\OfficerCommunityPostDistrictAccess::officerInPostDistrict($officer, $post);
     }
 
     /**

@@ -34,7 +34,7 @@ class CommunityPostController extends Controller
             $query->where('district_id', $request->input('district_id'));
         }
 
-        if ($request->input('saved_only', false) && $actor instanceof \App\Models\User) {
+        if ($request->boolean('saved_only') && $actor instanceof \App\Models\User) {
             $query->whereHas('savedByUsers', function ($q) use ($actor) {
                 $q->where('user_id', $actor->id);
             });
@@ -71,7 +71,7 @@ class CommunityPostController extends Controller
         $officer = $request->user();
 
         // Check if officer can post in this district (must be assigned)
-        if (! $officer->districts()->where('id', $request->input('district_id'))->exists()) {
+        if (! $officer->districts()->where('districts.id', $request->input('district_id'))->exists()) {
             return response()->json([
                 'message' => 'You are not assigned to this district.',
             ], Response::HTTP_FORBIDDEN);
@@ -113,7 +113,7 @@ class CommunityPostController extends Controller
             // Check if officer is assigned to new district
             /** @var \App\Models\Officer $officer */
             $officer = $request->user();
-            if (! $officer->districts()->where('id', $request->input('district_id'))->exists()) {
+            if (! $officer->districts()->where('districts.id', $request->input('district_id'))->exists()) {
                 return response()->json([
                     'message' => 'You are not assigned to this district.',
                 ], Response::HTTP_FORBIDDEN);
@@ -137,6 +137,10 @@ class CommunityPostController extends Controller
     public function updateVisibility(UpdateCommunityPostVisibilityRequest $request, CommunityPost $communityPost)
     {
         $communityPost->update($request->safe()->only('visibility'));
+
+        if ($communityPost->visibility->value === \App\Enums\Visibility::Hidden->value) {
+            $communityPost->savedByUsers()->detach();
+        }
 
         $communityPost->refresh()->load(['officer', 'district', 'attachments'])->loadCount('savedByUsers as saved_count');
 

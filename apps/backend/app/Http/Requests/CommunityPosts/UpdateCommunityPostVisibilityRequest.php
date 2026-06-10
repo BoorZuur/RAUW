@@ -21,7 +21,10 @@ class UpdateCommunityPostVisibilityRequest extends FormRequest
 
         // Managers can update visibility of any post, officers only their own
         if ($this->user() instanceof \App\Models\Manager && $this->user()->is_active) {
-            return true;
+            if ($this->user()->is_main_manager) {
+                return true;
+            }
+            return $this->user()->districts()->where('districts.id', $post->district_id)->exists();
         }
 
         if ($this->user() instanceof \App\Models\Officer && $this->user()->is_active) {

@@ -24,7 +24,7 @@ class CommunityPostResource extends JsonResource
                 'name' => $this->district->name,
                 'postal_prefix' => $this->district->postal_prefix,
             ]),
-            'officer' => clone $this->whenLoaded('officer', fn () => [
+            'officer' => $this->whenLoaded('officer', fn () => [
                 'id' => $this->officer->id,
                 'username' => $this->officer->username,
                 'badge_number' => $this->officer->badge_number,

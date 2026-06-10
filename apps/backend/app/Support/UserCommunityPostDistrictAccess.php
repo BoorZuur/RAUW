@@ -10,35 +10,24 @@ use Symfony\Component\HttpFoundation\Response;
 class UserCommunityPostDistrictAccess
 {
     /**
-     * @var array<string, array<int>>
-     */
-    private static array $enabledDistrictIdsCache = [];
-
-    /**
      * Get IDs of all active feed districts for this user.
      *
      * @return array<int>
      */
     public static function enabledDistrictIds(User $user): array
     {
-        $cacheKey = $user->getKey();
-
-        if (! array_key_exists($cacheKey, self::$enabledDistrictIdsCache)) {
-            if ($user->relationLoaded('feedDistricts')) {
-                self::$enabledDistrictIdsCache[$cacheKey] = $user->feedDistricts
-                    ->where('is_active', true)
-                    ->pluck('id')
-                    ->map(static fn ($id): int => (int) $id)
-                    ->all();
-            } else {
-                self::$enabledDistrictIdsCache[$cacheKey] = array_map(
-                    'intval',
-                    $user->feedDistricts()->where('districts.is_active', true)->pluck('districts.id')->all()
-                );
-            }
+        if ($user->relationLoaded('feedDistricts')) {
+            return $user->feedDistricts
+                ->where('is_active', true)
+                ->pluck('id')
+                ->map(static fn ($id): int => (int) $id)
+                ->all();
         }
 
-        return self::$enabledDistrictIdsCache[$cacheKey];
+        return array_map(
+            'intval',
+            $user->feedDistricts()->where('districts.is_active', true)->pluck('districts.id')->all()
+        );
     }
 
     /**

@@ -36,7 +36,7 @@ class CommunityPostAttachmentController extends Controller
             $path = $file->store('community-post-attachments', 'local');
 
             $attachment = $communityPost->attachments()->create([
-                'file_url' => $path,
+                'file_path' => $path,
                 'original_name' => $file->getClientOriginalName(),
                 'file_type' => $file->getClientMimeType(),
                 'file_size' => $file->getSize(),
@@ -57,12 +57,12 @@ class CommunityPostAttachmentController extends Controller
             abort(Response::HTTP_NOT_FOUND);
         }
 
-        if (! Storage::disk('local')->exists($attachment->file_url)) {
+        if (! Storage::disk('local')->exists($attachment->file_path)) {
             abort(Response::HTTP_NOT_FOUND, 'The requested file could not be found on disk.');
         }
 
         return Storage::disk('local')->download(
-            $attachment->file_url,
+            $attachment->file_path,
             $attachment->original_name,
             ['Content-Type' => $attachment->file_type]
         );
@@ -78,8 +78,8 @@ class CommunityPostAttachmentController extends Controller
         }
 
         // Remove from storage if it exists
-        if (Storage::disk('local')->exists($attachment->file_url)) {
-            Storage::disk('local')->delete($attachment->file_url);
+        if (Storage::disk('local')->exists($attachment->file_path)) {
+            Storage::disk('local')->delete($attachment->file_path);
         }
 
         $attachment->delete();
