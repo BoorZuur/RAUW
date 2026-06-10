@@ -423,4 +423,9 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     Route::match(['put', 'patch'], 'community-posts/{community_post}', [\App\Http\Controllers\CommunityPostController::class, 'update'])->name('community-posts.update');
     Route::delete('community-posts/{community_post}', [\App\Http\Controllers\CommunityPostController::class, 'destroy'])->name('community-posts.destroy');
     Route::patch('community-posts/{community_post}/visibility', [\App\Http\Controllers\CommunityPostController::class, 'updateVisibility'])->name('community-posts.visibility.update');
+
+    // Community Post Attachments
+    Route::post('community-posts/{community_post}/attachments', [\App\Http\Controllers\CommunityPostAttachmentController::class, 'store'])->name('community-posts.attachments.store');
+    Route::get('community-posts/{community_post}/attachments/{attachment}/download', [\App\Http\Controllers\CommunityPostAttachmentController::class, 'download'])->name('community-posts.attachments.download');
+    Route::delete('community-posts/{community_post}/attachments/{attachment}', [\App\Http\Controllers\CommunityPostAttachmentController::class, 'destroy'])->name('community-posts.attachments.destroy');
 });
