@@ -28,6 +28,12 @@ export default function StoryCard({ issue, onClick }) {
                 <p className="font-body text-secondary-text text-sm line-clamp-2">{previewText}</p>
                 <div className="flex items-center gap-2 text-[9px] font-black text-secondary-text uppercase tracking-widest mt-2 border-t border-primary-border pt-3">
                     <span className="truncate">{issue.address || 'Locatie onbekend'}</span>
+                    {issue.district?.name && (
+                        <>
+                            <span>•</span>
+                            <span className="truncate">{issue.district.name}</span>
+                        </>
+                    )}
                     <span>•</span>
                     <span>{new Date(issue.created_at).toLocaleDateString()}</span>
                 </div>

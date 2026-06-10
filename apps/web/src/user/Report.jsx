@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom'; // Toegevoegd
 import U_Nav from '../components/U_Nav';
 import NativeLeafletMap from '../components/MapComponent.jsx';
-import Footer from '../components/Footer.jsx'
+import Footer from '../components/Footer.jsx';
 
 const apiClient = axios.create({
     baseURL: 'http://localhost:8001',
@@ -18,12 +19,22 @@ apiClient.interceptors.request.use(config => {
     return config;
 });
 
+const getDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371e3;
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
 export default function ReportIssue() {
+    const navigate = useNavigate(); // TOEGEVOEGD
     const [formData, setFormData] = useState({
         title: '',
         category_id: 1,
         address: '',
-        neighborhood: '',
         content: '',
         is_anonymous: false
     });
@@ -43,8 +54,10 @@ export default function ReportIssue() {
             apiClient.get('/api/districts')
         ])
             .then(([catRes, distRes]) => {
-                setCategories(Array.isArray(catRes.data) ? catRes.data : (catRes.data.data || []));
-                setDistricts(Array.isArray(distRes.data) ? distRes.data : (distRes.data.data || []));
+                const catData = Array.isArray(catRes.data) ? catRes.data : (catRes.data.data || []);
+                const distData = Array.isArray(distRes.data) ? distRes.data : (distRes.data.data || []);
+                setCategories(catData);
+                setDistricts(distData);
             })
             .catch(err => {
                 console.error("API Error details:", err.response || err);
@@ -62,58 +75,86 @@ export default function ReportIssue() {
         if (!formData.address) return;
         try {
             const response = await axios.get(`https://nominatim.openstreetmap.org/search`, {
-                params: {
-                    q: `${formData.address}, Rotterdam`,
-                    format: 'json',
-                    addressdetails: 1,
-                    limit: 1
-                }
+                params: { q: `${formData.address}, Rotterdam`, format: 'json', limit: 1 }
             });
 
             if (response.data && response.data.length > 0) {
                 const result = response.data[0];
                 const lat = parseFloat(result.lat);
                 const lon = parseFloat(result.lon);
-                const neighborhood = result.address.suburb || result.address.neighbourhood || "Onbekend";
 
                 setPosition({ lat, lng: lon });
+
+                const neighborhood = result.address?.suburb || result.address?.neighbourhood || "";
                 setFormData(prev => ({ ...prev, neighborhood }));
-            } else {
-                setError("Adres niet gevonden op de kaart.");
             }
         } catch (err) {
-            console.error("Geocoding fout:", err);
             setError("Kon locatie niet automatisch ophalen.");
         }
     };
 
     const handleSubmit = async () => {
-        if (!position) {
-            setError("Selecteer een locatie op de kaart of vul een adres in.");
+        // 1. Zorg voor een actuele positie: als die er niet is, probeer geocode direct als backup
+        let activePosition = position;
+
+        if (!activePosition && formData.address) {
+            try {
+                const response = await axios.get(`https://nominatim.openstreetmap.org/search`, {
+                    params: { q: `${formData.address}, Rotterdam`, format: 'json', limit: 1 }
+                });
+
+                if (response.data && response.data.length > 0) {
+                    activePosition = {
+                        lat: parseFloat(response.data[0].lat),
+                        lng: parseFloat(response.data[0].lon)
+                    };
+                    // Update de state zodat de marker ook op de kaart verschijnt
+                    setPosition(activePosition);
+                }
+            } catch (err) {
+                setError("Kon adres niet automatisch vinden, controleer het adres.");
+                setShowConfirm(false);
+                return;
+            }
+        }
+
+        // 2. Als er na de backup check nog steeds geen positie is, breek af
+        if (!activePosition) {
+            setError("Selecteer een locatie op de kaart of vul een geldig adres in.");
             setShowConfirm(false);
             return;
         }
 
-        console.log("Input buurt:", formData.neighborhood);
-        console.log("Beschikbare districten:", districts.map(d => d.name));
+        // 3. Geofencing check met de verruimde marge (gebruik activePosition)
+        let closestDistrict = null;
+        let minDistance = Infinity;
 
-        const isValidDistrict = districts.some(d =>
-            formData.neighborhood.toLowerCase().includes(d.name.toLowerCase()) ||
-            d.name.toLowerCase().includes(formData.neighborhood.toLowerCase())
-        );
-        if (!isValidDistrict) {
-            setError("De ingevulde buurt is niet geldig of niet bekend in ons systeem.");
+        districts.forEach(d => {
+            const dist = getDistance(activePosition.lat, activePosition.lng, d.center_lat, d.center_lng);
+            const searchRadius = d.radius_meters + 2000;
+
+            if (dist < searchRadius && dist < minDistance) {
+                minDistance = dist;
+                closestDistrict = d;
+            }
+        });
+
+        if (!closestDistrict) {
+            setError("De gekozen locatie valt buiten een bekend wijkgebied.");
             setShowConfirm(false);
             return;
         }
 
+        // 4. Data voorbereiden voor verzending
         const data = new FormData();
         Object.keys(formData).forEach(key => data.append(key, formData[key]));
-        data.append('latitude', position.lat);
-        data.append('longitude', position.lng);
+        data.append('latitude', activePosition.lat);
+        data.append('longitude', activePosition.lng);
         data.append('is_anonymous', formData.is_anonymous ? 1 : 0);
         data.append('category_id', parseInt(formData.category_id));
-        data.append('district_id', 1);
+
+        data.set('district_id', closestDistrict.id);
+        data.set('neighborhood', closestDistrict.name);
 
         images.forEach((file, index) => {
             data.append(`images[${index}]`, file);
@@ -123,15 +164,11 @@ export default function ReportIssue() {
             await apiClient.post('/api/issues', data, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
-
             setSuccess(true);
             setShowConfirm(false);
+            setTimeout(() => navigate('/feed'), 2000);
         } catch (err) {
-            if (err.response && err.response.status === 422) {
-                setError("Controleer de velden: " + JSON.stringify(err.response.data.errors));
-            } else {
-                setError("Verzenden mislukt: " + (err.response?.data?.message || err.message));
-            }
+            setError("Verzenden mislukt: " + (err.response?.data?.message || err.message));
             setShowConfirm(false);
         }
     };
@@ -155,8 +192,7 @@ export default function ReportIssue() {
                 <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                     <div className="bg-primary-bg-cards p-8 rounded-3xl border-2 border-primary-border shadow-2xl max-w-sm w-full text-center">
                         <h3 className="text-xl font-black uppercase mb-4">Verzonden!</h3>
-                        <p className="text-sm opacity-70 mb-8">Je melding is succesvol ontvangen.</p>
-                        <button onClick={() => { setSuccess(false); window.location.reload(); }} className="w-full p-3 bg-secondary-accent text-white rounded-xl font-black uppercase tracking-widest">Sluiten</button>
+                        <p className="text-sm opacity-70 mb-8">Je melding is succesvol ontvangen. Je wordt omgeleid...</p>
                     </div>
                 </div>
             )}
@@ -175,75 +211,52 @@ export default function ReportIssue() {
                     {error && <p className="text-red-600 font-bold mb-4 p-3 bg-red-100 rounded-lg text-sm">{error}</p>}
 
                     <div className="space-y-4">
-                        {/* Titel */}
                         <div>
                             <label className="block text-[9px] font-black mb-1 uppercase tracking-widest text-secondary-text">Titel</label>
-                            <input className="w-full p-3 bg-primary-bg border-2 border-primary-border rounded-lg focus:border-primary-accent outline-none text-sm"
+                            <input className="w-full p-3 bg-primary-bg border-2 border-primary-border rounded-lg text-sm"
                                    value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
                         </div>
 
-                        {/* Categorie */}
                         <div className="relative">
                             <label className="block text-[9px] font-black mb-1 uppercase tracking-widest text-secondary-text">Categorie</label>
-                            <div onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="w-full p-3 bg-primary-bg border-2 border-primary-border rounded-lg cursor-pointer flex justify-between items-center hover:border-primary-accent text-sm">
+                            <div onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="w-full p-3 bg-primary-bg border-2 border-primary-border rounded-lg cursor-pointer flex justify-between items-center text-sm">
                                 <span>{getSelectedCategoryName()}</span>
-                                <span>▼</span>
                             </div>
                             {isDropdownOpen && (
                                 <div className="absolute z-50 w-full mt-1 max-h-48 overflow-y-auto bg-primary-bg border-2 border-primary-border rounded-lg p-1 shadow-xl text-xs">
                                     {categories.map(mainCat => (
-                                        <React.Fragment key={mainCat.id}>
-                                            <div onClick={() => { setFormData({...formData, category_id: mainCat.id}); setIsDropdownOpen(false); }} className="p-2 font-black uppercase cursor-pointer hover:bg-primary-border/20 rounded">
-                                                {mainCat.name}
-                                            </div>
-                                            {mainCat.children?.map(sub => (
-                                                <div key={sub.id} onClick={() => { setFormData({...formData, category_id: sub.id}); setIsDropdownOpen(false); }} className="pl-4 p-2 cursor-pointer hover:bg-primary-border/20 rounded">
-                                                    ↳ {sub.name}
-                                                </div>
-                                            ))}
-                                        </React.Fragment>
+                                        <div key={mainCat.id} onClick={() => { setFormData({...formData, category_id: mainCat.id}); setIsDropdownOpen(false); }} className="p-2 font-black uppercase cursor-pointer hover:bg-primary-border/20 rounded">
+                                            {mainCat.name}
+                                        </div>
                                     ))}
                                 </div>
                             )}
                         </div>
 
-                        {/* Adres & Buurt */}
-                        <div className="grid grid-cols-2 gap-3">
+                        <div>
                             <div>
                                 <label className="block text-[9px] font-black mb-1 uppercase tracking-widest text-secondary-text">Adres</label>
                                 <input className="w-full p-3 bg-primary-bg border-2 border-primary-border rounded-lg text-sm"
                                        value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} onBlur={handleGeocode} />
                             </div>
-                            <div>
-                                <label className="block text-[9px] font-black mb-1 uppercase tracking-widest text-secondary-text">Buurt</label>
-                                <input className="w-full p-3 bg-primary-bg border-2 border-primary-border rounded-lg text-sm"
-                                       value={formData.neighborhood} onChange={e => setFormData({...formData, neighborhood: e.target.value})} />
-                            </div>
                         </div>
 
-                        {/* Context */}
-                        <textarea className="w-full p-3 h-20 bg-primary-bg border-2 border-primary-border rounded-lg text-sm" placeholder="Context & Behoefte" value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} />
-
-                        {/* Foto Knop */}
                         <div>
-                            <label className="block text-[9px] font-black mb-1 uppercase tracking-widest text-secondary-text">Foto's (Optioneel)</label>
-                            <label className="flex items-center justify-center gap-2 w-full p-3 border-2 border-dashed border-primary-border rounded-lg cursor-pointer hover:border-primary-accent hover:bg-primary-border/10 transition-all">
-                                <span className="text-xs font-bold uppercase tracking-widest">Bestanden selecteren</span>
-                                <input type="file" multiple accept="image/*" className="hidden" onChange={(e) => setImages(Array.from(e.target.files))} />
-                            </label>
-                            {images.length > 0 && <p className="text-[10px] mt-1 text-secondary-text">{images.length} bestand(en) geselecteerd</p>}
+                            <label className="block text-[9px] font-black mb-1 uppercase tracking-widest text-secondary-text">Uitleg</label>
+                            <textarea className="w-full p-3 h-20 bg-primary-bg border-2 border-primary-border rounded-lg text-sm"
+                                      placeholder="Context & Behoefte" value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} />
                         </div>
 
-                        {/* Anoniem Switch */}
-                        <div onClick={() => setFormData({...formData, is_anonymous: !formData.is_anonymous})}
-                             className={`cursor-pointer p-3 border-2 rounded-lg flex items-center justify-between ${formData.is_anonymous ? 'border-secondary-accent bg-secondary-accent/10' : 'border-primary-border'}`}>
-                            <span className="font-bold text-xs">Anoniem signaleren</span>
-                            <div className={`w-8 h-4 rounded-full relative ${formData.is_anonymous ? 'bg-secondary-accent' : 'bg-primary-border'}`}>
-                                <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${formData.is_anonymous ? 'left-4.5' : 'left-0.5'}`} />
-                            </div>
+                        <div>
+                            <label className="block text-[9px] font-black mb-1 uppercase tracking-widest text-secondary-text">Foto (optioneel)</label>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => setImages(Array.from(e.target.files))}
+                                className="w-full p-2 bg-primary-bg border-2 border-primary-border rounded-lg text-sm file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-black file:uppercase file:bg-primary-text file:text-primary-bg hover:file:cursor-pointer"
+                            />
                         </div>
 
-                        {/* Verzenden */}
                         <button
                             onClick={() => setShowConfirm(true)}
                             className="w-full h-10 mt-2 bg-primary-text text-primary-bg hover:bg-primary-accent font-black uppercase text-xs tracking-widest rounded-lg transition-all shadow-md active:scale-[0.98]"
@@ -253,9 +266,7 @@ export default function ReportIssue() {
                     </div>
                 </section>
             </main>
-
             <Footer/>
-
         </div>
     );
 }

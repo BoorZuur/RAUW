@@ -29,7 +29,9 @@ export default function StoryDetailModal({ issue, onClose }) {
 
                 <h2 className="font-headline text-3xl font-black text-primary-text mb-2">{issue.title}</h2>
                 <div className="text-xs font-label text-secondary-text mb-8 uppercase tracking-widest">
-                    {issue.address} • {new Date(issue.created_at).toLocaleDateString()}
+                    {issue.address}
+                    {issue.district?.name && ` • ${issue.district.name}`}
+                    • {new Date(issue.created_at).toLocaleDateString()}
                 </div>
 
                 <p className="font-body text-primary-text leading-relaxed mb-8 bg-primary-bg-cards p-6 rounded-2xl border border-primary-border">
