@@ -20,7 +20,7 @@ export default function Login() {
                 localStorage.setItem('auth_token', response.data.access_token);
             }
             localStorage.setItem('user_type', 'user');
-            navigate('/account');
+            navigate('/feed');
         } catch (err) { setError('Inloggen mislukt.'); }
     };
 

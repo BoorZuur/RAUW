@@ -12,11 +12,11 @@
  */
 return [
     // Cluster Centrum (6)
-    ['name' => 'Cool', 'hub' => 'Cluster Centrum', 'postal_prefix' => '3012', 'center_lat' => 51.91712, 'center_lng' => 4.47834, 'radius_meters' => 1200],
+    ['name' => 'Delfshaven', 'hub' => 'Cluster Centrum', 'postal_prefix' => '3012', 'center_lat' => 51.91712, 'center_lng' => 4.47834, 'radius_meters' => 1200],
     ['name' => 'Stadsdriehoek', 'hub' => 'Cluster Centrum', 'postal_prefix' => '3011', 'center_lat' => 51.92268, 'center_lng' => 4.47918, 'radius_meters' => 900],
     ['name' => 'Oude Westen', 'hub' => 'Cluster Centrum', 'postal_prefix' => '3014', 'center_lat' => 51.91852, 'center_lng' => 4.46148, 'radius_meters' => 1000],
     ['name' => 'Dijkzigt', 'hub' => 'Cluster Centrum', 'postal_prefix' => '3015', 'center_lat' => 51.91048, 'center_lng' => 4.46582, 'radius_meters' => 1100],
-    ['name' => 'CS-kwartier', 'hub' => 'Cluster Centrum', 'postal_prefix' => '3013', 'center_lat' => 51.92482, 'center_lng' => 4.46952, 'radius_meters' => 800],
+    ['name' => 'Centrum', 'hub' => 'Cluster Centrum', 'postal_prefix' => '3013', 'center_lat' => 51.92482, 'center_lng' => 4.46952, 'radius_meters' => 800],
     ['name' => 'Scheepvaartkwartier', 'hub' => 'Cluster Centrum', 'postal_prefix' => '3016', 'center_lat' => 51.90578, 'center_lng' => 4.48318, 'radius_meters' => 1500],
 
     // Cluster Noord (36)
@@ -83,6 +83,18 @@ return [
     ['name' => 'Hoek van Holland', 'hub' => 'Cluster Buitengebieden', 'postal_prefix' => '3151', 'center_lat' => 51.97882, 'center_lng' => 4.12882, 'radius_meters' => 2500],
     ['name' => 'Rozenburg', 'hub' => 'Cluster Buitengebieden', 'postal_prefix' => '3181', 'center_lat' => 51.89882, 'center_lng' => 4.24882, 'radius_meters' => 2200],
     ['name' => 'Pernis', 'hub' => 'Cluster Buitengebieden', 'postal_prefix' => '3195', 'center_lat' => 51.88882, 'center_lng' => 4.38882, 'radius_meters' => 1800],
-    ['name' => 'Hoogvliet', 'hub' => 'Cluster Buitengebieden', 'postal_prefix' => '3191', 'center_lat' => 51.85882, 'center_lng' => 4.35882, 'radius_meters' => 2000],
+    ['name' => 'Boomgaardshoek', 'hub' => 'Cluster Buitengebieden', 'postal_prefix' => '3192', 'center_lat' => 51.85450, 'center_lng' => 4.34150, 'radius_meters' => 600],
+    ['name' => 'Meeuwenplaat', 'hub' => 'Cluster Buitengebieden', 'postal_prefix' => '3193', 'center_lat' => 51.86250, 'center_lng' => 4.37250, 'radius_meters' => 600],
+    ['name' => 'Zalmplaat', 'hub' => 'Cluster Buitengebieden', 'postal_prefix' => '3193', 'center_lat' => 51.86950, 'center_lng' => 4.39850, 'radius_meters' => 700],
+    ['name' => 'Middengebied', 'hub' => 'Cluster Buitengebieden', 'postal_prefix' => '3191', 'center_lat' => 51.85950, 'center_lng' => 4.35950, 'radius_meters' => 500],
+    ['name' => 'Oudeland', 'hub' => 'Cluster Buitengebieden', 'postal_prefix' => '3191', 'center_lat' => 51.86350, 'center_lng' => 4.35450, 'radius_meters' => 600],
+    ['name' => 'Nieuweland', 'hub' => 'Cluster Buitengebieden', 'postal_prefix' => '3191', 'center_lat' => 51.85550, 'center_lng' => 4.36450, 'radius_meters' => 600],
+    ['name' => 'Westpunt', 'hub' => 'Cluster Buitengebieden', 'postal_prefix' => '3193', 'center_lat' => 51.86750, 'center_lng' => 4.38550, 'radius_meters' => 700],
+    ['name' => 'Hoogvliet Noord', 'hub' => 'Cluster Buitengebieden', 'postal_prefix' => '3191', 'center_lat' => 51.86550, 'center_lng' => 4.35850, 'radius_meters' => 700],
+    ['name' => 'Hoogvliet Zuid', 'hub' => 'Cluster Buitengebieden', 'postal_prefix' => '3194', 'center_lat' => 51.85150, 'center_lng' => 4.36850, 'radius_meters' => 700],
+    ['name' => 'Tussenwater', 'hub' => 'Cluster Buitengebieden', 'postal_prefix' => '3192', 'center_lat' => 51.86150, 'center_lng' => 4.34850, 'radius_meters' => 700],
+    ['name' => 'Gadering', 'hub' => 'Cluster Buitengebieden', 'postal_prefix' => '3192', 'center_lat' => 51.84950, 'center_lng' => 4.34550, 'radius_meters' => 1000],
+    ['name' => 'Ruigeplaatbos', 'hub' => 'Cluster Buitengebieden', 'postal_prefix' => '3193', 'center_lat' => 51.87550, 'center_lng' => 4.38550, 'radius_meters' => 1200],
+    ['name' => 'Dintelmond', 'hub' => 'Cluster Buitengebieden', 'postal_prefix' => '3196', 'center_lat' => 51.87550, 'center_lng' => 4.36550, 'radius_meters' => 1500],
     ['name' => 'Heijplaat', 'hub' => 'Cluster Buitengebieden', 'postal_prefix' => '3077', 'center_lat' => 51.88882, 'center_lng' => 4.42882, 'radius_meters' => 800],
 ];
