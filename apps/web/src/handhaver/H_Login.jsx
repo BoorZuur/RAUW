@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Eye, EyeClosed, Lock, Mail } from "lucide-react";
@@ -12,16 +12,57 @@ export default function Login() {
     const [error, setError] = useState('');
     const navigate = useNavigate();
 
+    // Locatie states met Rotterdam Centrum als standaard fallback
+    const [latitude, setLatitude] = useState(51.9244);
+    const [longitude, setLongitude] = useState(4.4777);
+
+    // Vraag direct bij het laden van het inlogscherm de GPS-locatie op
+    useEffect(() => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    setLatitude(position.coords.latitude);
+                    setLongitude(position.coords.longitude);
+                },
+                (error) => {
+                    console.warn("GPS toegang geweigerd voor login, fallback naar Rotterdam Centrum actief.", error);
+                }
+            );
+        }
+    }, []);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setError('');
+
+        // Dubbele check: als de waarden om wat voor reden dan ook NaN of leeg zijn, harde fallback dwingen
+        const finalLat = latitude && !isNaN(latitude) ? Number(latitude) : 51.9244;
+        const finalLng = longitude && !isNaN(longitude) ? Number(longitude) : 4.4777;
+
         try {
-            const response = await axios.post('http://localhost:8001/api/auth/login', { email, password });
+            // We sturen nu verplicht latitude en longitude mee zoals de backend eist
+            const response = await axios.post('http://localhost:8001/api/auth/login', {
+                email,
+                password,
+                latitude: finalLat,
+                longitude: finalLng
+            });
+
             if (response.data.access_token) {
                 localStorage.setItem('auth_token', response.data.access_token);
             }
             localStorage.setItem('user_type', 'officer');
-            navigate('/feed');
-        } catch (err) { setError('Inloggen mislukt.'); }
+            navigate('/meldingen');
+
+        } catch (err) {
+            console.error("Inlogfout details:", err.response);
+
+            if (err.response && err.response.data) {
+                setError(err.response.data.message || 'Inloggen mislukt. Controleer uw gegevens.');
+            } else {
+                setError('Inloggen mislukt. De server reageert niet.');
+            }
+        }
     };
 
     const fields = [
@@ -94,9 +135,9 @@ export default function Login() {
                     </form>
 
                     <p className="mt-6 p-4 text-sm text-center text-secondary-text">
-                        Nog geen account?
+                        Nog geen account?{' '}
                         <button onClick={() => navigate('/registreerhandhaver')}
-                                className="text-primary-text font-bold hover:underline">
+                                className="text-primary-text font-bold hover:underline cursor-pointer">
                             Registreren
                         </button>
                     </p>
