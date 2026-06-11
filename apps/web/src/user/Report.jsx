@@ -48,6 +48,10 @@ export default function ReportIssue() {
     const [showConfirm, setShowConfirm] = useState(false);
     const [success, setSuccess] = useState(false);
 
+    // Nieuwe states voor de custom applicatie popup
+    const [showMapError, setShowMapError] = useState(false);
+    const [mapErrorMessage, setMapErrorMessage] = useState('');
+
     useEffect(() => {
         Promise.all([
             apiClient.get('/api/categories'),
@@ -65,7 +69,6 @@ export default function ReportIssue() {
             });
     }, []);
 
-    // Vlakke lijst maken van alle categorieën inclusief geneste children
     const getAllCategoriesFlattened = () => {
         return categories.flatMap(c => [
             { ...c, isChild: false },
@@ -78,8 +81,16 @@ export default function ReportIssue() {
         return found ? found.name : "Selecteer een categorie...";
     };
 
+    // Callback functie om fouten van de kaart op te vangen in deze component
+    const handleMapError = (message) => {
+        setMapErrorMessage(message);
+        setShowMapError(true);
+    };
+
     const handleGeocode = async () => {
         if (!formData.address) return;
+        setError(null);
+
         try {
             const response = await axios.get(`https://nominatim.openstreetmap.org/search`, {
                 params: { q: `${formData.address}, Rotterdam`, format: 'json', limit: 1 }
@@ -90,7 +101,24 @@ export default function ReportIssue() {
                 const lat = parseFloat(result.lat);
                 const lon = parseFloat(result.lon);
 
+                let insideKnownDistrict = false;
+                if (districts && districts.length > 0) {
+                    insideKnownDistrict = districts.some(d => {
+                        const dist = getDistance(lat, lon, d.center_lat, d.center_lng);
+                        const searchRadius = d.radius_meters + 2000;
+                        return dist < searchRadius;
+                    });
+                }
+
+                if (!insideKnownDistrict) {
+                    handleMapError("Het ingevulde adres valt buiten de bekende wijkgebieden binnen de database van de Gemeente Rotterdam.");
+                    setPosition(null);
+                    return;
+                }
+
                 setPosition({ lat, lng: lon });
+            } else {
+                setError("Kon het adres niet vinden. Controleer de spelling.");
             }
         } catch (err) {
             setError("Kon locatie niet automatisch ophalen.");
@@ -114,14 +142,14 @@ export default function ReportIssue() {
                     setPosition(activePosition);
                 }
             } catch (err) {
-                setError("Kon adres niet automatisch vinden, controleer het adres.");
+                handleMapError("Kon adres niet automatisch vinden, controleer het adres of dit adres valt buiten de gebieden van Rotterdam.");
                 setShowConfirm(false);
                 return;
             }
         }
 
         if (!activePosition) {
-            setError("Selecteer een locatie op de kaart of vul een geldig adres in.");
+            handleMapError("Selecteer een locatie op de kaart of vul een geldig adres in.");
             setShowConfirm(false);
             return;
         }
@@ -140,7 +168,7 @@ export default function ReportIssue() {
         });
 
         if (!closestDistrict) {
-            setError("De gekozen locatie valt buiten een bekend wijkgebied.");
+            handleMapError("De gekozen locatie valt buiten een bekend wijkgebied.");
             setShowConfirm(false);
             return;
         }
@@ -174,6 +202,28 @@ export default function ReportIssue() {
 
     return (
         <div className="min-h-screen bg-primary-bg text-primary-text flex flex-col transition-colors duration-300">
+
+            {/* Custom Applicatie Error Popup (vervanger van de browser alert) */}
+            {showMapError && (
+                <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
+                    <div className="bg-primary-bg-cards p-8 rounded-3xl border-2 border-primary-border shadow-2xl max-w-sm w-full text-center">
+                        <div className="w-12 h-12 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center mx-auto mb-4 border border-red-500/20">
+                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <h3 className="text-xl font-black uppercase mb-2 text-primary-text">Locatie ongeldig</h3>
+                        <p className="text-sm text-secondary-text mb-6">{mapErrorMessage}</p>
+                        <button
+                            onClick={() => setShowMapError(false)}
+                            className="w-full p-3 bg-primary-text text-primary-bg font-black uppercase tracking-widest rounded-xl hover:bg-primary-accent transition-colors"
+                        >
+                            Begrepen
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {showConfirm && (
                 <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                     <div className="bg-primary-bg-cards p-8 rounded-3xl border-2 border-primary-border shadow-2xl max-w-sm w-full">
@@ -201,7 +251,14 @@ export default function ReportIssue() {
             <main className="z-10 grow w-full max-w-6xl mx-auto px-6 pt-26 mt-8 pb-12 grid grid-cols-1 md:grid-cols-2 gap-10">
                 <section className="h-137.5 bg-primary-bg-cards border-2 border-primary-border rounded-3xl p-3 shadow-sm">
                     <div className="w-full h-full rounded-2xl overflow-hidden border border-primary-border/50">
-                        <NativeLeafletMap position={position} setPosition={setPosition} setFormData={setFormData} />
+                        {/* Prop onLocationError toegevoegd */}
+                        <NativeLeafletMap
+                            position={position}
+                            setPosition={setPosition}
+                            setFormData={setFormData}
+                            districts={districts}
+                            onLocationError={handleMapError}
+                        />
                     </div>
                 </section>
 
@@ -272,6 +329,7 @@ export default function ReportIssue() {
                                       placeholder="Context & Behoefte" value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} />
                         </div>
 
+                        {/* Foto */}
                         <div>
                             <label htmlFor="file-upload" className="text-left block text-xs font-bold tracking-wider uppercase mb-1.5 text-primary-text">
                                 Foto (optioneel)
@@ -285,6 +343,7 @@ export default function ReportIssue() {
                             />
                         </div>
 
+                        {/* Anoniem optie */}
                         <div className="relative flex items-center justify-between p-4 bg-primary-bg-cards border-2 border-primary-border rounded-2xl transition-all duration-200 hover:border-primary-accent/50 focus-within:ring-2 focus-within:ring-primary-accent/30 group">
                             <div className="flex flex-col gap-0.5 select-none pr-4">
                                 <label htmlFor="is_anonymous" className="text-xs font-black uppercase tracking-widest text-primary-text cursor-pointer">
@@ -300,7 +359,6 @@ export default function ReportIssue() {
                                     onChange={e => setFormData({...formData, is_anonymous: e.target.checked})}
                                     className="peer appearance-none w-6 h-6 rounded-lg border-2 border-primary-border bg-primary-bg checked:bg-primary-text checked:border-primary-text transition-all duration-150 cursor-pointer focus:ring-0 focus:outline-none"
                                 />
-                                {/* Custom SVG Checkmark die oplicht/verschijnt bij actieve status */}
                                 <svg
                                     className="absolute left-1.5 top-1.5 w-3 h-3 text-primary-bg pointer-events-none opacity-0 scale-50 peer-checked:opacity-100 peer-checked:scale-100 transition-all duration-150"
                                     fill="none"
