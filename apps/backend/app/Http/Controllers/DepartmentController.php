@@ -134,7 +134,7 @@ class DepartmentController extends Controller
 
     private function canViewInactiveDepartments(Request $request): bool
     {
-        $user = $request->user();
+        $user = $request->user('sanctum');
 
         return $user instanceof Manager
             && $user->is_active

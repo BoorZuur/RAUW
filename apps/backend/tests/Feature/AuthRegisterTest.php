@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\ActorType;
+use App\Models\Department;
 use App\Models\Manager;
 use App\Models\Officer;
 use App\Models\User;
@@ -16,6 +17,15 @@ class AuthRegisterTest extends TestCase
     use RefreshDatabase;
 
     private const PASSWORD = 'correct-horse-battery';
+
+    private Department $activeDepartment;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->activeDepartment = Department::factory()->create();
+    }
 
     /**
      * Build a valid officer registration payload, allowing per-test overrides.
@@ -31,6 +41,9 @@ class AuthRegisterTest extends TestCase
             'password' => self::PASSWORD,
             'confirm_password' => self::PASSWORD,
             'badge_number' => 'BOA-1234',
+            'department_ids' => [$this->activeDepartment->id],
+            'latitude' => 51.9106846,
+            'longitude' => 4.4814932,
         ], $overrides);
     }
 
@@ -58,7 +71,6 @@ class AuthRegisterTest extends TestCase
     private function validUserPayload(array $overrides = []): array
     {
         return array_merge([
-            'name' => 'New User',
             'username' => 'new-user',
             'email' => 'new.user@example.com',
             'password' => self::PASSWORD,
@@ -77,7 +89,6 @@ class AuthRegisterTest extends TestCase
             'username' => 'existing-manager',
             'email' => 'existing.manager@example.com',
             'password' => self::PASSWORD,
-            'department' => \App\Enums\Department::Both,
         ], $overrides));
     }
 
@@ -325,12 +336,11 @@ class AuthRegisterTest extends TestCase
                 'access_token',
                 'actor_type',
                 'profile' => [
-                    'id', 'name', 'username', 'email',
+                    'id', 'username', 'email',
                 ],
             ])
             ->assertJsonPath('token_type', 'Bearer')
             ->assertJsonPath('actor_type', ActorType::User->value)
-            ->assertJsonPath('profile.name', 'New User')
             ->assertJsonPath('profile.username', 'new-user')
             ->assertJsonPath('profile.email', 'new.user@example.com');
 
@@ -352,14 +362,12 @@ class AuthRegisterTest extends TestCase
             ->assertCreated();
 
         $this->assertDatabaseHas('users', [
-            'name' => 'New User',
             'username' => 'new-user',
             'email' => 'new.user@example.com',
         ]);
 
         $user = User::where('email', 'new.user@example.com')->firstOrFail();
         $this->assertSame('new-user', $user->username);
-        $this->assertSame('New User', $user->name);
         $this->assertTrue((bool) $user->is_active);
     }
 
@@ -433,16 +441,6 @@ class AuthRegisterTest extends TestCase
             ->assertCreated();
 
         $this->assertSame(1, PersonalAccessToken::query()->count());
-    }
-
-    public function test_user_registration_requires_name(): void
-    {
-        $payload = $this->validUserPayload();
-        unset($payload['name']);
-
-        $this->postJson('/api/auth/register/user', $payload)
-            ->assertStatus(422)
-            ->assertJsonValidationErrors(['name']);
     }
 
     public function test_user_registration_requires_username(): void
