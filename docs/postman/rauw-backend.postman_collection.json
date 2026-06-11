@@ -5445,14 +5445,7 @@
           "name": "List Departments",
           "request": {
             "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{access_token}}",
-                  "type": "string"
-                }
-              ]
+              "type": "noauth"
             },
             "method": "GET",
             "header": [
@@ -5472,7 +5465,7 @@
                 "departments"
               ]
             },
-            "description": "List departments from the departments table with category counts. Requires authentication in the protected API group."
+            "description": "Public read: list departments from the departments table with category counts. No Authorization header required — use this before officer registration to discover active department_ids. Unauthenticated and non–main-manager callers receive active departments only. Optional bearer token: authenticated active main managers see all departments including inactive. Rate-limited to 30 requests per minute. Write requests (create, update, delete) still require main_manager_access_token."
           },
           "response": []
         },
@@ -5480,14 +5473,7 @@
           "name": "Show Department",
           "request": {
             "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{access_token}}",
-                  "type": "string"
-                }
-              ]
+              "type": "noauth"
             },
             "method": "GET",
             "header": [
@@ -5508,7 +5494,7 @@
                 "1"
               ]
             },
-            "description": "Show one department with category count. Requires authentication in the protected API group."
+            "description": "Public read: show one department with category count. No Authorization header required for active departments. Inactive departments return 404 for unauthenticated and non–main-manager callers; authenticated active main managers may retrieve inactive departments when a bearer token is sent. Rate-limited to 30 requests per minute. Write requests still require main_manager_access_token."
           },
           "response": []
         },
@@ -5798,7 +5784,7 @@
           "response": []
         }
       ],
-      "description": "Department CRUD requests. Department mutations require an authenticated active main manager (main_manager_access_token). Activation and deactivation use generic PATCH with is_active only; hard delete is guarded when managers/officers still reference the row. Managers use department_ids through the department_manager pivot and must have one or more departments; officers use department_ids through the department_officer pivot and must have one or more departments. Deleting a department is blocked while assigned to managers or officers; otherwise it removes category_department and department_issue pivot assignments automatically but does not delete categories or issues. Issue departments are derived from categories and exposed to clients as read-only departments arrays."
+      "description": "Department read and write requests. GET list and show are public (no token required); they return active departments only for unauthenticated and non–main-manager callers and are rate-limited to 30 requests per minute. Department mutations require an authenticated active main manager (main_manager_access_token). Activation and deactivation use generic PATCH with is_active only; hard delete is guarded when managers/officers still reference the row. Managers use department_ids through the department_manager pivot and must have one or more departments; officers use department_ids through the department_officer pivot and must have one or more departments. Deleting a department is blocked while assigned to managers or officers; otherwise it removes category_department and department_issue pivot assignments automatically but does not delete categories or issues. Issue departments are derived from categories and exposed to clients as read-only departments arrays."
     }
   ],
   "auth": {
