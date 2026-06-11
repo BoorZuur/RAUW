@@ -26,18 +26,20 @@ export default function Feed() {
         apiClient.get('/api/issues')
             .then(res => {
                 const data = Array.isArray(res.data) ? res.data : (res.data.data || []);
-                const openIssues = data.filter(s => s.status !== 'gesloten' && s.resolved_at === null);
-                const oneWeekAgo = new Date();
-                oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-                const recent = openIssues.filter(s => new Date(s.created_at) >= oneWeekAgo);
 
-                if (recent.length > 0) {
-                    const sorted = [...recent].sort((a, b) => b.participant_count - a.participant_count);
-                    setMainStory(sorted[0]);
-                    setOtherStories(openIssues.filter(s => s.id !== sorted[0].id));
+                // 1. Filter: Alleen de verhalen die exact de status 'gesloten' hebben
+                const closedIssues = data.filter(s => s.status === 'gesloten');
+
+                // 2. Sorteren op de nieuwste meldingen eerst (meest recent gesloten/aangemaakt)
+                const sortedClosed = [...closedIssues].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+                // 3. De allernieuwste gesloten melding wordt de 'mainStory', de rest gaat naar 'otherStories'
+                if (sortedClosed.length > 0) {
+                    setMainStory(sortedClosed[0]);
+                    setOtherStories(sortedClosed.slice(1));
                 } else {
-                    setMainStory(openIssues[0]);
-                    setOtherStories(openIssues.slice(1));
+                    setMainStory(null);
+                    setOtherStories([]);
                 }
 
                 setIsLoading(false);
@@ -46,11 +48,9 @@ export default function Feed() {
     }, []);
 
     return (
-        // Flex-col hier zorgt ervoor dat footer onderaan blijft
         <div className="min-h-screen flex flex-col bg-primary-bg text-primary-text transition-colors duration-300">
             <Nav/>
 
-            {/* flex-grow zorgt dat main de overgebleven ruimte vult */}
             <main className="z-10 flex-grow w-full max-w-6xl mx-auto px-6 pt-26 mt-8 pb-12">
                 {isLoading ? (
                     <div className="text-center py-20 text-secondary-text">Verhalen laden...</div>
@@ -60,8 +60,9 @@ export default function Feed() {
                             <div className="flex flex-col gap-12">
                                 {mainStory && (
                                     <section aria-labelledby="main-story-heading">
+                                        {/* Aangepaste titel die past bij de context van gesloten zaken */}
                                         <h2 id="main-story-heading" className="text-xs font-bold tracking-[0.2em] text-secondary-text uppercase mb-4">
-                                            Belangrijkste signaal
+                                            Meest recent opgelost
                                         </h2>
                                         <MainStoryCard
                                             issue={mainStory}
@@ -75,7 +76,7 @@ export default function Feed() {
                                         <hr className="border-primary-border"/>
                                         <section aria-labelledby="other-stories-heading">
                                             <h2 id="other-stories-heading" className="text-xs font-bold tracking-[0.2em] text-secondary-text uppercase mb-6">
-                                                Andere meldingen
+                                                Eerder opgeloste meldingen
                                             </h2>
                                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                                 {otherStories.map((story) => (
@@ -100,7 +101,7 @@ export default function Feed() {
                             </div>
                         ) : (
                             <div className="text-center py-20 text-secondary-text">
-                                Er zijn op dit moment geen actuele meldingen.
+                                Er zijn op dit moment nog geen opgeloste meldingen.
                             </div>
                         )}
                     </>

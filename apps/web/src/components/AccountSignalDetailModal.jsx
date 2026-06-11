@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function StoryDetailModal({ issue, onClose, onAddComment }) {
+export default function AccountSignalDetailModal({ issue, onClose, onAddComment }) {
     const [commentText, setCommentText] = useState('');
 
     if (!issue) return null;
@@ -27,6 +27,7 @@ export default function StoryDetailModal({ issue, onClose, onAddComment }) {
         ? new Date(created_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
         : '';
 
+    // Dynamische status styling op basis van de backend waarde
     const getStatusDetails = (currentStatus) => {
         switch (currentStatus?.toLowerCase()) {
             case 'open':
@@ -50,11 +51,12 @@ export default function StoryDetailModal({ issue, onClose, onAddComment }) {
     const handleCommentSubmit = (e) => {
         e.preventDefault();
         if (!commentText.trim()) return;
-        onAddComment?.(id || issue.id, commentText);
+        onAddComment?.(id, commentText);
         setCommentText('');
     };
 
     return (
+        /* Exact dezelfde z-index laag en overlay als de werkende StoryDetailModal */
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
             {/* Sluitknop */}
             <button
@@ -70,7 +72,7 @@ export default function StoryDetailModal({ issue, onClose, onAddComment }) {
             {/* Main Layout Container */}
             <div className="w-full max-w-5xl h-[85vh] bg-primary-bg-cards border border-primary-border rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row">
 
-                {/* LINKERKANT: Visueel gesplitst voor WCAG AAA Contrast */}
+                {/* LINKERKANT: Layout overgenomen van StoryDetailModal voor correcte gelaagdheid */}
                 <div className="flex-1 bg-primary-bg flex flex-col h-1/2 md:h-full border-b md:border-b-0 md:border-r border-primary-border">
 
                     {/* Top: Afbeelding of Fallback */}

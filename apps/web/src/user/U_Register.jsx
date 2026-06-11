@@ -100,7 +100,7 @@ export default function Register() {
                         </button>
                     </form>
 
-                    <p className="mt-6 text-sm text-center text-secondary-text">
+                    <p className="mt-6 p-4 text-sm text-center text-secondary-text">
                         Al een account?
                         <button
                             onClick={() => navigate('/login')}
