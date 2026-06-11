@@ -6,8 +6,10 @@ use App\Http\Requests\Departments\StoreDepartmentRequest;
 use App\Http\Requests\Departments\UpdateDepartmentRequest;
 use App\Http\Resources\DepartmentResource;
 use App\Models\Department;
+use App\Models\Manager;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 
@@ -19,21 +21,28 @@ class DepartmentController extends Controller
      * The category count is eager-loaded with `withCount` to avoid N+1
      * queries when serializing the collection.
      */
-    public function index(): AnonymousResourceCollection
+    public function index(Request $request): AnonymousResourceCollection
     {
-        $departments = Department::query()
+        $query = Department::query()
             ->withCount('categories')
-            ->orderBy('code')
-            ->get();
+            ->orderBy('code');
 
-        return DepartmentResource::collection($departments);
+        if (! $this->canViewInactiveDepartments($request)) {
+            $query->where('is_active', true);
+        }
+
+        return DepartmentResource::collection($query->get());
     }
 
     /**
      * Show a single department with its category count.
      */
-    public function show(Department $department): DepartmentResource
+    public function show(Request $request, Department $department): DepartmentResource
     {
+        if (! $department->is_active && ! $this->canViewInactiveDepartments($request)) {
+            abort(404);
+        }
+
         $department->loadCount('categories');
 
         return new DepartmentResource($department);
@@ -121,5 +130,14 @@ class DepartmentController extends Controller
         $department->delete();
 
         return response()->json([], Response::HTTP_NO_CONTENT);
+    }
+
+    private function canViewInactiveDepartments(Request $request): bool
+    {
+        $user = $request->user();
+
+        return $user instanceof Manager
+            && $user->is_active
+            && $user->is_main_manager;
     }
 }
