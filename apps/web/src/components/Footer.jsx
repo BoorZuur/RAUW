@@ -6,7 +6,6 @@ export default function Footer() {
         <footer className="w-full bg-primary-bg-cards border-t-2 border-primary-border py-12 px-6 mt-auto">
             <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
 
-                {/* Kolom 1: Branding */}
                 <div className="flex flex-col items-center text-center space-y-4">
                     <img
                         src={RauwLogoImg}
@@ -16,7 +15,6 @@ export default function Footer() {
                     />
                 </div>
 
-                {/* Kolom 2: Navigatie */}
                 <div className="space-y-4">
                     <h4 className="font-black text-xs uppercase tracking-widest text-secondary-text">Menu</h4>
                     <ul className="space-y-2 text-sm font-medium">
@@ -25,7 +23,6 @@ export default function Footer() {
                     </ul>
                 </div>
 
-                {/* Kolom 3: Contact */}
                 <div className="space-y-4">
                     <h4 className="font-black text-xs uppercase tracking-widest text-secondary-text">Contact</h4>
                     <p className="text-sm">

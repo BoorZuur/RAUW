@@ -3,26 +3,84 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
 
-export default function NativeLeafletMap({ position, setPosition, setFormData }) {
+// Haversine formule om de afstand in meters te berekenen tussen twee coördinaten
+const getDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371e3; // Straal van de aarde in meters
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
+export default function NativeLeafletMap({ position, setPosition, setFormData, districts, onLocationError }) {
     const mapRef = useRef(null);
     const leafletMap = useRef(null);
     const markerRef = useRef(null);
 
     useEffect(() => {
         if (!leafletMap.current) {
-            leafletMap.current = L.map(mapRef.current).setView([51.9225, 4.47917], 13);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(leafletMap.current);
+            // Ruime grenzen rondom Rotterdam voor de kaartrestrictie
+            const rotterdamBounds = L.latLngBounds(
+                L.latLng(51.80, 4.00),
+                L.latLng(52.05, 4.65)
+            );
+
+            leafletMap.current = L.map(mapRef.current, {
+                maxBounds: rotterdamBounds,
+                maxBoundsViscosity: 1.0,
+                minZoom: 11,
+                maxZoom: 18
+            }).setView([51.9225, 4.47917], 13);
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap & CartoDB'
+            }).addTo(leafletMap.current);
+
+            // Click Handler met Backend Geofencing Validatie
             leafletMap.current.on('click', async (e) => {
                 const { lat, lng } = e.latlng;
-                setPosition({ lat, lng });
+
+                // 1. Check of de klik binnen een wijk uit de backend valt (inclusief de 2000m marge)
+                let insideKnownDistrict = false;
+
+                if (districts && districts.length > 0) {
+                    insideKnownDistrict = districts.some(d => {
+                        const dist = getDistance(lat, lng, d.center_lat, d.center_lng);
+                        const searchRadius = d.radius_meters + 2000; // Dezelfde marge als in je submit handler
+                        return dist < searchRadius;
+                    });
+                }
+
+                // Als het buiten de bekende backend wijken valt, triggeren we de custom popup
+                if (!insideKnownDistrict) {
+                    if (onLocationError) {
+                        onLocationError("Deze locatie valt buiten een bekend wijkgebied binnen de database van de Gemeente Rotterdam.");
+                    }
+                    return; // Breek af: marker wordt niet verplaatst en adres wordt niet overschreven
+                }
+
+                // 2. Als de locatie wél binnen een wijk valt, halen we het adres op via Nominatim
                 try {
-                    const res = await axios.get(`https://nominatim.openstreetmap.org/reverse`, { params: { lat, lon: lng, format: 'json' } });
+                    const res = await axios.get(`https://nominatim.openstreetmap.org/reverse`, {
+                        params: { lat, lon: lng, format: 'json' }
+                    });
+
                     const addr = res.data.address;
-                    setFormData(prev => ({ ...prev, address: [addr.road, addr.house_number].filter(Boolean).join(' ') }));
-                } catch (err) { console.error(err); }
+                    if (addr) {
+                        setPosition({ lat, lng });
+                        setFormData(prev => ({
+                            ...prev,
+                            address: [addr.road, addr.house_number].filter(Boolean).join(' ')
+                        }));
+                    }
+                } catch (err) {
+                    console.error("Fout bij ophalen adres:", err);
+                }
             });
         }
-    }, []);
+    }, [districts, setFormData, setPosition, onLocationError]);
 
     useEffect(() => {
         if (position && leafletMap.current) {
