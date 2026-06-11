@@ -1,7 +1,6 @@
 import "../App.css"
 import HM_Nav from "../components/HM_Nav.jsx";
 import InformationCard from "../components/InformationCard.jsx";
-import React from "react";
 
 function ReportsOverview() {
     return (
