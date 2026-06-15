@@ -81,6 +81,12 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 | `department_id` | `1` | Department path ID for update, deactivate (PATCH `is_active`), and delete examples. |
 | `issue_id` | `1` | Filled automatically after **Issues / Create Issue**. Used by show, update, attachment, and delete examples. |
 | `comment_id` | `1` | Filled automatically after **Comments / Add Comment**. Used by update, delete, and visibility examples. |
+| `chat_id` | `1` | Filled by **Issue Chat / Open Chat with Issue Owner**. Used by message, close, and download examples. |
+| `chat_id_2` | `2` | Filled by **Issue Chat / Open Chat with Participant** for parallel-chat smoke tests. |
+| `chat_message_id` | `1` | Filled by **Issue Chat / Send Message** or **Send Message with Attachment**. |
+| `chat_attachment_id` | `1` | Filled when a send response includes `attachments`. |
+| `owner_user_id` | `1` | Issue owner user id for `PATCH .../chats/open`; set from issue show or open-chat test script. |
+| `participant_user_id` | `2` | Second eligible user after **Join Canonical Issue**; used for parallel chat open. |
 | `attachment_id` | `1` | Filled automatically after **Issues / Upload Attachments**. Used by authenticated download and delete. |
 | `attachment_download_url` | blank | Filled automatically after **Issues / Upload Attachments** for reference. |
 | `officer_resolution_attachment_id` | `1` | Filled automatically after **Issues / Officer workflows / Create Officer Resolution**. Used by update and download examples. |
@@ -116,13 +122,14 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 16. Use **Issues / List Issues - Filtered Paginated** to combine `district_id`, `department` (env `department_filter`), and `category_id`.
 17. **Officer issue workflows:** Run **Auth / Login Officer at Hub**, then **Issues / Create Issue** as a user (or pick a seeded issue in Cool / `district_id: 1`). Run **Issues / Officer workflows / Assign Self to Issue**, then **Update Issue Status**, **Create Officer Resolution**, **Show Officer Resolution**, **Update Officer Resolution**, and **Download Officer Resolution Attachment** in that order.
 18. **Officer issue updates:** After assign-self (step 17), run **Create Officer Update** → **List Officer Updates** → **Update Officer Update** → **Download Officer Update Attachment** → **Delete Officer Update**. `officer_update_id` and `officer_update_attachment_id` are set automatically by **Create Officer Update** when the collection test script runs. Tier C writes require hub login; list and download work without an active shift (Tier B).
+18b. **Issue chat:** After assign-self, set `owner_user_id` from the issue owner, then **Issue Chat / Open Chat with Issue Owner** → **Send Message** → **Mark Messages Read** (user token) → optional **Open Chat with Participant** (after join, set `participant_user_id`) → **Send Message with Attachment** → **Download Chat Attachment** → **Close Chat**. **Reassignment Handoff** subfolder documents unassign → assign-self → reopen (409 preserved when assign-self skips unassign). Chat list/messages are Tier B; open/close/send/mark-read are Tier C for officers.
 19. To test ordinary-manager privileges, log in as a created manager and copy the token to `manager_access_token` before **Managers / Update Officer Districts** or to confirm category/district/department mutations return **403** (not for successful category writes).
 20. Run **Auth / Logout** when finished.
 21. **Community news feed:** As a user, run **Auth / Update My Feed Districts**, then **Community Posts / List Community Posts**. As an officer with hub login, run **Community Posts / Create Community Post** (stores `community_post_id`), then attachment and visibility examples. As a user with feed districts set, run **Save Community Post** and **List Saved Community Posts** (`saved_only=1`).
 
 The collection stores the returned `access_token` automatically after a successful login, user registration, or officer registration. Manager creation intentionally does not update `access_token` because it returns only the created manager profile. If you disable collection scripts or the token is not stored, copy the `access_token` value from the auth response into the active Postman environment's `access_token` variable before calling protected endpoints.
 
-Issue examples also store `issue_id` after issue creation, `comment_id` after **Comments / Add Comment**, and `attachment_id` / `attachment_download_url` after attachment upload. Attachment upload returns a `data: [...]` wrapper, and the collection stores these variables from `response.data[0]`. Attachment upload uses local, non-public development storage. Downloads and deletes require `Authorization: Bearer <token>` and use authenticated API routes.
+Issue examples also store `issue_id` after issue creation, `comment_id` after **Comments / Add Comment**, `chat_id` / `chat_message_id` / `chat_attachment_id` after **Issue Chat** sends, and `attachment_id` / `attachment_download_url` after attachment upload. Attachment upload returns a `data: [...]` wrapper, and the collection stores these variables from `response.data[0]`. Attachment upload uses local, non-public development storage. Downloads and deletes require `Authorization: Bearer <token>` and use authenticated API routes.
 
 Protected endpoints use this header:
 

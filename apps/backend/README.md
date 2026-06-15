@@ -49,7 +49,7 @@ Officers share one shift clock across all devices via `officers.hub_active_until
 
 **Hub reassignment / manager end-shift:** `PATCH /api/officers/{officer}/hub` and `PATCH /api/officers/{officer}/end-shift` clear `hub_active_until` without revoking tokens. **Officer disable** revokes all tokens, closes all sessions, and ends the shift.
 
-**Middleware:** `officer.hub-active` gates Tier C workflow routes by reading `hub_active_until` on the officer row. **Tier B** (browse without an active shift): `GET /api/issues` (embeds `officer_resolution` when present; omits `status_history`), `GET /api/issues/{issue}` (same `officer_resolution` plus embedded `status_history` for officers/managers), `GET /api/issues/{issue}/status-history` (paginated dedicated read), `GET /api/issues/{issue}/duplicates`, `GET /api/issues/{issue}/participants`, `GET /api/issues/{issue}/officer-resolution`, and authenticated attachment downloads (`GET .../attachments/.../download`, `GET .../officer-resolution/attachments/.../download`). **Tier C** (hub-active required): `POST .../assign-self`, `POST .../unassign-self`, `PATCH .../status`, `POST .../mark-duplicate`, officer-resolution `POST`/`PATCH`, and `DELETE .../officer-resolution/attachments/{attachment}`. Also whitelisted without a shift: profile/auth (`GET/PATCH /api/auth/me`, logout, `POST /api/auth/start-shift`, district self-service), reference reads (hubs, districts, departments, categories), `GET /api/officers/{officer}` (`officers.show`, any authenticated actor), and `GET /api/officer-sessions` (authorization still requires an active manager).
+**Middleware:** `officer.hub-active` gates Tier C workflow routes by reading `hub_active_until` on the officer row. **Tier B** (browse without an active shift): `GET /api/issues` (embeds `officer_resolution` when present; omits `status_history`), `GET /api/issues/{issue}` (same `officer_resolution` plus embedded `status_history` for officers/managers), `GET /api/issues/{issue}/status-history` (paginated dedicated read), `GET /api/issues/{issue}/duplicates`, `GET /api/issues/{issue}/participants`, `GET /api/issues/{issue}/officer-resolution`, `GET /api/issues/{issue}/chats`, `GET /api/issues/{issue}/chats/{chat}/messages`, and authenticated attachment downloads (`GET .../attachments/.../download`, `GET .../officer-resolution/attachments/.../download`). **Tier C** (hub-active required): `POST .../assign-self`, `POST .../unassign-self`, `PATCH .../status`, `POST .../mark-duplicate`, officer-resolution `POST`/`PATCH`, `DELETE .../officer-resolution/attachments/{attachment}`, `PATCH .../chats/open`, `PATCH .../chats/{chat}/close`, `POST .../chats/{chat}/messages`, `POST .../chats/{chat}/messages/mark-read`, and officer `GET .../chats/.../attachments/.../download`. Also whitelisted without a shift: profile/auth (`GET/PATCH /api/auth/me`, logout, `POST /api/auth/start-shift`, district self-service), reference reads (hubs, districts, departments, categories), `GET /api/officers/{officer}` (`officers.show`, any authenticated actor), and `GET /api/officer-sessions` (authorization still requires an active manager).
 
 **Error codes** (`message` + `code`):
 
@@ -261,6 +261,45 @@ Multiple updates per issue; PATCH/DELETE restricted to the authoring officer (wh
 
 Attachment limits match resolutions: up to **3** images, **5 MB** each. PATCH validates cumulative cap under row lock. Uploads are content-sniffed as allowed images.
 
+### Issue chat (1:1 messaging)
+
+Distinct from **issue comments** (`issue_comments`): comments are a public thread on the issue (users, officers, and managers may post; managers moderate). **Issue chat** is private 1:1 messaging between the **assigned officer** and one eligible citizen per chat row (`issue_chats`, unique per canonical `issue_id` + `user_id`). Multiple parallel chats on the same issue are supported (e.g. owner + participants).
+
+**Who may participate**
+
+| Actor | List chats | Open / close | Read messages | Send / mark-read | Download attachment |
+|--------|------------|--------------|---------------|------------------|---------------------|
+| Assignee officer | All chats on issue | Yes | Any chat on issue | Open chats only | Yes (Tier C for officers) |
+| Eligible user (owner or participant) | Own chat only (`200` + `[]` when none) | No | Own chat (open or closed) | Own open chat only | Yes (not hub-gated) |
+| Non-assignee officer | **403** `not_assigned_officer` | — | — | — | — |
+| Ineligible user | **403** `not_chat_participant` | — | — | — | — |
+| Manager | **403** on all chat routes | — | — | — | — |
+
+Eligible users are the canonical owner or a row in `issue_participants`. Officers open chats with `PATCH /api/issues/{issue}/chats/open` and body `{ "user_id": <id> }`. Returns **201** when a new chat row is created and opened; **200** when already open or when reopening a closed chat. Manual close: `PATCH /api/issues/{issue}/chats/{chat}/close` (no system message).
+
+**Lifecycle side effects**
+
+| Event | Open chats | System message |
+|--------|------------|----------------|
+| `POST .../unassign-self` | All closed | No |
+| Issue status → `gesloten` | All closed | Yes, one per chat (`Chat gesloten omdat de melding is afgerond.`) |
+
+**Reassignment handoff:** There is no takeover. `POST .../assign-self` keeps **409** `issue_already_assigned` when another officer owns the issue. Handoff flow: current assignee `POST .../unassign-self` (closes open chats) → successor `POST .../assign-self` → successor `PATCH .../chats/open` to reopen and continue messaging; prior message history remains readable.
+
+**Messages:** `GET/POST .../chats/{chat}/messages`, `POST .../messages/mark-read`. Read history in open or closed chats; send and mark-read only when chat status is `open` (**422** `chat_closed` when closed). Attachment-only messages are allowed. Up to **3** images (`jpg`, `jpeg`, `png`, `gif`, `webp`), **5 MB** each. No message edit/delete in v1. System messages expose `message_type: system` and `meta` (e.g. `chat_closed_status_gesloten`).
+
+**Tier B** (officers, no shift): `GET .../chats`, `GET .../chats/{chat}/messages`. **Tier C** (officers): open, close, send, mark-read, attachment download.
+
+**Structured error codes (issue chat)**
+
+| Code | HTTP | When |
+|------|------|------|
+| `chat_closed` | 422 | Send or mark-read while chat is `closed` |
+| `chat_user_not_eligible` | 422 | Open chat with user who is not owner/participant |
+| `not_chat_participant` | 403 | List/view/send/download outside chat partnership |
+| `chat_not_found` | 404 | Chat id not on canonical issue in route |
+| `issue_closed` | 422 | Open chat on `gesloten` issue |
+
 **Issue embeds:** `GET /api/issues` includes `officer_resolution` (with officer and attachments when present) and omits `status_history`. `GET /api/issues/{issue}` includes the same `officer_resolution` embed plus `status_history` for officers and managers only (newest first, no lat/lon); regular users never receive `status_history`. Prefer the dedicated GET path for resolution-only reads.
 
 **Structured error codes (officer workflows)**
@@ -327,6 +366,23 @@ After hub login as `demo.officer@example.com` (Cool wijk / `district_id: 1`):
 15. **Mark duplicate (re-parent)** — `POST /api/issues/{child}/mark-duplicate` with `{ "duplicate_of_id": <canonical> }` for different owners → 200 child `IssueResource` with `duplicate_of_id` set and `visibility: hidden`.
 16. **Mark duplicate (merge)** — Same-owner child + canonical → 200 canonical `IssueResource`; child id returns 404 on subsequent GET.
 17. **Resolution attachment delete** — Assignee `DELETE /api/issues/{id}/officer-resolution/attachments/{attachment}` → 204; repeat → 404. Requires hub-active (Tier C).
+
+### Manual Issue Chat Checklist
+
+After hub login as `demo.officer@example.com`, assign-self on an issue in Cool (`district_id: 1`):
+
+1. **Open chat** — `PATCH /api/issues/{id}/chats/open` with `{ "user_id": <owner> }` → 201; repeat → 200.
+2. **Parallel chats** — Open second chat with a participant `user_id` → two distinct `chat_id` values.
+3. **List (Tier B)** — `GET .../chats` without shift → 200; user with no chat → `data: []`.
+4. **Send** — `POST .../chats/{chat}/messages` with text and/or multipart `files` → 201.
+5. **Closed send block** — Close chat; POST message → 422 `chat_closed`.
+6. **Read closed history** — `GET .../messages` on closed chat → 200.
+7. **Mark read** — `POST .../messages/mark-read` in open chat → `{ "marked_read": N }`; on closed chat → 422.
+8. **Attachment download** — Participant `GET .../attachments/.../download` → 200; outsider → 403 `not_chat_participant`.
+9. **Unassign closes chats** — `POST .../unassign-self` → open chats closed, no system message.
+10. **Handoff** — Second officer: assign-self blocked while assigned → 409; after unassign → assign-self → reopen chat → read prior messages → send.
+11. **Gesloten system message** — Status to `gesloten` → open chats closed with system message per chat.
+12. **Manager excluded** — Manager `GET .../chats` → 403.
 
 For manual API testing, import the Postman collection and local environment from [`../../docs/postman`](../../docs/postman/README.md):
 

@@ -16,7 +16,10 @@ use App\Http\Controllers\MainManagerHubController;
 use App\Http\Controllers\ManagerHubController;
 use App\Http\Controllers\OfficerHubController;
 use App\Http\Controllers\IssueAttachmentController;
+use App\Http\Controllers\IssueChatController;
+use App\Http\Controllers\IssueChatMessageController;
 use App\Http\Controllers\IssueCommentController;
+use App\Http\Controllers\IssueMessageAttachmentController;
 use App\Http\Controllers\IssueController;
 use App\Http\Controllers\IssueDuplicateController;
 use App\Http\Controllers\IssueParticipantController;
@@ -406,6 +409,17 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     Route::post('issues/{issue}/attachments', [IssueAttachmentController::class, 'store'])->name('issues.attachments.store');
     Route::get('issues/{issue}/attachments/{attachment}/download', [IssueAttachmentController::class, 'download'])->name('issues.attachments.download');
     Route::delete('issues/{issue}/attachments/{attachment}', [IssueAttachmentController::class, 'destroy'])->name('issues.attachments.destroy');
+
+    // Issue chats. Index and message listing are Tier B (can browse without active shift);
+    // open, close, send, and mark-read are Tier C (require active shift). Duplicate child
+    // route ids resolve to the canonical parent via ResolveCanonicalIssue in controllers.
+    Route::get('issues/{issue}/chats', [IssueChatController::class, 'index'])->name('issues.chats.index');
+    Route::patch('issues/{issue}/chats/open', [IssueChatController::class, 'open'])->name('issues.chats.open');
+    Route::patch('issues/{issue}/chats/{chat}/close', [IssueChatController::class, 'close'])->name('issues.chats.close');
+    Route::get('issues/{issue}/chats/{chat}/messages', [IssueChatMessageController::class, 'index'])->name('issues.chats.messages.index');
+    Route::post('issues/{issue}/chats/{chat}/messages', [IssueChatMessageController::class, 'store'])->name('issues.chats.messages.store');
+    Route::post('issues/{issue}/chats/{chat}/messages/mark-read', [IssueChatMessageController::class, 'markRead'])->name('issues.chats.messages.mark-read');
+    Route::get('issues/{issue}/chats/{chat}/messages/{message}/attachments/{attachment}/download', [IssueMessageAttachmentController::class, 'download'])->name('issues.chats.messages.attachments.download');
 
     // Issue comments. Listing (Index) is Tier B (can browse without active shift);
     // store, update, destroy, and visibility update are Tier C (require active shift).

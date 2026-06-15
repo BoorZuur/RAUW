@@ -48,6 +48,8 @@ class EnsureOfficerHubActive
         'community-posts.index',
         'community-posts.show',
         'community-posts.attachments.download',
+        'issues.chats.index',
+        'issues.chats.messages.index',
     ];
 
     public function handle(Request $request, Closure $next): Response

@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\ChatStatus;
 use App\Enums\IssueStatus;
 use App\Enums\Visibility;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -20,7 +19,6 @@ use Illuminate\Support\Collection;
     'assigned_officer_id',
     'district_id',
     'duplicate_of_id',
-    'chat_closed_by_officer_id',
     'title',
     'content',
     'postal_code',
@@ -28,7 +26,6 @@ use Illuminate\Support\Collection;
     'latitude',
     'longitude',
     'status',
-    'chat_status',
     'priority',
     'visibility',
     'is_anonymous',
@@ -45,7 +42,6 @@ class Issue extends Model
      */
     protected $attributes = [
         'status' => IssueStatus::Open->value,
-        'chat_status' => ChatStatus::Closed->value,
         'duplicate_count' => 0,
         'participant_count' => 0,
         'is_flagged' => false,
@@ -62,7 +58,6 @@ class Issue extends Model
     {
         return [
             'status' => IssueStatus::class,
-            'chat_status' => ChatStatus::class,
             'priority' => 'integer',
             'latitude' => 'decimal:8',
             'longitude' => 'decimal:8',
@@ -133,11 +128,6 @@ class Issue extends Model
         return $this->belongsTo(Issue::class, 'duplicate_of_id');
     }
 
-    public function chatClosedByOfficer(): BelongsTo
-    {
-        return $this->belongsTo(Officer::class, 'chat_closed_by_officer_id');
-    }
-
     public function duplicates(): HasMany
     {
         return $this->hasMany(Issue::class, 'duplicate_of_id');
@@ -192,6 +182,11 @@ class Issue extends Model
     public function comments(): HasMany
     {
         return $this->hasMany(IssueComment::class);
+    }
+
+    public function chats(): HasMany
+    {
+        return $this->hasMany(IssueChat::class);
     }
 
     public function messages(): HasMany

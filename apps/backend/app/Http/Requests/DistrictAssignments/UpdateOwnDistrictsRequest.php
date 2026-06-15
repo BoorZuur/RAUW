@@ -18,6 +18,12 @@ class UpdateOwnDistrictsRequest extends FormRequest
      * unsupported actor are rejected with a 403 response. Inactive managers and
      * officers cannot authenticate, but the active flag is asserted here as a
      * defence-in-depth guard.
+     *
+     * When the actor has an assigned hub (`hub_id` is set), self-service
+     * district assignment is limited to active districts within that hub;
+     * cross-hub district IDs fail validation with 422 on `district_ids.*`.
+     * Main managers are not exempt — only their issue visibility scope is
+     * city-wide. Actors without an assigned hub may assign any active district.
      */
     public function authorize(): bool
     {
@@ -33,15 +39,25 @@ class UpdateOwnDistrictsRequest extends FormRequest
      * `district_ids` must be present so the request unambiguously declares the
      * full desired assignment set; an empty array is allowed to clear all
      * districts. Every entry must reference an existing active district, and
-     * `distinct` prevents duplicate pivot assignments.
+     * `distinct` prevents duplicate pivot assignments. When the actor has an
+     * assigned hub, districts must belong to that hub.
      *
      * @return array<string, array<int, mixed>>
      */
     public function rules(): array
     {
+        $actor = $this->user();
+        $hubId = ($actor instanceof Manager || $actor instanceof Officer) ? $actor->hub_id : null;
+
+        $districtExists = Rule::exists('districts', 'id')->where('is_active', true);
+
+        if ($hubId !== null) {
+            $districtExists = $districtExists->where('hub_id', $hubId);
+        }
+
         return [
             'district_ids' => ['present', 'array'],
-            'district_ids.*' => ['integer', 'distinct', Rule::exists('districts', 'id')->where('is_active', true)],
+            'district_ids.*' => ['integer', 'distinct', $districtExists],
         ];
     }
 

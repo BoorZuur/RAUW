@@ -2,7 +2,8 @@
 
 namespace App\Models;
 
-use App\Enums\ActorType;
+use App\Enums\IssueMessageSenderType;
+use App\Enums\IssueMessageType;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,11 +11,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
+    'issue_chat_id',
     'issue_id',
+    'message_type',
     'sender_type',
     'user_id',
     'officer_id',
     'content',
+    'meta',
     'is_read',
 ])]
 class IssueMessage extends Model
@@ -27,6 +31,7 @@ class IssueMessage extends Model
      * @var array<string, mixed>
      */
     protected $attributes = [
+        'message_type' => IssueMessageType::Message->value,
         'is_flagged' => false,
         'is_read' => false,
     ];
@@ -39,10 +44,17 @@ class IssueMessage extends Model
     protected function casts(): array
     {
         return [
-            'sender_type' => ActorType::class,
+            'message_type' => IssueMessageType::class,
+            'sender_type' => IssueMessageSenderType::class,
+            'meta' => 'array',
             'is_flagged' => 'boolean',
             'is_read' => 'boolean',
         ];
+    }
+
+    public function issueChat(): BelongsTo
+    {
+        return $this->belongsTo(IssueChat::class);
     }
 
     public function issue(): BelongsTo
@@ -58,6 +70,11 @@ class IssueMessage extends Model
     public function officer(): BelongsTo
     {
         return $this->belongsTo(Officer::class);
+    }
+
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(IssueMessageAttachment::class);
     }
 
     public function contentFlags(): HasMany

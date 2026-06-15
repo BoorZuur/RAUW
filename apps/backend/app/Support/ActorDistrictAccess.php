@@ -25,21 +25,35 @@ class ActorDistrictAccess
     {
         $cacheKey = $actor::class.':'.$actor->getKey();
 
-        if (! array_key_exists($cacheKey, self::$assignedDistrictIdsCache)) {
-            if ($actor->relationLoaded('districts')) {
-                self::$assignedDistrictIdsCache[$cacheKey] = $actor->districts
-                    ->pluck('id')
-                    ->map(static fn ($id): int => (int) $id)
-                    ->all();
-            } else {
-                self::$assignedDistrictIdsCache[$cacheKey] = array_map(
-                    'intval',
-                    $actor->districts()->pluck('districts.id')->all()
-                );
-            }
+        return self::$assignedDistrictIdsCache[$cacheKey] ??= self::resolveAssignedDistrictIds($actor);
+    }
+
+    public static function forget(Officer|Manager $actor): void
+    {
+        unset(self::$assignedDistrictIdsCache[$actor::class.':'.$actor->getKey()]);
+    }
+
+    public static function flush(): void
+    {
+        self::$assignedDistrictIdsCache = [];
+    }
+
+    /**
+     * @return array<int>
+     */
+    private static function resolveAssignedDistrictIds(Officer|Manager $actor): array
+    {
+        if ($actor->relationLoaded('districts')) {
+            return $actor->districts
+                ->pluck('id')
+                ->map(static fn ($id): int => (int) $id)
+                ->all();
         }
 
-        return self::$assignedDistrictIdsCache[$cacheKey];
+        return array_map(
+            'intval',
+            $actor->districts()->pluck('districts.id')->all()
+        );
     }
 
     public static function isMainManager(Manager $actor): bool
