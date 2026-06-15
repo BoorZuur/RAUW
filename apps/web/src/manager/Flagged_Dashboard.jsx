@@ -48,7 +48,9 @@ export default function FlagsDashboardPage() {
         setFlags(prevFlags =>
             prevFlags.map(f => {
                 if (f.id === flagId) {
-                    if (action === 'review_user' || action === 'delete_user') {
+                    if (action === 'review_user') {
+                        return {...f, action_taken: 'In Review gezet'};
+                    } else if (action === 'delete_user') {
                         return {...f, action_taken: 'User Verwijderd'};
                     } else if (action === 'delete_content') {
                         return {...f, action_taken: 'Content Verwijderd'};
