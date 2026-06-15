@@ -28,6 +28,17 @@ The backend uses bearer token authentication for API consumers. Officer registra
 
 Managers may end an officer's shared shift via `PATCH /api/officers/{officer}/end-shift` (active manager only; does not revoke tokens).
 
+### Public reference data
+
+Some read endpoints are callable without a bearer token so clients can populate forms before login:
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `GET` | `/api/departments` | None | List departments with category counts. Returns active departments only for unauthenticated and non–main-manager callers. Authenticated active main managers see all departments, including inactive. Rate-limited to 30 requests per minute. |
+| `GET` | `/api/departments/{department}` | None | Show one department. Inactive departments return **404** for unauthenticated and non–main-manager callers; authenticated active main managers may retrieve inactive rows. Rate-limited to 30 requests per minute. |
+
+Department writes (`POST`, `PATCH`, `PUT`, `DELETE`) remain behind `auth:sanctum` and require an authenticated active main manager.
+
 ### Officer Shared Shift
 
 Officers share one shift clock across all devices via `officers.hub_active_until`. Workflow access (Tier C) is gated on **`is_active` and a future `hub_active_until`**, not on the bearer token's Sanctum `hub-active` ability (audit-only). Officers authenticate through `POST /api/auth/login` with device GPS coordinates (`latitude`, `longitude`). Users and managers ignore these fields.
@@ -49,7 +60,7 @@ Officers share one shift clock across all devices via `officers.hub_active_until
 
 **Hub reassignment / manager end-shift:** `PATCH /api/officers/{officer}/hub` and `PATCH /api/officers/{officer}/end-shift` clear `hub_active_until` without revoking tokens. **Officer disable** revokes all tokens, closes all sessions, and ends the shift.
 
-**Middleware:** `officer.hub-active` gates Tier C workflow routes by reading `hub_active_until` on the officer row. **Tier B** (browse without an active shift): `GET /api/issues` (embeds `officer_resolution` when present; omits `status_history`), `GET /api/issues/{issue}` (same `officer_resolution` plus embedded `status_history` for officers/managers), `GET /api/issues/{issue}/status-history` (paginated dedicated read), `GET /api/issues/{issue}/duplicates`, `GET /api/issues/{issue}/participants`, `GET /api/issues/{issue}/officer-resolution`, `GET /api/issues/{issue}/chats`, `GET /api/issues/{issue}/chats/{chat}/messages`, and authenticated attachment downloads (`GET .../attachments/.../download`, `GET .../officer-resolution/attachments/.../download`). **Tier C** (hub-active required): `POST .../assign-self`, `POST .../unassign-self`, `PATCH .../status`, `POST .../mark-duplicate`, officer-resolution `POST`/`PATCH`, `DELETE .../officer-resolution/attachments/{attachment}`, `PATCH .../chats/open`, `PATCH .../chats/{chat}/close`, `POST .../chats/{chat}/messages`, `POST .../chats/{chat}/messages/mark-read`, and officer `GET .../chats/.../attachments/.../download`. Also whitelisted without a shift: profile/auth (`GET/PATCH /api/auth/me`, logout, `POST /api/auth/start-shift`, district self-service), reference reads (hubs, districts, departments, categories), `GET /api/officers/{officer}` (`officers.show`, any authenticated actor), and `GET /api/officer-sessions` (authorization still requires an active manager).
+**Middleware:** `officer.hub-active` gates Tier C workflow routes by reading `hub_active_until` on the officer row. **Tier B** (browse without an active shift): `GET /api/issues` (embeds `officer_resolution` when present; omits `status_history`), `GET /api/issues/{issue}` (same `officer_resolution` plus embedded `status_history` for officers/managers), `GET /api/issues/{issue}/status-history` (paginated dedicated read), `GET /api/issues/{issue}/duplicates`, `GET /api/issues/{issue}/participants`, `GET /api/issues/{issue}/officer-resolution`, and authenticated attachment downloads (`GET .../attachments/.../download`, `GET .../officer-resolution/attachments/.../download`). **Tier C** (hub-active required): `POST .../assign-self`, `POST .../unassign-self`, `PATCH .../status`, `POST .../mark-duplicate`, officer-resolution `POST`/`PATCH`, and `DELETE .../officer-resolution/attachments/{attachment}`. Also whitelisted without a shift: profile/auth (`GET/PATCH /api/auth/me`, logout, `POST /api/auth/start-shift`, district self-service), reference reads (hubs, districts, categories), `GET /api/officers/{officer}` (`officers.show`, any authenticated actor), and `GET /api/officer-sessions` (authorization still requires an active manager). Department reads (`GET /api/departments`, `GET /api/departments/{department}`) are public and do not require authentication.
 
 **Error codes** (`message` + `code`):
 
@@ -151,7 +162,7 @@ District records are managed through `/api/districts`. Each district belongs to 
 
 Issue district handling is intentionally unchanged. `issues.district_id` remains a singular issue location/reference field and is not updated by actor district assignment endpoints or district CRUD.
 
-Department deletion is blocked while a department is assigned to any manager or officer. Reassign those actors first; category pivot rows are still cleaned up automatically when an otherwise unused department is deleted.
+Department list and show (`GET /api/departments`, `GET /api/departments/{department}`) are public reference reads (see **Public reference data** above). Create, update, deactivate/reactivate, and delete require an authenticated active main manager. Department deletion is blocked while a department is assigned to any manager or officer. Reassign those actors first; category pivot rows are still cleaned up automatically when an otherwise unused department is deleted.
 
 Categories are readable by any authenticated actor (`GET /api/categories`, `GET /api/categories/{category}`). Create, update, deactivate or reactivate via `PATCH` with `is_active`, and hard delete require an authenticated active main manager; users, officers, ordinary managers, and inactive managers receive `403`. There is no dedicated `/disable` route. Main categories use `priority` for ordering (lower number = higher urgency). Subcategories inherit the parent main category's `priority` for issue urgency and are listed in alphabetical order by `name`. The removed `weight` field is rejected with `422`.
 
@@ -463,5 +474,6 @@ The Laravel framework is open-sourced software licensed under the [MIT license](
  * * H u b   A c t i v e   T i e r s : * * 
  -   * * T i e r   B   ( N o   s h i f t   r e q u i r e d ) : * *   U s e r s ,   o f f i c e r s ,   a n d   m a n a g e r s   c a n   b r o w s e   p o s t s ,   r e a d   s p e c i f i c   p o s t s ,   v i e w   s a v e d   p o s t s ,   a n d   d o w n l o a d   a t t a c h m e n t s . 
  -   * * T i e r   C   ( A c t i v e   s h i f t   r e q u i r e d ) : * *   O f f i c e r s   r e q u i r e   a n   a c t i v e   s h a r e d   s h i f t   ( ` h u b _ a c t i v e _ u n t i l `   i n   t h e   f u t u r e )   t o   c r e a t e ,   u p d a t e ,   d e l e t e   p o s t s ,   m o d i f y   v i s i b i l i t y ,   o r   m a n a g e   a t t a c h m e n t s . 
-  
+ 
+ 
  

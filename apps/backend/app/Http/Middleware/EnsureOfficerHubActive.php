@@ -28,8 +28,6 @@ class EnsureOfficerHubActive
         'hubs.show',
         'districts.index',
         'districts.show',
-        'departments.index',
-        'departments.show',
         'categories.index',
         'categories.show',
         'officer-sessions.index',

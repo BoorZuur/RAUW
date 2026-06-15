@@ -69,6 +69,14 @@ Route::middleware('throttle:10,1')->prefix('auth')->group(function (): void {
     Route::post('register/user', RegisterUserController::class)->name('auth.register.user');
 });
 
+// Public department reads for registration and reference lookups. Active
+// departments only for unauthenticated callers; authenticated active main
+// managers see inactive rows as well (scoped in DepartmentController).
+Route::middleware('throttle:30,1')->group(function (): void {
+    Route::get('departments', [DepartmentController::class, 'index'])->name('departments.index');
+    Route::get('departments/{department}', [DepartmentController::class, 'show'])->name('departments.show');
+});
+
 // Authenticated auth endpoints. `auth:sanctum` resolves the bearer token
 // against the personal_access_tokens table and works for User, Officer,
 // and Manager tokenable models alike. `actor.active` runs after Sanctum so
@@ -255,9 +263,7 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     // deletes the row and relies on the `category_department` pivot's
     // foreign-key cascade to remove category assignments automatically, leaving
     // the category records themselves intact.
-    Route::get('departments', [DepartmentController::class, 'index'])->name('departments.index');
     Route::post('departments', [DepartmentController::class, 'store'])->name('departments.store');
-    Route::get('departments/{department}', [DepartmentController::class, 'show'])->name('departments.show');
     Route::match(['put', 'patch'], 'departments/{department}', [DepartmentController::class, 'update'])->name('departments.update');
     Route::delete('departments/{department}', [DepartmentController::class, 'destroy'])->name('departments.destroy');
 

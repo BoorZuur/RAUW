@@ -175,7 +175,7 @@ When you run `php artisan migrate:fresh --seed` in `apps/backend`, local seeders
 
 - Managers have one or more departments through `department_ids` / the `department_manager` pivot.
 - Officers have one or more departments through `department_ids` / the `department_officer` pivot.
-- Use the Postman **Departments / List Departments** request to inspect local department IDs before creating managers or registering officers.
+- Seeded active departments include IDs `1` and `2`; reach them without authentication via `GET /api/departments` or `GET /api/departments/{id}` (active-only for unauthenticated callers; rate-limited to 30 requests per minute). Use the Postman **Departments / List Departments** request (no token) to inspect local department IDs before creating managers or registering officers.
 - Department deletion is blocked while a department is assigned to any manager or officer.
 - Issue departments are derived from the selected category on create and whenever `category_id` changes on update. They are stored only in the `department_issue` pivot (the `issues.department` enum column was removed). API responses expose a read-only `departments` array; clients must not send `department` on issue create or update. Issue list filtering uses query param `department` with a department code (pivot any-match).
 - Active main managers can replace officer or manager department pivots with `PATCH /api/officers/{officer}/departments` and `PATCH /api/managers/{manager}/departments`, body `{"department_ids":[1,2]}` or `[]` to clear all assignments. Non-main managers receive `403 Forbidden`. Use the Postman **Managers** folder requests with a main manager token.

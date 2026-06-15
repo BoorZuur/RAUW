@@ -103,10 +103,10 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 
 ## Recommended Request Order
 
-1. Run **Auth / Register User** or **Auth / Register Officer** to create a public actor and auto-login, or run **Auth / Login** with an existing demo account. Officer registration requires at least one existing department ID, **latitude**, and **longitude**; local seeded departments normally include IDs `1` and `2`.
+1. Run **Departments / List Departments** (public, no token) to discover active `department_ids` before officer registration, or run **Auth / Register User** or **Auth / Register Officer** to create a public actor and auto-login, or run **Auth / Login** with an existing demo account. Officer registration requires at least one existing department ID, **latitude**, and **longitude**; local seeded departments normally include IDs `1` and `2`.
 2. Run **Auth / Current Profile** to inspect the actor attached to the stored token.
-3. **Officer shared shift flow:** Run **Auth / Login Officer at Hub** to start the shared shift, then **Issues / Officer workflows** writes (assign-self, status, resolution). **Tier B browse** (`GET /api/issues`, show, officer-resolution show, comments index, attachment downloads, `GET /api/community-posts`, show, attachment download) works without an active shift. Run **Auth / Start Shift** when logged in without an active shift. Run **Auth / Login Officer Remote** (no active shift) then **Auth / Officer Workflow Blocked (403 Smoke)** — expects `hub_active_required` on **Tier C** `POST .../assign-self`, not on issue or community post list. Run **Auth / Officer Remote — List Community Posts (Tier B)** to confirm community browse returns 200 without a shift. **Managers / End Officer Shift** clears the shift without revoking tokens. Profile, start-shift, and reference reads work without an active shift.
-4. Run **Hubs / List Hubs**, **Districts / List Districts**, and **Departments / List Departments** to find local IDs for assignment examples.
+3. **Officer shared shift flow:** Run **Auth / Login Officer at Hub** to start the shared shift, then **Issues / Officer workflows** writes (assign-self, status, resolution). **Tier B browse** (`GET /api/issues`, show, officer-resolution show, comments index, attachment downloads) works without an active shift. Run **Auth / Start Shift** when logged in without an active shift. Run **Auth / Login Officer Remote** (no active shift) then **Auth / Officer Workflow Blocked (403 Smoke)** — expects `hub_active_required` on **Tier C** `POST .../assign-self`, not on issue list. **Managers / End Officer Shift** clears the shift without revoking tokens. Profile, start-shift, and reference reads work without an active shift.
+4. Run **Departments / List Departments** (public, no token), **Hubs / List Hubs**, and **Districts / List Districts** to find local IDs for assignment examples.
 5. Run **Auth / Login as Main Manager** (`demo.manager@example.com` / `password`) to populate `main_manager_access_token` and `access_token` for manager administration.
 6. Run **Officers / List Officer Sessions** to inspect login audit rows (manager only).
 7. Run **Auth / Register User - Duplicate Email (Generic 422)** to confirm duplicate registration returns the generic message (not Laravel “already been taken” wording).
@@ -163,7 +163,7 @@ Request body:
 
 `latitude` and `longitude` are **required** device GPS coordinates for validation and audit. Registration **does not start a shift** — always `hub_active: false`, `hub_active_until: null`. Registration does not require `hub_id`; officers without a hub cannot use login until a manager assigns one.
 
-`department_ids` is required, must contain at least one **active** department ID (`is_active=true`), and cannot contain duplicates; inactive or unknown IDs return `422`. `district_ids` is optional, may be empty or omitted, must contain active existing district IDs when present, and cannot contain duplicates. Use **Departments / List Departments** and **Districts / List Districts** while authenticated to inspect available IDs.
+`department_ids` is required, must contain at least one **active** department ID (`is_active=true`), and cannot contain duplicates; inactive or unknown IDs return `422`. `district_ids` is optional, may be empty or omitted, must contain active existing district IDs when present, and cannot contain duplicates. Use **Departments / List Departments** (public, no token) to inspect active department IDs before registration; use **Districts / List Districts** while authenticated to inspect district IDs.
 
 Successful response shape:
 
@@ -783,12 +783,14 @@ Department endpoints use the `departments` table. Categories are attached throug
 
 Issue departments are derived from the selected category on create and whenever `category_id` changes, persisted only through the `department_issue` pivot (there is no `issues.department` column). Clients must not send issue `department` in create or update bodies. Issue responses expose a read-only `departments` array only. List filtering uses query param `department` with a department code (`department_filter` in the Postman environment); any-match semantics apply across pivot assignments.
 
+Department reads are public (no authentication). `GET /api/departments` and `GET /api/departments/{id}` return active departments only for unauthenticated and non–main-manager callers and are rate-limited to 30 requests per minute. Inactive departments return `404` on show for those callers. Authenticated active main managers may list and show inactive departments when a bearer token is sent.
+
 Department mutations require `Authorization: Bearer <token>` for an authenticated, active main manager (`is_main_manager: true`). Ordinary managers, users, officers, inactive managers, and unauthenticated requests cannot create, update, or delete departments.
 
 Common requests:
 
-- `GET {{base_url}}/api/departments` — list departments with `categories_count`.
-- `GET {{base_url}}/api/departments/{id}` — show one department.
+- `GET {{base_url}}/api/departments` — list departments with `categories_count` (public; active only unless main manager token).
+- `GET {{base_url}}/api/departments/{id}` — show one department (public; inactive returns `404` without main manager token).
 - `POST {{base_url}}/api/departments` — create a department as a main manager.
 - `PATCH {{base_url}}/api/departments/{id}` — update a department as a main manager; send `{"is_active": false}` to deactivate or `{"is_active": true}` to reactivate (no `/disable` route). Deactivation returns `409` when the department is still referenced by existing records.
 - `DELETE {{base_url}}/api/departments/{id}` — hard delete a department as a main manager.
@@ -809,8 +811,9 @@ Departments assigned to any manager or officer cannot be deleted until those act
 
 Common error responses:
 
-- `401 Unauthorized` when the bearer token is missing, invalid, or revoked.
-- `403 Forbidden` when the authenticated actor is not an active main manager.
+- `404 Not Found` when showing an inactive department without an authenticated active main manager token.
+- `401 Unauthorized` when a mutation bearer token is missing, invalid, or revoked.
+- `403 Forbidden` when the authenticated actor is not an active main manager on write endpoints.
 - `422 Unprocessable Entity` for validation failures, including duplicate department `code` values.
 - `409 Conflict` when deleting a department that is still assigned to one or more managers or officers.
 

@@ -5113,10 +5113,12 @@ paths:
       tags: [ Departments ]
       summary: List departments
       description: >-
-        Returns departments from the departments table with category counts.
-        Requires authentication in the protected API group.
-      security:
-        - bearerAuth: [ ]
+        Public read endpoint; no authentication required. Rate-limited to 30
+        requests per minute per client. Returns departments from the departments
+        table with category counts. Unauthenticated callers and authenticated
+        actors who are not active main managers receive only active departments
+        (`is_active=true`). Authenticated active main managers receive all
+        departments, including inactive rows.
       responses:
         '200':
           description: Department list
@@ -5126,8 +5128,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Department'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
     post:
       tags: [ Departments ]
       summary: Create a department
@@ -5166,8 +5166,13 @@ paths:
     get:
       tags: [ Departments ]
       summary: Show a department
-      security:
-        - bearerAuth: [ ]
+      description: >-
+        Public read endpoint; no authentication required. Rate-limited to 30
+        requests per minute per client. Unauthenticated callers and
+        authenticated actors who are not active main managers may retrieve only
+        active departments; inactive departments return **404 Not Found**. An
+        optional bearer token is accepted: authenticated active main managers
+        may retrieve inactive departments.
       responses:
         '200':
           description: Department resource
@@ -5175,8 +5180,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Department'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
     patch:
