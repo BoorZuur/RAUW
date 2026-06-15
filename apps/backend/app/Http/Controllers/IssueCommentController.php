@@ -16,9 +16,11 @@ use App\Models\Officer;
 use App\Models\User;
 use App\Support\CommentVisibilityQuery;
 use App\Support\IssueVisibilityQuery;
+use App\Support\Notifications\NotifyNewComment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 
 class IssueCommentController extends Controller
 {
@@ -53,8 +55,11 @@ class IssueCommentController extends Controller
      *
      * Validates that the issue is visible to the actor before creating the comment.
      */
-    public function store(StoreCommentRequest $request, Issue $issue): JsonResponse
-    {
+    public function store(
+        StoreCommentRequest $request,
+        Issue $issue,
+        NotifyNewComment $notifyNewComment,
+    ): JsonResponse {
         if (! IssueVisibilityQuery::canViewIssue($issue, $request->user())) {
             abort(404);
         }
@@ -80,7 +85,13 @@ class IssueCommentController extends Controller
             $attributes['manager_id'] = $actor->getKey();
         }
 
-        $comment = IssueComment::create($attributes);
+        $comment = DB::transaction(function () use ($issue, $attributes, $actor, $notifyNewComment): IssueComment {
+            $comment = IssueComment::create($attributes);
+
+            $notifyNewComment->notify($issue, $comment, $actor);
+
+            return $comment;
+        });
 
         $comment->load(['user', 'officer', 'manager', 'issue']);
 

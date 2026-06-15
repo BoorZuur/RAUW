@@ -6,12 +6,14 @@ use App\Enums\ChatStatus;
 use App\Models\Issue;
 use App\Models\IssueChat;
 use App\Models\Officer;
+use App\Support\Notifications\NotifyChatClosed;
 use Illuminate\Support\Collection;
 
 class CloseAllOpenIssueChats
 {
     public function __construct(
         private readonly InsertIssueChatSystemMessage $insertSystemMessage,
+        private readonly NotifyChatClosed $notifyChatClosed = new NotifyChatClosed,
     ) {}
 
     /**
@@ -36,6 +38,8 @@ class CloseAllOpenIssueChats
                 $this->insertSystemMessage->insert($chat, $canonical, 'chat_closed_status_gesloten');
             }
         }
+
+        $this->notifyChatClosed->forChats($canonical, $openChats, $officer);
 
         return $openChats;
     }

@@ -19,9 +19,11 @@ use App\Support\Issues\IssueFeedbackOfficerAccess;
 use App\Support\Issues\IssueFeedbackWindow;
 use App\Support\Issues\IssueParticipantAccess;
 use App\Support\IssueVisibilityQuery;
+use App\Support\Notifications\NotifyFeedbackReceived;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 
 class IssueFeedbackController extends Controller
 {
@@ -60,8 +62,11 @@ class IssueFeedbackController extends Controller
         return IssueFeedbackResource::collection($feedbacks);
     }
 
-    public function store(StoreIssueFeedbackRequest $request, Issue $issue): JsonResponse
-    {
+    public function store(
+        StoreIssueFeedbackRequest $request,
+        Issue $issue,
+        NotifyFeedbackReceived $notifyFeedbackReceived,
+    ): JsonResponse {
         $user = $request->user();
 
         if (! IssueVisibilityQuery::canViewIssue($issue, $user)) {
@@ -80,17 +85,21 @@ class IssueFeedbackController extends Controller
 
         $validated = $request->validated();
 
-        return IssueFeedbackIntegrity::wrap(function () use ($issue, $validated, $user) {
-            $feedback = $issue->feedback()->create([
-                'reviewer_user_id' => $user->id,
-                'is_satisfied' => $validated['is_satisfied'],
-                'comment' => $validated['comment'] ?? null,
-                'submitted_at' => now(),
-            ]);
+        return IssueFeedbackIntegrity::wrap(function () use ($issue, $validated, $user, $notifyFeedbackReceived) {
+            return DB::transaction(function () use ($issue, $validated, $user, $notifyFeedbackReceived) {
+                $feedback = $issue->feedback()->create([
+                    'reviewer_user_id' => $user->id,
+                    'is_satisfied' => $validated['is_satisfied'],
+                    'comment' => $validated['comment'] ?? null,
+                    'submitted_at' => now(),
+                ]);
 
-            return (new IssueFeedbackResource($feedback->load(self::FEEDBACK_RELATIONS)))
-                ->response()
-                ->setStatusCode(Response::HTTP_CREATED);
+                $notifyFeedbackReceived->notify($issue, $feedback, $user);
+
+                return (new IssueFeedbackResource($feedback->load(self::FEEDBACK_RELATIONS)))
+                    ->response()
+                    ->setStatusCode(Response::HTTP_CREATED);
+            });
         });
     }
 
