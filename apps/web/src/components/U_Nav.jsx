@@ -1,17 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { MessageCircle, Map, Megaphone, Moon, Newspaper, Sun, User } from 'lucide-react';
+import { MessageCircle, Map, Megaphone, Moon, Newspaper, Sun, User, Bell } from 'lucide-react';
 import RauwLogoImg from '../assets/LogoRAUW.png';
 import { useTheme } from '../ThemeContext.jsx';
 import GoogleTranslator from './GoogleTranslator.jsx';
 import Notification from './Notification.jsx';
+import * as apiClient from "leaflet/src/dom/DomUtil.js";
 
 export default function Navbar() {
     const { isDark, toggleTheme } = useTheme();
     const location = useLocation();
     const navigate = useNavigate();
 
-    // De toast referentie
     const toastRef = useRef();
     const lastCommentCount = useRef(0);
     const issueId = "123";
@@ -32,6 +32,10 @@ export default function Navbar() {
         }, 5000);
         return () => clearInterval(poll);
     }, [issueId]);
+
+    const handleNotificationClick = () => {
+        toastRef.current.show('Berichten', 'Je bent bij met alle updates!', 'info');
+    };
 
     useEffect(() => {
         if (!document.getElementById('google-translate-script')) {
@@ -101,14 +105,22 @@ export default function Navbar() {
                     {isDark ? <Sun className="w-5 h-5"/> : <Moon className="w-5 h-5"/>}
                 </button>
 
-                <div className="relative">
-                    <Notification />
-                </div>
+                <button
+                    onClick={handleNotificationClick}
+                    className="p-3 rounded-2xl hover:bg-black/10 dark:hover:bg-white/10 transition-all relative"
+                    aria-label="Bekijk notificaties"
+                >
+                    <Bell className="w-5 h-5"/>
+                    <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-primary-accent rounded-full border border-primary-bg"></span>
+                </button>
+
+                <Notification ref={toastRef} />
 
                 <button onClick={() => navigate('/account')}
                         aria-label="Ga naar accountinstellingen"
                         className="p-3 rounded-2xl hover:bg-black/10 dark:hover:bg-white/10 transition-all">
                     <User className="w-5 h-5"/>
+
                 </button>
             </div>
         </nav>
@@ -116,4 +128,3 @@ export default function Navbar() {
     );
 
 }
-
