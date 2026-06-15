@@ -81,6 +81,7 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 | `department_id` | `1` | Department path ID for update, deactivate (PATCH `is_active`), and delete examples. |
 | `issue_id` | `1` | Filled automatically after **Issues / Create Issue**. Used by show, update, attachment, and delete examples. |
 | `comment_id` | `1` | Filled automatically after **Comments / Add Comment**. Used by update, delete, and visibility examples. |
+| `feedback_id` | blank | Filled automatically after **Issues / Issue feedback / Submit Feedback**. Used by update and delete examples. |
 | `chat_id` | `1` | Filled by **Issue Chat / Open Chat with Issue Owner**. Used by message, close, and download examples. |
 | `chat_id_2` | `2` | Filled by **Issue Chat / Open Chat with Participant** for parallel-chat smoke tests. |
 | `chat_message_id` | `1` | Filled by **Issue Chat / Send Message** or **Send Message with Attachment**. |
@@ -105,7 +106,7 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 
 1. Run **Departments / List Departments** (public, no token) to discover active `department_ids` before officer registration, or run **Auth / Register User** or **Auth / Register Officer** to create a public actor and auto-login, or run **Auth / Login** with an existing demo account. Officer registration requires at least one existing department ID, **latitude**, and **longitude**; local seeded departments normally include IDs `1` and `2`.
 2. Run **Auth / Current Profile** to inspect the actor attached to the stored token.
-3. **Officer shared shift flow:** Run **Auth / Login Officer at Hub** to start the shared shift, then **Issues / Officer workflows** writes (assign-self, status, resolution). **Tier B browse** (`GET /api/issues`, show, officer-resolution show, comments index, attachment downloads) works without an active shift. Run **Auth / Start Shift** when logged in without an active shift. Run **Auth / Login Officer Remote** (no active shift) then **Auth / Officer Workflow Blocked (403 Smoke)** — expects `hub_active_required` on **Tier C** `POST .../assign-self`, not on issue list. **Managers / End Officer Shift** clears the shift without revoking tokens. Profile, start-shift, and reference reads work without an active shift.
+3. **Officer shared shift flow:** Run **Auth / Login Officer at Hub** to start the shared shift, then **Issues / Officer workflows** writes (assign-self, status, resolution). **Tier B browse** (`GET /api/issues`, show, officer-resolution show, comments index, feedback index, `GET /api/officers/me/feedback`, attachment downloads) works without an active shift. Run **Auth / Start Shift** when logged in without an active shift. Run **Auth / Login Officer Remote** (no active shift) then **Auth / Officer Workflow Blocked (403 Smoke)** — expects `hub_active_required` on **Tier C** `POST .../assign-self`, not on issue list. **Managers / End Officer Shift** clears the shift without revoking tokens. Profile, start-shift, and reference reads work without an active shift.
 4. Run **Departments / List Departments** (public, no token), **Hubs / List Hubs**, and **Districts / List Districts** to find local IDs for assignment examples.
 5. Run **Auth / Login as Main Manager** (`demo.manager@example.com` / `password`) to populate `main_manager_access_token` and `access_token` for manager administration.
 6. Run **Officers / List Officer Sessions** to inspect login audit rows (manager only).
@@ -129,7 +130,7 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 
 The collection stores the returned `access_token` automatically after a successful login, user registration, or officer registration. Manager creation intentionally does not update `access_token` because it returns only the created manager profile. If you disable collection scripts or the token is not stored, copy the `access_token` value from the auth response into the active Postman environment's `access_token` variable before calling protected endpoints.
 
-Issue examples also store `issue_id` after issue creation, `comment_id` after **Comments / Add Comment**, `chat_id` / `chat_message_id` / `chat_attachment_id` after **Issue Chat** sends, and `attachment_id` / `attachment_download_url` after attachment upload. Attachment upload returns a `data: [...]` wrapper, and the collection stores these variables from `response.data[0]`. Attachment upload uses local, non-public development storage. Downloads and deletes require `Authorization: Bearer <token>` and use authenticated API routes.
+Issue examples also store `issue_id` after issue creation, `comment_id` after **Comments / Add Comment**, `feedback_id` after **Issues / Issue feedback / Submit Feedback**, `chat_id` / `chat_message_id` / `chat_attachment_id` after **Issue Chat** sends, and `attachment_id` / `attachment_download_url` after attachment upload. Attachment upload returns a `data: [...]` wrapper, and the collection stores these variables from `response.data[0]`. Attachment upload uses local, non-public development storage. Downloads and deletes require `Authorization: Bearer <token>` and use authenticated API routes.
 
 Protected endpoints use this header:
 
@@ -865,7 +866,7 @@ Issue responses include read-only `status`, `assigned_officer_id`, and `visibili
 
 ### Officer issue workflows
 
-**Tier B** (browse without shift): `GET /api/issues`, `GET /api/issues/{issue}`, `GET .../officer-resolution`, `GET .../officer-updates`, `GET .../comments`, attachment downloads (issue, resolution, and officer-update), `GET /api/community-posts`, `GET /api/community-posts/{communityPost}`, and `GET /api/community-posts/{communityPost}/attachments/{attachment}/download`. **Tier C** (hub-active required): assign-self, unassign-self, status PATCH, resolution POST/PATCH, officer-update POST/PATCH/DELETE, and community post writes (create/update/delete/visibility/attachment upload-delete). Tier C without shift → **403** `hub_active_required`. District scoping on workflow writes: officer must be in the issue's district via `district_officer` or **403** `officer_not_in_district`. Officer writes use validate-after-lock (mutable checks after `lockForUpdate`). Resolution and officer-update attachment uploads enforce the cumulative cap and perform disk I/O inside the same locked transaction.
+**Tier B** (browse without shift): `GET /api/issues`, `GET /api/issues/{issue}`, `GET .../officer-resolution`, `GET .../officer-updates`, `GET .../comments`, `GET .../feedback`, `GET /api/officers/me/feedback`, attachment downloads (issue, resolution, and officer-update), `GET /api/community-posts`, `GET /api/community-posts/{communityPost}`, and `GET /api/community-posts/{communityPost}/attachments/{attachment}/download`. **Tier C** (hub-active required): assign-self, unassign-self, status PATCH, resolution POST/PATCH, officer-update POST/PATCH/DELETE, feedback POST/PATCH/DELETE (officers only — route is user-write), and community post writes (create/update/delete/visibility/attachment upload-delete). Tier C without shift → **403** `hub_active_required`. District scoping on workflow writes: officer must be in the issue's district via `district_officer` or **403** `officer_not_in_district`. Officer writes use validate-after-lock (mutable checks after `lockForUpdate`). Resolution and officer-update attachment uploads enforce the cumulative cap and perform disk I/O inside the same locked transaction.
 
 **Self-assign / unassign**
 
@@ -1016,6 +1017,38 @@ When the issue owner comments on an anonymous issue, the response redacts the au
 ```
 
 Officer and manager comments always expose real identity with `is_anonymous: false`.
+
+### Issue feedback
+
+User satisfaction feedback on **closed** (`gesloten`) issues. Distinct from officer field reports (`officer_issue_resolutions`). Participants may submit one row per issue within **7 days** of last close; update and delete are allowed within **24 hours** of `submitted_at`. See `IssueFeedbackWindow` in the backend and `docs/openapi.yaml` paths under `/api/issues/{issueId}/feedback`.
+
+Common requests:
+
+- `GET {{base_url}}/api/issues/{issue}/feedback` — list feedback on one issue. **Unpaginated.** Users see only their own row; officers see all rows when ever assigned or resolution author (**Tier B**); managers see all rows on visible issues. Reviewer anonymity matches comments (`IssueCommentAuthor` shape).
+- `POST {{base_url}}/api/issues/{issue}/feedback` — submit feedback. Active **users** who are participants only. Body `{ "is_satisfied": true, "comment": "..." }` (`comment` optional, max 2000). Returns **201**. Errors: `feedback_not_allowed`, `feedback_window_closed`, `not_issue_participant`, `feedback_already_submitted` (**409**).
+- `PATCH {{base_url}}/api/issues/{issue}/feedback/{feedback}` — update own feedback within edit window. Owner only; wrong nested id → **404**.
+- `DELETE {{base_url}}/api/issues/{issue}/feedback/{feedback}` — delete own feedback. Same rules as PATCH; **204** on success.
+- `GET {{base_url}}/api/officers/me/feedback` — officer-only paginated list across involved issues. Optional `issue_id`, `submitted_from`, `submitted_to`. **Tier B**.
+
+Successful feedback response shape (owner viewing own row):
+
+```json
+{
+  "id": 1,
+  "issue_id": 1,
+  "is_satisfied": true,
+  "comment": "De melding is netjes opgelost.",
+  "submitted_at": "2026-06-10T14:00:00+00:00",
+  "updated_at": null,
+  "reviewer": {
+    "is_anonymous": false,
+    "id": 1,
+    "username": "demo.user"
+  }
+}
+```
+
+When another viewer reads participant feedback on anonymous issues, `reviewer` is redacted to `is_anonymous: true` and a stable `display_name` alias (same rules as comments).
 
 ### Community Posts
 

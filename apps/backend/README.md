@@ -60,7 +60,7 @@ Officers share one shift clock across all devices via `officers.hub_active_until
 
 **Hub reassignment / manager end-shift:** `PATCH /api/officers/{officer}/hub` and `PATCH /api/officers/{officer}/end-shift` clear `hub_active_until` without revoking tokens. **Officer disable** revokes all tokens, closes all sessions, and ends the shift.
 
-**Middleware:** `officer.hub-active` gates Tier C workflow routes by reading `hub_active_until` on the officer row. **Tier B** (browse without an active shift): `GET /api/issues` (embeds `officer_resolution` when present; omits `status_history`), `GET /api/issues/{issue}` (same `officer_resolution` plus embedded `status_history` for officers/managers), `GET /api/issues/{issue}/status-history` (paginated dedicated read), `GET /api/issues/{issue}/duplicates`, `GET /api/issues/{issue}/participants`, `GET /api/issues/{issue}/officer-resolution`, and authenticated attachment downloads (`GET .../attachments/.../download`, `GET .../officer-resolution/attachments/.../download`). **Tier C** (hub-active required): `POST .../assign-self`, `POST .../unassign-self`, `PATCH .../status`, `POST .../mark-duplicate`, officer-resolution `POST`/`PATCH`, and `DELETE .../officer-resolution/attachments/{attachment}`. Also whitelisted without a shift: profile/auth (`GET/PATCH /api/auth/me`, logout, `POST /api/auth/start-shift`, district self-service), reference reads (hubs, districts, categories), `GET /api/officers/{officer}` (`officers.show`, any authenticated actor), and `GET /api/officer-sessions` (authorization still requires an active manager). Department reads (`GET /api/departments`, `GET /api/departments/{department}`) are public and do not require authentication.
+**Middleware:** `officer.hub-active` gates Tier C workflow routes by reading `hub_active_until` on the officer row. **Tier B** (browse without an active shift): `GET /api/issues` (embeds `officer_resolution` when present; omits `status_history`), `GET /api/issues/{issue}` (same `officer_resolution` plus embedded `status_history` for officers/managers), `GET /api/issues/{issue}/status-history` (paginated dedicated read), `GET /api/issues/{issue}/duplicates`, `GET /api/issues/{issue}/participants`, `GET /api/issues/{issue}/officer-resolution`, `GET /api/issues/{issue}/feedback`, `GET /api/officers/me/feedback`, and authenticated attachment downloads (`GET .../attachments/.../download`, `GET .../officer-resolution/attachments/.../download`). **Tier C** (hub-active required): `POST .../assign-self`, `POST .../unassign-self`, `PATCH .../status`, `POST .../mark-duplicate`, officer-resolution `POST`/`PATCH`, and `DELETE .../officer-resolution/attachments/{attachment}`. Also whitelisted without a shift: profile/auth (`GET/PATCH /api/auth/me`, logout, `POST /api/auth/start-shift`, district self-service), reference reads (hubs, districts, categories), `GET /api/officers/{officer}` (`officers.show`, any authenticated actor), and `GET /api/officer-sessions` (authorization still requires an active manager). Department reads (`GET /api/departments`, `GET /api/departments/{department}`) are public and do not require authentication.
 
 **Error codes** (`message` + `code`):
 
@@ -271,6 +271,20 @@ Multiple updates per issue; PATCH/DELETE restricted to the authoring officer (wh
 | `GET` | `.../attachments/{attachment}/download` | Any actor who can view the issue (Tier B) | Visibility-only; streams from local storage. |
 
 Attachment limits match resolutions: up to **3** images, **5 MB** each. PATCH validates cumulative cap under row lock. Uploads are content-sniffed as allowed images.
+
+### Issue feedback (user satisfaction)
+
+Distinct from **officer field reports** (`officer_issue_resolutions`). Participants (users) submit satisfaction on **closed** (`gesloten`) issues via `issue_feedback` — one row per `(issue_id, reviewer_user_id)`. Window rules live in `IssueFeedbackWindow`: **7×24 hours** to submit after last close; **24 hours** from `submitted_at` to edit or delete. OpenAPI paths: `docs/openapi.yaml` (`/api/issues/{issueId}/feedback`, `/api/officers/me/feedback`).
+
+| Method | Path | Who | Notes |
+|--------|------|-----|-------|
+| `GET` | `/api/issues/{issue}/feedback` | User / officer / manager | **Tier B** for officers. Unpaginated. Users: own row only. Officers: all rows when ever assignee or resolution author. Managers: all rows on visible issues. |
+| `POST` | `/api/issues/{issue}/feedback` | Participant user | **201**. Tier C for officers (user-only). `feedback_not_allowed`, `feedback_window_closed`, `not_issue_participant`, **409** `feedback_already_submitted`. |
+| `PATCH` | `/api/issues/{issue}/feedback/{feedback}` | Reviewer owner | 24 h edit window. Nested id mismatch → **404**. |
+| `DELETE` | `/api/issues/{issue}/feedback/{feedback}` | Reviewer owner | Same as PATCH; **204**. |
+| `GET` | `/api/officers/me/feedback` | Officer | **Tier B**. Paginated; filters `issue_id`, `submitted_from`, `submitted_to`. |
+
+Reviewer JSON uses the same anonymity shape as comments (`IssueCommentAuthor` / `IssueFeedbackResource`).
 
 ### Issue chat (1:1 messaging)
 
