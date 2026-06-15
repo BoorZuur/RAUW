@@ -3,6 +3,7 @@
 namespace Tests\Unit\Notifications;
 
 use App\Enums\ActorType;
+use App\Enums\IssueStatus;
 use App\Enums\NotificationType;
 use App\Models\DomainNotification;
 use App\Models\Issue;
@@ -10,6 +11,7 @@ use App\Models\Officer;
 use App\Models\User;
 use App\Support\Notifications\NotificationDeduplicator;
 use App\Support\Notifications\NotificationInsert;
+use App\Support\Notifications\NotificationTemplates;
 use App\Support\Notifications\NotificationWriter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
@@ -178,6 +180,38 @@ class NotificationWriterTest extends TestCase
             userId: User::factory()->create()->id,
             officerId: Officer::factory()->create()->id,
         );
+    }
+
+    public function test_status_change_template_uses_dutch_labels_issue_title_and_actor_name(): void
+    {
+        $copy = NotificationTemplates::statusChange(
+            'Kapotte lantaarn',
+            'agent.jansen',
+            IssueStatus::InProgress,
+        );
+
+        $this->assertSame('Status gewijzigd', $copy['title']);
+        $this->assertStringContainsString('Kapotte lantaarn', $copy['body']);
+        $this->assertStringContainsString('agent.jansen', $copy['body']);
+        $this->assertStringContainsString('in behandeling', $copy['body']);
+    }
+
+    public function test_new_message_template_uses_dutch_copy_with_issue_title_and_actor_name(): void
+    {
+        $copy = NotificationTemplates::newMessage('Gladheid', 'jan.devries');
+
+        $this->assertSame('Nieuw bericht', $copy['title']);
+        $this->assertStringContainsString('Gladheid', $copy['body']);
+        $this->assertStringContainsString('jan.devries', $copy['body']);
+    }
+
+    public function test_new_issue_template_uses_dutch_copy_with_issue_title_and_actor_name(): void
+    {
+        $copy = NotificationTemplates::newIssue('Zwerfafval', 'marie.smit');
+
+        $this->assertSame('Nieuwe melding', $copy['title']);
+        $this->assertStringContainsString('Zwerfafval', $copy['body']);
+        $this->assertStringContainsString('marie.smit', $copy['body']);
     }
 
     private function userInsert(int $userId, int $issueId): NotificationInsert

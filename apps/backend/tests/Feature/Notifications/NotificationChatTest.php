@@ -5,6 +5,7 @@ namespace Tests\Feature\Notifications;
 use App\Enums\ChatStatus;
 use App\Enums\IssueMessageType;
 use App\Enums\IssueStatus;
+use App\Enums\JoinedVia;
 use App\Enums\NotificationType;
 use App\Models\Category;
 use App\Models\District;
@@ -289,5 +290,72 @@ class NotificationChatTest extends TestCase
             'issue_chat_id' => $chat->id,
             'message_type' => IssueMessageType::System->value,
         ]);
+    }
+
+    public function test_resolution_store_notifies_participants(): void
+    {
+        ['issue' => $issue, 'officer' => $officer, 'owner' => $owner] = $this->openChatContext();
+
+        $participant = User::factory()->create();
+        IssueParticipant::factory()->manual()->create([
+            'issue_id' => $issue->id,
+            'user_id' => $participant->id,
+        ]);
+
+        $this->withHeaders($this->authHeaders($officer))
+            ->postJson("/api/issues/{$issue->id}/officer-resolution", [
+                'title' => 'Resolved on site',
+                'content' => 'Replaced the lamp.',
+            ])
+            ->assertCreated();
+
+        $notifications = DomainNotification::query()
+            ->where('type', NotificationType::ResolutionPosted)
+            ->where('issue_id', $issue->id)
+            ->get();
+
+        $this->assertCount(2, $notifications);
+        $this->assertEqualsCanonicalizing(
+            [$owner->id, $participant->id],
+            $notifications->pluck('user_id')->all(),
+        );
+
+        $notification = $notifications->first();
+        $this->assertSame('Oplossing geplaatst', $notification->title);
+        $this->assertStringContainsString($issue->title, $notification->body);
+        $this->assertStringContainsString($officer->username, $notification->body);
+    }
+
+    public function test_resolution_update_notifies_participants_again(): void
+    {
+        ['issue' => $issue, 'officer' => $officer, 'owner' => $owner] = $this->openChatContext();
+
+        IssueParticipant::factory()->creator()->create([
+            'issue_id' => $issue->id,
+            'user_id' => $owner->id,
+            'joined_via' => JoinedVia::Creator,
+        ]);
+
+        $this->withHeaders($this->authHeaders($officer))
+            ->postJson("/api/issues/{$issue->id}/officer-resolution", [
+                'title' => 'Initial resolution',
+                'content' => 'First pass.',
+            ])
+            ->assertCreated();
+
+        $this->withHeaders($this->authHeaders($officer))
+            ->patchJson("/api/issues/{$issue->id}/officer-resolution", [
+                'title' => 'Updated resolution',
+                'content' => 'Added details.',
+            ])
+            ->assertOk();
+
+        $this->assertSame(
+            2,
+            DomainNotification::query()
+                ->where('type', NotificationType::ResolutionPosted)
+                ->where('issue_id', $issue->id)
+                ->count(),
+        );
     }
 }

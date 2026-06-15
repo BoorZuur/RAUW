@@ -133,4 +133,96 @@ class NotificationNewIssueTest extends TestCase
 
         $this->assertDatabaseCount('domain_notifications', 0);
     }
+
+    public function test_falls_back_to_all_district_officers_when_department_intersection_empty(): void
+    {
+        $author = User::factory()->create();
+        $district = District::factory()->create();
+        $issueDepartment = Department::factory()->create();
+        $officerDepartment = Department::factory()->create();
+        $category = Category::factory()->withDepartments($issueDepartment)->create();
+
+        $officerOne = Officer::factory()
+            ->withDistricts([$district])
+            ->withDepartments([$officerDepartment])
+            ->create();
+
+        $officerTwo = Officer::factory()
+            ->withDistricts([$district])
+            ->withDepartments([$officerDepartment])
+            ->create();
+
+        $this->withHeaders($this->authHeaders($author))
+            ->postJson('/api/issues', $this->storePayload($category, $district))
+            ->assertCreated();
+
+        $notifications = DomainNotification::query()
+            ->where('type', NotificationType::NewIssue)
+            ->get();
+
+        $this->assertCount(2, $notifications);
+        $this->assertEqualsCanonicalizing(
+            [$officerOne->id, $officerTwo->id],
+            $notifications->pluck('officer_id')->all(),
+        );
+    }
+
+    public function test_visible_community_post_notifies_district_feed_followers(): void
+    {
+        $district = District::factory()->create(['is_active' => true]);
+        $follower = User::factory()->create();
+        $otherFollower = User::factory()->create();
+        $follower->feedDistricts()->attach($district->id);
+        $otherFollower->feedDistricts()->attach(District::factory()->create()->id);
+
+        $officer = Officer::factory()
+            ->withDistricts([$district])
+            ->create([
+                'is_active' => true,
+                'hub_active_until' => now()->addHours(8),
+            ]);
+
+        $this->actingAs($officer, 'sanctum')
+            ->postJson('/api/community-posts', [
+                'district_id' => $district->id,
+                'title' => 'Neighborhood update',
+                'content' => 'Road work next week.',
+                'visibility' => Visibility::Visible->value,
+            ])
+            ->assertCreated();
+
+        $notifications = DomainNotification::query()
+            ->where('type', NotificationType::NewCommunityPost)
+            ->get();
+
+        $this->assertCount(1, $notifications);
+        $this->assertSame($follower->id, $notifications->first()->user_id);
+        $this->assertSame('Nieuw bericht in feed', $notifications->first()->title);
+        $this->assertStringContainsString($officer->username, $notifications->first()->body);
+    }
+
+    public function test_hidden_community_post_store_does_not_notify_followers(): void
+    {
+        $district = District::factory()->create(['is_active' => true]);
+        $follower = User::factory()->create();
+        $follower->feedDistricts()->attach($district->id);
+
+        $officer = Officer::factory()
+            ->withDistricts([$district])
+            ->create([
+                'is_active' => true,
+                'hub_active_until' => now()->addHours(8),
+            ]);
+
+        $this->actingAs($officer, 'sanctum')
+            ->postJson('/api/community-posts', [
+                'district_id' => $district->id,
+                'title' => 'Draft update',
+                'content' => 'Not published yet.',
+                'visibility' => Visibility::Hidden->value,
+            ])
+            ->assertCreated();
+
+        $this->assertDatabaseCount('domain_notifications', 0);
+    }
 }

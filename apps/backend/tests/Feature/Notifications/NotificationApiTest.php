@@ -151,4 +151,49 @@ class NotificationApiTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.id', $message->id);
     }
+
+    public function test_is_read_filter_limits_results(): void
+    {
+        $user = User::factory()->create(['is_active' => true]);
+
+        $unread = DomainNotification::factory()->forUser($user)->unread()->create();
+        DomainNotification::factory()->forUser($user)->read()->create();
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/notifications?is_read=0')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $unread->id);
+    }
+
+    public function test_list_pagination_respects_per_page(): void
+    {
+        $user = User::factory()->create(['is_active' => true]);
+
+        DomainNotification::factory()->forUser($user)->count(3)->create();
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/notifications?per_page=2&page=1')
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('meta.per_page', 2)
+            ->assertJsonPath('meta.total', 3);
+    }
+
+    public function test_mark_all_read_updates_only_own_unread_notifications(): void
+    {
+        $user = User::factory()->create(['is_active' => true]);
+        $otherUser = User::factory()->create(['is_active' => true]);
+
+        DomainNotification::factory()->forUser($user)->unread()->count(2)->create();
+        $foreignUnread = DomainNotification::factory()->forUser($otherUser)->unread()->create();
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/notifications/mark-all-read')
+            ->assertOk()
+            ->assertJsonPath('updated', 2);
+
+        $this->assertSame(0, DomainNotification::query()->forUser($user)->unread()->count());
+        $this->assertFalse($foreignUnread->fresh()->is_read);
+    }
 }

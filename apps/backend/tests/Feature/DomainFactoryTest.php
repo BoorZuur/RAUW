@@ -14,7 +14,7 @@ use App\Models\IssueAttachment;
 use App\Models\IssueComment;
 use App\Models\IssueMessage;
 use App\Models\IssueParticipant;
-use App\Models\IssueResolution;
+use App\Models\OfficerIssueResolution;
 use App\Models\IssueStatusHistory;
 use App\Models\Manager;
 use App\Models\Officer;
@@ -53,7 +53,7 @@ class DomainFactoryTest extends TestCase
             IssueMessage::factory()->create(['issue_id' => $issue->id]),
             IssueParticipant::factory()->create(['issue_id' => $issue->id]),
             IssueStatusHistory::factory()->create(['issue_id' => $issue->id, 'changed_by_officer_id' => $officer->id]),
-            IssueResolution::factory()->create(['issue_id' => $issue->id]),
+            OfficerIssueResolution::factory()->create(['issue_id' => $issue->id, 'officer_id' => $officer->id]),
             IssueAttachment::factory()->create(['issue_id' => $issue->id]),
             ContentFlag::factory()->create(['issue_id' => $issue->id, 'flagged_by_officer_id' => $officer->id, 'reviewed_by_manager_id' => $manager->id]),
             BlockedKeyword::factory()->create(['added_by_manager_id' => $manager->id]),

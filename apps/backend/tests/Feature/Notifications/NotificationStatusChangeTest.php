@@ -4,11 +4,13 @@ namespace Tests\Feature\Notifications;
 
 use App\Enums\IssueStatus;
 use App\Enums\NotificationType;
+use App\Enums\Visibility;
 use App\Models\Category;
 use App\Models\Department;
 use App\Models\District;
 use App\Models\DomainNotification;
 use App\Models\Issue;
+use App\Models\IssueChat;
 use App\Models\IssueParticipant;
 use App\Models\Officer;
 use App\Models\User;
@@ -153,5 +155,138 @@ class NotificationStatusChangeTest extends TestCase
         $notify->notify($issue, $officer, IssueStatus::Open, IssueStatus::InProgress);
 
         $this->assertDatabaseCount('domain_notifications', 1);
+    }
+
+    public function test_gesloten_transition_notifies_status_change_and_chat_closed(): void
+    {
+        $category = Category::factory()->withDepartments()->create();
+        $district = District::factory()->create();
+        $owner = User::factory()->create();
+        $participant = User::factory()->create();
+
+        $officer = Officer::factory()->withDistricts([$district])->create([
+            'hub_active_until' => now()->addHour(),
+        ]);
+
+        $issue = Issue::factory()->withStatus(IssueStatus::Resolved)->create([
+            'user_id' => $owner->id,
+            'category_id' => $category->id,
+            'district_id' => $district->id,
+            'assigned_officer_id' => $officer->id,
+        ]);
+
+        IssueParticipant::factory()->creator()->create([
+            'issue_id' => $issue->id,
+            'user_id' => $owner->id,
+        ]);
+
+        IssueParticipant::factory()->manual()->create([
+            'issue_id' => $issue->id,
+            'user_id' => $participant->id,
+        ]);
+
+        $ownerChat = IssueChat::factory()->open()->create([
+            'issue_id' => $issue->id,
+            'user_id' => $owner->id,
+            'opened_by_officer_id' => $officer->id,
+        ]);
+
+        $participantChat = IssueChat::factory()->open()->create([
+            'issue_id' => $issue->id,
+            'user_id' => $participant->id,
+            'opened_by_officer_id' => $officer->id,
+        ]);
+
+        $this->withHeaders($this->authHeaders($officer))
+            ->patchJson("/api/issues/{$issue->id}/status", [
+                'status' => IssueStatus::Closed->value,
+            ])
+            ->assertOk();
+
+        $statusNotifications = DomainNotification::query()
+            ->where('type', NotificationType::StatusChange)
+            ->where('issue_id', $issue->id)
+            ->get();
+
+        $this->assertCount(2, $statusNotifications);
+        $this->assertEqualsCanonicalizing(
+            [$owner->id, $participant->id],
+            $statusNotifications->pluck('user_id')->all(),
+        );
+
+        $chatClosedNotifications = DomainNotification::query()
+            ->where('type', NotificationType::ChatClosed)
+            ->where('issue_id', $issue->id)
+            ->get();
+
+        $this->assertCount(2, $chatClosedNotifications);
+
+        $this->assertDatabaseHas('domain_notifications', [
+            'type' => NotificationType::StatusChange->value,
+            'dedup_key' => "status_change:issue:{$issue->id}:user:{$owner->id}:to:gesloten",
+        ]);
+
+        $this->assertDatabaseHas('domain_notifications', [
+            'type' => NotificationType::ChatClosed->value,
+            'dedup_key' => "chat_closed:issue:{$issue->id}:chat:{$ownerChat->id}:user:{$owner->id}",
+        ]);
+
+        $this->assertDatabaseHas('domain_notifications', [
+            'type' => NotificationType::ChatClosed->value,
+            'dedup_key' => "chat_closed:issue:{$issue->id}:chat:{$participantChat->id}:user:{$participant->id}",
+        ]);
+    }
+
+    public function test_issue_hidden_notifies_owner_and_participants(): void
+    {
+        $category = Category::factory()->withDepartments()->create();
+        $district = District::factory()->create();
+        $owner = User::factory()->create();
+        $participant = User::factory()->create();
+
+        $officer = Officer::factory()->withDistricts([$district])->create([
+            'hub_active_until' => now()->addHour(),
+        ]);
+
+        $issue = Issue::factory()->withStatus(IssueStatus::Open)->create([
+            'user_id' => $owner->id,
+            'category_id' => $category->id,
+            'district_id' => $district->id,
+            'assigned_officer_id' => $officer->id,
+            'visibility' => Visibility::Visible,
+        ]);
+
+        IssueParticipant::factory()->creator()->create([
+            'issue_id' => $issue->id,
+            'user_id' => $owner->id,
+        ]);
+
+        IssueParticipant::factory()->manual()->create([
+            'issue_id' => $issue->id,
+            'user_id' => $participant->id,
+        ]);
+
+        $this->withHeaders($this->authHeaders($officer))
+            ->patchJson("/api/issues/{$issue->id}/visibility", [
+                'visibility' => Visibility::Hidden->value,
+            ])
+            ->assertOk()
+            ->assertJsonPath('visibility', Visibility::Hidden->value);
+
+        $notifications = DomainNotification::query()
+            ->where('type', NotificationType::IssueHidden)
+            ->where('issue_id', $issue->id)
+            ->get();
+
+        $this->assertCount(2, $notifications);
+        $this->assertEqualsCanonicalizing(
+            [$owner->id, $participant->id],
+            $notifications->pluck('user_id')->all(),
+        );
+
+        $notification = $notifications->first();
+        $this->assertSame('Melding verborgen', $notification->title);
+        $this->assertStringContainsString($issue->title, $notification->body);
+        $this->assertStringContainsString($officer->username, $notification->body);
     }
 }
