@@ -15,8 +15,8 @@ return new class extends Migration
             $table->id();
             $table->string('name', 100)->unique();
             $table->string('postal_prefix', 10)->nullable();
-            $table->decimal('center_lat', 10, 8)->nullable();
-            $table->decimal('center_lng', 11, 8)->nullable();
+            $table->decimal('center_lat', 10, 8);
+            $table->decimal('center_lng', 11, 8);
             $table->integer('radius_meters')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();

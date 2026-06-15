@@ -19,6 +19,7 @@ class DistrictController extends Controller
     public function index(): AnonymousResourceCollection
     {
         $districts = District::query()
+            ->with('hub')
             ->withCount(['managers', 'officers', 'issues'])
             ->orderBy('name')
             ->get();
@@ -31,7 +32,7 @@ class DistrictController extends Controller
      */
     public function show(District $district): DistrictResource
     {
-        $district->loadCount(['managers', 'officers', 'issues']);
+        $district->load('hub')->loadCount(['managers', 'officers', 'issues']);
 
         return new DistrictResource($district);
     }
@@ -39,7 +40,7 @@ class DistrictController extends Controller
     /**
      * Create a district.
      *
-     * Authorization (active manager only) and validation are enforced by
+     * Authorization (active main manager only) and validation are enforced by
      * StoreDistrictRequest. Only validated district attributes are persisted;
      * actor district assignments remain managed through their dedicated pivot
      * endpoints.
@@ -47,6 +48,7 @@ class DistrictController extends Controller
     public function store(StoreDistrictRequest $request): JsonResponse
     {
         $district = District::create($request->safe()->only([
+            'hub_id',
             'name',
             'postal_prefix',
             'center_lat',
@@ -55,7 +57,7 @@ class DistrictController extends Controller
             'is_active',
         ]));
 
-        $district->loadCount(['managers', 'officers', 'issues']);
+        $district->load('hub')->loadCount(['managers', 'officers', 'issues']);
 
         return (new DistrictResource($district))
             ->response()
@@ -65,13 +67,14 @@ class DistrictController extends Controller
     /**
      * Update a district.
      *
-     * Authorization and validation are enforced by UpdateDistrictRequest. Only
-     * provided validated keys are applied, so partial updates leave untouched
-     * fields intact.
+     * Authorization (active main manager only) and validation are enforced by
+     * UpdateDistrictRequest. Only provided validated keys are applied, so partial
+     * updates leave untouched fields intact.
      */
-    public function update(UpdateDistrictRequest $request, District $district): DistrictResource
+    public function update(UpdateDistrictRequest $request, District $district, \App\Actions\Districts\DetachDistrictFromCommunityFeeds $detachAction): DistrictResource
     {
         $attributes = $request->safe()->only([
+            'hub_id',
             'name',
             'postal_prefix',
             'center_lat',
@@ -81,10 +84,16 @@ class DistrictController extends Controller
         ]);
 
         if ($attributes !== []) {
+            $wasActive = $district->is_active;
+            
             $district->update($attributes);
+
+            if ($wasActive && array_key_exists('is_active', $attributes) && ! $attributes['is_active']) {
+                $detachAction->handle($district);
+            }
         }
 
-        $district->refresh()->loadCount(['managers', 'officers', 'issues']);
+        $district->refresh()->load('hub')->loadCount(['managers', 'officers', 'issues']);
 
         return new DistrictResource($district);
     }
@@ -92,12 +101,13 @@ class DistrictController extends Controller
     /**
      * Hard delete an eligible district.
      *
-     * Deletion is rejected when the district is still assigned to any manager,
+     * Authorization (active main manager only) is enforced by
+     * DeleteDistrictRequest. Deletion is rejected when the district is still assigned to any manager,
      * assigned to any officer, or referenced by any issue. This keeps actor
      * assignments intact and preserves the singular `issues.district_id` issue
      * location/reference boundary.
      */
-    public function destroy(DeleteDistrictRequest $request, District $district): JsonResponse
+    public function destroy(DeleteDistrictRequest $request, District $district, \App\Actions\Districts\DetachDistrictFromCommunityFeeds $detachAction): JsonResponse
     {
         if ($district->managers()->exists()) {
             return response()->json([
@@ -116,6 +126,8 @@ class DistrictController extends Controller
                 'message' => 'This district is still referenced by one or more issues and cannot be deleted.',
             ], Response::HTTP_CONFLICT);
         }
+
+        $detachAction->handle($district);
 
         $district->delete();
 

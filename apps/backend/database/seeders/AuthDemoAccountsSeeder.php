@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Department;
 use App\Models\District;
+use App\Models\Hub;
 use App\Models\Manager;
 use App\Models\Officer;
 use App\Models\User;
@@ -38,13 +39,17 @@ class AuthDemoAccountsSeeder extends Seeder
 
     public function run(): void
     {
-        // Pick a deterministic district (the first seeded one by name) so
-        // officer/manager profiles always reference the same district across
-        // re-seeds. Falls back to null when no districts exist yet.
+        $hub = Hub::query()
+            ->where('name', 'Cluster Centrum')
+            ->first();
+
         $district = District::query()
-            ->where('name', 'Centrum')
-            ->first()
-            ?? District::query()->orderBy('id')->first();
+            ->where('name', 'Cool')
+            ->first();
+
+        if ($district !== null && $hub !== null && $district->hub_id !== $hub->id) {
+            throw new \RuntimeException('Demo district Cool must belong to Cluster Centrum hub.');
+        }
 
         // Ensure the canonical department rows exist so demo actors can be
         // assigned real department records under the new schema.
@@ -72,6 +77,7 @@ class AuthDemoAccountsSeeder extends Seeder
                 'username' => 'demo.officer',
                 'password' => self::DEMO_PASSWORD,
                 'badge_number' => 'BOA-DEMO',
+                'hub_id' => $hub?->id,
                 'is_active' => true,
             ],
         );
@@ -92,6 +98,7 @@ class AuthDemoAccountsSeeder extends Seeder
             [
                 'username' => 'demo.manager',
                 'password' => self::DEMO_PASSWORD,
+                'hub_id' => $hub?->id,
                 'is_active' => true,
                 'created_by_manager_id' => null,
             ],

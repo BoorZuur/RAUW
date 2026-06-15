@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'postal_prefix', 'center_lat', 'center_lng', 'radius_meters', 'is_active'])]
+#[Fillable(['name', 'hub_id', 'postal_prefix', 'center_lat', 'center_lng', 'radius_meters', 'is_active'])]
 class District extends Model
 {
     use HasFactory;
@@ -38,6 +39,16 @@ class District extends Model
     }
 
     /**
+     * The hub this district belongs to.
+     *
+     * @return BelongsTo<Hub, $this>
+     */
+    public function hub(): BelongsTo
+    {
+        return $this->belongsTo(Hub::class);
+    }
+
+    /**
      * The officers assigned to this district (many-to-many).
      *
      * @return BelongsToMany<Officer, $this>
@@ -61,4 +72,15 @@ class District extends Model
     {
         return $this->hasMany(Issue::class);
     }
+
+    public function communityPosts(): HasMany
+    {
+        return $this->hasMany(CommunityPost::class);
+    }
+
+    public function feedUsers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'district_user');
+    }
 }
+

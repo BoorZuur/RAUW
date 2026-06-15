@@ -1,8 +1,26 @@
 <?php
 
+use App\Http\Middleware\EnsureActorIsActive;
+use App\Http\Middleware\EnsureOfficerHubActive;
+use App\Support\IssueChatConflict;
+use App\Support\IssueFeedbackIntegrity;
+use App\Support\Issues\IssueDuplicateConflict;
+use App\Support\OfficerIssueConflict;
+use App\Support\OfficerIssueResolutionIntegrity;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Throwable;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -12,8 +30,178 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->alias([
+            'actor.active' => EnsureActorIsActive::class,
+            'officer.hub-active' => EnsureOfficerHubActive::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $expectsApiJson = static function (Request $request): bool {
+            return $request->is('api/*') || $request->expectsJson();
+        };
+
+        $isIntegrityConstraint = static function (QueryException $exception): bool {
+            $sqlState = $exception->errorInfo[0] ?? null;
+
+            if ($sqlState !== null && str_starts_with((string) $sqlState, '23')) {
+                return true;
+            }
+
+            return in_array($exception->getCode(), ['23000', '23505', '1062'], true);
+        };
+
+        $exceptions->render(function (ModelNotFoundException $exception, Request $request) use ($expectsApiJson) {
+            if (config('app.debug') || ! $expectsApiJson($request)) {
+                return null;
+            }
+
+            return response()->json([
+                'message' => 'Resource not found.',
+            ], Response::HTTP_NOT_FOUND);
+        });
+
+        $exceptions->render(function (AuthorizationException $exception, Request $request) use ($expectsApiJson) {
+            if (config('app.debug') || ! $expectsApiJson($request)) {
+                return null;
+            }
+
+            return response()->json([
+                'message' => 'This action is unauthorized.',
+            ], Response::HTTP_FORBIDDEN);
+        });
+
+        $exceptions->render(function (OfficerIssueConflict $exception, Request $request) use ($expectsApiJson) {
+            if (config('app.debug') || ! $expectsApiJson($request)) {
+                return null;
+            }
+
+            return response()->json([
+                'message' => $exception->getMessage(),
+                'code' => $exception->code,
+            ], $exception->status);
+        });
+
+        $exceptions->render(function (IssueDuplicateConflict $exception, Request $request) use ($expectsApiJson) {
+            if (config('app.debug') || ! $expectsApiJson($request)) {
+                return null;
+            }
+
+            return response()->json([
+                'message' => $exception->getMessage(),
+                'code' => $exception->code,
+            ], $exception->status);
+        });
+
+        $exceptions->render(function (IssueChatConflict $exception, Request $request) use ($expectsApiJson) {
+            if (config('app.debug') || ! $expectsApiJson($request)) {
+                return null;
+            }
+
+            return response()->json([
+                'message' => $exception->getMessage(),
+                'code' => $exception->code,
+            ], $exception->status);
+        });
+
+        // Officer workflow conflicts (assignee, district, terminal assign, duplicate
+        // resolution) are thrown as OfficerIssueConflict and rendered above. Only
+        // integrity races on officer_issue_resolutions.issue_id are mapped here.
+        $renderDuplicateOfficerResolution = static function (QueryException $exception, Request $request) use ($expectsApiJson) {
+            if (config('app.debug') || ! $expectsApiJson($request)) {
+                return null;
+            }
+
+            if (! OfficerIssueResolutionIntegrity::isDuplicateIssueIdViolation($exception)) {
+                return null;
+            }
+
+            return response()->json([
+                'message' => 'An officer resolution already exists for this issue.',
+                'code' => 'officer_resolution_exists',
+            ], Response::HTTP_CONFLICT);
+        };
+
+        $renderDuplicateIssueFeedback = static function (QueryException $exception, Request $request) use ($expectsApiJson) {
+            if (config('app.debug') || ! $expectsApiJson($request)) {
+                return null;
+            }
+
+            if (! IssueFeedbackIntegrity::isDuplicateReviewerViolation($exception)) {
+                return null;
+            }
+
+            return response()->json([
+                'message' => 'Feedback has already been submitted for this issue.',
+                'code' => 'feedback_already_submitted',
+            ], Response::HTTP_CONFLICT);
+        };
+
+        $exceptions->render(function (UniqueConstraintViolationException $exception, Request $request) use ($renderDuplicateOfficerResolution, $renderDuplicateIssueFeedback) {
+            $duplicateResolution = $renderDuplicateOfficerResolution($exception, $request);
+
+            if ($duplicateResolution !== null) {
+                return $duplicateResolution;
+            }
+
+            return $renderDuplicateIssueFeedback($exception, $request);
+        });
+
+        $exceptions->render(function (QueryException $exception, Request $request) use ($expectsApiJson, $isIntegrityConstraint, $renderDuplicateOfficerResolution, $renderDuplicateIssueFeedback) {
+            if (config('app.debug') || ! $expectsApiJson($request)) {
+                return null;
+            }
+
+            // Map duplicate officer_issue_resolutions.issue_id to structured 409
+            // (OfficerIssueConflict also handles this; this covers race paths).
+            $duplicateResolution = $renderDuplicateOfficerResolution($exception, $request);
+
+            if ($duplicateResolution !== null) {
+                return $duplicateResolution;
+            }
+
+            // Map duplicate issue_feedback (issue_id, reviewer_user_id) to structured 409.
+            $duplicateFeedback = $renderDuplicateIssueFeedback($exception, $request);
+
+            if ($duplicateFeedback !== null) {
+                return $duplicateFeedback;
+            }
+
+            Log::error('Database query exception on API route.', [
+                'exception' => $exception,
+                'sql' => $exception->getSql(),
+                'bindings' => $exception->getBindings(),
+            ]);
+
+            $conflict = $isIntegrityConstraint($exception);
+
+            return response()->json([
+                'message' => $conflict
+                    ? 'The request could not be completed due to a conflict with existing data.'
+                    : 'Server error.',
+            ], $conflict ? Response::HTTP_CONFLICT : Response::HTTP_INTERNAL_SERVER_ERROR);
+        });
+
+        $exceptions->render(function (Throwable $exception, Request $request) use ($expectsApiJson) {
+            if (config('app.debug') || ! $expectsApiJson($request)) {
+                return null;
+            }
+
+            if (
+                $exception instanceof ValidationException
+                || $exception instanceof AuthenticationException
+                || $exception instanceof ModelNotFoundException
+                || $exception instanceof AuthorizationException
+                || $exception instanceof OfficerIssueConflict
+                || $exception instanceof IssueChatConflict
+                || $exception instanceof IssueDuplicateConflict
+                || $exception instanceof QueryException
+                || $exception instanceof HttpExceptionInterface
+            ) {
+                return null;
+            }
+
+            return response()->json([
+                'message' => 'Server error.',
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        });
     })->create();

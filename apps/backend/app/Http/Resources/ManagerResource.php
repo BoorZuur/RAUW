@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Enums\ActorType;
 use App\Models\Department;
 use App\Models\District;
+use App\Models\Hub;
 use App\Models\Manager;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -45,9 +46,25 @@ class ManagerResource extends JsonResource
             'is_active' => (bool) $manager->is_active,
             'is_main_manager' => (bool) $manager->is_main_manager,
             'created_by_manager_id' => $manager->created_by_manager_id,
+            'hub_id' => $manager->hub_id,
+            'hub' => $this->compactHub($manager),
             'departments' => $this->compactDepartments($manager),
             'districts' => $this->compactDistricts($manager),
         ];
+    }
+
+    /**
+     * Return the manager's hub when the relation has already been loaded.
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function compactHub(Manager $manager): ?array
+    {
+        if (! $manager->relationLoaded('hub') || ! $manager->hub instanceof Hub) {
+            return null;
+        }
+
+        return (new HubResource($manager->hub))->resolve();
     }
 
     /**

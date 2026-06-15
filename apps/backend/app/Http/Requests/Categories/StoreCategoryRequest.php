@@ -11,20 +11,21 @@ use Illuminate\Validation\Rule;
 class StoreCategoryRequest extends FormRequest
 {
     /**
-     * Only an authenticated, active manager may create categories.
+     * Only an authenticated, active main manager may create categories.
      *
      * The authenticated actor is resolved from the Sanctum bearer token and
      * may be a User, Officer, or Manager. Creation is restricted to a Manager
-     * whose `is_active` flag is true, so users, officers, and inactive
-     * managers are all rejected with a 403 response. Category management is
-     * open to ordinary managers (not just main managers).
+     * whose `is_active` and `is_main_manager` flags are both true, so users,
+     * officers, non-main managers, and inactive managers are all rejected with
+     * a 403 response.
      */
     public function authorize(): bool
     {
         $actor = $this->user();
 
         return $actor instanceof Manager
-            && (bool) $actor->is_active === true;
+            && (bool) $actor->is_active === true
+            && (bool) $actor->is_main_manager === true;
     }
 
     /**
@@ -32,10 +33,11 @@ class StoreCategoryRequest extends FormRequest
      *
      * Hierarchy: main categories have no `parent_id` and order themselves with
      * the general `priority` field; subcategories reference an existing active
-     * main category and order themselves with `weight`. Nested subcategories
-     * (a parent that is itself a subcategory) are rejected. Both `priority` and
-     * `weight` use a lower-number-is-higher-priority ordering. Each category is
-     * assigned to one or more existing departments through `department_ids`.
+     * main category and order by `name` only. Nested subcategories (a parent
+     * that is itself a subcategory) are rejected. `priority` uses a
+     * lower-number-is-higher-priority ordering for main categories only. Each
+     * category is assigned to one or more existing departments through
+     * `department_ids`. The legacy `weight` field is rejected.
      *
      * @return array<string, array<int, mixed>>
      */
@@ -52,7 +54,7 @@ class StoreCategoryRequest extends FormRequest
             'department_ids' => ['required', 'array', 'min:1'],
             'department_ids.*' => ['integer', Rule::exists('departments', 'id')],
             // The general priority applies to main categories only; it must be
-            // omitted for subcategories, which order themselves via `weight`.
+            // omitted for subcategories, which order by name.
             'priority' => [
                 'nullable',
                 'integer',
@@ -60,15 +62,7 @@ class StoreCategoryRequest extends FormRequest
                 'max:255',
                 Rule::prohibitedIf(fn (): bool => $this->filled('parent_id')),
             ],
-            // The weight applies to subcategories only; it must be omitted for
-            // main categories, which order themselves via `priority`.
-            'weight' => [
-                'nullable',
-                'integer',
-                'min:0',
-                'max:255',
-                Rule::prohibitedIf(fn (): bool => ! $this->filled('parent_id')),
-            ],
+            'weight' => ['prohibited'],
             'is_active' => ['sometimes', 'boolean'],
         ];
     }
@@ -108,7 +102,7 @@ class StoreCategoryRequest extends FormRequest
     }
 
     /**
-     * Custom validation messages for the prohibited priority/weight fields.
+     * Custom validation messages for prohibited fields.
      *
      * @return array<string, string>
      */
@@ -116,7 +110,7 @@ class StoreCategoryRequest extends FormRequest
     {
         return [
             'priority.prohibited' => 'The priority field is only allowed for main categories.',
-            'weight.prohibited' => 'The weight field is only allowed for subcategories.',
+            'weight.prohibited' => 'The weight field is no longer supported.',
         ];
     }
 

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'weight', 'priority', 'parent_id', 'is_active'])]
+#[Fillable(['name', 'priority', 'parent_id', 'is_active'])]
 class Category extends Model
 {
     use HasFactory;
@@ -26,16 +26,15 @@ class Category extends Model
     /**
      * Get the attributes that should be cast.
      *
-     * Both `priority` (used by main categories, where `parent_id` is null) and
-     * `weight` (used by subcategories) follow a lower-number-is-higher-priority
-     * ordering and may be null when ordering is unspecified.
+     * `priority` applies to main categories (`parent_id` is null) and follows a
+     * lower-number-is-higher-priority ordering. It may be null when unspecified.
+     * Subcategories order by `name` only.
      *
      * @return array<string, string>
      */
     protected function casts(): array
     {
         return [
-            'weight' => 'integer',
             'priority' => 'integer',
             'is_active' => 'boolean',
         ];
@@ -64,5 +63,20 @@ class Category extends Model
     public function issues(): HasMany
     {
         return $this->hasMany(Issue::class);
+    }
+
+    /**
+     * The department model identifiers assigned to this category.
+     *
+     * This drives issue department auto-assignment: an issue inherits its
+     * departments from its selected category through the shared pivot source
+     * of truth, which supports multiple departments per issue. The loaded
+     * `departments` relation is reused when available to avoid extra queries.
+     *
+     * @return list<int>
+     */
+    public function departmentIds(): array
+    {
+        return $this->departments->pluck('id')->all();
     }
 }

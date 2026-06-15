@@ -15,8 +15,8 @@ class CategoryFactory extends Factory
      * Define the model's default state.
      *
      * A main category by default: `parent_id` is null and the general
-     * `priority` orders it (lower number = higher priority). Subcategories use
-     * `weight` for ordering instead.
+     * `priority` orders it (lower number = higher priority). Subcategories
+     * order by `name` only.
      *
      * @return array<string, mixed>
      */
@@ -24,7 +24,6 @@ class CategoryFactory extends Factory
     {
         return [
             'name' => fake()->unique()->words(2, true),
-            'weight' => null,
             'priority' => fake()->numberBetween(1, 10),
             'parent_id' => null,
             'is_active' => true,
@@ -39,7 +38,6 @@ class CategoryFactory extends Factory
         return $this->state(fn (array $attributes): array => [
             'parent_id' => $parent->id,
             'priority' => null,
-            'weight' => fake()->numberBetween(1, 10),
         ]);
     }
 
@@ -48,10 +46,10 @@ class CategoryFactory extends Factory
      */
     public function withDepartments(Department ...$departments): static
     {
-        $departments = $departments === []
-            ? [Department::factory()]
-            : $departments;
+        if ($departments === []) {
+            return $this->hasAttached(Department::factory(), [], 'departments');
+        }
 
-        return $this->hasAttached(collect($departments), [], 'departments');
+        return $this->hasAttached($departments, [], 'departments');
     }
 }

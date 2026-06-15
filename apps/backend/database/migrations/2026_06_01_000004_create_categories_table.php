@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\Department;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -15,8 +14,7 @@ return new class extends Migration
         Schema::create('categories', function (Blueprint $table) {
             $table->id();
             $table->string('name', 100);
-            $table->enum('department', Department::values());
-            $table->unsignedTinyInteger('weight')->nullable();
+            $table->unsignedTinyInteger('priority')->nullable();
             $table->foreignId('parent_id')->nullable()->constrained('categories')->nullOnDelete();
             $table->boolean('is_active')->default(true);
             $table->timestamps();

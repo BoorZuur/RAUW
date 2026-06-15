@@ -57,11 +57,6 @@ class User extends Authenticatable
         return $this->hasMany(IssueParticipant::class);
     }
 
-    public function votes(): HasMany
-    {
-        return $this->hasMany(IssueVote::class);
-    }
-
     public function comments(): HasMany
     {
         return $this->hasMany(IssueComment::class);
@@ -72,13 +67,24 @@ class User extends Authenticatable
         return $this->hasMany(IssueMessage::class);
     }
 
-    public function resolutions(): HasMany
+    public function issueFeedbackGiven(): HasMany
     {
-        return $this->hasMany(IssueResolution::class);
+        return $this->hasMany(IssueFeedback::class, 'reviewer_user_id');
     }
 
     public function reviews(): HasMany
     {
         return $this->hasMany(UserReview::class);
     }
+
+    public function feedDistricts(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(District::class, 'district_user');
+    }
+
+    public function savedCommunityPosts(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(CommunityPost::class, 'community_post_user');
+    }
 }
+

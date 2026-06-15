@@ -2,8 +2,13 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Actions\Auth\BuildOfficerAuthProfile;
+use App\Actions\Auth\EvaluateOfficerHubLogin;
+use App\Actions\Auth\IssueOfficerAuthToken;
+use App\Actions\Auth\OfficerAuthTokenResult;
 use App\Actions\Auth\ResolveLoginActor;
 use App\Enums\ActorType;
+use App\Enums\OfficerHubLoginEligibility;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Resources\AuthProfileResource;
@@ -15,8 +20,12 @@ use Illuminate\Http\Response;
 
 class LoginController extends Controller
 {
-    public function __construct(private readonly ResolveLoginActor $resolver)
-    {
+    public function __construct(
+        private readonly ResolveLoginActor $resolver,
+        private readonly EvaluateOfficerHubLogin $evaluateOfficerHubLogin,
+        private readonly IssueOfficerAuthToken $issueOfficerAuthToken,
+        private readonly BuildOfficerAuthProfile $buildOfficerAuthProfile,
+    ) {
     }
 
     /**
@@ -47,8 +56,10 @@ class LoginController extends Controller
 
         // Eager-load the compact districts relation for officers and managers
         // so the profile resource can embed them without triggering lazy queries.
-        if (($actor instanceof Officer || $actor instanceof Manager) && ! $actor->relationLoaded('districts')) {
-            $actor->loadMissing('districts');
+        if ($actor instanceof Officer || $actor instanceof Manager) {
+            $actor->loadMissing(['districts', 'hub']);
+        } elseif ($actor instanceof \App\Models\User) {
+            $actor->loadMissing('feedDistricts');
         }
 
         // Eager-load the actor's department relationships so the profile
@@ -62,6 +73,10 @@ class LoginController extends Controller
             $actor->loadMissing('departments');
         }
 
+        if ($actor instanceof Officer) {
+            return $this->loginOfficer($request, $actor, $type);
+        }
+
         $token = $actor->createToken('api-login')->plainTextToken;
 
         return response()->json([
@@ -70,5 +85,56 @@ class LoginController extends Controller
             'actor_type' => $type->value,
             'profile' => (new AuthProfileResource($actor))->toArray($request),
         ]);
+    }
+
+    private function loginOfficer(LoginRequest $request, Officer $officer, ActorType $type): JsonResponse
+    {
+        $request->validateOfficerCoordinates();
+
+        $evaluation = $this->evaluateOfficerHubLogin->evaluate(
+            $officer,
+            $request->latitude(),
+            $request->longitude(),
+        );
+
+        if (in_array($evaluation->eligibility, [
+            OfficerHubLoginEligibility::HubNotAssigned,
+            OfficerHubLoginEligibility::HubNotFound,
+        ], true)) {
+            return response()->json([
+                'message' => 'Officer hub assignment required before login.',
+                'code' => 'hub_not_assigned',
+            ], Response::HTTP_FORBIDDEN);
+        }
+
+        $authToken = $this->issueOfficerAuthToken->issue(
+            $officer,
+            $evaluation,
+            $request->latitude(),
+            $request->longitude(),
+        );
+
+        return response()->json(
+            $this->officerAuthResponse($request, $officer, $type, $authToken),
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function officerAuthResponse(
+        LoginRequest $request,
+        Officer $officer,
+        ActorType $type,
+        OfficerAuthTokenResult $authToken,
+    ): array {
+        return [
+            'token_type' => 'Bearer',
+            'access_token' => $authToken->plainTextToken,
+            'actor_type' => $type->value,
+            'hub_active' => $authToken->hubActive,
+            'hub_active_until' => $authToken->hubActiveUntil?->toIso8601String(),
+            'profile' => $this->buildOfficerAuthProfile->build($officer, $request),
+        ];
     }
 }

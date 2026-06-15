@@ -16,7 +16,10 @@ export default function Login() {
         e.preventDefault();
         try {
             const response = await axios.post('http://localhost:8001/api/auth/login', { email, password });
-            if (response.data.token) localStorage.setItem('auth_token', response.data.token);
+            if (response.data.access_token) {
+                localStorage.setItem('auth_token', response.data.access_token);
+            }
+            localStorage.setItem('user_type', 'manager');
             navigate('/feed');
         } catch (err) { setError('Inloggen mislukt.'); }
     };
@@ -82,7 +85,12 @@ export default function Login() {
                                 </div>
                             </div>
                         ))}
-                        <button type="submit" className="w-full h-12 mt-4 bg-primary-text hover:bg-primary-accent text-white font-medium rounded-xl transition-all shadow-md active:scale-[0.98]">Inloggen</button>
+                        <button
+                            type="submit"
+                            className="w-full h-12 mt-4 bg-primary-text text-primary-bg hover:bg-primary-accent font-black uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-[0.98]"
+                        >
+                            Inloggen
+                        </button>
                     </form>
                 </div>
             </div>

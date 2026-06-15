@@ -9,46 +9,66 @@ use Illuminate\Database\Seeder;
 class CategorySeeder extends Seeder
 {
     /**
-     * Seed stable issue category and department reference data.
+     * Seed BOA / Jeugd issue category reference data.
      */
     public function run(): void
     {
-        $departments = collect([
-            'wijkbeheer' => 'Wijkbeheer',
-            'boa_jeugd' => 'BOA / Jeugd',
-        ])->mapWithKeys(fn (string $name, string $code): array => [
-            $code => Department::firstOrCreate(
-                ['code' => $code],
-                ['name' => $name, 'is_active' => true],
-            ),
-        ]);
+        Department::firstOrCreate(
+            ['code' => 'wijkbeheer'],
+            ['name' => 'Wijkbeheer', 'is_active' => true],
+        );
 
-        // 'priority' orders main categories; lower number = higher priority.
-        // 'departments' lists the department codes the category is assigned to.
-        collect([
-            ['name' => 'Afval en vervuiling', 'departments' => ['wijkbeheer'], 'priority' => 10],
-            ['name' => 'Groen en openbare ruimte', 'departments' => ['wijkbeheer'], 'priority' => 20],
-            ['name' => 'Straatverlichting', 'departments' => ['wijkbeheer'], 'priority' => 30],
-            ['name' => 'Verkeersveiligheid', 'departments' => ['wijkbeheer'], 'priority' => 40],
-            ['name' => 'Jeugdoverlast', 'departments' => ['boa_jeugd'], 'priority' => 10],
-            ['name' => 'Vandalisme', 'departments' => ['boa_jeugd'], 'priority' => 20],
-            ['name' => 'Geluidsoverlast', 'departments' => ['wijkbeheer', 'boa_jeugd'], 'priority' => 30],
-        ])->each(function (array $data) use ($departments): void {
-            $category = Category::firstOrCreate(
-                ['name' => $data['name']],
+        $boaJeugd = Department::firstOrCreate(
+            ['code' => 'boa_jeugd'],
+            ['name' => 'BOA / Jeugd', 'is_active' => true],
+        );
+
+        $data = require __DIR__.'/data/boa_jeugd_categories.php';
+        $seededNames = [];
+
+        foreach ($data['mains'] as $main) {
+            $category = Category::updateOrCreate(
+                ['name' => $main['name']],
                 [
-                    'priority' => $data['priority'],
-                    'weight' => null,
+                    'priority' => $main['priority'],
                     'parent_id' => null,
                     'is_active' => true,
                 ],
             );
 
-            $category->departments()->syncWithoutDetaching(
-                collect($data['departments'])
-                    ->map(fn (string $code): int => $departments[$code]->id)
-                    ->all()
+            $category->departments()->sync([$boaJeugd->id]);
+            $seededNames[] = $main['name'];
+        }
+
+        $mainIds = Category::query()
+            ->whereIn('name', collect($data['mains'])->pluck('name'))
+            ->pluck('id', 'name');
+
+        foreach ($data['subs'] as $sub) {
+            $parentId = $mainIds[$sub['parent']] ?? null;
+
+            if ($parentId === null) {
+                throw new \RuntimeException("Parent category not found for subcategory [{$sub['name']}]: {$sub['parent']}");
+            }
+
+            $category = Category::updateOrCreate(
+                ['name' => $sub['name']],
+                [
+                    'priority' => null,
+                    'parent_id' => $parentId,
+                    'is_active' => true,
+                ],
             );
-        });
+
+            $category->departments()->sync([$boaJeugd->id]);
+            $seededNames[] = $sub['name'];
+        }
+
+        Category::query()
+            ->whereNotIn('name', $seededNames)
+            ->each(function (Category $category): void {
+                $category->departments()->detach();
+                $category->delete();
+            });
     }
 }

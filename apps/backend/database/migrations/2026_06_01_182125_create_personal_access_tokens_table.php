@@ -21,6 +21,13 @@ return new class extends Migration
             $table->timestamp('expires_at')->nullable()->index();
             $table->timestamps();
         });
+
+        Schema::table('officer_sessions', function (Blueprint $table) {
+            $table->foreign('personal_access_token_id')
+                ->references('id')
+                ->on('personal_access_tokens')
+                ->nullOnDelete();
+        });
     }
 
     /**
@@ -28,6 +35,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::table('officer_sessions', function (Blueprint $table) {
+            $table->dropForeign(['personal_access_token_id']);
+        });
+
         Schema::dropIfExists('personal_access_tokens');
     }
 };

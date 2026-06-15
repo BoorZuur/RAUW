@@ -89,7 +89,7 @@ class CategoryDepartmentSchemaTest extends TestCase
     }
 
     // ---------------------------------------------------------------------
-    // Category hierarchy and priority/weight ordering
+    // Category hierarchy and ordering
     // ---------------------------------------------------------------------
 
     public function test_category_hierarchy_uses_parent_id(): void
@@ -118,24 +118,23 @@ class CategoryDepartmentSchemaTest extends TestCase
         $this->assertSame([$high->id, $mid->id, $low->id], $ordered);
     }
 
-    public function test_lower_subcategory_weight_values_sort_ahead_of_higher_values(): void
+    public function test_subcategories_sort_by_name(): void
     {
         $main = Category::factory()->create();
-        $heavier = Category::factory()->subcategoryOf($main)->create(['weight' => 8]);
-        $lighter = Category::factory()->subcategoryOf($main)->create(['weight' => 2]);
+        $zebra = Category::factory()->subcategoryOf($main)->create(['name' => 'Zebra']);
+        $alpha = Category::factory()->subcategoryOf($main)->create(['name' => 'Alpha']);
 
-        $ordered = $main->children()->orderBy('weight')->pluck('id')->all();
+        $ordered = $main->children()->orderBy('name')->pluck('id')->all();
 
-        $this->assertSame([$lighter->id, $heavier->id], $ordered);
+        $this->assertSame([$alpha->id, $zebra->id], $ordered);
     }
 
-    public function test_priority_and_weight_may_be_null(): void
+    public function test_priority_may_be_null(): void
     {
-        $category = Category::factory()->create(['priority' => null, 'weight' => null]);
+        $category = Category::factory()->create(['priority' => null]);
 
         $category->refresh();
 
         $this->assertNull($category->priority);
-        $this->assertNull($category->weight);
     }
 }

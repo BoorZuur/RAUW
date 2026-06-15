@@ -1,0 +1,386 @@
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import U_Nav from '../components/U_Nav';
+import NativeLeafletMap from '../components/MapComponent.jsx';
+import Footer from '../components/Footer.jsx';
+
+const apiClient = axios.create({
+    baseURL: 'http://localhost:8001',
+    headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+    }
+});
+
+apiClient.interceptors.request.use(config => {
+    const token = localStorage.getItem('auth_token');
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+    return config;
+});
+
+const getDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371e3;
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
+export default function ReportIssue() {
+    const navigate = useNavigate();
+    const [formData, setFormData] = useState({
+        title: '',
+        category_id: 1,
+        address: '',
+        content: '',
+        is_anonymous: false
+    });
+
+    const [images, setImages] = useState([]);
+    const [position, setPosition] = useState(null);
+    const [error, setError] = useState(null);
+    const [categories, setCategories] = useState([]);
+    const [districts, setDistricts] = useState([]);
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
+    const [success, setSuccess] = useState(false);
+
+    // Nieuwe states voor de custom applicatie popup
+    const [showMapError, setShowMapError] = useState(false);
+    const [mapErrorMessage, setMapErrorMessage] = useState('');
+
+    useEffect(() => {
+        Promise.all([
+            apiClient.get('/api/categories'),
+            apiClient.get('/api/districts')
+        ])
+            .then(([catRes, distRes]) => {
+                const catData = Array.isArray(catRes.data) ? catRes.data : (catRes.data.data || []);
+                const distData = Array.isArray(distRes.data) ? distRes.data : (distRes.data.data || []);
+                setCategories(catData);
+                setDistricts(distData);
+            })
+            .catch(err => {
+                console.error("API Error details:", err.response || err);
+                setError("Kon gegevens niet laden.");
+            });
+    }, []);
+
+    const getAllCategoriesFlattened = () => {
+        return categories.flatMap(c => [
+            { ...c, isChild: false },
+            ...(c.children || []).map(child => ({ ...child, isChild: true }))
+        ]);
+    };
+
+    const getSelectedCategoryName = () => {
+        const found = getAllCategoriesFlattened().find(c => c.id === formData.category_id);
+        return found ? found.name : "Selecteer een categorie...";
+    };
+
+    // Callback functie om fouten van de kaart op te vangen in deze component
+    const handleMapError = (message) => {
+        setMapErrorMessage(message);
+        setShowMapError(true);
+    };
+
+    const handleGeocode = async () => {
+        if (!formData.address) return;
+        setError(null);
+
+        try {
+            const response = await axios.get(`https://nominatim.openstreetmap.org/search`, {
+                params: { q: `${formData.address}, Rotterdam`, format: 'json', limit: 1 }
+            });
+
+            if (response.data && response.data.length > 0) {
+                const result = response.data[0];
+                const lat = parseFloat(result.lat);
+                const lon = parseFloat(result.lon);
+
+                let insideKnownDistrict = false;
+                if (districts && districts.length > 0) {
+                    insideKnownDistrict = districts.some(d => {
+                        const dist = getDistance(lat, lon, d.center_lat, d.center_lng);
+                        const searchRadius = d.radius_meters + 2000;
+                        return dist < searchRadius;
+                    });
+                }
+
+                if (!insideKnownDistrict) {
+                    handleMapError("Het ingevulde adres valt buiten de bekende wijkgebieden binnen de database van de Gemeente Rotterdam.");
+                    setPosition(null);
+                    return;
+                }
+
+                setPosition({ lat, lng: lon });
+            } else {
+                setError("Kon het adres niet vinden. Controleer de spelling.");
+            }
+        } catch (err) {
+            setError("Kon locatie niet automatisch ophalen.");
+        }
+    };
+
+    const handleSubmit = async () => {
+        let activePosition = position;
+
+        if (!activePosition && formData.address) {
+            try {
+                const response = await axios.get(`https://nominatim.openstreetmap.org/search`, {
+                    params: { q: `${formData.address}, Rotterdam`, format: 'json', limit: 1 }
+                });
+
+                if (response.data && response.data.length > 0) {
+                    activePosition = {
+                        lat: parseFloat(response.data[0].lat),
+                        lng: parseFloat(response.data[0].lon)
+                    };
+                    setPosition(activePosition);
+                }
+            } catch (err) {
+                handleMapError("Kon adres niet automatisch vinden, controleer het adres of dit adres valt buiten de gebieden van Rotterdam.");
+                setShowConfirm(false);
+                return;
+            }
+        }
+
+        if (!activePosition) {
+            handleMapError("Selecteer een locatie op de kaart of vul een geldig adres in.");
+            setShowConfirm(false);
+            return;
+        }
+
+        let closestDistrict = null;
+        let minDistance = Infinity;
+
+        districts.forEach(d => {
+            const dist = getDistance(activePosition.lat, activePosition.lng, d.center_lat, d.center_lng);
+            const searchRadius = d.radius_meters + 2000;
+
+            if (dist < searchRadius && dist < minDistance) {
+                minDistance = dist;
+                closestDistrict = d;
+            }
+        });
+
+        if (!closestDistrict) {
+            handleMapError("De gekozen locatie valt buiten een bekend wijkgebied.");
+            setShowConfirm(false);
+            return;
+        }
+
+        const data = new FormData();
+        Object.keys(formData).forEach(key => data.append(key, formData[key]));
+        data.append('latitude', activePosition.lat);
+        data.append('longitude', activePosition.lng);
+        data.append('is_anonymous', formData.is_anonymous ? 1 : 0);
+        data.append('category_id', parseInt(formData.category_id));
+
+        data.set('district_id', closestDistrict.id);
+        data.set('neighborhood', closestDistrict.name);
+
+        images.forEach((file, index) => {
+            data.append(`images[${index}]`, file);
+        });
+
+        try {
+            await apiClient.post('/api/issues', data, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            setSuccess(true);
+            setShowConfirm(false);
+            setTimeout(() => navigate('/feed'), 2000);
+        } catch (err) {
+            setError("Verzenden mislukt: " + (err.response?.data?.message || err.message));
+            setShowConfirm(false);
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-primary-bg text-primary-text flex flex-col transition-colors duration-300">
+
+            {/* Custom Applicatie Error Popup (vervanger van de browser alert) */}
+            {showMapError && (
+                <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
+                    <div className="bg-primary-bg-cards p-8 rounded-3xl border-2 border-primary-border shadow-2xl max-w-sm w-full text-center">
+                        <div className="w-12 h-12 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center mx-auto mb-4 border border-red-500/20">
+                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <h3 className="text-xl font-black uppercase mb-2 text-primary-text">Locatie ongeldig</h3>
+                        <p className="text-sm text-secondary-text mb-6">{mapErrorMessage}</p>
+                        <button
+                            onClick={() => setShowMapError(false)}
+                            className="w-full p-3 bg-primary-text text-primary-bg font-black uppercase tracking-widest rounded-xl hover:bg-primary-accent transition-colors"
+                        >
+                            Begrepen
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {showConfirm && (
+                <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-primary-bg-cards p-8 rounded-3xl border-2 border-primary-border shadow-2xl max-w-sm w-full">
+                        <h3 className="text-xl font-black uppercase mb-4">Bevestig melding</h3>
+                        <p className="text-sm opacity-70 mb-8">Weet je zeker dat je deze melding wilt versturen?</p>
+                        <div className="flex gap-4">
+                            <button onClick={() => setShowConfirm(false)} className="flex-1 p-3 border-2 border-primary-border rounded-xl">Annuleren</button>
+                            <button onClick={handleSubmit} className="flex-1 p-3 bg-secondary-accent text-white rounded-xl font-black uppercase tracking-widest hover:brightness-110">Verstuur</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {success && (
+                <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-primary-bg-cards p-8 rounded-3xl border-2 border-primary-border shadow-2xl max-w-sm w-full text-center">
+                        <h3 className="text-xl font-black uppercase mb-4">Verzonden!</h3>
+                        <p className="text-sm opacity-70 mb-8">Je melding is succesvol ontvangen. Je wordt omgeleid...</p>
+                    </div>
+                </div>
+            )}
+
+            <div className="z-50 relative"><U_Nav /></div>
+
+            <main className="z-10 grow w-full max-w-6xl mx-auto px-6 pt-26 mt-8 pb-12 grid grid-cols-1 md:grid-cols-2 gap-10">
+                <section className="h-137.5 bg-primary-bg-cards border-2 border-primary-border rounded-3xl p-3 shadow-sm">
+                    <div className="w-full h-full rounded-2xl overflow-hidden border border-primary-border/50">
+                        {/* Prop onLocationError toegevoegd */}
+                        <NativeLeafletMap
+                            position={position}
+                            setPosition={setPosition}
+                            setFormData={setFormData}
+                            districts={districts}
+                            onLocationError={handleMapError}
+                        />
+                    </div>
+                </section>
+
+                <section className="bg-primary-bg-cards border-2 border-primary-border rounded-3xl p-6 shadow-sm">
+                    <h2 className="text-xl font-black mb-6 uppercase tracking-widest text-primary-text">Signaal Melden</h2>
+                    {error && <p className="text-red-600 font-bold mb-4 p-3 bg-red-100 rounded-lg text-sm">{error}</p>}
+
+                    <div className="space-y-6 p-2">
+                        {/* Titel */}
+                        <div>
+                            <label htmlFor="title" className="text-left block text-xs font-bold tracking-wider uppercase mb-1.5 text-primary-text">
+                                Titel
+                            </label>
+                            <input id="title" className="w-full p-3 bg-primary-bg border-2 border-primary-border rounded-lg text-sm focus:outline-none focus:border-primary-accent"
+                                   value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
+                        </div>
+
+                        {/* Categorie */}
+                        <div className="relative">
+                            <label id="category-label" className="text-left block text-xs font-bold tracking-wider uppercase mb-1.5 text-primary-text">
+                                Categorie
+                            </label>
+                            <button
+                                type="button"
+                                aria-haspopup="listbox"
+                                aria-expanded={isDropdownOpen}
+                                aria-labelledby="category-label"
+                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                className="w-full p-3 bg-primary-bg border-2 border-primary-border rounded-lg cursor-pointer flex justify-between items-center text-sm focus:outline-none focus:border-primary-accent"
+                            >
+                                <span>{getSelectedCategoryName()}</span>
+                                <svg className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                            {isDropdownOpen && (
+                                <div role="listbox" className="absolute z-50 w-full mt-1 max-h-56 overflow-y-auto bg-primary-bg-cards border-2 border-primary-border rounded-lg p-1 shadow-xl text-sm">
+                                    {getAllCategoriesFlattened().map(cat => (
+                                        <div
+                                            key={cat.id}
+                                            role="option"
+                                            aria-selected={formData.category_id === cat.id}
+                                            onClick={() => { setFormData({...formData, category_id: cat.id}); setIsDropdownOpen(false); }}
+                                            className={`p-2.5 cursor-pointer rounded transition-colors hover:bg-primary-border/40 ${cat.isChild ? 'pl-6 text-secondary-text text-xs' : 'font-bold uppercase text-primary-text'}`}
+                                        >
+                                            {cat.name}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Adres */}
+                        <div>
+                            <label htmlFor="address" className="text-left block text-xs font-bold tracking-wider uppercase mb-1.5 text-primary-text">
+                                Adres
+                            </label>
+                            <input id="address" className="w-full p-3 bg-primary-bg border-2 border-primary-border rounded-lg text-sm focus:outline-none focus:border-primary-accent"
+                                   value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} onBlur={handleGeocode} />
+                        </div>
+
+                        {/* Uitleg */}
+                        <div>
+                            <label htmlFor="content" className="text-left block text-xs font-bold tracking-wider uppercase mb-1.5 text-primary-text">
+                                Uitleg
+                            </label>
+                            <textarea id="content" className="w-full p-3 h-20 bg-primary-bg border-2 border-primary-border rounded-lg text-sm focus:outline-none focus:border-primary-accent"
+                                      placeholder="Context & Behoefte" value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} />
+                        </div>
+
+                        {/* Foto */}
+                        <div>
+                            <label htmlFor="file-upload" className="text-left block text-xs font-bold tracking-wider uppercase mb-1.5 text-primary-text">
+                                Foto (optioneel)
+                            </label>
+                            <input
+                                id="file-upload"
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => setImages(Array.from(e.target.files))}
+                                className="w-full p-2 bg-primary-bg border-2 border-primary-border rounded-lg text-sm file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-black file:uppercase file:bg-primary-text file:text-primary-bg hover:file:cursor-pointer"
+                            />
+                        </div>
+
+                        {/* Anoniem optie */}
+                        <div className="relative flex items-center justify-between p-4 bg-primary-bg-cards border-2 border-primary-border rounded-2xl transition-all duration-200 hover:border-primary-accent/50 focus-within:ring-2 focus-within:ring-primary-accent/30 group">
+                            <div className="flex flex-col gap-0.5 select-none pr-4">
+                                <label htmlFor="is_anonymous" className="text-xs font-black uppercase tracking-widest text-primary-text cursor-pointer">
+                                    Anoniem melden
+                                </label>
+                            </div>
+
+                            <div className="relative flex items-center">
+                                <input
+                                    type="checkbox"
+                                    id="is_anonymous"
+                                    checked={formData.is_anonymous}
+                                    onChange={e => setFormData({...formData, is_anonymous: e.target.checked})}
+                                    className="peer appearance-none w-6 h-6 rounded-lg border-2 border-primary-border bg-primary-bg checked:bg-primary-text checked:border-primary-text transition-all duration-150 cursor-pointer focus:ring-0 focus:outline-none"
+                                />
+                                <svg
+                                    className="absolute left-1.5 top-1.5 w-3 h-3 text-primary-bg pointer-events-none opacity-0 scale-50 peer-checked:opacity-100 peer-checked:scale-100 transition-all duration-150"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    strokeWidth={4}
+                                >
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={() => setShowConfirm(true)}
+                            className="w-full h-12 mt-4 bg-primary-text text-primary-bg hover:bg-primary-accent font-black uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-[0.98]"
+                        >
+                            Verstuur melding
+                        </button>
+                    </div>
+                </section>
+            </main>
+            <Footer/>
+        </div>
+    );
+}

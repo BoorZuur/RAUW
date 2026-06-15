@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -12,7 +13,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['username', 'email', 'password', 'badge_number'])]
+#[Fillable(['username', 'email', 'password', 'badge_number', 'hub_id'])]
 #[Hidden(['password', 'remember_token'])]
 class Officer extends Authenticatable
 {
@@ -37,7 +38,18 @@ class Officer extends Authenticatable
         return [
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'hub_active_until' => 'datetime',
         ];
+    }
+
+    /**
+     * The hub this officer is assigned to.
+     *
+     * @return BelongsTo<Hub, $this>
+     */
+    public function hub(): BelongsTo
+    {
+        return $this->belongsTo(Hub::class);
     }
 
     /**
@@ -80,9 +92,14 @@ class Officer extends Authenticatable
         return $this->hasMany(IssueStatusHistory::class, 'changed_by_officer_id');
     }
 
-    public function chatClosedIssues(): HasMany
+    public function officerIssueResolutions(): HasMany
     {
-        return $this->hasMany(Issue::class, 'chat_closed_by_officer_id');
+        return $this->hasMany(OfficerIssueResolution::class);
+    }
+
+    public function officerUpdates(): HasMany
+    {
+        return $this->hasMany(OfficerIssueUpdate::class);
     }
 
     public function flaggedContent(): HasMany
@@ -94,4 +111,10 @@ class Officer extends Authenticatable
     {
         return $this->hasMany(OfficerSession::class);
     }
+
+    public function communityPosts(): HasMany
+    {
+        return $this->hasMany(CommunityPost::class);
+    }
 }
+

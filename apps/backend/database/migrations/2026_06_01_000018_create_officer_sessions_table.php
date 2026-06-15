@@ -14,10 +14,15 @@ return new class extends Migration
         Schema::create('officer_sessions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('officer_id')->constrained('officers')->cascadeOnDelete();
+            $table->foreignId('personal_access_token_id')->nullable()->unique();
+            $table->foreignId('hub_id')->nullable();
             $table->dateTime('shift_start')->useCurrent();
             $table->dateTime('shift_end')->nullable();
             $table->decimal('start_lat', 10, 8)->nullable();
             $table->decimal('start_lng', 11, 8)->nullable();
+            $table->unsignedInteger('distance_meters_at_login')->nullable();
+            $table->boolean('is_hub_active')->default(false);
+            $table->dateTime('hub_active_until')->nullable();
             $table->decimal('last_lat', 10, 8)->nullable();
             $table->decimal('last_lng', 11, 8)->nullable();
             $table->dateTime('last_seen_at')->nullable();
