@@ -14,6 +14,9 @@ use App\Support\IssueVisibilityQuery;
 use App\Support\OfficerIssueDistrictAccess;
 use App\Support\OfficerIssueRowLock;
 
+/**
+ * @group Officer Actions on Issues
+ */
 class IssueOfficerStatusController extends Controller
 {
     /**

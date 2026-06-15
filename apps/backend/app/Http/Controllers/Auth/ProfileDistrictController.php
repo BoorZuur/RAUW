@@ -12,6 +12,9 @@ use App\Models\Officer;
 use App\Support\ActorDistrictAccess;
 use Illuminate\Http\JsonResponse;
 
+/**
+ * @group Authentication
+ */
 class ProfileDistrictController extends Controller
 {
     public function __construct(

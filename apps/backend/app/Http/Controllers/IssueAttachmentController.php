@@ -15,6 +15,9 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
+/**
+ * @group Issue Attachments
+ */
 class IssueAttachmentController extends Controller
 {
     /**

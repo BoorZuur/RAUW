@@ -19,6 +19,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Symfony\Component\HttpFoundation\Response;
 
+/**
+ * @group Issue Chats
+ */
 class IssueChatMessageController extends Controller
 {
     /**

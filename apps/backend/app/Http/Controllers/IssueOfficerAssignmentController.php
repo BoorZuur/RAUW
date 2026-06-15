@@ -15,6 +15,9 @@ use App\Support\OfficerIssueConflict;
 use App\Support\OfficerIssueDistrictAccess;
 use App\Support\OfficerIssueRowLock;
 
+/**
+ * @group Officer Actions on Issues
+ */
 class IssueOfficerAssignmentController extends Controller
 {
     /**

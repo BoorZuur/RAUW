@@ -1,0 +1,1190 @@
+name: Issues
+description: ''
+endpoints:
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: api/issues
+    metadata:
+      custom: []
+      groupName: Issues
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'List issues with composable filters, visibility scoping, and pagination.'
+      description: |-
+        Results are visibility-scoped per actor type before optional filters:
+        users see visible canonicals, their own issues (any visibility), or
+        canonicals they participate on; officers and ordinary managers see issues
+        in assigned districts (including hidden); main managers see all issues
+        city-wide. Duplicate child rows are excluded by default per actor
+        (`IssueListScope`); users may use `participating=1` for owned children
+        with canonical participation, and officers/managers may use
+        `include_duplicates=1` to include children. A single Eloquent query
+        applies the optional `district_id`, `department`, `category_id`, `status`,
+        `assigned_officer_id`, `unassigned`, `mine`, `participating`,
+        `include_duplicates`, and `visibility` filters conditionally and
+        cumulatively (AND with visibility), so any subset (or all) of the
+        filters may be combined to narrow the result set.
+        The `department` filter is resolved through the issue departments
+        relationship with any-match semantics. Results are eager loaded (including
+        `officer_resolution` with officer and attachments when a report exists;
+        `status_history` is omitted on list), ordered newest-first by `created_at`
+        then `id`, and paginated with a safe default `per_page`.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {token}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      district_id:
+        custom: []
+        name: district_id
+        description: 'Must match an existing stored value.'
+        required: false
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      department:
+        custom: []
+        name: department
+        description: 'Must match an existing stored value.'
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      category_id:
+        custom: []
+        name: category_id
+        description: 'Must match an existing stored value.'
+        required: false
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      status:
+        custom: []
+        name: status
+        description: ''
+        required: false
+        example: opgelost
+        type: string
+        enumValues:
+          - open
+          - in_behandeling
+          - opgelost
+          - gesloten
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      assigned_officer_id:
+        custom: []
+        name: assigned_officer_id
+        description: 'Must match an existing stored value.'
+        required: false
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      unassigned:
+        custom: []
+        name: unassigned
+        description: ''
+        required: false
+        example: '1'
+        type: string
+        enumValues:
+          - '1'
+          - 'true'
+          - '1'
+          - '1'
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      mine:
+        custom: []
+        name: mine
+        description: ''
+        required: false
+        example: '1'
+        type: string
+        enumValues:
+          - '1'
+          - 'true'
+          - '1'
+          - '1'
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      participating:
+        custom: []
+        name: participating
+        description: ''
+        required: false
+        example: 'true'
+        type: string
+        enumValues:
+          - '1'
+          - 'true'
+          - '1'
+          - '1'
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      include_duplicates:
+        custom: []
+        name: include_duplicates
+        description: ''
+        required: false
+        example: '1'
+        type: string
+        enumValues:
+          - '1'
+          - 'true'
+          - '1'
+          - '1'
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      visibility:
+        custom: []
+        name: visibility
+        description: ''
+        required: false
+        example: visible
+        type: string
+        enumValues:
+          - visible
+          - hidden
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      page:
+        custom: []
+        name: page
+        description: 'Must be at least 1.'
+        required: false
+        example: 22
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      per_page:
+        custom: []
+        name: per_page
+        description: 'Must be at least 1. Must not be greater than 100.'
+        required: false
+        example: 7
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      district_id: 16
+      department: architecto
+      category_id: 16
+      status: opgelost
+      assigned_officer_id: 16
+      unassigned: '1'
+      mine: '1'
+      participating: 'true'
+      include_duplicates: '1'
+      visibility: visible
+      page: 22
+      per_page: 7
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"message":"Unauthenticated."}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          access-control-allow-origin: 'http://localhost:5173'
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/issues
+    metadata:
+      custom: []
+      groupName: Issues
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Create an issue on behalf of the authenticated regular user.'
+      description: |-
+        Authorization (active user only) and validation are enforced by
+        StoreIssueRequest. Normal creates delegate to {@see CreateIssue} (creator
+        participant, `participant_count = 1`). When `duplicate_of_id` is present,
+        {@see CreateIssueAsDuplicate} creates a hidden child linked to the
+        canonical target and returns the child resource. The issue remains
+        user-owned through `user_id` even when reported anonymously. Departments
+        and `priority` are derived server-side from the selected category.
+        Anonymous reports receive a stable server-generated `anonymous_alias`.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {token}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      title:
+        custom: []
+        name: title
+        description: 'Must not be greater than 255 characters.'
+        required: true
+        example: b
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      content:
+        custom: []
+        name: content
+        description: ''
+        required: true
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      category_id:
+        custom: []
+        name: category_id
+        description: 'Must match an existing stored value.'
+        required: true
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      district_id:
+        custom: []
+        name: district_id
+        description: 'Must match an existing stored value.'
+        required: true
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      postal_code:
+        custom: []
+        name: postal_code
+        description: 'Must not be greater than 10 characters.'
+        required: false
+        example: ngzmiy
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      address:
+        custom: []
+        name: address
+        description: 'Must not be greater than 255 characters.'
+        required: false
+        example: v
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      latitude:
+        custom: []
+        name: latitude
+        description: 'Must be between -90 and 90.'
+        required: false
+        example: -89
+        type: number
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      longitude:
+        custom: []
+        name: longitude
+        description: 'Must be between -180 and 180.'
+        required: false
+        example: -179
+        type: number
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      is_anonymous:
+        custom: []
+        name: is_anonymous
+        description: ''
+        required: false
+        example: true
+        type: boolean
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      duplicate_of_id:
+        custom: []
+        name: duplicate_of_id
+        description: 'Must match an existing stored value.'
+        required: false
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      priority:
+        custom: []
+        name: priority
+        description: ''
+        required: false
+        example: null
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      status:
+        custom: []
+        name: status
+        description: ''
+        required: false
+        example: null
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      visibility:
+        custom: []
+        name: visibility
+        description: ''
+        required: false
+        example: null
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      assigned_officer_id:
+        custom: []
+        name: assigned_officer_id
+        description: ''
+        required: false
+        example: null
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      duplicate_count:
+        custom: []
+        name: duplicate_count
+        description: ''
+        required: false
+        example: null
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      participant_count:
+        custom: []
+        name: participant_count
+        description: ''
+        required: false
+        example: null
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      title: b
+      content: architecto
+      category_id: 16
+      district_id: 16
+      postal_code: ngzmiy
+      address: v
+      latitude: -89
+      longitude: -179
+      is_anonymous: true
+      duplicate_of_id: 16
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/issues/similar-check
+    metadata:
+      custom: []
+      groupName: Issues
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: |-
+        Score open canonical issues in the request district and return the top
+        matches split into the actor's own reports and linkable candidates.
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {token}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      district_id:
+        custom: []
+        name: district_id
+        description: 'Must match an existing stored value.'
+        required: true
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      category_id:
+        custom: []
+        name: category_id
+        description: 'Must match an existing stored value.'
+        required: true
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      postal_code:
+        custom: []
+        name: postal_code
+        description: 'Must not be greater than 10 characters.'
+        required: false
+        example: ngzmiy
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      address:
+        custom: []
+        name: address
+        description: 'Must not be greater than 255 characters.'
+        required: false
+        example: v
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      latitude:
+        custom: []
+        name: latitude
+        description: 'This field is required when <code>longitude</code> is present. Must be between -90 and 90.'
+        required: false
+        example: -89
+        type: number
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      longitude:
+        custom: []
+        name: longitude
+        description: 'This field is required when <code>latitude</code> is present. Must be between -180 and 180.'
+        required: false
+        example: -179
+        type: number
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+    cleanBodyParameters:
+      district_id: 16
+      category_id: 16
+      postal_code: ngzmiy
+      address: v
+      latitude: -89
+      longitude: -179
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: 'api/issues/{issue_id}/duplicates'
+    metadata:
+      custom: []
+      groupName: Issues
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'List duplicate children for a canonical issue.'
+      description: |-
+        Authorization is enforced by IndexIssueDuplicatesRequest, which restricts
+        this action to an authenticated, active officer or manager. The target
+        must be a canonical issue; duplicate child route ids return 422
+        issue_not_canonical. Issues not visible to the actor return 404.
+        Children are ordered oldest-first by created_at then id and paginated
+        with full IssueResource payloads (officers and managers are never
+        participant-redacted).
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {token}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      issue_id:
+        custom: []
+        name: issue_id
+        description: 'The ID of the issue.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      issue_id: 1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      page:
+        custom: []
+        name: page
+        description: 'Must be at least 1.'
+        required: false
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      per_page:
+        custom: []
+        name: per_page
+        description: 'Must be at least 1. Must not be greater than 100.'
+        required: false
+        example: 22
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      page: 16
+      per_page: 22
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"message":"Unauthenticated."}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          access-control-allow-origin: 'http://localhost:5173'
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: 'api/issues/{issue_id}/mark-duplicate'
+    metadata:
+      custom: []
+      groupName: Issues
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Link an existing issue to a canonical duplicate target.'
+      description: |-
+        Officers must be assigned to both the child and canonical districts
+        (403 officer_not_in_district). Managers rely on IssueVisibilityQuery
+        only. Different owners re-parent the child as a hidden duplicate; same
+        owner merges participants onto the canonical and hard-deletes the child.
+        Tier C: hub-active session required for officers.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {token}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      issue_id:
+        custom: []
+        name: issue_id
+        description: 'The ID of the issue.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      issue_id: 1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      duplicate_of_id:
+        custom: []
+        name: duplicate_of_id
+        description: 'Must match an existing stored value.'
+        required: true
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      duplicate_of_id: 16
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: 'api/issues/{issue_id}/status-history'
+    metadata:
+      custom: []
+      groupName: Issues
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'List status history for a canonical issue.'
+      description: |-
+        Authorization is enforced by IndexIssueStatusHistoryRequest, which
+        restricts this action to an authenticated, active officer or manager.
+        Duplicate child route ids resolve to the canonical parent. Issues not
+        visible to the actor return 404. Rows are ordered newest-first by
+        changed_at and paginated with IssueStatusHistoryResource payloads.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {token}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      issue_id:
+        custom: []
+        name: issue_id
+        description: 'The ID of the issue.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      issue_id: 1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      page:
+        custom: []
+        name: page
+        description: 'Must be at least 1.'
+        required: false
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      per_page:
+        custom: []
+        name: per_page
+        description: 'Must be at least 1. Must not be greater than 100.'
+        required: false
+        example: 22
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      page: 16
+      per_page: 22
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"message":"Unauthenticated."}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          access-control-allow-origin: 'http://localhost:5173'
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: 'api/issues/{id}'
+    metadata:
+      custom: []
+      groupName: Issues
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Show a single issue with its eager-loaded relations.'
+      description: |-
+        Visibility is enforced after route binding: users may view visible issues,
+        their own issues (any visibility), or canonical issues they participate on
+        (with canonical content redacted at the resource layer); officers and
+        ordinary managers may view issues in assigned districts; main managers
+        may view any issue city-wide. Unauthorized or invisible issues return 404
+        to avoid leaking existence. Embeds `officer_resolution` when a report
+        exists. Active officers and managers also receive `status_history` (newest
+        first); regular users do not.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {token}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      id:
+        custom: []
+        name: id
+        description: 'The ID of the issue.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      id: 1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"message":"Unauthenticated."}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          access-control-allow-origin: 'http://localhost:5173'
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - PUT
+      - PATCH
+    uri: 'api/issues/{id}'
+    metadata:
+      custom: []
+      groupName: Issues
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: |-
+        Update an owner's issue, applying only the validated, owner-editable
+        fields.
+      description: |-
+        Ownership and authorization are enforced by UpdateIssueRequest. Only the
+        keys present in the validated payload are applied, so partial updates
+        leave untouched fields intact. When `category_id` is supplied the issue's
+        departments and integer `priority` are re-derived from the new category
+        and re-synced through the pivot source of truth (supporting multiple
+        departments per issue); departments and priority are never accepted from
+        the client. The `user_id` is never reassigned and the server-generated `anonymous_alias` is never accepted
+        from the client: toggling `is_anonymous` on lazily generates a stable
+        alias only when one does not already exist (so an existing alias is
+        preserved), while toggling it off clears the alias.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {token}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      id:
+        custom: []
+        name: id
+        description: 'The ID of the issue.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      id: 1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      title:
+        custom: []
+        name: title
+        description: 'Must not be greater than 255 characters.'
+        required: false
+        example: b
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      content:
+        custom: []
+        name: content
+        description: ''
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      category_id:
+        custom: []
+        name: category_id
+        description: 'Must match an existing stored value.'
+        required: false
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      district_id:
+        custom: []
+        name: district_id
+        description: 'Must match an existing stored value.'
+        required: false
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      postal_code:
+        custom: []
+        name: postal_code
+        description: 'Must not be greater than 10 characters.'
+        required: false
+        example: ngzmiy
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      address:
+        custom: []
+        name: address
+        description: 'Must not be greater than 255 characters.'
+        required: false
+        example: v
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      latitude:
+        custom: []
+        name: latitude
+        description: 'Must be between -90 and 90.'
+        required: false
+        example: -89
+        type: number
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      longitude:
+        custom: []
+        name: longitude
+        description: 'Must be between -180 and 180.'
+        required: false
+        example: -179
+        type: number
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      is_anonymous:
+        custom: []
+        name: is_anonymous
+        description: ''
+        required: false
+        example: false
+        type: boolean
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      priority:
+        custom: []
+        name: priority
+        description: ''
+        required: false
+        example: null
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      visibility:
+        custom: []
+        name: visibility
+        description: ''
+        required: false
+        example: null
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      title: b
+      content: architecto
+      category_id: 16
+      district_id: 16
+      postal_code: ngzmiy
+      address: v
+      latitude: -89
+      longitude: -179
+      is_anonymous: false
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - PATCH
+    uri: 'api/issues/{issue_id}/visibility'
+    metadata:
+      custom: []
+      groupName: Issues
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: "Set an issue's visibility to visible or hidden."
+      description: |-
+        Authorization is enforced by UpdateIssueVisibilityRequest (active officer or
+        manager only). Visibility scope is enforced after route binding via
+        IssueVisibilityQuery::canViewIssue(), matching show behavior: issues the
+        actor cannot view return 404. Only the visibility field is updated.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {token}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      issue_id:
+        custom: []
+        name: issue_id
+        description: 'The ID of the issue.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      issue_id: 1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      visibility:
+        custom: []
+        name: visibility
+        description: ''
+        required: true
+        example: visible
+        type: string
+        enumValues:
+          - visible
+          - hidden
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      visibility: visible
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - DELETE
+    uri: 'api/issues/{id}'
+    metadata:
+      custom: []
+      groupName: Issues
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: "Hard delete an owner's issue."
+      description: |-
+        Owner-only: officers and managers cannot delete issues they do not own
+        (enforced by {@see DeleteIssueRequest}). Duplicate children delegate to
+        {@see DeleteDuplicateChild} with optional `leave_participation` in the
+        request body (default false — keep canonical participation). Canonical
+        issues delegate to {@see ReparentOnCanonicalDelete}, which promotes the
+        oldest child when duplicates exist. This is a hard delete, not a soft
+        delete: rows are removed outright and attachment FK cascades apply.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {token}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      id:
+        custom: []
+        name: id
+        description: 'The ID of the issue.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      id: 1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      leave_participation:
+        custom: []
+        name: leave_participation
+        description: ''
+        required: false
+        example: true
+        type: boolean
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      leave_participation: true
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null

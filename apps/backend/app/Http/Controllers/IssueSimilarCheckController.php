@@ -8,6 +8,9 @@ use App\Http\Resources\SimilarIssueMatchResource;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 
+/**
+ * @group Issues
+ */
 class IssueSimilarCheckController extends Controller
 {
     /**

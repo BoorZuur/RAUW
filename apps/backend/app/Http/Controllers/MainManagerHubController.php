@@ -8,6 +8,9 @@ use App\Models\Manager;
 use App\Support\ActorDistrictAccess;
 use Illuminate\Http\JsonResponse;
 
+/**
+ * @group Main Managers
+ */
 class MainManagerHubController extends Controller
 {
     /**

@@ -11,6 +11,9 @@ use App\Support\ActorDistrictAccess;
 use App\Support\ManagerOfficerHubAccess;
 use Illuminate\Http\JsonResponse;
 
+/**
+ * @group Officers
+ */
 class OfficerDistrictController extends Controller
 {
     public function __construct(

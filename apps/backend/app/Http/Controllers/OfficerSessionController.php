@@ -7,6 +7,9 @@ use App\Http\Resources\OfficerSessionResource;
 use App\Models\OfficerSession;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
+/**
+ * @group Officers
+ */
 class OfficerSessionController extends Controller
 {
     /**

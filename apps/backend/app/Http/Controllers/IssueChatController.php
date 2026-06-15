@@ -20,6 +20,9 @@ use App\Support\OfficerIssueConflict;
 use App\Support\OfficerIssueDistrictAccess;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
+/**
+ * @group Issue Chats
+ */
 class IssueChatController extends Controller
 {
     /**

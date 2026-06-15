@@ -24,6 +24,9 @@ use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
+/**
+ * @group Officer Actions on Issues
+ */
 class OfficerIssueResolutionController extends Controller
 {
     private const DISK = 'local';
