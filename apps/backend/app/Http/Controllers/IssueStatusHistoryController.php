@@ -9,6 +9,9 @@ use App\Models\Issue;
 use App\Support\IssueVisibilityQuery;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
+/**
+ * @group Issues
+ */
 class IssueStatusHistoryController extends Controller
 {
     /**

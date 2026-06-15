@@ -15,6 +15,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * @group Authentication
+ */
 class StartOfficerShiftController extends Controller
 {
     public function __construct(

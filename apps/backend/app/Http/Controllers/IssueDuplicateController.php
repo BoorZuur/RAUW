@@ -15,6 +15,9 @@ use App\Support\Issues\IssueDuplicateConflict;
 use App\Support\OfficerIssueDistrictAccess;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
+/**
+ * @group Issues
+ */
 class IssueDuplicateController extends Controller
 {
     /**

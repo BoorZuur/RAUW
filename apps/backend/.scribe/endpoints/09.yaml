@@ -1,0 +1,218 @@
+name: 'Issue Attachments'
+description: ''
+endpoints:
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: 'api/issues/{issue_id}/attachments'
+    metadata:
+      custom: []
+      groupName: 'Issue Attachments'
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: "Store one or more uploaded files against an owner's issue."
+      description: |-
+        Ownership, the per-file size/MIME constraints, the per-request file count,
+        and the cumulative cap against already-stored attachments are all enforced
+        by StoreIssueAttachmentRequest. Each validated file is written to the
+        non-public `local` disk under a per-issue directory using a hashed storage
+        name, and one IssueAttachment row is persisted per file capturing the
+        storage path, original filename, MIME type, byte size, and upload time.
+        The newly created attachments are returned as a `data`-wrapped collection
+        whose URLs point at the authenticated download endpoint, never a public
+        storage URL. The wrapping is applied explicitly here because the resource
+        itself disables wrapping (`$wrap = null`) for the flat single-resource
+        shape used elsewhere, while this upload endpoint contractually returns
+        `{ "data": [ ... ] }`.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {token}'
+      Content-Type: multipart/form-data
+      Accept: application/json
+    urlParameters:
+      issue_id:
+        custom: []
+        name: issue_id
+        description: 'The ID of the issue.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      issue_id: 1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      files:
+        custom: []
+        name: files
+        description: 'Must be a file. Must not be greater than 5120 kilobytes.'
+        required: true
+        example:
+          - null
+        type: 'file[]'
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanBodyParameters: []
+    fileParameters:
+      files:
+        - null
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: 'api/issues/{issue_id}/attachments/{attachment_id}/download'
+    metadata:
+      custom: []
+      groupName: 'Issue Attachments'
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Stream an attachment file back to an authorized actor.'
+      description: |-
+        Download authorization is enforced by DownloadIssueAttachmentRequest
+        via IssueVisibilityQuery (Q8 / D15-A visibility-only): users who may view the issue,
+        and any active officer or manager. Hidden issues follow existing visibility rules
+        (404 when not viewable). The attachment must belong to the issue named in the route —
+        a mismatch yields 404 so attachment ids cannot be probed across issues — and the
+        backing file must still exist on the non-public `local` disk. The file is returned
+        as a streamed download under its original client filename rather than its hashed
+        storage name.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {token}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      issue_id:
+        custom: []
+        name: issue_id
+        description: 'The ID of the issue.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      attachment_id:
+        custom: []
+        name: attachment_id
+        description: 'The ID of the attachment.'
+        required: true
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      issue_id: 1
+      attachment_id: 16
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"message":"Unauthenticated."}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          access-control-allow-origin: 'http://localhost:5173'
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - DELETE
+    uri: 'api/issues/{issue_id}/attachments/{id}'
+    metadata:
+      custom: []
+      groupName: 'Issue Attachments'
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: "Delete a single attachment from an owner's issue."
+      description: |-
+        Owner-only authorization is enforced by DeleteIssueAttachmentRequest, which
+        restricts the action to the authenticated, active regular user who owns the
+        route issue. The attachment must belong to the issue named in the route — a
+        mismatch yields a 404 so attachment ids cannot be probed or removed across
+        issues. The backing file is removed from the non-public `local` disk (a
+        missing file is tolerated so a partial prior cleanup cannot block deletion)
+        and the attachment row is deleted, returning an empty 204 response.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {token}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      issue_id:
+        custom: []
+        name: issue_id
+        description: 'The ID of the issue.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      id:
+        custom: []
+        name: id
+        description: 'The ID of the attachment.'
+        required: true
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      issue_id: 1
+      id: 16
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null

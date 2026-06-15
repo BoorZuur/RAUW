@@ -9,6 +9,9 @@ use App\Models\Manager;
 use App\Models\Officer;
 use App\Support\ManagerOfficerHubAccess;
 
+/**
+ * @group Officers
+ */
 class OfficerEndShiftController extends Controller
 {
     public function __construct(

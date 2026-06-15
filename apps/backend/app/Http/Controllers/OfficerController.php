@@ -15,6 +15,9 @@ use App\Support\ManagerOfficerHubAccess;
 use App\Support\OfficerHubScope;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
+/**
+ * @group Officers
+ */
 class OfficerController extends Controller
 {
     public function __construct(

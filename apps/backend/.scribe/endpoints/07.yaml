@@ -1,0 +1,194 @@
+name: 'Issue Participants'
+description: ''
+endpoints:
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: 'api/issues/{issue_id}/join'
+    metadata:
+      custom: []
+      groupName: 'Issue Participants'
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Join a canonical issue as a participant.'
+      description: 'Duplicate child ids are rejected with 422; repeat joins are idempotent (200).'
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {token}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      issue_id:
+        custom: []
+        name: issue_id
+        description: 'The ID of the issue.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      issue_id: 1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      is_anonymous:
+        custom: []
+        name: is_anonymous
+        description: ''
+        required: false
+        example: true
+        type: boolean
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      is_anonymous: true
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - DELETE
+    uri: 'api/issues/{issue_id}/leave'
+    metadata:
+      custom: []
+      groupName: 'Issue Participants'
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Leave participation on the canonical issue (child route ids resolve to canonical).'
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {token}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      issue_id:
+        custom: []
+        name: issue_id
+        description: 'The ID of the issue.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      issue_id: 1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: 'api/issues/{issue_id}/participants'
+    metadata:
+      custom: []
+      groupName: 'Issue Participants'
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'List participants for a canonical issue.'
+      description: |-
+        Authorization is enforced by IndexIssueParticipantsRequest, which restricts
+        this action to an authenticated, active officer or manager. Duplicate child
+        route ids resolve to the canonical parent. Issues not visible to the actor
+        return 404. Participants are ordered by joined_at ascending and paginated
+        with IssueParticipantResource payloads.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {token}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      issue_id:
+        custom: []
+        name: issue_id
+        description: 'The ID of the issue.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      issue_id: 1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      page:
+        custom: []
+        name: page
+        description: 'Must be at least 1.'
+        required: false
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      per_page:
+        custom: []
+        name: per_page
+        description: 'Must be at least 1. Must not be greater than 100.'
+        required: false
+        example: 22
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      page: 16
+      per_page: 22
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"message":"Unauthenticated."}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          access-control-allow-origin: 'http://localhost:5173'
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null

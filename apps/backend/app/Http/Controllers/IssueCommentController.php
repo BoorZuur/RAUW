@@ -20,6 +20,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 
+/**
+ * @group Issue Comments
+ */
 class IssueCommentController extends Controller
 {
     /**

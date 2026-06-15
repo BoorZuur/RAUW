@@ -10,6 +10,9 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 
+/**
+ * @group Authentication
+ */
 class RegisterUserController extends Controller
 {
     /**
