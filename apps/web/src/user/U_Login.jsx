@@ -20,7 +20,7 @@ export default function Login() {
                 localStorage.setItem('auth_token', response.data.access_token);
             }
             localStorage.setItem('user_type', 'user');
-            navigate('/account');
+            navigate('/feed');
         } catch (err) { setError('Inloggen mislukt.'); }
     };
 
@@ -93,7 +93,7 @@ export default function Login() {
                         </button>
                     </form>
 
-                    <p className="mt-6 text-sm text-center text-secondary-text">
+                    <p className="mt-6 p-4 text-sm text-center text-secondary-text">
                         Nog geen account?
                         <button onClick={() => navigate('/registreer')}
                                 className="text-primary-text font-bold hover:underline">
