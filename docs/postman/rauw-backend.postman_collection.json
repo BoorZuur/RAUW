@@ -5328,6 +5328,268 @@
             }
           ],
           "description": "Officer issue workflow requests. Tier B browse (list/show, resolution show, officer-updates index/download) works without a shift; Tier C writes (assign-self, unassign-self, status, resolution POST/PATCH, officer-update POST/PATCH/DELETE) require hub-active. Log in with Auth / Login Officer at Hub before Tier C writes. Use issue_id in the officer's assigned district (demo: Cool / district_id 1). Run Assign Self before status, resolution, or officer-update writes."
+        },
+        {
+          "name": "Issue feedback",
+          "item": [
+            {
+              "name": "List Issue Feedback",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{issue_id}}/feedback",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{issue_id}}",
+                    "feedback"
+                  ]
+                },
+                "description": "List user satisfaction feedback on an issue. Unpaginated collection. Users see only their own row; officers see all rows when ever assigned or resolution author on the issue (Tier B — no hub-active shift required); managers see all rows on visible issues. Reviewer anonymity follows comment rules: owners see real id/username; other viewers see stable participant aliases."
+              },
+              "response": []
+            },
+            {
+              "name": "Submit Feedback",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Feedback created', function () { pm.response.to.have.status(201); });",
+                      "const response = pm.response.json();",
+                      "if (response.id) {",
+                      "    pm.collectionVariables.set('feedback_id', String(response.id));",
+                      "    if (pm.environment.name) { pm.environment.set('feedback_id', String(response.id)); }",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"is_satisfied\": true,\n  \"comment\": \"De melding is netjes opgelost.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{issue_id}}/feedback",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{issue_id}}",
+                    "feedback"
+                  ]
+                },
+                "description": "Submit satisfaction feedback as an active user who participates on a closed (gesloten) issue. One row per participant per issue. Requires issue status gesloten and submission within 7 days of last close. Officers receive 403 on this user-only route. Optional comment max 2000 characters. Stores feedback_id for update/delete examples."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Feedback",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"is_satisfied\": false,\n  \"comment\": \"Toch nog niet helemaal tevreden.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{issue_id}}/feedback/{{feedback_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{issue_id}}",
+                    "feedback",
+                    "{{feedback_id}}"
+                  ]
+                },
+                "description": "Update own feedback. Only the submitting user may PATCH. Requires gesloten issue, open 7-day submit window, and open 24-hour edit window from submitted_at. Wrong nested feedback id returns 404."
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Feedback",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{issue_id}}/feedback/{{feedback_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{issue_id}}",
+                    "feedback",
+                    "{{feedback_id}}"
+                  ]
+                },
+                "description": "Delete own feedback. Same ownership and window rules as PATCH. Returns 204 on success."
+              },
+              "response": []
+            },
+            {
+              "name": "List Officer Me Feedback",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{officer_hub_active_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/officers/me/feedback?issue_id={{issue_id}}&submitted_from=&submitted_to=&page={{page}}&per_page={{per_page}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "officers",
+                    "me",
+                    "feedback"
+                  ],
+                  "query": [
+                    {
+                      "key": "issue_id",
+                      "value": "{{issue_id}}",
+                      "description": "Optional filter to one issue"
+                    },
+                    {
+                      "key": "submitted_from",
+                      "value": "",
+                      "description": "Optional inclusive start date (YYYY-MM-DD)"
+                    },
+                    {
+                      "key": "submitted_to",
+                      "value": "",
+                      "description": "Optional inclusive end date (YYYY-MM-DD)"
+                    },
+                    {
+                      "key": "page",
+                      "value": "{{page}}"
+                    },
+                    {
+                      "key": "per_page",
+                      "value": "{{per_page}}"
+                    }
+                  ]
+                },
+                "description": "Paginated feedback list for issues the officer was ever assigned to or authored resolution for. Officers only; Tier B (no hub-active shift required). Optional filters issue_id, submitted_from, submitted_to. Log in with Auth / Login Officer at Hub or use officer_hub_active_token."
+              },
+              "response": []
+            }
+          ],
+          "description": "User satisfaction feedback on closed issues. Submit/update/delete are user-participant writes within 7-day submit and 24-hour edit windows. Issue feedback index and officers/me/feedback are Tier B reads for officers."
         }
       ],
       "description": "Authenticated issue CRUD and attachment examples. Issue creation requires district_id and no longer accepts client-supplied department or removed legacy locality fields. Departments are derived from the selected category, stored in department_issue, and exposed as a read-only departments array. List filters are composable: district_id, department (code), category_id, mine (users only), and visibility (officers/managers only). Department filtering uses any-match semantics; pagination is backend-driven. Show returns 404 when the issue is not visible to the actor (e.g. another user's hidden issue). Anonymous issues retain user_id ownership while exposing only a stable alias. Attachment deletion is owner-only for replacement workflows. Issue deletion is hard delete and attachments cascade with the issue."
@@ -7183,6 +7445,11 @@
     },
     {
       "key": "comment_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "feedback_id",
       "value": "1",
       "type": "string"
     },

@@ -43,6 +43,8 @@ class EnsureOfficerHubActive
         'issues.attachments.download',
         'issues.officer-updates.index',
         'issues.officer-updates.attachments.download',
+        'issues.feedback.index',
+        'officers.me.feedback.index',
         'community-posts.index',
         'community-posts.show',
         'community-posts.attachments.download',

@@ -414,14 +414,32 @@ Table issue_status_histories {
   }
 }
 
-Table issue_resolutions {
+Table issue_feedback {
   id               int          [pk, increment]
-  issue_id         int          [not null, unique, ref: > issues.id]
-  user_id          int          [ref: > users.id]
-  is_satisfied     tinyint(1)   [not null, note: 'Indiener: ja/nee naar tevredenheid opgelost']
-  comment          text         [note: 'Optionele toelichting, intern voor managers']
-  answered_at      datetime     [not null, default: `CURRENT_TIMESTAMP`]
-  note: 'User satisfaction feedback (indiener). Distinct from officer_issue_resolutions (BOA afhandelingsrapport).'
+  issue_id         int          [not null, ref: > issues.id, note: 'cascadeOnDelete']
+  reviewer_user_id int          [not null, ref: > users.id, note: 'cascadeOnDelete']
+  is_satisfied     tinyint(1)   [not null, note: 'Reviewer: ja/nee naar tevredenheid opgelost']
+  comment          text         [note: 'Optionele toelichting']
+  submitted_at     datetime     [not null]
+  updated_at       datetime     [note: 'Nullable; set on PATCH only']
+  note: 'User satisfaction feedback (per participant). Distinct from officer_issue_resolutions (BOA afhandelingsrapport).'
+
+  indexes {
+    (issue_id, reviewer_user_id) [unique]
+    submitted_at
+  }
+}
+
+Table issue_officer_assignment_histories {
+  id               int          [pk, increment]
+  issue_id         int          [not null, ref: > issues.id]
+  officer_id       int          [not null, ref: > officers.id]
+  assigned_at      datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  note: 'Tracks all officers ever assigned to an issue'
+
+  indexes {
+    (issue_id, officer_id) [unique]
+  }
 }
 
 Table officer_issue_resolutions {
@@ -640,10 +658,3 @@ Table community_post_user {
     community_post_id
   }
 }
-
-// Community feed relationships
-Ref: officers.id < community_posts.officer_id
-Ref: users.id <> district_user.user_id
-Ref: districts.id <> district_user.district_id
-Ref: users.id <> community_post_user.user_id
-Ref: community_posts.id <> community_post_user.community_post_id

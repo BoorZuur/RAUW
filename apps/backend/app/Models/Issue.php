@@ -204,9 +204,14 @@ class Issue extends Model
         return $this->hasMany(IssueStatusHistory::class);
     }
 
-    public function resolutions(): HasMany
+    public function feedback(): HasMany
     {
-        return $this->hasMany(IssueResolution::class);
+        return $this->hasMany(IssueFeedback::class);
+    }
+
+    public function officerAssignmentHistories(): HasMany
+    {
+        return $this->hasMany(IssueOfficerAssignmentHistory::class);
     }
 
     public function officerResolution(): HasOne

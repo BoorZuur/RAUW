@@ -36,6 +36,8 @@ info:
     `GET /api/issues/{issueId}/officer-resolution`,
     `GET /api/issues/{issueId}/officer-updates`,
     `GET /api/issues/{issueId}/comments`,
+    `GET /api/issues/{issueId}/feedback`,
+    `GET /api/officers/me/feedback`,
     `GET /api/community-posts`, `GET /api/community-posts/{communityPostId}`,
     `GET /api/officers/{officerId}`, and authenticated
     issue/resolution/officer-update/community-post attachment downloads.
@@ -58,7 +60,9 @@ info:
     `DELETE /api/issues/{issueId}/officer-resolution/attachments/{attachmentId}`,
     `PATCH /api/issues/{issueId}/chats/open`, `PATCH /api/issues/{issueId}/chats/{chatId}/close`,
     `POST /api/issues/{issueId}/chats/{chatId}/messages`,
-    `POST /api/issues/{issueId}/chats/{chatId}/messages/mark-read`, and
+    `POST /api/issues/{issueId}/chats/{chatId}/messages/mark-read`,
+    `POST /api/issues/{issueId}/feedback`, `PATCH /api/issues/{issueId}/feedback/{feedbackId}`,
+    `DELETE /api/issues/{issueId}/feedback/{feedbackId}`, and
     `GET .../chats/.../attachments/.../download` for officers (chat attachment
     download is not Tier B whitelisted).
     Officer-resolution attachment uploads (POST/PATCH) enforce the cumulative cap
@@ -99,6 +103,11 @@ info:
     | `chat_user_not_eligible` | 422 | Open chat: `user_id` is not issue owner or participant |
     | `not_chat_participant` | 403 | List/view/send/download outside the 1:1 chat partnership |
     | `chat_not_found` | 404 | Chat id does not belong to the canonical issue in the route |
+    | `feedback_not_allowed` | 403 | Feedback write when issue status is not `gesloten` |
+    | `feedback_window_closed` | 403 | Feedback write more than 7 days after last close |
+    | `feedback_edit_window_closed` | 403 | Feedback PATCH/DELETE more than 24 h after `submitted_at` |
+    | `feedback_already_submitted` | 409 | Duplicate feedback `(issue_id, reviewer_user_id)` on POST |
+    | `not_issue_participant` | 403 | User is not an issue participant on feedback POST |
 
     **Issue chat (v1):** Multiple parallel 1:1 chats per canonical issue (unique
     `issue_id` + `user_id`). Only the assigned officer opens or closes chats.
@@ -2059,6 +2068,80 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/officers/me/feedback:
+    get:
+      tags: [ Officers ]
+      summary: List feedback on officer-involved issues
+      description: >-
+        Paginated list of user satisfaction feedback rows on issues where the
+        authenticated officer was ever assigned (`issue_officer_assignment_histories`)
+        or authored the officer resolution (`officer_issue_resolutions`). Officers
+        may call this without an active shared shift (**Tier B**). Users and
+        managers receive **403** (`This action is unauthorized.`). Reviewer
+        identity follows the same anonymity rules as issue feedback on nested
+        routes: owners see real `id`/`username`; other viewers see redacted
+        participant aliases via `IssueCommentAuthor` shape. Optional filters
+        narrow by `issue_id`, `submitted_from`, and `submitted_to` (inclusive
+        date range; `submitted_to` must be on or after `submitted_from` when both
+        are sent).
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: issue_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Restrict to feedback rows for one issue id.
+        - name: submitted_from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Include rows with `submitted_at` on or after this date.
+        - name: submitted_to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Include rows with `submitted_at` on or before this date.
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Paginated list of issue feedback rows
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/IssueFeedback'
+                  links:
+                    type: object
+                    additionalProperties: true
+                  meta:
+                    type: object
+                    properties:
+                      current_page:
+                        type: integer
+                      per_page:
+                        type: integer
+                      total:
+                        type: integer
+                      last_page:
+                        type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '422':
           $ref: '#/components/responses/ValidationError'
 
@@ -4150,6 +4233,217 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationError'
+
+  /api/issues/{issueId}/feedback:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags: [ Issues ]
+      summary: List feedback for an issue
+      description: >-
+        List user satisfaction feedback on a closed-issue participant workflow.
+        Returns an **unpaginated** collection sorted by default query order
+        (database insertion order). Any actor who cannot view the parent issue
+        receives **404**. Officers may call without an active shared shift
+        (**Tier B**). Visibility matrix: **users** see only their own row
+        (`reviewer_user_id` equals actor id); **officers** see all rows when they
+        were ever assigned to the issue or authored its officer resolution
+        (`IssueFeedbackOfficerAccess`), otherwise **403**; **managers** see all
+        rows on visible issues. Reviewer objects use `IssueCommentAuthor` anonymity
+        rules (owners see real identity; other viewers see stable participant
+        aliases). Distinct from officer field reports in
+        `officer_issue_resolutions`.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Unpaginated collection of feedback rows
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/IssueFeedback'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [ Issues ]
+      summary: Submit satisfaction feedback
+      description: >-
+        Submit one satisfaction rating per participant on a **closed**
+        (`gesloten`) issue. Active **users** who are issue participants may
+        create feedback within **7×24 hours** after the issue was last closed
+        (`IssueFeedbackWindow::isOpen`). Officers without an active shared shift
+        receive **403** `hub_active_required` if they attempt this route
+        (**Tier C**), but the endpoint is user-only and normally returns **403**
+        `This action is unauthorized.` for non-users. Blocked when the issue is
+        not closed (**403** `feedback_not_allowed`), outside the 7-day window
+        (**403** `feedback_window_closed`), or the user is not a participant
+        (**403** `not_issue_participant`). Duplicate `(issue_id, reviewer_user_id)`
+        returns **409** `feedback_already_submitted`. Optional `comment` is limited
+        to 2000 characters.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueFeedbackCreate'
+            example:
+              is_satisfied: true
+              comment: De melding is netjes opgelost.
+      responses:
+        '201':
+          description: Created feedback row
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueFeedback'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden (feedback rules or inactive account)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/AccountInactiveError'
+                  - $ref: '#/components/schemas/HubError'
+                  - $ref: '#/components/schemas/IssueFeedbackError'
+                  - $ref: '#/components/schemas/Error'
+              examples:
+                feedback_not_allowed:
+                  summary: Issue is not closed
+                  value:
+                    message: feedback_not_allowed
+                    code: feedback_not_allowed
+                feedback_window_closed:
+                  summary: Outside 7-day submit window
+                  value:
+                    message: feedback_window_closed
+                    code: feedback_window_closed
+                not_issue_participant:
+                  summary: User is not a participant
+                  value:
+                    message: not_issue_participant
+                    code: not_issue_participant
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Feedback already submitted for this issue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueFeedbackConflictError'
+              example:
+                message: Feedback has already been submitted for this issue.
+                code: feedback_already_submitted
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/issues/{issueId}/feedback/{feedbackId}:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: feedbackId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Issues ]
+      summary: Update own feedback
+      description: >-
+        Update satisfaction or comment on feedback the authenticated user
+        submitted. Only the reviewer (`reviewer_user_id`) may update. Officers
+        without an active shared shift receive **403** `hub_active_required`
+        (**Tier C**); non-owners receive **403** from authorization. Requires
+        issue status `gesloten` (**403** `feedback_not_allowed`), an open 7-day
+        submit window (**403** `feedback_window_closed`), and an open **24-hour**
+        edit window from `submitted_at` (**403** `feedback_edit_window_closed`).
+        When `{feedbackId}` does not belong to `{issueId}`, returns **404** (IDOR
+        guard). Sets `updated_at` on successful save.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueFeedbackUpdate'
+            example:
+              is_satisfied: false
+              comment: Toch nog niet helemaal tevreden.
+      responses:
+        '200':
+          description: Updated feedback row
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueFeedback'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden (ownership, windows, or inactive account)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/AccountInactiveError'
+                  - $ref: '#/components/schemas/HubError'
+                  - $ref: '#/components/schemas/IssueFeedbackError'
+                  - $ref: '#/components/schemas/Error'
+              examples:
+                feedback_edit_window_closed:
+                  summary: Outside 24-hour edit window
+                  value:
+                    message: feedback_edit_window_closed
+                    code: feedback_edit_window_closed
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [ Issues ]
+      summary: Delete own feedback
+      description: >-
+        Delete feedback the authenticated user submitted. Same authorization,
+        window, nested-id, and Tier C rules as PATCH. Returns **204** with no
+        body on success.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '204':
+          description: Feedback deleted; no response body
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden (ownership, windows, or inactive account)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/AccountInactiveError'
+                  - $ref: '#/components/schemas/HubError'
+                  - $ref: '#/components/schemas/IssueFeedbackError'
+                  - $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /api/community-posts:
     get:
@@ -7742,6 +8036,89 @@ components:
           type: string
           enum: [ visible, hidden ]
           description: Target visibility for the comment.
+
+    IssueFeedback:
+      type: object
+      description: >-
+        User satisfaction feedback on a closed issue (one row per participant per
+        issue). Distinct from officer field reports in `officer_issue_resolutions`.
+      required: [ id, issue_id, is_satisfied, submitted_at, reviewer ]
+      properties:
+        id:
+          type: integer
+        issue_id:
+          type: integer
+        is_satisfied:
+          type: boolean
+          description: Whether the reviewer is satisfied with how the issue was resolved.
+        comment:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: Optional free-text explanation.
+        submitted_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Set on PATCH; null until first edit.
+        reviewer:
+          $ref: '#/components/schemas/IssueCommentAuthor'
+
+    IssueFeedbackCreate:
+      type: object
+      required: [ is_satisfied ]
+      properties:
+        is_satisfied:
+          type: boolean
+          description: Required satisfaction boolean (ja/nee).
+        comment:
+          type: string
+          maxLength: 2000
+          description: Optional explanation (max 2000 characters).
+
+    IssueFeedbackUpdate:
+      type: object
+      properties:
+        is_satisfied:
+          type: boolean
+          description: Updated satisfaction boolean.
+        comment:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: Updated comment; send null to clear.
+
+    IssueFeedbackError:
+      type: object
+      description: >-
+        Issue feedback authorization or window rejection with stable
+        machine-readable `code`.
+      required: [ message, code ]
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+          enum:
+            - feedback_not_allowed
+            - feedback_window_closed
+            - feedback_edit_window_closed
+            - not_issue_participant
+
+    IssueFeedbackConflictError:
+      type: object
+      description: >-
+        Duplicate issue feedback submission with stable machine-readable `code`.
+      required: [ message, code ]
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+          enum: [ feedback_already_submitted ]
 
     IssueChat:
       type: object
