@@ -72,4 +72,15 @@ class District extends Model
     {
         return $this->hasMany(Issue::class);
     }
+
+    public function communityPosts(): HasMany
+    {
+        return $this->hasMany(CommunityPost::class);
+    }
+
+    public function feedUsers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'district_user');
+    }
 }
+

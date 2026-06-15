@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Enums\Department as DepartmentEnum;
 use App\Models\Category;
 use App\Models\Department;
 use App\Models\Manager;
@@ -28,7 +27,6 @@ class DepartmentManagementTest extends TestCase
             'username' => 'main-manager',
             'email' => 'main.manager@example.com',
             'password' => self::PASSWORD,
-            'department' => DepartmentEnum::Both,
         ], $overrides));
 
         $manager->forceFill(['is_main_manager' => true])->save();
@@ -47,7 +45,6 @@ class DepartmentManagementTest extends TestCase
             'username' => 'regular-manager',
             'email' => 'regular.manager@example.com',
             'password' => self::PASSWORD,
-            'department' => DepartmentEnum::Both,
         ], $overrides));
     }
 

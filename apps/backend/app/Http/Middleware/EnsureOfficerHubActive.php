@@ -12,9 +12,9 @@ class EnsureOfficerHubActive
     /**
      * Routes officers may call without a hub-active session (Tier B:
      * profile/auth, reference reads, officer show, issue browse including
-     * duplicates, participants index, status history,
-     * and resolution attachment downloads). All other protected API routes
-     * return 403 (Tier C).
+     * duplicates, participants index, status history, community post browse,
+     * and resolution/community-post attachment downloads). All other protected
+     * API routes return 403 (Tier C).
      *
      * @var list<string>
      */
@@ -28,8 +28,6 @@ class EnsureOfficerHubActive
         'hubs.show',
         'districts.index',
         'districts.show',
-        'departments.index',
-        'departments.show',
         'categories.index',
         'categories.show',
         'officer-sessions.index',
@@ -45,6 +43,9 @@ class EnsureOfficerHubActive
         'issues.attachments.download',
         'issues.officer-updates.index',
         'issues.officer-updates.attachments.download',
+        'community-posts.index',
+        'community-posts.show',
+        'community-posts.attachments.download',
         'issues.chats.index',
         'issues.chats.messages.index',
     ];

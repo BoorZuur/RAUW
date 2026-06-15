@@ -127,4 +127,46 @@ class ActorDistrictAccess
             );
         }
     }
+
+    /**
+     * Whether the actor may access the post's district.
+     *
+     * Main managers: always true. Officers and ordinary managers: post district
+     * must be in assigned districts; null district_id on the post → false.
+     */
+    public static function actorInPostDistrict(Officer|Manager $actor, \App\Models\CommunityPost $post): bool
+    {
+        if ($actor instanceof Manager && self::isMainManager($actor)) {
+            return true;
+        }
+
+        if ($post->district_id === null) {
+            return false;
+        }
+
+        return in_array((int) $post->district_id, self::assignedDistrictIds($actor), true);
+    }
+
+    /**
+     * Assert the actor is assigned to the post's district or abort 403.
+     */
+    public static function assertActorInPostDistrict(Officer|Manager $actor, \App\Models\CommunityPost $post): void
+    {
+        if ($actor instanceof Manager && self::isMainManager($actor)) {
+            return;
+        }
+
+        if (! self::actorInPostDistrict($actor, $post)) {
+            $message = $actor instanceof Officer
+                ? 'Officer is not assigned to this post district.'
+                : 'Manager is not assigned to this post district.';
+
+            throw new HttpResponseException(
+                response()->json([
+                    'message' => $message,
+                    'code' => 'actor_not_in_district',
+                ], Response::HTTP_FORBIDDEN)
+            );
+        }
+    }
 }

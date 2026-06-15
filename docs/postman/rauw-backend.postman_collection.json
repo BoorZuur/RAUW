@@ -651,6 +651,112 @@
           "response": []
         },
         {
+          "name": "Officer Remote — List Community Posts (Tier B)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Community post list allowed without hub-active', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{officer_remote_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/community-posts?district_id={{district_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "community-posts"
+              ],
+              "query": [
+                {
+                  "key": "district_id",
+                  "value": "{{district_id}}"
+                }
+              ]
+            },
+            "description": "Tier B smoke test for community post browse without hub-active shift. Run Auth / Login Officer Remote first (no active shared shift). Expects 200 on GET /api/community-posts. Optional district_id narrows within the officer's assigned districts."
+          },
+          "response": []
+        },
+        {
+          "name": "Officer Remote — Download Community Post Attachment (Tier B)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Community post attachment download allowed without hub-active', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{officer_remote_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/community-posts/{{community_post_id}}/attachments/{{community_post_attachment_id}}/download",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "community-posts",
+                "{{community_post_id}}",
+                "attachments",
+                "{{community_post_attachment_id}}",
+                "download"
+              ]
+            },
+            "description": "Tier B smoke test for community post attachment download without hub-active shift. Run Auth / Login Officer Remote first. Requires community_post_id and community_post_attachment_id from a seeded or previously created post in the officer's district scope. Expects 200 when the attachment exists and is viewable."
+          },
+          "response": []
+        },
+        {
           "name": "Current Profile",
           "request": {
             "auth": {
@@ -733,6 +839,57 @@
               ]
             },
             "description": "Self-service identity PATCH for users, officers, and managers. Send only fields to change. Active: username, email, password; officers may also send badge_number. Inactive: username and password only (email and badge_number return 422). Privileged and assignment fields are rejected with 422. When password is present, confirm_password must match."
+          },
+          "response": []
+        },
+        {
+          "name": "Update My Feed Districts",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"district_ids\": [1]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/me/feed-districts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me",
+                "feed-districts"
+              ]
+            },
+            "description": "User-only self-service feed district subscriptions for the community news feed. Replaces the authenticated user's feedDistricts pivot and returns the refreshed auth profile with districts populated from feedDistricts. Officers and managers receive 403. district_ids must be present, may be empty, must reference active districts, and cannot contain duplicates."
           },
           "response": []
         },
@@ -6100,9 +6257,10 @@
     },
     {
       "name": "Departments",
+      "name": "Community Posts",
       "item": [
         {
-          "name": "List Departments",
+          "name": "List Community Posts",
           "request": {
             "auth": {
               "type": "bearer",
@@ -6123,21 +6281,51 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/departments",
+              "raw": "{{base_url}}/api/community-posts?district_id={{district_id}}&page={{page}}",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
-                "departments"
+                "community-posts"
+              ],
+              "query": [
+                {
+                  "key": "district_id",
+                  "value": "{{district_id}}"
+                },
+                {
+                  "key": "page",
+                  "value": "{{page}}"
+                }
               ]
             },
-            "description": "List departments from the departments table with category counts. Requires authentication in the protected API group."
+            "description": "Paginated community news feed. Users see visible posts in subscribed feed districts; officers see assigned districts; managers browse city-wide. Optional district_id narrows within feed scope. Users may pass saved_only=1 to list saved posts only. Officers may call without hub-active shift (Tier B)."
           },
           "response": []
         },
         {
-          "name": "Show Department",
+          "name": "Create Community Post",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const body = pm.response.json();",
+                  "    const postId = body.data ? body.data.id : body.id;",
+                  "    if (postId) {",
+                  "        pm.collectionVariables.set('community_post_id', postId);",
+                  "        if (pm.environment.name) {",
+                  "            pm.environment.set('community_post_id', postId);",
+                  "        }",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
           "request": {
             "auth": {
               "type": "bearer",
@@ -6148,6 +6336,518 @@
                   "type": "string"
                 }
               ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"district_id\": {{district_id}},\n  \"title\": \"Wijkupdate parkeerregels\",\n  \"content\": \"Vanaf volgende week gelden nieuwe parkeerregels in Cool.\",\n  \"visibility\": \"visible\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/community-posts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "community-posts"
+              ]
+            },
+            "description": "Create a community post as an active officer with hub-active shift (Tier C). Officer must be assigned to district_id. Stores community_post_id from the 201 response."
+          },
+          "response": []
+        },
+        {
+          "name": "Show Community Post",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/community-posts/{{community_post_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "community-posts",
+                "{{community_post_id}}"
+              ]
+            },
+            "description": "Show one community post when visible to the actor. Returns 404 outside feed/visibility scope. User responses include is_saved when applicable. Tier B for officers."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Community Post",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Bijgewerkte wijkupdate\",\n  \"content\": \"Aanvullende informatie over de parkeerregels.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/community-posts/{{community_post_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "community-posts",
+                "{{community_post_id}}"
+              ]
+            },
+            "description": "Partial update by the authoring officer only. Tier C (hub-active required)."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Community Post Visibility",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"visibility\": \"hidden\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/community-posts/{{community_post_id}}/visibility",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "community-posts",
+                "{{community_post_id}}",
+                "visibility"
+              ]
+            },
+            "description": "Set visibility to visible or hidden. Officers may update own posts; managers may moderate (ordinary managers only in assigned districts). Hiding detaches all user saves."
+          },
+          "response": []
+        },
+        {
+          "name": "Upload Community Post Attachments",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const attachments = pm.response.json();",
+                  "    if (Array.isArray(attachments) && attachments.length > 0) {",
+                  "        pm.collectionVariables.set('community_post_attachment_id', attachments[0].id);",
+                  "        if (pm.environment.name) {",
+                  "            pm.environment.set('community_post_attachment_id', attachments[0].id);",
+                  "        }",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "attachments[]",
+                  "type": "file",
+                  "src": [],
+                  "description": "Choose 1-5 files. Each file must be <= 5 MB."
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/community-posts/{{community_post_id}}/attachments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "community-posts",
+                "{{community_post_id}}",
+                "attachments"
+              ]
+            },
+            "description": "Upload attachments to a community post. Max 5 files per post, 5 MB each. Authoring officer or officers in the post district only. Tier C. 201 response is a flat JSON array (no data wrapper). Stores community_post_attachment_id from the first attachment."
+          },
+          "response": []
+        },
+        {
+          "name": "Download Community Post Attachment",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/community-posts/{{community_post_id}}/attachments/{{community_post_attachment_id}}/download",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "community-posts",
+                "{{community_post_id}}",
+                "attachments",
+                "{{community_post_attachment_id}}",
+                "download"
+              ]
+            },
+            "description": "Download a community post attachment when the actor can view the parent post. Tier B for officers."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Community Post Attachment",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/community-posts/{{community_post_id}}/attachments/{{community_post_attachment_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "community-posts",
+                "{{community_post_id}}",
+                "attachments",
+                "{{community_post_attachment_id}}"
+              ]
+            },
+            "description": "Hard delete one community post attachment. Authoring officer only for officers; managers may delete any attachment. Tier C for officers."
+          },
+          "response": []
+        },
+        {
+          "name": "Save Community Post",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/community-posts/{{community_post_id}}/save",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "community-posts",
+                "{{community_post_id}}",
+                "save"
+              ]
+            },
+            "description": "Save a visible community post in the user's feed districts. Users only. Returns 201 with empty body. Returns 404 when the post is hidden or outside feed districts."
+          },
+          "response": []
+        },
+        {
+          "name": "List Saved Community Posts",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/community-posts?saved_only=1&district_id={{district_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "community-posts"
+              ],
+              "query": [
+                {
+                  "key": "saved_only",
+                  "value": "1"
+                },
+                {
+                  "key": "district_id",
+                  "value": "{{district_id}}"
+                }
+              ]
+            },
+            "description": "Users only. Lists saved posts within feed scope using saved_only=1."
+          },
+          "response": []
+        },
+        {
+          "name": "Unsave Community Post",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/community-posts/{{community_post_id}}/save",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "community-posts",
+                "{{community_post_id}}",
+                "save"
+              ]
+            },
+            "description": "Remove a post from the user's saved list. Users only. Returns 204."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Community Post",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/community-posts/{{community_post_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "community-posts",
+                "{{community_post_id}}"
+              ]
+            },
+            "description": "Delete a community post. Managers may delete any post; officers may delete only posts they authored. Tier C for officers. Returns 204."
+          },
+          "response": []
+        }
+      ],
+      "description": "Community news feed CRUD, attachments, and saved posts. Users subscribe to feed districts via Auth / Update My Feed Districts. Officer writes require hub-active shift (Tier C); list/show and attachment download are Tier B browse reads."
+    },
+    {
+      "name": "Departments",
+      "item": [
+        {
+          "name": "List Departments",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/departments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "departments"
+              ]
+            },
+            "description": "Public read: list departments from the departments table with category counts. No Authorization header required — use this before officer registration to discover active department_ids. Unauthenticated and non–main-manager callers receive active departments only. Optional bearer token: authenticated active main managers see all departments including inactive. Rate-limited to 30 requests per minute. Write requests (create, update, delete) still require main_manager_access_token."
+          },
+          "response": []
+        },
+        {
+          "name": "Show Department",
+          "request": {
+            "auth": {
+              "type": "noauth"
             },
             "method": "GET",
             "header": [
@@ -6168,7 +6868,7 @@
                 "1"
               ]
             },
-            "description": "Show one department with category count. Requires authentication in the protected API group."
+            "description": "Public read: show one department with category count. No Authorization header required for active departments. Inactive departments return 404 for unauthenticated and non–main-manager callers; authenticated active main managers may retrieve inactive departments when a bearer token is sent. Rate-limited to 30 requests per minute. Write requests still require main_manager_access_token."
           },
           "response": []
         },
@@ -6458,7 +7158,7 @@
           "response": []
         }
       ],
-      "description": "Department CRUD requests. Department mutations require an authenticated active main manager (main_manager_access_token). Activation and deactivation use generic PATCH with is_active only; hard delete is guarded when managers/officers still reference the row. Managers use department_ids through the department_manager pivot and must have one or more departments; officers use department_ids through the department_officer pivot and must have one or more departments. Deleting a department is blocked while assigned to managers or officers; otherwise it removes category_department and department_issue pivot assignments automatically but does not delete categories or issues. Issue departments are derived from categories and exposed to clients as read-only departments arrays."
+      "description": "Department read and write requests. GET list and show are public (no token required); they return active departments only for unauthenticated and non–main-manager callers and are rate-limited to 30 requests per minute. Department mutations require an authenticated active main manager (main_manager_access_token). Activation and deactivation use generic PATCH with is_active only; hard delete is guarded when managers/officers still reference the row. Managers use department_ids through the department_manager pivot and must have one or more departments; officers use department_ids through the department_officer pivot and must have one or more departments. Deleting a department is blocked while assigned to managers or officers; otherwise it removes category_department and department_issue pivot assignments automatically but does not delete categories or issues. Issue departments are derived from categories and exposed to clients as read-only departments arrays."
     }
   ],
   "auth": {
@@ -6577,7 +7277,7 @@
       "type": "string"
     },
     {
-      "key": "chat_id",
+      "key": "community_post_id",
       "value": "1",
       "type": "string"
     },

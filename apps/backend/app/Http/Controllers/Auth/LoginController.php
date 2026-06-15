@@ -61,6 +61,8 @@ class LoginController extends Controller
         // so the profile resource can embed them without triggering lazy queries.
         if ($actor instanceof Officer || $actor instanceof Manager) {
             $actor->loadMissing(['districts', 'hub']);
+        } elseif ($actor instanceof \App\Models\User) {
+            $actor->loadMissing('feedDistricts');
         }
 
         // Eager-load the actor's department relationships so the profile

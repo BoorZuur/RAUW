@@ -74,7 +74,7 @@ class DistrictController extends Controller
      * UpdateDistrictRequest. Only provided validated keys are applied, so partial
      * updates leave untouched fields intact.
      */
-    public function update(UpdateDistrictRequest $request, District $district): DistrictResource
+    public function update(UpdateDistrictRequest $request, District $district, \App\Actions\Districts\DetachDistrictFromCommunityFeeds $detachAction): DistrictResource
     {
         $attributes = $request->safe()->only([
             'hub_id',
@@ -87,7 +87,13 @@ class DistrictController extends Controller
         ]);
 
         if ($attributes !== []) {
+            $wasActive = $district->is_active;
+            
             $district->update($attributes);
+
+            if ($wasActive && array_key_exists('is_active', $attributes) && ! $attributes['is_active']) {
+                $detachAction->handle($district);
+            }
         }
 
         $district->refresh()->load('hub')->loadCount(['managers', 'officers', 'issues']);
@@ -104,7 +110,7 @@ class DistrictController extends Controller
      * assignments intact and preserves the singular `issues.district_id` issue
      * location/reference boundary.
      */
-    public function destroy(DeleteDistrictRequest $request, District $district): JsonResponse
+    public function destroy(DeleteDistrictRequest $request, District $district, \App\Actions\Districts\DetachDistrictFromCommunityFeeds $detachAction): JsonResponse
     {
         if ($district->managers()->exists()) {
             return response()->json([
@@ -123,6 +129,8 @@ class DistrictController extends Controller
                 'message' => 'This district is still referenced by one or more issues and cannot be deleted.',
             ], Response::HTTP_CONFLICT);
         }
+
+        $detachAction->handle($district);
 
         $district->delete();
 
