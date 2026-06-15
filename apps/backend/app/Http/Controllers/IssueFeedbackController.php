@@ -18,11 +18,14 @@ use App\Support\Issues\IssueFeedbackOfficerAccess;
 use App\Support\Issues\IssueFeedbackWindow;
 use App\Support\Issues\IssueParticipantAccess;
 use App\Support\IssueVisibilityQuery;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 
 class IssueFeedbackController extends Controller
 {
+    private const FEEDBACK_RELATIONS = ['reviewer', 'issue'];
+
     public function index(IndexIssueFeedbackRequest $request, Issue $issue): AnonymousResourceCollection
     {
         $actor = $request->user();
@@ -53,7 +56,7 @@ class IssueFeedbackController extends Controller
         return IssueFeedbackResource::collection($query->get());
     }
 
-    public function store(StoreIssueFeedbackRequest $request, Issue $issue): IssueFeedbackResource
+    public function store(StoreIssueFeedbackRequest $request, Issue $issue): JsonResponse
     {
         $user = $request->user();
 
@@ -81,12 +84,18 @@ class IssueFeedbackController extends Controller
                 'submitted_at' => now(),
             ]);
 
-            return new IssueFeedbackResource($feedback);
+            return (new IssueFeedbackResource($feedback->load(self::FEEDBACK_RELATIONS)))
+                ->response()
+                ->setStatusCode(Response::HTTP_CREATED);
         });
     }
 
     public function update(UpdateIssueFeedbackRequest $request, Issue $issue, IssueFeedback $feedback): IssueFeedbackResource
     {
+        if ($feedback->issue_id !== $issue->id) {
+            abort(404);
+        }
+
         if (! IssueVisibilityQuery::canViewIssue($issue, $request->user())) {
             abort(404);
         }
@@ -120,6 +129,10 @@ class IssueFeedbackController extends Controller
 
     public function destroy(DestroyIssueFeedbackRequest $request, Issue $issue, IssueFeedback $feedback): Response
     {
+        if ($feedback->issue_id !== $issue->id) {
+            abort(404);
+        }
+
         if (! IssueVisibilityQuery::canViewIssue($issue, $request->user())) {
             abort(404);
         }
