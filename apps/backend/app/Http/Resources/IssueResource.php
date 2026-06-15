@@ -10,6 +10,7 @@ use App\Models\Manager;
 use App\Models\Officer;
 use App\Models\OfficerIssueResolution;
 use App\Models\User;
+use App\Support\Issues\IssueAnonymousDisplayName;
 use App\Support\Issues\IssueParticipantVisibility;
 use App\Support\IssueVisibilityQuery;
 use Illuminate\Http\Request;
@@ -342,8 +343,11 @@ class IssueResource extends JsonResource
         }
 
         if ($actor instanceof Manager) {
+            $feedback = $issue->getRelation('feedback');
+            IssueAnonymousDisplayName::preloadForFeedbacks($feedback);
+
             return [
-                'feedback' => IssueFeedbackResource::collection($issue->getRelation('feedback'))->resolve(),
+                'feedback' => IssueFeedbackResource::collection($feedback)->resolve(),
             ];
         }
 

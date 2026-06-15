@@ -14,6 +14,7 @@ use App\Models\Manager;
 use App\Models\Officer;
 use App\Models\User;
 use App\Support\IssueFeedbackIntegrity;
+use App\Support\Issues\IssueAnonymousDisplayName;
 use App\Support\Issues\IssueFeedbackOfficerAccess;
 use App\Support\Issues\IssueFeedbackWindow;
 use App\Support\Issues\IssueParticipantAccess;
@@ -34,7 +35,7 @@ class IssueFeedbackController extends Controller
             abort(404);
         }
 
-        $query = $issue->feedback()->with('reviewer');
+        $query = $issue->feedback()->with(self::FEEDBACK_RELATIONS);
 
         if ($actor instanceof User) {
             $query->where('reviewer_user_id', $actor->id);
@@ -53,7 +54,10 @@ class IssueFeedbackController extends Controller
             abort(403);
         }
 
-        return IssueFeedbackResource::collection($query->get());
+        $feedbacks = $query->get();
+        IssueAnonymousDisplayName::preloadForFeedbacks($feedbacks);
+
+        return IssueFeedbackResource::collection($feedbacks);
     }
 
     public function store(StoreIssueFeedbackRequest $request, Issue $issue): JsonResponse
@@ -124,7 +128,7 @@ class IssueFeedbackController extends Controller
         $feedback->updated_at = now();
         $feedback->save();
 
-        return new IssueFeedbackResource($feedback);
+        return new IssueFeedbackResource($feedback->load(self::FEEDBACK_RELATIONS));
     }
 
     public function destroy(DestroyIssueFeedbackRequest $request, Issue $issue, IssueFeedback $feedback): Response

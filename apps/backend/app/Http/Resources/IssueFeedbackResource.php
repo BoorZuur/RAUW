@@ -21,6 +21,7 @@ class IssueFeedbackResource extends JsonResource
                 'username' => $this->reviewer->username,
             ];
         } else {
+            $this->loadMissing('issue');
             $reviewerData = IssueAnonymousDisplayName::derive($this->reviewer, $this->issue);
         }
 

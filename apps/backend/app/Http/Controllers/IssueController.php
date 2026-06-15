@@ -212,7 +212,7 @@ class IssueController extends Controller
             ]);
 
             if ($actor instanceof Manager && $issue->status === \App\Enums\IssueStatus::Closed) {
-                $issue->load('feedback.reviewer');
+                $issue->load(['feedback' => fn ($query) => $query->with(['reviewer', 'issue'])]);
             }
         }
 

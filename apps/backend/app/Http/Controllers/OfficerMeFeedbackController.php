@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Officers\IndexOfficerMeFeedbackRequest;
 use App\Http\Resources\IssueFeedbackResource;
 use App\Models\IssueFeedback;
+use App\Support\Issues\IssueAnonymousDisplayName;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class OfficerMeFeedbackController extends Controller
@@ -38,6 +39,9 @@ class OfficerMeFeedbackController extends Controller
             $query->where('submitted_at', '<=', $validated['submitted_to']);
         }
 
-        return IssueFeedbackResource::collection($query->paginate());
+        $paginator = $query->paginate();
+        IssueAnonymousDisplayName::preloadForFeedbacks(collect($paginator->items()));
+
+        return IssueFeedbackResource::collection($paginator);
     }
 }
