@@ -11,6 +11,7 @@ use App\Models\IssueStatusHistory;
 use App\Models\Officer;
 use App\Support\IssueStatusTransition;
 use App\Support\IssueVisibilityQuery;
+use App\Support\Notifications\NotifyStatusChange;
 use App\Support\OfficerIssueDistrictAccess;
 use App\Support\OfficerIssueRowLock;
 
@@ -44,6 +45,7 @@ class IssueOfficerStatusController extends Controller
         UpdateIssueStatusRequest $request,
         Issue $issue,
         CloseAllOpenIssueChats $closeAllOpenIssueChats,
+        NotifyStatusChange $notifyStatusChange,
     ): IssueResource {
         /** @var Officer $officer */
         $officer = $request->user();
@@ -58,7 +60,7 @@ class IssueOfficerStatusController extends Controller
         $newStatus = $request->enum('status', IssueStatus::class);
         $note = $request->validated('note');
 
-        OfficerIssueRowLock::withLockedIssue($issue, function (Issue $lockedIssue) use ($officer, $newStatus, $note, $closeAllOpenIssueChats): void {
+        OfficerIssueRowLock::withLockedIssue($issue, function (Issue $lockedIssue) use ($officer, $newStatus, $note, $closeAllOpenIssueChats, $notifyStatusChange): void {
             OfficerIssueRowLock::assertAssignee($officer, $lockedIssue);
             OfficerIssueRowLock::assertStatusTransition($lockedIssue, $newStatus);
 
@@ -81,6 +83,8 @@ class IssueOfficerStatusController extends Controller
                 'new_status' => $newStatus,
                 'note' => $note,
             ]);
+
+            $notifyStatusChange->notify($lockedIssue, $officer, $oldStatus, $newStatus);
 
             if ($newStatus === IssueStatus::Closed) {
                 $closeAllOpenIssueChats->closeAll($lockedIssue, $officer, withSystemMessage: true);
