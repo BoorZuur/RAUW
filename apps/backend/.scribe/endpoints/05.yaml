@@ -1,19 +1,23 @@
-name: 'Hubs & Districts'
+name: Officers
 description: ''
 endpoints:
   -
     custom: []
     httpMethods:
       - GET
-    uri: api/hubs
+    uri: api/officer-sessions
     metadata:
       custom: []
-      groupName: 'Hubs & Districts'
+      groupName: Officers
       groupDescription: ''
       subgroup: ''
       subgroupDescription: ''
-      title: 'List hubs ordered by name, each with reference counts.'
-      description: ''
+      title: 'List officer login sessions with pagination.'
+      description: |-
+        Authorization is enforced by {@see IndexOfficerSessionRequest}, which
+        restricts this action to an authenticated, active manager. Optional
+        `officer_id`, `hub_id`, and `is_hub_active` filters narrow the result set.
+        Results are ordered newest-first by `shift_start` then `id`.
       authenticated: true
       deprecated: false
     headers:
@@ -24,8 +28,76 @@ endpoints:
     cleanUrlParameters: []
     queryParameters: []
     cleanQueryParameters: []
-    bodyParameters: []
-    cleanBodyParameters: []
+    bodyParameters:
+      officer_id:
+        custom: []
+        name: officer_id
+        description: 'Must match an existing stored value.'
+        required: false
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      hub_id:
+        custom: []
+        name: hub_id
+        description: 'Must match an existing stored value.'
+        required: false
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      is_hub_active:
+        custom: []
+        name: is_hub_active
+        description: ''
+        required: false
+        example: '0'
+        type: string
+        enumValues:
+          - '0'
+          - 'false'
+          - ''
+          - '0'
+          - '1'
+          - 'true'
+          - '1'
+          - '1'
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      page:
+        custom: []
+        name: page
+        description: 'Must be at least 1.'
+        required: false
+        example: 22
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      per_page:
+        custom: []
+        name: per_page
+        description: 'Must be at least 1. Must not be greater than 100.'
+        required: false
+        example: 7
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      officer_id: 16
+      hub_id: 16
+      is_hub_active: '0'
+      page: 22
+      per_page: 7
     fileParameters: []
     responses:
       -
@@ -48,18 +120,26 @@ endpoints:
   -
     custom: []
     httpMethods:
-      - POST
-    uri: api/hubs
+      - GET
+    uri: api/officers
     metadata:
       custom: []
-      groupName: 'Hubs & Districts'
+      groupName: Officers
       groupDescription: ''
       subgroup: ''
       subgroupDescription: ''
-      title: 'Create a hub.'
+      title: 'List officers with pagination.'
       description: |-
-        Authorization (active main manager only) and validation are enforced by
-        StoreHubRequest.
+        Authorization is enforced by IndexOfficerRequest, which restricts this
+        action to an authenticated, active officer or manager. Results are
+        hub-scoped for officers and ordinary managers (same hub only; null hub
+        yields no rows); main managers see all officers city-wide. Results
+        exclude soft-deleted officers and default to active officers only when
+        `is_active` is omitted. Optional `district_id` and `department_id`
+        filters narrow the hub-scoped result set through the officer's district
+        and department pivots. Results include eager-loaded departments and
+        districts, ordered by username ascending. Pagination is bounded so
+        `per_page` can never exceed a safe maximum.
       authenticated: true
       deprecated: false
     headers:
@@ -71,57 +151,24 @@ endpoints:
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
-      name:
+      district_id:
         custom: []
-        name: name
-        description: 'Must not be greater than 100 characters.'
-        required: true
-        example: b
-        type: string
+        name: district_id
+        description: 'Must match an existing stored value.'
+        required: false
+        example: 16
+        type: integer
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
-      address:
+      department_id:
         custom: []
-        name: address
-        description: 'Must not be greater than 255 characters.'
-        required: true
-        example: 'n'
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      postal_code:
-        custom: []
-        name: postal_code
-        description: 'Must not be greater than 10 characters.'
-        required: true
-        example: gzmiyv
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      latitude:
-        custom: []
-        name: latitude
-        description: 'Must be between -90 and 90.'
-        required: true
-        example: -89
-        type: number
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      longitude:
-        custom: []
-        name: longitude
-        description: 'Must be between -180 and 180.'
-        required: true
-        example: -179
-        type: number
+        name: department_id
+        description: 'Must match an existing stored value.'
+        required: false
+        example: 16
+        type: integer
         enumValues: []
         exampleWasSpecified: false
         nullable: false
@@ -131,33 +178,59 @@ endpoints:
         name: is_active
         description: ''
         required: false
-        example: false
-        type: boolean
+        example: '1'
+        type: string
+        enumValues:
+          - '0'
+          - 'false'
+          - ''
+          - '0'
+          - '1'
+          - 'true'
+          - '1'
+          - '1'
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      page:
+        custom: []
+        name: page
+        description: 'Must be at least 1.'
+        required: false
+        example: 22
+        type: integer
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
-      radius_meters:
+      per_page:
         custom: []
-        name: radius_meters
-        description: 'Must be at least 10. Must not be greater than 5000.'
+        name: per_page
+        description: 'Must be at least 1. Must not be greater than 100.'
         required: false
-        example: 19
+        example: 7
         type: integer
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanBodyParameters:
-      name: b
-      address: 'n'
-      postal_code: gzmiyv
-      latitude: -89
-      longitude: -179
-      is_active: false
-      radius_meters: 19
+      district_id: 16
+      department_id: 16
+      is_active: '1'
+      page: 22
+      per_page: 7
     fileParameters: []
-    responses: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"message":"Unauthenticated."}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          access-control-allow-origin: 'http://localhost:5173'
+        description: null
     responseFields: []
     auth:
       - headers
@@ -170,15 +243,18 @@ endpoints:
     custom: []
     httpMethods:
       - GET
-    uri: 'api/hubs/{id}'
+    uri: 'api/officers/{id}'
     metadata:
       custom: []
-      groupName: 'Hubs & Districts'
+      groupName: Officers
       groupDescription: ''
       subgroup: ''
       subgroupDescription: ''
-      title: 'Show a single hub with reference counts.'
-      description: ''
+      title: 'Show a single officer profile.'
+      description: |-
+        Authorization is enforced by ShowOfficerRequest, which is available to any
+        authenticated active actor. Results are city-wide with no hub scoping.
+        Soft-deleted officers return 404 from route model binding.
       authenticated: true
       deprecated: false
     headers:
@@ -189,7 +265,7 @@ endpoints:
       id:
         custom: []
         name: id
-        description: 'The ID of the hub.'
+        description: 'The ID of the officer.'
         required: true
         example: 1
         type: integer
@@ -225,19 +301,19 @@ endpoints:
   -
     custom: []
     httpMethods:
-      - PUT
       - PATCH
-    uri: 'api/hubs/{id}'
+    uri: 'api/officers/{officer_id}/disable'
     metadata:
       custom: []
-      groupName: 'Hubs & Districts'
+      groupName: Officers
       groupDescription: ''
       subgroup: ''
       subgroupDescription: ''
-      title: 'Update a hub.'
+      title: 'Disable an officer without removing the row.'
       description: |-
-        Authorization (active main manager only) and validation are enforced by
-        UpdateHubRequest.
+        Authorization is enforced by DisableOfficerRequest (active manager only;
+        wrong actor type 403). Hub scoping via ManagerOfficerHubAccess returns
+        404 when the ordinary manager cannot administer the target officer.
       authenticated: true
       deprecated: false
     headers:
@@ -245,10 +321,10 @@ endpoints:
       Content-Type: application/json
       Accept: application/json
     urlParameters:
-      id:
+      officer_id:
         custom: []
-        name: id
-        description: 'The ID of the hub.'
+        name: officer_id
+        description: 'The ID of the officer.'
         required: true
         example: 1
         type: integer
@@ -257,95 +333,185 @@ endpoints:
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      id: 1
+      officer_id: 1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - PATCH
+    uri: 'api/officers/{officer_id}/enable'
+    metadata:
+      custom: []
+      groupName: Officers
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Enable an officer without restoring a soft-deleted row.'
+      description: |-
+        Authorization is enforced by EnableOfficerRequest (active manager only;
+        wrong actor type 403). Hub scoping via ManagerOfficerHubAccess returns
+        404 when the ordinary manager cannot administer the target officer.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {token}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      officer_id:
+        custom: []
+        name: officer_id
+        description: 'The ID of the officer.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      officer_id: 1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - PATCH
+    uri: 'api/officers/{officer_id}/end-shift'
+    metadata:
+      custom: []
+      groupName: Officers
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: "End an officer's shared shift without revoking tokens."
+      description: |-
+        Authorization is enforced by {@see EndOfficerShiftRequest} (active
+        manager only; wrong actor type 403). Hub scoping via
+        ManagerOfficerHubAccess returns 404 when the ordinary manager cannot
+        administer the target officer.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {token}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      officer_id:
+        custom: []
+        name: officer_id
+        description: 'The ID of the officer.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      officer_id: 1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - PATCH
+    uri: 'api/officers/{officer_id}/districts'
+    metadata:
+      custom: []
+      groupName: Officers
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: |-
+        Sync a target officer's district assignments on behalf of an active
+        manager and return the officer's refreshed profile payload.
+      description: |-
+        Authorization is enforced by {@see UpdateOfficerDistrictsRequest} (active
+        manager only; wrong actor type 403). Hub scoping via
+        ManagerOfficerHubAccess returns 404 when the ordinary manager cannot
+        administer the target officer. The officer is
+        resolved through route model binding, their `districts()` relation is
+        replaced wholesale with the validated, de-duplicated set, and the
+        response reuses the canonical {@see AuthProfileResource} officer shape.
+
+        This endpoint only touches the officer-side district pivot; it never
+        modifies `issues.district_id` or reassigns issue districts.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {token}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      officer_id:
+        custom: []
+        name: officer_id
+        description: 'The ID of the officer.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      officer_id: 1
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
-      name:
+      district_ids:
         custom: []
-        name: name
-        description: 'Must not be greater than 100 characters.'
+        name: district_ids
+        description: 'Must match an existing stored value.'
         required: false
-        example: b
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      address:
-        custom: []
-        name: address
-        description: 'Must not be greater than 255 characters.'
-        required: false
-        example: 'n'
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      postal_code:
-        custom: []
-        name: postal_code
-        description: 'Must not be greater than 10 characters.'
-        required: false
-        example: gzmiyv
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      latitude:
-        custom: []
-        name: latitude
-        description: 'Must be between -90 and 90.'
-        required: false
-        example: -89
-        type: number
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      longitude:
-        custom: []
-        name: longitude
-        description: 'Must be between -180 and 180.'
-        required: false
-        example: -179
-        type: number
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      is_active:
-        custom: []
-        name: is_active
-        description: ''
-        required: false
-        example: true
-        type: boolean
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      radius_meters:
-        custom: []
-        name: radius_meters
-        description: 'Must be at least 10. Must not be greater than 5000.'
-        required: false
-        example: 19
-        type: integer
+        example:
+          - 16
+        type: 'integer[]'
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanBodyParameters:
-      name: b
-      address: 'n'
-      postal_code: gzmiyv
-      latitude: -89
-      longitude: -179
-      is_active: true
-      radius_meters: 19
+      district_ids:
+        - 16
     fileParameters: []
     responses: []
     responseFields: []
@@ -359,18 +525,19 @@ endpoints:
   -
     custom: []
     httpMethods:
-      - DELETE
-    uri: 'api/hubs/{id}'
+      - PATCH
+    uri: 'api/officers/{officer_id}/hub'
     metadata:
       custom: []
-      groupName: 'Hubs & Districts'
+      groupName: Officers
       groupDescription: ''
       subgroup: ''
       subgroupDescription: ''
-      title: 'Hard delete an eligible hub.'
+      title: "Set an officer's hub and clear their district assignments."
       description: |-
-        Deletion is rejected when districts, officers, or managers still reference
-        the hub.
+        Authorization is enforced by {@see UpdateOfficerHubRequest}. Changing the
+        hub invalidates existing district pivots, which are cleared wholesale so
+        district assignments can be re-established within the new hub.
       authenticated: true
       deprecated: false
     headers:
@@ -378,10 +545,10 @@ endpoints:
       Content-Type: application/json
       Accept: application/json
     urlParameters:
-      id:
+      officer_id:
         custom: []
-        name: id
-        description: 'The ID of the hub.'
+        name: officer_id
+        description: 'The ID of the officer.'
         required: true
         example: 1
         type: integer
@@ -390,90 +557,7 @@ endpoints:
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      id: 1
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters: []
-    cleanBodyParameters: []
-    fileParameters: []
-    responses: []
-    responseFields: []
-    auth:
-      - headers
-      - Authorization
-      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
-    controller: null
-    method: null
-    route: null
-  -
-    custom: []
-    httpMethods:
-      - GET
-    uri: api/districts
-    metadata:
-      custom: []
-      groupName: 'Hubs & Districts'
-      groupDescription: ''
-      subgroup: ''
-      subgroupDescription: ''
-      title: 'List districts ordered by name, each with assignment/reference counts.'
-      description: ''
-      authenticated: true
-      deprecated: false
-    headers:
-      Authorization: 'Bearer {token}'
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters: []
-    cleanUrlParameters: []
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters: []
-    cleanBodyParameters: []
-    fileParameters: []
-    responses:
-      -
-        custom: []
-        status: 401
-        content: '{"message":"Unauthenticated."}'
-        headers:
-          cache-control: 'no-cache, private'
-          content-type: application/json
-          access-control-allow-origin: 'http://localhost:5173'
-        description: null
-    responseFields: []
-    auth:
-      - headers
-      - Authorization
-      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
-    controller: null
-    method: null
-    route: null
-  -
-    custom: []
-    httpMethods:
-      - POST
-    uri: api/districts
-    metadata:
-      custom: []
-      groupName: 'Hubs & Districts'
-      groupDescription: ''
-      subgroup: ''
-      subgroupDescription: ''
-      title: 'Create a district.'
-      description: |-
-        Authorization (active main manager only) and validation are enforced by
-        StoreDistrictRequest. Only validated district attributes are persisted;
-        actor district assignments remain managed through their dedicated pivot
-        endpoints.
-      authenticated: true
-      deprecated: false
-    headers:
-      Authorization: 'Bearer {token}'
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters: []
-    cleanUrlParameters: []
+      officer_id: 1
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
@@ -488,80 +572,8 @@ endpoints:
         exampleWasSpecified: false
         nullable: false
         deprecated: false
-      name:
-        custom: []
-        name: name
-        description: 'Must not be greater than 100 characters.'
-        required: true
-        example: 'n'
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      postal_prefix:
-        custom: []
-        name: postal_prefix
-        description: 'Must not be greater than 10 characters.'
-        required: false
-        example: gzmiyv
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: true
-        deprecated: false
-      center_lat:
-        custom: []
-        name: center_lat
-        description: 'Must be between -90 and 90.'
-        required: true
-        example: -89
-        type: number
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      center_lng:
-        custom: []
-        name: center_lng
-        description: 'Must be between -180 and 180.'
-        required: true
-        example: -179
-        type: number
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      radius_meters:
-        custom: []
-        name: radius_meters
-        description: 'Must be at least 1.'
-        required: false
-        example: 4
-        type: integer
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: true
-        deprecated: false
-      is_active:
-        custom: []
-        name: is_active
-        description: ''
-        required: false
-        example: false
-        type: boolean
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
     cleanBodyParameters:
       hub_id: 16
-      name: 'n'
-      postal_prefix: gzmiyv
-      center_lat: -89
-      center_lng: -179
-      radius_meters: 4
-      is_active: false
     fileParameters: []
     responses: []
     responseFields: []
@@ -575,76 +587,25 @@ endpoints:
   -
     custom: []
     httpMethods:
-      - GET
-    uri: 'api/districts/{id}'
-    metadata:
-      custom: []
-      groupName: 'Hubs & Districts'
-      groupDescription: ''
-      subgroup: ''
-      subgroupDescription: ''
-      title: 'Show a single district with assignment/reference counts.'
-      description: ''
-      authenticated: true
-      deprecated: false
-    headers:
-      Authorization: 'Bearer {token}'
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters:
-      id:
-        custom: []
-        name: id
-        description: 'The ID of the district.'
-        required: true
-        example: 1
-        type: integer
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-    cleanUrlParameters:
-      id: 1
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters: []
-    cleanBodyParameters: []
-    fileParameters: []
-    responses:
-      -
-        custom: []
-        status: 401
-        content: '{"message":"Unauthenticated."}'
-        headers:
-          cache-control: 'no-cache, private'
-          content-type: application/json
-          access-control-allow-origin: 'http://localhost:5173'
-        description: null
-    responseFields: []
-    auth:
-      - headers
-      - Authorization
-      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
-    controller: null
-    method: null
-    route: null
-  -
-    custom: []
-    httpMethods:
-      - PUT
       - PATCH
-    uri: 'api/districts/{id}'
+    uri: 'api/officers/{officer_id}/departments'
     metadata:
       custom: []
-      groupName: 'Hubs & Districts'
+      groupName: Officers
       groupDescription: ''
       subgroup: ''
       subgroupDescription: ''
-      title: 'Update a district.'
+      title: |-
+        Sync a target officer's department assignments on behalf of an active main
+        manager and return the officer's refreshed profile payload.
       description: |-
-        Authorization (active main manager only) and validation are enforced by
-        UpdateDistrictRequest. Only provided validated keys are applied, so partial
-        updates leave untouched fields intact.
+        Authorization is enforced by {@see UpdateOfficerDepartmentsRequest}. The
+        officer is resolved through route model binding, their `departments()`
+        relation is replaced wholesale with the validated set, and the response
+        reuses the canonical {@see AuthProfileResource} officer shape.
+
+        This endpoint only touches the `department_officer` pivot; it never
+        modifies district assignments or issue data.
       authenticated: true
       deprecated: false
     headers:
@@ -652,10 +613,10 @@ endpoints:
       Content-Type: application/json
       Accept: application/json
     urlParameters:
-      id:
+      officer_id:
         custom: []
-        name: id
-        description: 'The ID of the district.'
+        name: officer_id
+        description: 'The ID of the officer.'
         required: true
         example: 1
         type: integer
@@ -664,147 +625,25 @@ endpoints:
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      id: 1
+      officer_id: 1
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
-      hub_id:
+      department_ids:
         custom: []
-        name: hub_id
+        name: department_ids
         description: 'Must match an existing stored value.'
         required: false
-        example: 16
-        type: integer
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      name:
-        custom: []
-        name: name
-        description: 'Must not be greater than 100 characters.'
-        required: false
-        example: 'n'
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      postal_prefix:
-        custom: []
-        name: postal_prefix
-        description: 'Must not be greater than 10 characters.'
-        required: false
-        example: gzmiyv
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: true
-        deprecated: false
-      center_lat:
-        custom: []
-        name: center_lat
-        description: 'Must be between -90 and 90.'
-        required: false
-        example: -89
-        type: number
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      center_lng:
-        custom: []
-        name: center_lng
-        description: 'Must be between -180 and 180.'
-        required: false
-        example: -179
-        type: number
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      radius_meters:
-        custom: []
-        name: radius_meters
-        description: 'Must be at least 1.'
-        required: false
-        example: 4
-        type: integer
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: true
-        deprecated: false
-      is_active:
-        custom: []
-        name: is_active
-        description: ''
-        required: false
-        example: false
-        type: boolean
+        example:
+          - 16
+        type: 'integer[]'
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanBodyParameters:
-      hub_id: 16
-      name: 'n'
-      postal_prefix: gzmiyv
-      center_lat: -89
-      center_lng: -179
-      radius_meters: 4
-      is_active: false
-    fileParameters: []
-    responses: []
-    responseFields: []
-    auth:
-      - headers
-      - Authorization
-      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
-    controller: null
-    method: null
-    route: null
-  -
-    custom: []
-    httpMethods:
-      - DELETE
-    uri: 'api/districts/{id}'
-    metadata:
-      custom: []
-      groupName: 'Hubs & Districts'
-      groupDescription: ''
-      subgroup: ''
-      subgroupDescription: ''
-      title: 'Hard delete an eligible district.'
-      description: |-
-        Authorization (active main manager only) is enforced by
-        DeleteDistrictRequest. Deletion is rejected when the district is still assigned to any manager,
-        assigned to any officer, or referenced by any issue. This keeps actor
-        assignments intact and preserves the singular `issues.district_id` issue
-        location/reference boundary.
-      authenticated: true
-      deprecated: false
-    headers:
-      Authorization: 'Bearer {token}'
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters:
-      id:
-        custom: []
-        name: id
-        description: 'The ID of the district.'
-        required: true
-        example: 1
-        type: integer
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-    cleanUrlParameters:
-      id: 1
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters: []
-    cleanBodyParameters: []
+      department_ids:
+        - 16
     fileParameters: []
     responses: []
     responseFields: []

@@ -1,23 +1,24 @@
-name: 'Categories & Departments'
+name: Managers
 description: ''
 endpoints:
   -
     custom: []
     httpMethods:
       - GET
-    uri: api/categories
+    uri: api/managers
     metadata:
       custom: []
-      groupName: 'Categories & Departments'
+      groupName: Managers
       groupDescription: ''
       subgroup: ''
       subgroupDescription: ''
-      title: 'List categories ordered by priority (main) then name (subcategory).'
+      title: 'List ordinary managers with pagination.'
       description: |-
-        Departments and parent are eager loaded to avoid N+1 queries, and main
-        categories carry their nested children. Main categories sort by ascending
-        `priority` (lower number = higher priority), then `name`; null priority
-        sorts last. Subcategories sort by `name` ascending.
+        Authorization is enforced by IndexManagerRequest, which restricts
+        this action to an authenticated, active, main manager. Results include
+        only managers with `is_main_manager = false`, eager-loaded departments
+        and districts, ordered by username ascending. Pagination is bounded so
+        `per_page` can never exceed a safe maximum.
       authenticated: true
       deprecated: false
     headers:
@@ -26,6 +27,91 @@ endpoints:
       Accept: application/json
     urlParameters: []
     cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      page:
+        custom: []
+        name: page
+        description: 'Must be at least 1.'
+        required: false
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      per_page:
+        custom: []
+        name: per_page
+        description: 'Must be at least 1. Must not be greater than 100.'
+        required: false
+        example: 22
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      page: 16
+      per_page: 22
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"message":"Unauthenticated."}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          access-control-allow-origin: 'http://localhost:5173'
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: 'api/managers/{id}'
+    metadata:
+      custom: []
+      groupName: Managers
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Show a single ordinary manager profile.'
+      description: |-
+        Authorization is enforced by ShowManagerRequest, which restricts this
+        action to an authenticated, active officer or manager. Route binding
+        limits the target to rows with `is_main_manager = false`. Hub scoping
+        returns 404 when the actor cannot view the manager in the same hub,
+        including for main managers (no city-wide bypass).
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {token}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      id:
+        custom: []
+        name: id
+        description: 'The ID of the manager.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      id: 1
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters: []
@@ -53,18 +139,22 @@ endpoints:
     custom: []
     httpMethods:
       - POST
-    uri: api/categories
+    uri: api/managers
     metadata:
       custom: []
-      groupName: 'Categories & Departments'
+      groupName: Managers
       groupDescription: ''
       subgroup: ''
       subgroupDescription: ''
-      title: 'Create a category and attach its departments.'
+      title: 'Create a new manager on behalf of the authenticated main manager.'
       description: |-
-        Authorization and hierarchy/priority validation are enforced by
-        StoreCategoryRequest. The category and its pivot assignments are written
-        in a single transaction so a failed attach never leaves an orphan row.
+        Authorization is enforced by StoreManagerRequest, which restricts this
+        action to an authenticated, active, main manager. The created manager is
+        an ordinary active manager (never a main manager) linked back to the
+        creator through `created_by_manager_id`. No Sanctum token is issued for
+        the new manager: they must authenticate separately via the shared login
+        endpoint. The response excludes the password hash, remember token, and
+        any access tokens.
       authenticated: true
       deprecated: false
     headers:
@@ -76,10 +166,10 @@ endpoints:
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
-      name:
+      username:
         custom: []
-        name: name
-        description: 'Must not be greater than 100 characters.'
+        name: username
+        description: 'Must not be greater than 50 characters.'
         required: true
         example: b
         type: string
@@ -87,16 +177,38 @@ endpoints:
         exampleWasSpecified: false
         nullable: false
         deprecated: false
-      parent_id:
+      email:
         custom: []
-        name: parent_id
-        description: 'Must match an existing stored value.'
-        required: false
-        example: 16
-        type: integer
+        name: email
+        description: 'Must be a valid email address.'
+        required: true
+        example: zbailey@example.net
+        type: string
         enumValues: []
         exampleWasSpecified: false
-        nullable: true
+        nullable: false
+        deprecated: false
+      password:
+        custom: []
+        name: password
+        description: ''
+        required: true
+        example: '|]|{+-'
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      confirm_password:
+        custom: []
+        name: confirm_password
+        description: 'The value and <code>password</code> must match.'
+        required: true
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
         deprecated: false
       department_ids:
         custom: []
@@ -110,46 +222,27 @@ endpoints:
         exampleWasSpecified: false
         nullable: false
         deprecated: false
-      priority:
+      district_ids:
         custom: []
-        name: priority
-        description: 'Must be at least 0. Must not be greater than 255.'
+        name: district_ids
+        description: 'Must match an existing stored value.'
         required: false
-        example: 22
-        type: integer
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: true
-        deprecated: false
-      weight:
-        custom: []
-        name: weight
-        description: ''
-        required: false
-        example: null
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      is_active:
-        custom: []
-        name: is_active
-        description: ''
-        required: false
-        example: true
-        type: boolean
+        example:
+          - 16
+        type: 'integer[]'
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanBodyParameters:
-      name: b
-      parent_id: 16
+      username: b
+      email: zbailey@example.net
+      password: '|]|{+-'
+      confirm_password: architecto
       department_ids:
         - 16
-      priority: 22
-      is_active: true
+      district_ids:
+        - 16
     fileParameters: []
     responses: []
     responseFields: []
@@ -163,76 +256,21 @@ endpoints:
   -
     custom: []
     httpMethods:
-      - GET
-    uri: 'api/categories/{id}'
-    metadata:
-      custom: []
-      groupName: 'Categories & Departments'
-      groupDescription: ''
-      subgroup: ''
-      subgroupDescription: ''
-      title: 'Show a single category with its departments, parent, and children.'
-      description: ''
-      authenticated: true
-      deprecated: false
-    headers:
-      Authorization: 'Bearer {token}'
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters:
-      id:
-        custom: []
-        name: id
-        description: 'The ID of the category.'
-        required: true
-        example: 1
-        type: integer
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-    cleanUrlParameters:
-      id: 1
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters: []
-    cleanBodyParameters: []
-    fileParameters: []
-    responses:
-      -
-        custom: []
-        status: 401
-        content: '{"message":"Unauthenticated."}'
-        headers:
-          cache-control: 'no-cache, private'
-          content-type: application/json
-          access-control-allow-origin: 'http://localhost:5173'
-        description: null
-    responseFields: []
-    auth:
-      - headers
-      - Authorization
-      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
-    controller: null
-    method: null
-    route: null
-  -
-    custom: []
-    httpMethods:
-      - PUT
       - PATCH
-    uri: 'api/categories/{id}'
+    uri: 'api/managers/{id}'
     metadata:
       custom: []
-      groupName: 'Categories & Departments'
+      groupName: Managers
       groupDescription: ''
       subgroup: ''
       subgroupDescription: ''
-      title: 'Update a category and, when provided, re-sync its departments.'
+      title: "Update another ordinary manager's identity fields."
       description: |-
-        Only the validated keys present in the request are applied, so partial
-        updates leave untouched fields intact. Departments are only re-synced
-        when `department_ids` is included in the payload.
+        Authorization is enforced by UpdateManagerRequest, which restricts
+        this action to an authenticated, active, main manager. Only username,
+        email, and password may be changed; privileged fields are rejected with
+        validation errors. The route binding limits the target to rows with
+        `is_main_manager = false`.
       authenticated: true
       deprecated: false
     headers:
@@ -243,7 +281,7 @@ endpoints:
       id:
         custom: []
         name: id
-        description: 'The ID of the category.'
+        description: 'The ID of the manager.'
         required: true
         example: 1
         type: integer
@@ -256,10 +294,10 @@ endpoints:
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
-      name:
+      username:
         custom: []
-        name: name
-        description: 'Must not be greater than 100 characters.'
+        name: username
+        description: 'Must not be greater than 50 characters.'
         required: false
         example: b
         type: string
@@ -267,17 +305,316 @@ endpoints:
         exampleWasSpecified: false
         nullable: false
         deprecated: false
-      parent_id:
+      email:
         custom: []
-        name: parent_id
-        description: 'Must match an existing stored value.'
+        name: email
+        description: 'Must be a valid email address.'
         required: false
+        example: zbailey@example.net
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      password:
+        custom: []
+        name: password
+        description: ''
+        required: false
+        example: '|]|{+-'
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      confirm_password:
+        custom: []
+        name: confirm_password
+        description: 'This field is required when <code>password</code> is present. The value and <code>password</code> must match.'
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      department_ids:
+        custom: []
+        name: department_ids
+        description: ''
+        required: false
+        example: null
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      district_ids:
+        custom: []
+        name: district_ids
+        description: ''
+        required: false
+        example: null
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      is_main_manager:
+        custom: []
+        name: is_main_manager
+        description: ''
+        required: false
+        example: null
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      is_active:
+        custom: []
+        name: is_active
+        description: ''
+        required: false
+        example: null
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      created_by_manager_id:
+        custom: []
+        name: created_by_manager_id
+        description: ''
+        required: false
+        example: null
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      username: b
+      email: zbailey@example.net
+      password: '|]|{+-'
+      confirm_password: architecto
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - PATCH
+    uri: 'api/managers/{manager_id}/disable'
+    metadata:
+      custom: []
+      groupName: Managers
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Disable an ordinary manager without removing the row.'
+      description: |-
+        Authorization is enforced by DisableManagerRequest. Setting
+        `is_active = false` preserves the manager record and historical
+        associations.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {token}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      manager_id:
+        custom: []
+        name: manager_id
+        description: 'The ID of the manager.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      manager_id: 1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - PATCH
+    uri: 'api/managers/{manager_id}/enable'
+    metadata:
+      custom: []
+      groupName: Managers
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Enable an ordinary manager without restoring a soft-deleted row.'
+      description: |-
+        Authorization is enforced by EnableManagerRequest. Setting
+        `is_active = true` reactivates the manager. Re-enabling an already
+        active manager is idempotent and returns 200.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {token}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      manager_id:
+        custom: []
+        name: manager_id
+        description: 'The ID of the manager.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      manager_id: 1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - PATCH
+    uri: 'api/managers/{manager_id}/hub'
+    metadata:
+      custom: []
+      groupName: Managers
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: "Set an ordinary manager's hub and clear their district assignments."
+      description: |-
+        Authorization is enforced by {@see UpdateManagerHubRequest}. Changing the
+        hub invalidates existing district pivots, which are cleared wholesale so
+        district assignments can be re-established within the new hub.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {token}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      manager_id:
+        custom: []
+        name: manager_id
+        description: 'The ID of the manager.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      manager_id: 1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      hub_id:
+        custom: []
+        name: hub_id
+        description: 'Must match an existing stored value.'
+        required: true
         example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
-        nullable: true
+        nullable: false
         deprecated: false
+    cleanBodyParameters:
+      hub_id: 16
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - PATCH
+    uri: 'api/managers/{manager_id}/departments'
+    metadata:
+      custom: []
+      groupName: Managers
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: |-
+        Sync a target manager's department assignments on behalf of an active main
+        manager and return that manager's refreshed profile payload.
+      description: |-
+        Authorization is enforced by {@see UpdateManagerDepartmentsRequest}. The
+        manager is resolved through route model binding, their `departments()`
+        relation is replaced wholesale with the validated set, and the response
+        reuses {@see ManagerResource}, matching manager creation responses.
+
+        This endpoint only touches the `department_manager` pivot; it never
+        modifies district assignments, credentials, or privileged flags.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {token}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      manager_id:
+        custom: []
+        name: manager_id
+        description: 'The ID of the manager.'
+        required: true
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      manager_id: 1
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
       department_ids:
         custom: []
         name: department_ids
@@ -290,46 +627,9 @@ endpoints:
         exampleWasSpecified: false
         nullable: false
         deprecated: false
-      priority:
-        custom: []
-        name: priority
-        description: 'Must be at least 0. Must not be greater than 255.'
-        required: false
-        example: 22
-        type: integer
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: true
-        deprecated: false
-      weight:
-        custom: []
-        name: weight
-        description: ''
-        required: false
-        example: null
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      is_active:
-        custom: []
-        name: is_active
-        description: ''
-        required: false
-        example: true
-        type: boolean
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
     cleanBodyParameters:
-      name: b
-      parent_id: 16
       department_ids:
         - 16
-      priority: 22
-      is_active: true
     fileParameters: []
     responses: []
     responseFields: []
@@ -343,248 +643,26 @@ endpoints:
   -
     custom: []
     httpMethods:
-      - DELETE
-    uri: 'api/categories/{id}'
-    metadata:
-      custom: []
-      groupName: 'Categories & Departments'
-      groupDescription: ''
-      subgroup: ''
-      subgroupDescription: ''
-      title: 'Hard delete an eligible category.'
-      description: |-
-        A main category that still has subcategories is rejected with a 409 so
-        the hierarchy is never orphaned. The pivot rows are removed by the
-        database cascade, but any `issues.category_id` reference uses
-        `restrictOnDelete`; that constraint failure is caught and returned as a
-        409 conflict rather than surfacing as a 500.
-      authenticated: true
-      deprecated: false
-    headers:
-      Authorization: 'Bearer {token}'
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters:
-      id:
-        custom: []
-        name: id
-        description: 'The ID of the category.'
-        required: true
-        example: 1
-        type: integer
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-    cleanUrlParameters:
-      id: 1
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters: []
-    cleanBodyParameters: []
-    fileParameters: []
-    responses: []
-    responseFields: []
-    auth:
-      - headers
-      - Authorization
-      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
-    controller: null
-    method: null
-    route: null
-  -
-    custom: []
-    httpMethods:
-      - GET
-    uri: api/departments
-    metadata:
-      custom: []
-      groupName: 'Categories & Departments'
-      groupDescription: ''
-      subgroup: ''
-      subgroupDescription: ''
-      title: 'List departments ordered by code, each with its category count.'
-      description: |-
-        The category count is eager-loaded with `withCount` to avoid N+1
-        queries when serializing the collection.
-      authenticated: true
-      deprecated: false
-    headers:
-      Authorization: 'Bearer {token}'
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters: []
-    cleanUrlParameters: []
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters: []
-    cleanBodyParameters: []
-    fileParameters: []
-    responses:
-      -
-        custom: []
-        status: 401
-        content: '{"message":"Unauthenticated."}'
-        headers:
-          cache-control: 'no-cache, private'
-          content-type: application/json
-          access-control-allow-origin: 'http://localhost:5173'
-        description: null
-    responseFields: []
-    auth:
-      - headers
-      - Authorization
-      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
-    controller: null
-    method: null
-    route: null
-  -
-    custom: []
-    httpMethods:
-      - POST
-    uri: api/departments
-    metadata:
-      custom: []
-      groupName: 'Categories & Departments'
-      groupDescription: ''
-      subgroup: ''
-      subgroupDescription: ''
-      title: 'Create a department.'
-      description: |-
-        Authorization (active main manager only) and validation are enforced by
-        StoreDepartmentRequest. Only validated attributes are persisted; the
-        `is_active` default is applied by the model when omitted.
-      authenticated: true
-      deprecated: false
-    headers:
-      Authorization: 'Bearer {token}'
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters: []
-    cleanUrlParameters: []
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters:
-      code:
-        custom: []
-        name: code
-        description: 'Must not be greater than 50 characters.'
-        required: true
-        example: b
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      name:
-        custom: []
-        name: name
-        description: 'Must not be greater than 100 characters.'
-        required: true
-        example: 'n'
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      is_active:
-        custom: []
-        name: is_active
-        description: ''
-        required: false
-        example: true
-        type: boolean
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-    cleanBodyParameters:
-      code: b
-      name: 'n'
-      is_active: true
-    fileParameters: []
-    responses: []
-    responseFields: []
-    auth:
-      - headers
-      - Authorization
-      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
-    controller: null
-    method: null
-    route: null
-  -
-    custom: []
-    httpMethods:
-      - GET
-    uri: 'api/departments/{id}'
-    metadata:
-      custom: []
-      groupName: 'Categories & Departments'
-      groupDescription: ''
-      subgroup: ''
-      subgroupDescription: ''
-      title: 'Show a single department with its category count.'
-      description: ''
-      authenticated: true
-      deprecated: false
-    headers:
-      Authorization: 'Bearer {token}'
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters:
-      id:
-        custom: []
-        name: id
-        description: 'The ID of the department.'
-        required: true
-        example: 1
-        type: integer
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-    cleanUrlParameters:
-      id: 1
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters: []
-    cleanBodyParameters: []
-    fileParameters: []
-    responses:
-      -
-        custom: []
-        status: 401
-        content: '{"message":"Unauthenticated."}'
-        headers:
-          cache-control: 'no-cache, private'
-          content-type: application/json
-          access-control-allow-origin: 'http://localhost:5173'
-        description: null
-    responseFields: []
-    auth:
-      - headers
-      - Authorization
-      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
-    controller: null
-    method: null
-    route: null
-  -
-    custom: []
-    httpMethods:
-      - PUT
       - PATCH
-    uri: 'api/departments/{id}'
+    uri: 'api/managers/{manager_id}/districts'
     metadata:
       custom: []
-      groupName: 'Categories & Departments'
+      groupName: Managers
       groupDescription: ''
       subgroup: ''
       subgroupDescription: ''
-      title: 'Update a department.'
+      title: |-
+        Sync a target manager's district assignments on behalf of an active main
+        manager and return that manager's refreshed profile payload.
       description: |-
-        Authorization and validation are enforced by UpdateDepartmentRequest.
-        Only the validated keys present in the request are applied, so partial
-        updates leave untouched fields intact.
+        Authorization is enforced by {@see UpdateManagerDistrictsRequest}. The
+        manager is resolved through route model binding, their `districts()`
+        relation is replaced wholesale with the validated set, and the response
+        reuses {@see ManagerResource}, matching manager creation responses.
+
+        This endpoint only touches the `district_manager` pivot; it never
+        modifies department assignments, credentials, privileged flags, or
+        `issues.district_id`.
       authenticated: true
       deprecated: false
     headers:
@@ -592,10 +670,10 @@ endpoints:
       Content-Type: application/json
       Accept: application/json
     urlParameters:
-      id:
+      manager_id:
         custom: []
-        name: id
-        description: 'The ID of the department.'
+        name: manager_id
+        description: 'The ID of the manager.'
         required: true
         example: 1
         type: integer
@@ -604,141 +682,25 @@ endpoints:
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      id: 1
+      manager_id: 1
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
-      code:
+      district_ids:
         custom: []
-        name: code
-        description: 'Must not be greater than 50 characters.'
+        name: district_ids
+        description: 'Must match an existing stored value.'
         required: false
-        example: b
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      name:
-        custom: []
-        name: name
-        description: 'Must not be greater than 100 characters.'
-        required: false
-        example: 'n'
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      is_active:
-        custom: []
-        name: is_active
-        description: ''
-        required: false
-        example: false
-        type: boolean
+        example:
+          - 16
+        type: 'integer[]'
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanBodyParameters:
-      code: b
-      name: 'n'
-      is_active: false
-    fileParameters: []
-    responses: []
-    responseFields: []
-    auth:
-      - headers
-      - Authorization
-      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
-    controller: null
-    method: null
-    route: null
-  -
-    custom: []
-    httpMethods:
-      - DELETE
-    uri: 'api/departments/{id}'
-    metadata:
-      custom: []
-      groupName: 'Categories & Departments'
-      groupDescription: ''
-      subgroup: ''
-      subgroupDescription: ''
-      title: 'Hard delete a department.'
-      description: |-
-        Authorization (active main manager only) is enforced by the route's
-        UpdateDepartmentRequest-equivalent gate through the dedicated
-        authorization helper below. Deletion is rejected when the department is
-        still assigned to any manager or officer through the `department_manager`
-        or `department_officer` pivots, because managers and officers must each
-        have one or more departments: removing the row would orphan those actors
-        and break the at-least-one-department invariant. Once no actor references
-        the department, deleting it relies on the `category_department` pivot's
-        `cascadeOnDelete` foreign keys to remove the category assignments
-        automatically; the category rows themselves are never touched, so
-        historical issue context is preserved.
-      authenticated: true
-      deprecated: false
-    headers:
-      Authorization: 'Bearer {token}'
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters:
-      id:
-        custom: []
-        name: id
-        description: 'The ID of the department.'
-        required: true
-        example: 1
-        type: integer
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-    cleanUrlParameters:
-      id: 1
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters:
-      code:
-        custom: []
-        name: code
-        description: 'Must not be greater than 50 characters.'
-        required: false
-        example: b
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      name:
-        custom: []
-        name: name
-        description: 'Must not be greater than 100 characters.'
-        required: false
-        example: 'n'
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      is_active:
-        custom: []
-        name: is_active
-        description: ''
-        required: false
-        example: true
-        type: boolean
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-    cleanBodyParameters:
-      code: b
-      name: 'n'
-      is_active: true
+      district_ids:
+        - 16
     fileParameters: []
     responses: []
     responseFields: []

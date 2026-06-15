@@ -111,7 +111,13 @@ refreshed canonical auth profile payload.</a>
                     <a href="#categories-departments">Categories & Departments</a>
                 </li>
                                     <ul id="tocify-subheader-categories-departments" class="tocify-subheader">
-                                                    <li class="tocify-item level-2" data-unique="categories-departments-GETapi-categories">
+                                                    <li class="tocify-item level-2" data-unique="categories-departments-GETapi-departments">
+                                <a href="#categories-departments-GETapi-departments">List departments ordered by code, each with its category count.</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="categories-departments-GETapi-departments--id-">
+                                <a href="#categories-departments-GETapi-departments--id-">Show a single department with its category count.</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="categories-departments-GETapi-categories">
                                 <a href="#categories-departments-GETapi-categories">List categories ordered by priority (main) then name (subcategory).</a>
                             </li>
                                                                                 <li class="tocify-item level-2" data-unique="categories-departments-POSTapi-categories">
@@ -126,20 +132,57 @@ refreshed canonical auth profile payload.</a>
                                                                                 <li class="tocify-item level-2" data-unique="categories-departments-DELETEapi-categories--id-">
                                 <a href="#categories-departments-DELETEapi-categories--id-">Hard delete an eligible category.</a>
                             </li>
-                                                                                <li class="tocify-item level-2" data-unique="categories-departments-GETapi-departments">
-                                <a href="#categories-departments-GETapi-departments">List departments ordered by code, each with its category count.</a>
-                            </li>
                                                                                 <li class="tocify-item level-2" data-unique="categories-departments-POSTapi-departments">
                                 <a href="#categories-departments-POSTapi-departments">Create a department.</a>
-                            </li>
-                                                                                <li class="tocify-item level-2" data-unique="categories-departments-GETapi-departments--id-">
-                                <a href="#categories-departments-GETapi-departments--id-">Show a single department with its category count.</a>
                             </li>
                                                                                 <li class="tocify-item level-2" data-unique="categories-departments-PUTapi-departments--id-">
                                 <a href="#categories-departments-PUTapi-departments--id-">Update a department.</a>
                             </li>
                                                                                 <li class="tocify-item level-2" data-unique="categories-departments-DELETEapi-departments--id-">
                                 <a href="#categories-departments-DELETEapi-departments--id-">Hard delete a department.</a>
+                            </li>
+                                                                        </ul>
+                            </ul>
+                    <ul id="tocify-header-endpoints" class="tocify-header">
+                <li class="tocify-item level-1" data-unique="endpoints">
+                    <a href="#endpoints">Endpoints</a>
+                </li>
+                                    <ul id="tocify-subheader-endpoints" class="tocify-subheader">
+                                                    <li class="tocify-item level-2" data-unique="endpoints-PATCHapi-auth-me-feed-districts">
+                                <a href="#endpoints-PATCHapi-auth-me-feed-districts">Update the authenticated user's active feed districts.</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="endpoints-GETapi-community-posts">
+                                <a href="#endpoints-GETapi-community-posts">Display a listing of the resource.</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="endpoints-POSTapi-community-posts">
+                                <a href="#endpoints-POSTapi-community-posts">Store a newly created resource in storage.</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="endpoints-GETapi-community-posts--id-">
+                                <a href="#endpoints-GETapi-community-posts--id-">Display the specified resource.</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="endpoints-PUTapi-community-posts--id-">
+                                <a href="#endpoints-PUTapi-community-posts--id-">Update the specified resource in storage.</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="endpoints-DELETEapi-community-posts--id-">
+                                <a href="#endpoints-DELETEapi-community-posts--id-">Remove the specified resource from storage.</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="endpoints-PATCHapi-community-posts--community_post_id--visibility">
+                                <a href="#endpoints-PATCHapi-community-posts--community_post_id--visibility">Update the visibility of the specified resource.</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="endpoints-POSTapi-community-posts--community_post_id--attachments">
+                                <a href="#endpoints-POSTapi-community-posts--community_post_id--attachments">Store new attachments for a community post.</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="endpoints-GETapi-community-posts--community_post_id--attachments--attachment_id--download">
+                                <a href="#endpoints-GETapi-community-posts--community_post_id--attachments--attachment_id--download">Download the specified attachment.</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="endpoints-DELETEapi-community-posts--community_post_id--attachments--id-">
+                                <a href="#endpoints-DELETEapi-community-posts--community_post_id--attachments--id-">Remove the specified attachment from storage.</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="endpoints-POSTapi-community-posts--community_post_id--save">
+                                <a href="#endpoints-POSTapi-community-posts--community_post_id--save">Save a community post to the user's saved list.</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="endpoints-DELETEapi-community-posts--community_post_id--save">
+                                <a href="#endpoints-DELETEapi-community-posts--community_post_id--save">Remove a community post from the user's saved list.</a>
                             </li>
                                                                         </ul>
                             </ul>
@@ -461,13 +504,13 @@ manager and return the officer's refreshed profile payload.</a>
     <div class="dark-box"></div>
     <div class="content">
         <h1 id="introduction">Introduction</h1>
+<p>Rauw API Documentation</p>
 <aside>
     <strong>Base URL</strong>: <code>http://localhost</code>
 </aside>
-<pre><code>This documentation aims to provide all the information you need to work with our API.
-
-&lt;aside&gt;As you scroll, you'll see code examples for working with the API in different programming languages in the dark area to the right (or as part of the content on mobile).
-You can switch the language used with the tabs at the top right (or from the nav menu at the top left on mobile).&lt;/aside&gt;</code></pre>
+<p>
+    Welcome to the official RAUW API documentation.
+</p>
 
         <h1 id="authenticating-requests">Authenticating requests</h1>
 <p>To authenticate requests, include an <strong><code>Authorization</code></strong> header with the value <strong><code>"Bearer {token}"</code></strong>.</p>
@@ -2091,7 +2134,334 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
     
 
-                                <h2 id="categories-departments-GETapi-categories">List categories ordered by priority (main) then name (subcategory).</h2>
+                                <h2 id="categories-departments-GETapi-departments">List departments ordered by code, each with its category count.</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+<p>The category count is eager-loaded with <code>withCount</code> to avoid N+1
+queries when serializing the collection.</p>
+
+<span id="example-requests-GETapi-departments">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request GET \
+    --get "http://localhost/api/departments" \
+    --header "Authorization: Bearer {token}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json"</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/departments"
+);
+
+const headers = {
+    "Authorization": "Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+
+fetch(url, {
+    method: "GET",
+    headers,
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-GETapi-departments">
+            <blockquote>
+            <p>Example response (200):</p>
+        </blockquote>
+                <details class="annotation">
+            <summary style="cursor: pointer;">
+                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
+            </summary>
+            <pre><code class="language-http">cache-control: no-cache, private
+content-type: application/json
+x-ratelimit-limit: 30
+x-ratelimit-remaining: 29
+access-control-allow-origin: http://localhost:5173
+ </code></pre></details>         <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;data&quot;: [
+        {
+            &quot;id&quot;: 2,
+            &quot;code&quot;: &quot;boa_jeugd&quot;,
+            &quot;name&quot;: &quot;BOA / Jeugd&quot;,
+            &quot;is_active&quot;: true,
+            &quot;categories_count&quot;: 22,
+            &quot;created_at&quot;: &quot;2026-06-15T08:05:36.000000Z&quot;,
+            &quot;updated_at&quot;: &quot;2026-06-15T08:05:36.000000Z&quot;
+        },
+        {
+            &quot;id&quot;: 1,
+            &quot;code&quot;: &quot;wijkbeheer&quot;,
+            &quot;name&quot;: &quot;Wijkbeheer&quot;,
+            &quot;is_active&quot;: true,
+            &quot;categories_count&quot;: 0,
+            &quot;created_at&quot;: &quot;2026-06-15T08:05:36.000000Z&quot;,
+            &quot;updated_at&quot;: &quot;2026-06-15T08:05:36.000000Z&quot;
+        }
+    ]
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-GETapi-departments" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-GETapi-departments"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-GETapi-departments"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-GETapi-departments" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-GETapi-departments">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-GETapi-departments" data-method="GET"
+      data-path="api/departments"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('GETapi-departments', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-GETapi-departments"
+                    onclick="tryItOut('GETapi-departments');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-GETapi-departments"
+                    onclick="cancelTryOut('GETapi-departments');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-GETapi-departments"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-green">GET</small>
+            <b><code>api/departments</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="GETapi-departments"
+               value="Bearer {token}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer {token}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="GETapi-departments"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="GETapi-departments"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                        </form>
+
+                    <h2 id="categories-departments-GETapi-departments--id-">Show a single department with its category count.</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-GETapi-departments--id-">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request GET \
+    --get "http://localhost/api/departments/1" \
+    --header "Authorization: Bearer {token}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json"</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/departments/1"
+);
+
+const headers = {
+    "Authorization": "Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+
+fetch(url, {
+    method: "GET",
+    headers,
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-GETapi-departments--id-">
+            <blockquote>
+            <p>Example response (200):</p>
+        </blockquote>
+                <details class="annotation">
+            <summary style="cursor: pointer;">
+                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
+            </summary>
+            <pre><code class="language-http">cache-control: no-cache, private
+content-type: application/json
+x-ratelimit-limit: 30
+x-ratelimit-remaining: 29
+access-control-allow-origin: http://localhost:5173
+ </code></pre></details>         <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;id&quot;: 1,
+    &quot;code&quot;: &quot;wijkbeheer&quot;,
+    &quot;name&quot;: &quot;Wijkbeheer&quot;,
+    &quot;is_active&quot;: true,
+    &quot;categories_count&quot;: 0,
+    &quot;created_at&quot;: &quot;2026-06-15T08:05:36.000000Z&quot;,
+    &quot;updated_at&quot;: &quot;2026-06-15T08:05:36.000000Z&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-GETapi-departments--id-" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-GETapi-departments--id-"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-GETapi-departments--id-"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-GETapi-departments--id-" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-GETapi-departments--id-">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-GETapi-departments--id-" data-method="GET"
+      data-path="api/departments/{id}"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('GETapi-departments--id-', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-GETapi-departments--id-"
+                    onclick="tryItOut('GETapi-departments--id-');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-GETapi-departments--id-"
+                    onclick="cancelTryOut('GETapi-departments--id-');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-GETapi-departments--id-"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-green">GET</small>
+            <b><code>api/departments/{id}</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="GETapi-departments--id-"
+               value="Bearer {token}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer {token}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="GETapi-departments--id-"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="GETapi-departments--id-"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                        <h4 class="fancy-heading-panel"><b>URL Parameters</b></h4>
+                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>id</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="id"                data-endpoint="GETapi-departments--id-"
+               value="1"
+               data-component="url">
+    <br>
+<p>The ID of the department. Example: <code>1</code></p>
+            </div>
+                    </form>
+
+                    <h2 id="categories-departments-GETapi-categories">List categories ordered by priority (main) then name (subcategory).</h2>
 
 <p>
 <small class="badge badge-darkred">requires authentication</small>
@@ -2651,7 +3021,7 @@ when <code>department_ids</code> is included in the payload.</p>
         16
     ],
     \"priority\": 22,
-    \"is_active\": true
+    \"is_active\": false
 }"
 </code></pre></div>
 
@@ -2674,7 +3044,7 @@ let body = {
         16
     ],
     "priority": 22,
-    "is_active": true
+    "is_active": false
 };
 
 fetch(url, {
@@ -2870,7 +3240,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
             <code>false</code>
         </label>
     <br>
-<p>Example: <code>true</code></p>
+<p>Example: <code>false</code></p>
         </div>
         </form>
 
@@ -3016,149 +3386,6 @@ You can check the Dev Tools console for debugging information.</code></pre>
 <p>The ID of the category. Example: <code>1</code></p>
             </div>
                     </form>
-
-                    <h2 id="categories-departments-GETapi-departments">List departments ordered by code, each with its category count.</h2>
-
-<p>
-<small class="badge badge-darkred">requires authentication</small>
-</p>
-
-<p>The category count is eager-loaded with <code>withCount</code> to avoid N+1
-queries when serializing the collection.</p>
-
-<span id="example-requests-GETapi-departments">
-<blockquote>Example request:</blockquote>
-
-
-<div class="bash-example">
-    <pre><code class="language-bash">curl --request GET \
-    --get "http://localhost/api/departments" \
-    --header "Authorization: Bearer {token}" \
-    --header "Content-Type: application/json" \
-    --header "Accept: application/json"</code></pre></div>
-
-
-<div class="javascript-example">
-    <pre><code class="language-javascript">const url = new URL(
-    "http://localhost/api/departments"
-);
-
-const headers = {
-    "Authorization": "Bearer {token}",
-    "Content-Type": "application/json",
-    "Accept": "application/json",
-};
-
-
-fetch(url, {
-    method: "GET",
-    headers,
-}).then(response =&gt; response.json());</code></pre></div>
-
-</span>
-
-<span id="example-responses-GETapi-departments">
-            <blockquote>
-            <p>Example response (401):</p>
-        </blockquote>
-                <details class="annotation">
-            <summary style="cursor: pointer;">
-                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
-            </summary>
-            <pre><code class="language-http">cache-control: no-cache, private
-content-type: application/json
-access-control-allow-origin: http://localhost:5173
- </code></pre></details>         <pre>
-
-<code class="language-json" style="max-height: 300px;">{
-    &quot;message&quot;: &quot;Unauthenticated.&quot;
-}</code>
- </pre>
-    </span>
-<span id="execution-results-GETapi-departments" hidden>
-    <blockquote>Received response<span
-                id="execution-response-status-GETapi-departments"></span>:
-    </blockquote>
-    <pre class="json"><code id="execution-response-content-GETapi-departments"
-      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
-</span>
-<span id="execution-error-GETapi-departments" hidden>
-    <blockquote>Request failed with error:</blockquote>
-    <pre><code id="execution-error-message-GETapi-departments">
-
-Tip: Check that you&#039;re properly connected to the network.
-If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
-You can check the Dev Tools console for debugging information.</code></pre>
-</span>
-<form id="form-GETapi-departments" data-method="GET"
-      data-path="api/departments"
-      data-authed="1"
-      data-hasfiles="0"
-      data-isarraybody="0"
-      autocomplete="off"
-      onsubmit="event.preventDefault(); executeTryOut('GETapi-departments', this);">
-    <h3>
-        Request&nbsp;&nbsp;&nbsp;
-                    <button type="button"
-                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-tryout-GETapi-departments"
-                    onclick="tryItOut('GETapi-departments');">Try it out ⚡
-            </button>
-            <button type="button"
-                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-canceltryout-GETapi-departments"
-                    onclick="cancelTryOut('GETapi-departments');" hidden>Cancel 🛑
-            </button>&nbsp;&nbsp;
-            <button type="submit"
-                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-executetryout-GETapi-departments"
-                    data-initial-text="Send Request 💥"
-                    data-loading-text="⏱ Sending..."
-                    hidden>Send Request 💥
-            </button>
-            </h3>
-            <p>
-            <small class="badge badge-green">GET</small>
-            <b><code>api/departments</code></b>
-        </p>
-                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
-                                <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
-&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="Authorization" class="auth-value"               data-endpoint="GETapi-departments"
-               value="Bearer {token}"
-               data-component="header">
-    <br>
-<p>Example: <code>Bearer {token}</code></p>
-            </div>
-                                <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
-&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="Content-Type"                data-endpoint="GETapi-departments"
-               value="application/json"
-               data-component="header">
-    <br>
-<p>Example: <code>application/json</code></p>
-            </div>
-                                <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
-&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="Accept"                data-endpoint="GETapi-departments"
-               value="application/json"
-               data-component="header">
-    <br>
-<p>Example: <code>application/json</code></p>
-            </div>
-                        </form>
 
                     <h2 id="categories-departments-POSTapi-departments">Create a department.</h2>
 
@@ -3346,161 +3573,6 @@ You can check the Dev Tools console for debugging information.</code></pre>
 <p>Example: <code>true</code></p>
         </div>
         </form>
-
-                    <h2 id="categories-departments-GETapi-departments--id-">Show a single department with its category count.</h2>
-
-<p>
-<small class="badge badge-darkred">requires authentication</small>
-</p>
-
-
-
-<span id="example-requests-GETapi-departments--id-">
-<blockquote>Example request:</blockquote>
-
-
-<div class="bash-example">
-    <pre><code class="language-bash">curl --request GET \
-    --get "http://localhost/api/departments/1" \
-    --header "Authorization: Bearer {token}" \
-    --header "Content-Type: application/json" \
-    --header "Accept: application/json"</code></pre></div>
-
-
-<div class="javascript-example">
-    <pre><code class="language-javascript">const url = new URL(
-    "http://localhost/api/departments/1"
-);
-
-const headers = {
-    "Authorization": "Bearer {token}",
-    "Content-Type": "application/json",
-    "Accept": "application/json",
-};
-
-
-fetch(url, {
-    method: "GET",
-    headers,
-}).then(response =&gt; response.json());</code></pre></div>
-
-</span>
-
-<span id="example-responses-GETapi-departments--id-">
-            <blockquote>
-            <p>Example response (401):</p>
-        </blockquote>
-                <details class="annotation">
-            <summary style="cursor: pointer;">
-                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
-            </summary>
-            <pre><code class="language-http">cache-control: no-cache, private
-content-type: application/json
-access-control-allow-origin: http://localhost:5173
- </code></pre></details>         <pre>
-
-<code class="language-json" style="max-height: 300px;">{
-    &quot;message&quot;: &quot;Unauthenticated.&quot;
-}</code>
- </pre>
-    </span>
-<span id="execution-results-GETapi-departments--id-" hidden>
-    <blockquote>Received response<span
-                id="execution-response-status-GETapi-departments--id-"></span>:
-    </blockquote>
-    <pre class="json"><code id="execution-response-content-GETapi-departments--id-"
-      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
-</span>
-<span id="execution-error-GETapi-departments--id-" hidden>
-    <blockquote>Request failed with error:</blockquote>
-    <pre><code id="execution-error-message-GETapi-departments--id-">
-
-Tip: Check that you&#039;re properly connected to the network.
-If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
-You can check the Dev Tools console for debugging information.</code></pre>
-</span>
-<form id="form-GETapi-departments--id-" data-method="GET"
-      data-path="api/departments/{id}"
-      data-authed="1"
-      data-hasfiles="0"
-      data-isarraybody="0"
-      autocomplete="off"
-      onsubmit="event.preventDefault(); executeTryOut('GETapi-departments--id-', this);">
-    <h3>
-        Request&nbsp;&nbsp;&nbsp;
-                    <button type="button"
-                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-tryout-GETapi-departments--id-"
-                    onclick="tryItOut('GETapi-departments--id-');">Try it out ⚡
-            </button>
-            <button type="button"
-                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-canceltryout-GETapi-departments--id-"
-                    onclick="cancelTryOut('GETapi-departments--id-');" hidden>Cancel 🛑
-            </button>&nbsp;&nbsp;
-            <button type="submit"
-                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-executetryout-GETapi-departments--id-"
-                    data-initial-text="Send Request 💥"
-                    data-loading-text="⏱ Sending..."
-                    hidden>Send Request 💥
-            </button>
-            </h3>
-            <p>
-            <small class="badge badge-green">GET</small>
-            <b><code>api/departments/{id}</code></b>
-        </p>
-                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
-                                <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
-&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="Authorization" class="auth-value"               data-endpoint="GETapi-departments--id-"
-               value="Bearer {token}"
-               data-component="header">
-    <br>
-<p>Example: <code>Bearer {token}</code></p>
-            </div>
-                                <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
-&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="Content-Type"                data-endpoint="GETapi-departments--id-"
-               value="application/json"
-               data-component="header">
-    <br>
-<p>Example: <code>application/json</code></p>
-            </div>
-                                <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
-&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="Accept"                data-endpoint="GETapi-departments--id-"
-               value="application/json"
-               data-component="header">
-    <br>
-<p>Example: <code>application/json</code></p>
-            </div>
-                        <h4 class="fancy-heading-panel"><b>URL Parameters</b></h4>
-                    <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>id</code></b>&nbsp;&nbsp;
-<small>integer</small>&nbsp;
- &nbsp;
- &nbsp;
-                <input type="number" style="display: none"
-               step="any"               name="id"                data-endpoint="GETapi-departments--id-"
-               value="1"
-               data-component="url">
-    <br>
-<p>The ID of the department. Example: <code>1</code></p>
-            </div>
-                    </form>
 
                     <h2 id="categories-departments-PUTapi-departments--id-">Update a department.</h2>
 
@@ -3737,7 +3809,7 @@ historical issue context is preserved.</p>
     --data "{
     \"code\": \"b\",
     \"name\": \"n\",
-    \"is_active\": true
+    \"is_active\": false
 }"
 </code></pre></div>
 
@@ -3756,7 +3828,7 @@ const headers = {
 let body = {
     "code": "b",
     "name": "n",
-    "is_active": true
+    "is_active": false
 };
 
 fetch(url, {
@@ -3910,9 +3982,1946 @@ You can check the Dev Tools console for debugging information.</code></pre>
             <code>false</code>
         </label>
     <br>
-<p>Example: <code>true</code></p>
+<p>Example: <code>false</code></p>
         </div>
         </form>
+
+                <h1 id="endpoints">Endpoints</h1>
+
+    
+
+                                <h2 id="endpoints-PATCHapi-auth-me-feed-districts">Update the authenticated user&#039;s active feed districts.</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-PATCHapi-auth-me-feed-districts">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request PATCH \
+    "http://localhost/api/auth/me/feed-districts" \
+    --header "Authorization: Bearer {token}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json" \
+    --data "{
+    \"district_ids\": [
+        16
+    ]
+}"
+</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/auth/me/feed-districts"
+);
+
+const headers = {
+    "Authorization": "Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "district_ids": [
+        16
+    ]
+};
+
+fetch(url, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify(body),
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-PATCHapi-auth-me-feed-districts">
+</span>
+<span id="execution-results-PATCHapi-auth-me-feed-districts" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-PATCHapi-auth-me-feed-districts"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-PATCHapi-auth-me-feed-districts"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-PATCHapi-auth-me-feed-districts" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-PATCHapi-auth-me-feed-districts">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-PATCHapi-auth-me-feed-districts" data-method="PATCH"
+      data-path="api/auth/me/feed-districts"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('PATCHapi-auth-me-feed-districts', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-PATCHapi-auth-me-feed-districts"
+                    onclick="tryItOut('PATCHapi-auth-me-feed-districts');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-PATCHapi-auth-me-feed-districts"
+                    onclick="cancelTryOut('PATCHapi-auth-me-feed-districts');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-PATCHapi-auth-me-feed-districts"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-purple">PATCH</small>
+            <b><code>api/auth/me/feed-districts</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="PATCHapi-auth-me-feed-districts"
+               value="Bearer {token}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer {token}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="PATCHapi-auth-me-feed-districts"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="PATCHapi-auth-me-feed-districts"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+        <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>district_ids</code></b>&nbsp;&nbsp;
+<small>integer[]</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="district_ids[0]"                data-endpoint="PATCHapi-auth-me-feed-districts"
+               data-component="body">
+        <input type="number" style="display: none"
+               name="district_ids[1]"                data-endpoint="PATCHapi-auth-me-feed-districts"
+               data-component="body">
+    <br>
+<p>Must match an existing stored value.</p>
+        </div>
+        </form>
+
+                    <h2 id="endpoints-GETapi-community-posts">Display a listing of the resource.</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-GETapi-community-posts">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request GET \
+    --get "http://localhost/api/community-posts" \
+    --header "Authorization: Bearer {token}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json" \
+    --data "{
+    \"district_id\": 16,
+    \"saved_only\": false
+}"
+</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/community-posts"
+);
+
+const headers = {
+    "Authorization": "Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "district_id": 16,
+    "saved_only": false
+};
+
+fetch(url, {
+    method: "GET",
+    headers,
+    body: JSON.stringify(body),
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-GETapi-community-posts">
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <details class="annotation">
+            <summary style="cursor: pointer;">
+                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
+            </summary>
+            <pre><code class="language-http">cache-control: no-cache, private
+content-type: application/json
+access-control-allow-origin: http://localhost:5173
+ </code></pre></details>         <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;message&quot;: &quot;Unauthenticated.&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-GETapi-community-posts" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-GETapi-community-posts"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-GETapi-community-posts"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-GETapi-community-posts" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-GETapi-community-posts">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-GETapi-community-posts" data-method="GET"
+      data-path="api/community-posts"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('GETapi-community-posts', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-GETapi-community-posts"
+                    onclick="tryItOut('GETapi-community-posts');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-GETapi-community-posts"
+                    onclick="cancelTryOut('GETapi-community-posts');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-GETapi-community-posts"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-green">GET</small>
+            <b><code>api/community-posts</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="GETapi-community-posts"
+               value="Bearer {token}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer {token}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="GETapi-community-posts"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="GETapi-community-posts"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+        <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>district_id</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="district_id"                data-endpoint="GETapi-community-posts"
+               value="16"
+               data-component="body">
+    <br>
+<p>Must match an existing stored value. Example: <code>16</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>saved_only</code></b>&nbsp;&nbsp;
+<small>boolean</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <label data-endpoint="GETapi-community-posts" style="display: none">
+            <input type="radio" name="saved_only"
+                   value="true"
+                   data-endpoint="GETapi-community-posts"
+                   data-component="body"             >
+            <code>true</code>
+        </label>
+        <label data-endpoint="GETapi-community-posts" style="display: none">
+            <input type="radio" name="saved_only"
+                   value="false"
+                   data-endpoint="GETapi-community-posts"
+                   data-component="body"             >
+            <code>false</code>
+        </label>
+    <br>
+<p>Example: <code>false</code></p>
+        </div>
+        </form>
+
+                    <h2 id="endpoints-POSTapi-community-posts">Store a newly created resource in storage.</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-POSTapi-community-posts">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request POST \
+    "http://localhost/api/community-posts" \
+    --header "Authorization: Bearer {token}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json" \
+    --data "{
+    \"district_id\": 16,
+    \"title\": \"n\",
+    \"content\": \"g\",
+    \"visibility\": \"visible\"
+}"
+</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/community-posts"
+);
+
+const headers = {
+    "Authorization": "Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "district_id": 16,
+    "title": "n",
+    "content": "g",
+    "visibility": "visible"
+};
+
+fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-POSTapi-community-posts">
+</span>
+<span id="execution-results-POSTapi-community-posts" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-POSTapi-community-posts"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-POSTapi-community-posts"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-POSTapi-community-posts" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-POSTapi-community-posts">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-POSTapi-community-posts" data-method="POST"
+      data-path="api/community-posts"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('POSTapi-community-posts', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-POSTapi-community-posts"
+                    onclick="tryItOut('POSTapi-community-posts');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-POSTapi-community-posts"
+                    onclick="cancelTryOut('POSTapi-community-posts');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-POSTapi-community-posts"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-black">POST</small>
+            <b><code>api/community-posts</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="POSTapi-community-posts"
+               value="Bearer {token}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer {token}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="POSTapi-community-posts"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="POSTapi-community-posts"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+        <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>district_id</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="district_id"                data-endpoint="POSTapi-community-posts"
+               value="16"
+               data-component="body">
+    <br>
+<p>Must match an existing stored value. Example: <code>16</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>title</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="title"                data-endpoint="POSTapi-community-posts"
+               value="n"
+               data-component="body">
+    <br>
+<p>Must not be greater than 255 characters. Example: <code>n</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>content</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="content"                data-endpoint="POSTapi-community-posts"
+               value="g"
+               data-component="body">
+    <br>
+<p>Must not be greater than 5000 characters. Example: <code>g</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>visibility</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="visibility"                data-endpoint="POSTapi-community-posts"
+               value="visible"
+               data-component="body">
+    <br>
+<p>Example: <code>visible</code></p>
+Must be one of:
+<ul style="list-style-type: square;"><li><code>visible</code></li> <li><code>hidden</code></li></ul>
+        </div>
+        </form>
+
+                    <h2 id="endpoints-GETapi-community-posts--id-">Display the specified resource.</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-GETapi-community-posts--id-">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request GET \
+    --get "http://localhost/api/community-posts/16" \
+    --header "Authorization: Bearer {token}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json"</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/community-posts/16"
+);
+
+const headers = {
+    "Authorization": "Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+
+fetch(url, {
+    method: "GET",
+    headers,
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-GETapi-community-posts--id-">
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <details class="annotation">
+            <summary style="cursor: pointer;">
+                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
+            </summary>
+            <pre><code class="language-http">cache-control: no-cache, private
+content-type: application/json
+access-control-allow-origin: http://localhost:5173
+ </code></pre></details>         <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;message&quot;: &quot;Unauthenticated.&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-GETapi-community-posts--id-" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-GETapi-community-posts--id-"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-GETapi-community-posts--id-"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-GETapi-community-posts--id-" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-GETapi-community-posts--id-">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-GETapi-community-posts--id-" data-method="GET"
+      data-path="api/community-posts/{id}"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('GETapi-community-posts--id-', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-GETapi-community-posts--id-"
+                    onclick="tryItOut('GETapi-community-posts--id-');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-GETapi-community-posts--id-"
+                    onclick="cancelTryOut('GETapi-community-posts--id-');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-GETapi-community-posts--id-"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-green">GET</small>
+            <b><code>api/community-posts/{id}</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="GETapi-community-posts--id-"
+               value="Bearer {token}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer {token}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="GETapi-community-posts--id-"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="GETapi-community-posts--id-"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                        <h4 class="fancy-heading-panel"><b>URL Parameters</b></h4>
+                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>id</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="id"                data-endpoint="GETapi-community-posts--id-"
+               value="16"
+               data-component="url">
+    <br>
+<p>The ID of the community post. Example: <code>16</code></p>
+            </div>
+                    </form>
+
+                    <h2 id="endpoints-PUTapi-community-posts--id-">Update the specified resource in storage.</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-PUTapi-community-posts--id-">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request PUT \
+    "http://localhost/api/community-posts/16" \
+    --header "Authorization: Bearer {token}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json" \
+    --data "{
+    \"district_id\": 16,
+    \"title\": \"n\",
+    \"content\": \"g\"
+}"
+</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/community-posts/16"
+);
+
+const headers = {
+    "Authorization": "Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "district_id": 16,
+    "title": "n",
+    "content": "g"
+};
+
+fetch(url, {
+    method: "PUT",
+    headers,
+    body: JSON.stringify(body),
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-PUTapi-community-posts--id-">
+</span>
+<span id="execution-results-PUTapi-community-posts--id-" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-PUTapi-community-posts--id-"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-PUTapi-community-posts--id-"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-PUTapi-community-posts--id-" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-PUTapi-community-posts--id-">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-PUTapi-community-posts--id-" data-method="PUT"
+      data-path="api/community-posts/{id}"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('PUTapi-community-posts--id-', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-PUTapi-community-posts--id-"
+                    onclick="tryItOut('PUTapi-community-posts--id-');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-PUTapi-community-posts--id-"
+                    onclick="cancelTryOut('PUTapi-community-posts--id-');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-PUTapi-community-posts--id-"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-darkblue">PUT</small>
+            <b><code>api/community-posts/{id}</code></b>
+        </p>
+            <p>
+            <small class="badge badge-purple">PATCH</small>
+            <b><code>api/community-posts/{id}</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="PUTapi-community-posts--id-"
+               value="Bearer {token}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer {token}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="PUTapi-community-posts--id-"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="PUTapi-community-posts--id-"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                        <h4 class="fancy-heading-panel"><b>URL Parameters</b></h4>
+                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>id</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="id"                data-endpoint="PUTapi-community-posts--id-"
+               value="16"
+               data-component="url">
+    <br>
+<p>The ID of the community post. Example: <code>16</code></p>
+            </div>
+                            <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+        <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>district_id</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="district_id"                data-endpoint="PUTapi-community-posts--id-"
+               value="16"
+               data-component="body">
+    <br>
+<p>Must match an existing stored value. Example: <code>16</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>title</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="title"                data-endpoint="PUTapi-community-posts--id-"
+               value="n"
+               data-component="body">
+    <br>
+<p>Must not be greater than 255 characters. Example: <code>n</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>content</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="content"                data-endpoint="PUTapi-community-posts--id-"
+               value="g"
+               data-component="body">
+    <br>
+<p>Must not be greater than 5000 characters. Example: <code>g</code></p>
+        </div>
+        </form>
+
+                    <h2 id="endpoints-DELETEapi-community-posts--id-">Remove the specified resource from storage.</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-DELETEapi-community-posts--id-">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request DELETE \
+    "http://localhost/api/community-posts/16" \
+    --header "Authorization: Bearer {token}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json"</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/community-posts/16"
+);
+
+const headers = {
+    "Authorization": "Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+
+fetch(url, {
+    method: "DELETE",
+    headers,
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-DELETEapi-community-posts--id-">
+</span>
+<span id="execution-results-DELETEapi-community-posts--id-" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-DELETEapi-community-posts--id-"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-DELETEapi-community-posts--id-"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-DELETEapi-community-posts--id-" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-DELETEapi-community-posts--id-">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-DELETEapi-community-posts--id-" data-method="DELETE"
+      data-path="api/community-posts/{id}"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('DELETEapi-community-posts--id-', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-DELETEapi-community-posts--id-"
+                    onclick="tryItOut('DELETEapi-community-posts--id-');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-DELETEapi-community-posts--id-"
+                    onclick="cancelTryOut('DELETEapi-community-posts--id-');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-DELETEapi-community-posts--id-"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-red">DELETE</small>
+            <b><code>api/community-posts/{id}</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="DELETEapi-community-posts--id-"
+               value="Bearer {token}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer {token}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="DELETEapi-community-posts--id-"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="DELETEapi-community-posts--id-"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                        <h4 class="fancy-heading-panel"><b>URL Parameters</b></h4>
+                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>id</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="id"                data-endpoint="DELETEapi-community-posts--id-"
+               value="16"
+               data-component="url">
+    <br>
+<p>The ID of the community post. Example: <code>16</code></p>
+            </div>
+                    </form>
+
+                    <h2 id="endpoints-PATCHapi-community-posts--community_post_id--visibility">Update the visibility of the specified resource.</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-PATCHapi-community-posts--community_post_id--visibility">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request PATCH \
+    "http://localhost/api/community-posts/16/visibility" \
+    --header "Authorization: Bearer {token}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json" \
+    --data "{
+    \"visibility\": \"visible\"
+}"
+</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/community-posts/16/visibility"
+);
+
+const headers = {
+    "Authorization": "Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "visibility": "visible"
+};
+
+fetch(url, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify(body),
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-PATCHapi-community-posts--community_post_id--visibility">
+</span>
+<span id="execution-results-PATCHapi-community-posts--community_post_id--visibility" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-PATCHapi-community-posts--community_post_id--visibility"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-PATCHapi-community-posts--community_post_id--visibility"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-PATCHapi-community-posts--community_post_id--visibility" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-PATCHapi-community-posts--community_post_id--visibility">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-PATCHapi-community-posts--community_post_id--visibility" data-method="PATCH"
+      data-path="api/community-posts/{community_post_id}/visibility"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('PATCHapi-community-posts--community_post_id--visibility', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-PATCHapi-community-posts--community_post_id--visibility"
+                    onclick="tryItOut('PATCHapi-community-posts--community_post_id--visibility');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-PATCHapi-community-posts--community_post_id--visibility"
+                    onclick="cancelTryOut('PATCHapi-community-posts--community_post_id--visibility');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-PATCHapi-community-posts--community_post_id--visibility"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-purple">PATCH</small>
+            <b><code>api/community-posts/{community_post_id}/visibility</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="PATCHapi-community-posts--community_post_id--visibility"
+               value="Bearer {token}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer {token}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="PATCHapi-community-posts--community_post_id--visibility"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="PATCHapi-community-posts--community_post_id--visibility"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                        <h4 class="fancy-heading-panel"><b>URL Parameters</b></h4>
+                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>community_post_id</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="community_post_id"                data-endpoint="PATCHapi-community-posts--community_post_id--visibility"
+               value="16"
+               data-component="url">
+    <br>
+<p>The ID of the community post. Example: <code>16</code></p>
+            </div>
+                            <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+        <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>visibility</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="visibility"                data-endpoint="PATCHapi-community-posts--community_post_id--visibility"
+               value="visible"
+               data-component="body">
+    <br>
+<p>Example: <code>visible</code></p>
+Must be one of:
+<ul style="list-style-type: square;"><li><code>visible</code></li> <li><code>hidden</code></li></ul>
+        </div>
+        </form>
+
+                    <h2 id="endpoints-POSTapi-community-posts--community_post_id--attachments">Store new attachments for a community post.</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-POSTapi-community-posts--community_post_id--attachments">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request POST \
+    "http://localhost/api/community-posts/16/attachments" \
+    --header "Authorization: Bearer {token}" \
+    --header "Content-Type: multipart/form-data" \
+    --header "Accept: application/json" \
+    --form "attachments[]=@C:\Users\marti\AppData\Local\Temp\phpF924.tmp" </code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/community-posts/16/attachments"
+);
+
+const headers = {
+    "Authorization": "Bearer {token}",
+    "Content-Type": "multipart/form-data",
+    "Accept": "application/json",
+};
+
+const body = new FormData();
+body.append('attachments[]', document.querySelector('input[name="attachments[]"]').files[0]);
+
+fetch(url, {
+    method: "POST",
+    headers,
+    body,
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-POSTapi-community-posts--community_post_id--attachments">
+</span>
+<span id="execution-results-POSTapi-community-posts--community_post_id--attachments" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-POSTapi-community-posts--community_post_id--attachments"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-POSTapi-community-posts--community_post_id--attachments"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-POSTapi-community-posts--community_post_id--attachments" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-POSTapi-community-posts--community_post_id--attachments">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-POSTapi-community-posts--community_post_id--attachments" data-method="POST"
+      data-path="api/community-posts/{community_post_id}/attachments"
+      data-authed="1"
+      data-hasfiles="1"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('POSTapi-community-posts--community_post_id--attachments', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-POSTapi-community-posts--community_post_id--attachments"
+                    onclick="tryItOut('POSTapi-community-posts--community_post_id--attachments');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-POSTapi-community-posts--community_post_id--attachments"
+                    onclick="cancelTryOut('POSTapi-community-posts--community_post_id--attachments');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-POSTapi-community-posts--community_post_id--attachments"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-black">POST</small>
+            <b><code>api/community-posts/{community_post_id}/attachments</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="POSTapi-community-posts--community_post_id--attachments"
+               value="Bearer {token}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer {token}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="POSTapi-community-posts--community_post_id--attachments"
+               value="multipart/form-data"
+               data-component="header">
+    <br>
+<p>Example: <code>multipart/form-data</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="POSTapi-community-posts--community_post_id--attachments"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                        <h4 class="fancy-heading-panel"><b>URL Parameters</b></h4>
+                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>community_post_id</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="community_post_id"                data-endpoint="POSTapi-community-posts--community_post_id--attachments"
+               value="16"
+               data-component="url">
+    <br>
+<p>The ID of the community post. Example: <code>16</code></p>
+            </div>
+                            <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+        <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>attachments</code></b>&nbsp;&nbsp;
+<small>file[]</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="file" style="display: none"
+                              name="attachments[0]"                data-endpoint="POSTapi-community-posts--community_post_id--attachments"
+               data-component="body">
+        <input type="file" style="display: none"
+               name="attachments[1]"                data-endpoint="POSTapi-community-posts--community_post_id--attachments"
+               data-component="body">
+    <br>
+<p>Must be a file. Must not be greater than 5120 kilobytes.</p>
+        </div>
+        </form>
+
+                    <h2 id="endpoints-GETapi-community-posts--community_post_id--attachments--attachment_id--download">Download the specified attachment.</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-GETapi-community-posts--community_post_id--attachments--attachment_id--download">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request GET \
+    --get "http://localhost/api/community-posts/16/attachments/16/download" \
+    --header "Authorization: Bearer {token}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json"</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/community-posts/16/attachments/16/download"
+);
+
+const headers = {
+    "Authorization": "Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+
+fetch(url, {
+    method: "GET",
+    headers,
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-GETapi-community-posts--community_post_id--attachments--attachment_id--download">
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <details class="annotation">
+            <summary style="cursor: pointer;">
+                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
+            </summary>
+            <pre><code class="language-http">cache-control: no-cache, private
+content-type: application/json
+access-control-allow-origin: http://localhost:5173
+ </code></pre></details>         <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;message&quot;: &quot;Unauthenticated.&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-GETapi-community-posts--community_post_id--attachments--attachment_id--download" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-GETapi-community-posts--community_post_id--attachments--attachment_id--download"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-GETapi-community-posts--community_post_id--attachments--attachment_id--download"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-GETapi-community-posts--community_post_id--attachments--attachment_id--download" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-GETapi-community-posts--community_post_id--attachments--attachment_id--download">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-GETapi-community-posts--community_post_id--attachments--attachment_id--download" data-method="GET"
+      data-path="api/community-posts/{community_post_id}/attachments/{attachment_id}/download"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('GETapi-community-posts--community_post_id--attachments--attachment_id--download', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-GETapi-community-posts--community_post_id--attachments--attachment_id--download"
+                    onclick="tryItOut('GETapi-community-posts--community_post_id--attachments--attachment_id--download');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-GETapi-community-posts--community_post_id--attachments--attachment_id--download"
+                    onclick="cancelTryOut('GETapi-community-posts--community_post_id--attachments--attachment_id--download');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-GETapi-community-posts--community_post_id--attachments--attachment_id--download"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-green">GET</small>
+            <b><code>api/community-posts/{community_post_id}/attachments/{attachment_id}/download</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="GETapi-community-posts--community_post_id--attachments--attachment_id--download"
+               value="Bearer {token}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer {token}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="GETapi-community-posts--community_post_id--attachments--attachment_id--download"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="GETapi-community-posts--community_post_id--attachments--attachment_id--download"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                        <h4 class="fancy-heading-panel"><b>URL Parameters</b></h4>
+                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>community_post_id</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="community_post_id"                data-endpoint="GETapi-community-posts--community_post_id--attachments--attachment_id--download"
+               value="16"
+               data-component="url">
+    <br>
+<p>The ID of the community post. Example: <code>16</code></p>
+            </div>
+                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>attachment_id</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="attachment_id"                data-endpoint="GETapi-community-posts--community_post_id--attachments--attachment_id--download"
+               value="16"
+               data-component="url">
+    <br>
+<p>The ID of the attachment. Example: <code>16</code></p>
+            </div>
+                    </form>
+
+                    <h2 id="endpoints-DELETEapi-community-posts--community_post_id--attachments--id-">Remove the specified attachment from storage.</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-DELETEapi-community-posts--community_post_id--attachments--id-">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request DELETE \
+    "http://localhost/api/community-posts/16/attachments/16" \
+    --header "Authorization: Bearer {token}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json"</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/community-posts/16/attachments/16"
+);
+
+const headers = {
+    "Authorization": "Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+
+fetch(url, {
+    method: "DELETE",
+    headers,
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-DELETEapi-community-posts--community_post_id--attachments--id-">
+</span>
+<span id="execution-results-DELETEapi-community-posts--community_post_id--attachments--id-" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-DELETEapi-community-posts--community_post_id--attachments--id-"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-DELETEapi-community-posts--community_post_id--attachments--id-"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-DELETEapi-community-posts--community_post_id--attachments--id-" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-DELETEapi-community-posts--community_post_id--attachments--id-">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-DELETEapi-community-posts--community_post_id--attachments--id-" data-method="DELETE"
+      data-path="api/community-posts/{community_post_id}/attachments/{id}"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('DELETEapi-community-posts--community_post_id--attachments--id-', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-DELETEapi-community-posts--community_post_id--attachments--id-"
+                    onclick="tryItOut('DELETEapi-community-posts--community_post_id--attachments--id-');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-DELETEapi-community-posts--community_post_id--attachments--id-"
+                    onclick="cancelTryOut('DELETEapi-community-posts--community_post_id--attachments--id-');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-DELETEapi-community-posts--community_post_id--attachments--id-"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-red">DELETE</small>
+            <b><code>api/community-posts/{community_post_id}/attachments/{id}</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="DELETEapi-community-posts--community_post_id--attachments--id-"
+               value="Bearer {token}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer {token}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="DELETEapi-community-posts--community_post_id--attachments--id-"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="DELETEapi-community-posts--community_post_id--attachments--id-"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                        <h4 class="fancy-heading-panel"><b>URL Parameters</b></h4>
+                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>community_post_id</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="community_post_id"                data-endpoint="DELETEapi-community-posts--community_post_id--attachments--id-"
+               value="16"
+               data-component="url">
+    <br>
+<p>The ID of the community post. Example: <code>16</code></p>
+            </div>
+                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>id</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="id"                data-endpoint="DELETEapi-community-posts--community_post_id--attachments--id-"
+               value="16"
+               data-component="url">
+    <br>
+<p>The ID of the attachment. Example: <code>16</code></p>
+            </div>
+                    </form>
+
+                    <h2 id="endpoints-POSTapi-community-posts--community_post_id--save">Save a community post to the user&#039;s saved list.</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-POSTapi-community-posts--community_post_id--save">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request POST \
+    "http://localhost/api/community-posts/16/save" \
+    --header "Authorization: Bearer {token}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json"</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/community-posts/16/save"
+);
+
+const headers = {
+    "Authorization": "Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+
+fetch(url, {
+    method: "POST",
+    headers,
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-POSTapi-community-posts--community_post_id--save">
+</span>
+<span id="execution-results-POSTapi-community-posts--community_post_id--save" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-POSTapi-community-posts--community_post_id--save"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-POSTapi-community-posts--community_post_id--save"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-POSTapi-community-posts--community_post_id--save" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-POSTapi-community-posts--community_post_id--save">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-POSTapi-community-posts--community_post_id--save" data-method="POST"
+      data-path="api/community-posts/{community_post_id}/save"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('POSTapi-community-posts--community_post_id--save', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-POSTapi-community-posts--community_post_id--save"
+                    onclick="tryItOut('POSTapi-community-posts--community_post_id--save');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-POSTapi-community-posts--community_post_id--save"
+                    onclick="cancelTryOut('POSTapi-community-posts--community_post_id--save');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-POSTapi-community-posts--community_post_id--save"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-black">POST</small>
+            <b><code>api/community-posts/{community_post_id}/save</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="POSTapi-community-posts--community_post_id--save"
+               value="Bearer {token}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer {token}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="POSTapi-community-posts--community_post_id--save"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="POSTapi-community-posts--community_post_id--save"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                        <h4 class="fancy-heading-panel"><b>URL Parameters</b></h4>
+                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>community_post_id</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="community_post_id"                data-endpoint="POSTapi-community-posts--community_post_id--save"
+               value="16"
+               data-component="url">
+    <br>
+<p>The ID of the community post. Example: <code>16</code></p>
+            </div>
+                    </form>
+
+                    <h2 id="endpoints-DELETEapi-community-posts--community_post_id--save">Remove a community post from the user&#039;s saved list.</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-DELETEapi-community-posts--community_post_id--save">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request DELETE \
+    "http://localhost/api/community-posts/16/save" \
+    --header "Authorization: Bearer {token}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json"</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/community-posts/16/save"
+);
+
+const headers = {
+    "Authorization": "Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+
+fetch(url, {
+    method: "DELETE",
+    headers,
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-DELETEapi-community-posts--community_post_id--save">
+</span>
+<span id="execution-results-DELETEapi-community-posts--community_post_id--save" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-DELETEapi-community-posts--community_post_id--save"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-DELETEapi-community-posts--community_post_id--save"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-DELETEapi-community-posts--community_post_id--save" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-DELETEapi-community-posts--community_post_id--save">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-DELETEapi-community-posts--community_post_id--save" data-method="DELETE"
+      data-path="api/community-posts/{community_post_id}/save"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('DELETEapi-community-posts--community_post_id--save', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-DELETEapi-community-posts--community_post_id--save"
+                    onclick="tryItOut('DELETEapi-community-posts--community_post_id--save');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-DELETEapi-community-posts--community_post_id--save"
+                    onclick="cancelTryOut('DELETEapi-community-posts--community_post_id--save');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-DELETEapi-community-posts--community_post_id--save"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-red">DELETE</small>
+            <b><code>api/community-posts/{community_post_id}/save</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="DELETEapi-community-posts--community_post_id--save"
+               value="Bearer {token}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer {token}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="DELETEapi-community-posts--community_post_id--save"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="DELETEapi-community-posts--community_post_id--save"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                        <h4 class="fancy-heading-panel"><b>URL Parameters</b></h4>
+                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>community_post_id</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="community_post_id"                data-endpoint="DELETEapi-community-posts--community_post_id--save"
+               value="16"
+               data-component="url">
+    <br>
+<p>The ID of the community post. Example: <code>16</code></p>
+            </div>
+                    </form>
 
                 <h1 id="hubs-districts">Hubs & Districts</h1>
 
@@ -4482,7 +6491,7 @@ UpdateHubRequest.</p>
     \"postal_code\": \"gzmiyv\",
     \"latitude\": -89,
     \"longitude\": -179,
-    \"is_active\": true,
+    \"is_active\": false,
     \"radius_meters\": 19
 }"
 </code></pre></div>
@@ -4505,7 +6514,7 @@ let body = {
     "postal_code": "gzmiyv",
     "latitude": -89,
     "longitude": -179,
-    "is_active": true,
+    "is_active": false,
     "radius_meters": 19
 };
 
@@ -4700,7 +6709,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
             <code>false</code>
         </label>
     <br>
-<p>Example: <code>true</code></p>
+<p>Example: <code>false</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>radius_meters</code></b>&nbsp;&nbsp;
@@ -5026,7 +7035,7 @@ endpoints.</p>
     \"center_lat\": -89,
     \"center_lng\": -179,
     \"radius_meters\": 4,
-    \"is_active\": false
+    \"is_active\": true
 }"
 </code></pre></div>
 
@@ -5049,7 +7058,7 @@ let body = {
     "center_lat": -89,
     "center_lng": -179,
     "radius_meters": 4,
-    "is_active": false
+    "is_active": true
 };
 
 fetch(url, {
@@ -5238,7 +7247,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
             <code>false</code>
         </label>
     <br>
-<p>Example: <code>false</code></p>
+<p>Example: <code>true</code></p>
         </div>
         </form>
 
@@ -5833,7 +7842,7 @@ shape used elsewhere, while this upload endpoint contractually returns
     --header "Authorization: Bearer {token}" \
     --header "Content-Type: multipart/form-data" \
     --header "Accept: application/json" \
-    --form "files[]=@C:\Users\marti\AppData\Local\Temp\php18EC.tmp" </code></pre></div>
+    --form "files[]=@C:\Users\marti\AppData\Local\Temp\phpF8A5.tmp" </code></pre></div>
 
 
 <div class="javascript-example">
@@ -7032,7 +9041,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --header "Content-Type: multipart/form-data" \
     --header "Accept: application/json" \
     --form "content=b"\
-    --form "files[]=@C:\Users\marti\AppData\Local\Temp\php191C.tmp" </code></pre></div>
+    --form "files[]=@C:\Users\marti\AppData\Local\Temp\phpF8D4.tmp" </code></pre></div>
 
 
 <div class="javascript-example">
@@ -8237,7 +10246,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"visibility\": \"hidden\"
+    \"visibility\": \"visible\"
 }"
 </code></pre></div>
 
@@ -8254,7 +10263,7 @@ const headers = {
 };
 
 let body = {
-    "visibility": "hidden"
+    "visibility": "visible"
 };
 
 fetch(url, {
@@ -8383,10 +10392,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="visibility"                data-endpoint="PATCHapi-issues--issue_id--comments--comment_id--visibility"
-               value="hidden"
+               value="visible"
                data-component="body">
     <br>
-<p>Example: <code>hidden</code></p>
+<p>Example: <code>visible</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>visible</code></li> <li><code>hidden</code></li></ul>
         </div>
@@ -8415,7 +10424,7 @@ Must be one of:
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"is_anonymous\": true
+    \"is_anonymous\": false
 }"
 </code></pre></div>
 
@@ -8432,7 +10441,7 @@ const headers = {
 };
 
 let body = {
-    "is_anonymous": true
+    "is_anonymous": false
 };
 
 fetch(url, {
@@ -8562,7 +10571,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
             <code>false</code>
         </label>
     <br>
-<p>Example: <code>true</code></p>
+<p>Example: <code>false</code></p>
         </div>
         </form>
 
@@ -8942,13 +10951,13 @@ then <code>id</code>, and paginated with a safe default <code>per_page</code>.</
     \"district_id\": 16,
     \"department\": \"architecto\",
     \"category_id\": 16,
-    \"status\": \"open\",
+    \"status\": \"opgelost\",
     \"assigned_officer_id\": 16,
     \"unassigned\": \"1\",
     \"mine\": \"1\",
-    \"participating\": \"1\",
-    \"include_duplicates\": \"true\",
-    \"visibility\": \"hidden\",
+    \"participating\": \"true\",
+    \"include_duplicates\": \"1\",
+    \"visibility\": \"visible\",
     \"page\": 22,
     \"per_page\": 7
 }"
@@ -8970,13 +10979,13 @@ let body = {
     "district_id": 16,
     "department": "architecto",
     "category_id": 16,
-    "status": "open",
+    "status": "opgelost",
     "assigned_officer_id": 16,
     "unassigned": "1",
     "mine": "1",
-    "participating": "1",
-    "include_duplicates": "true",
-    "visibility": "hidden",
+    "participating": "true",
+    "include_duplicates": "1",
+    "visibility": "visible",
     "page": 22,
     "per_page": 7
 };
@@ -9134,10 +11143,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="status"                data-endpoint="GETapi-issues"
-               value="open"
+               value="opgelost"
                data-component="body">
     <br>
-<p>Example: <code>open</code></p>
+<p>Example: <code>opgelost</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>open</code></li> <li><code>in_behandeling</code></li> <li><code>opgelost</code></li> <li><code>gesloten</code></li></ul>
         </div>
@@ -9188,10 +11197,10 @@ Must be one of:
  &nbsp;
                 <input type="text" style="display: none"
                               name="participating"                data-endpoint="GETapi-issues"
-               value="1"
+               value="true"
                data-component="body">
     <br>
-<p>Example: <code>1</code></p>
+<p>Example: <code>true</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>1</code></li> <li><code>true</code></li> <li><code>1</code></li> <li><code>1</code></li></ul>
         </div>
@@ -9202,10 +11211,10 @@ Must be one of:
  &nbsp;
                 <input type="text" style="display: none"
                               name="include_duplicates"                data-endpoint="GETapi-issues"
-               value="true"
+               value="1"
                data-component="body">
     <br>
-<p>Example: <code>true</code></p>
+<p>Example: <code>1</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>1</code></li> <li><code>true</code></li> <li><code>1</code></li> <li><code>1</code></li></ul>
         </div>
@@ -9216,10 +11225,10 @@ Must be one of:
  &nbsp;
                 <input type="text" style="display: none"
                               name="visibility"                data-endpoint="GETapi-issues"
-               value="hidden"
+               value="visible"
                data-component="body">
     <br>
-<p>Example: <code>hidden</code></p>
+<p>Example: <code>visible</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>visible</code></li> <li><code>hidden</code></li></ul>
         </div>
@@ -9283,7 +11292,7 @@ Anonymous reports receive a stable server-generated <code>anonymous_alias</code>
     \"address\": \"v\",
     \"latitude\": -89,
     \"longitude\": -179,
-    \"is_anonymous\": false,
+    \"is_anonymous\": true,
     \"duplicate_of_id\": 16
 }"
 </code></pre></div>
@@ -9309,7 +11318,7 @@ let body = {
     "address": "v",
     "latitude": -89,
     "longitude": -179,
-    "is_anonymous": false,
+    "is_anonymous": true,
     "duplicate_of_id": 16
 };
 
@@ -9523,7 +11532,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
             <code>false</code>
         </label>
     <br>
-<p>Example: <code>false</code></p>
+<p>Example: <code>true</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>duplicate_of_id</code></b>&nbsp;&nbsp;
@@ -10887,7 +12896,7 @@ actor cannot view return 404. Only the visibility field is updated.</p>
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"visibility\": \"hidden\"
+    \"visibility\": \"visible\"
 }"
 </code></pre></div>
 
@@ -10904,7 +12913,7 @@ const headers = {
 };
 
 let body = {
-    "visibility": "hidden"
+    "visibility": "visible"
 };
 
 fetch(url, {
@@ -11021,10 +13030,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="visibility"                data-endpoint="PATCHapi-issues--issue_id--visibility"
-               value="hidden"
+               value="visible"
                data-component="body">
     <br>
-<p>Example: <code>hidden</code></p>
+<p>Example: <code>visible</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>visible</code></li> <li><code>hidden</code></li></ul>
         </div>
@@ -11055,7 +13064,7 @@ delete: rows are removed outright and attachment FK cascades apply.</p>
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"leave_participation\": false
+    \"leave_participation\": true
 }"
 </code></pre></div>
 
@@ -11072,7 +13081,7 @@ const headers = {
 };
 
 let body = {
-    "leave_participation": false
+    "leave_participation": true
 };
 
 fetch(url, {
@@ -11202,7 +13211,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
             <code>false</code>
         </label>
     <br>
-<p>Example: <code>false</code></p>
+<p>Example: <code>true</code></p>
         </div>
         </form>
 
@@ -14206,7 +16215,7 @@ first transition to opgelost.</p>
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"status\": \"open\",
+    \"status\": \"opgelost\",
     \"note\": \"b\"
 }"
 </code></pre></div>
@@ -14224,7 +16233,7 @@ const headers = {
 };
 
 let body = {
-    "status": "open",
+    "status": "opgelost",
     "note": "b"
 };
 
@@ -14342,10 +16351,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="status"                data-endpoint="PATCHapi-issues--issue_id--status"
-               value="open"
+               value="opgelost"
                data-component="body">
     <br>
-<p>Example: <code>open</code></p>
+<p>Example: <code>opgelost</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>open</code></li> <li><code>in_behandeling</code></li> <li><code>opgelost</code></li> <li><code>gesloten</code></li></ul>
         </div>
@@ -14538,7 +16547,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --header "Accept: application/json" \
     --form "title=b"\
     --form "content=n"\
-    --form "files[]=@C:\Users\marti\AppData\Local\Temp\php18AA.tmp" </code></pre></div>
+    --form "files[]=@C:\Users\marti\AppData\Local\Temp\phpF862.tmp" </code></pre></div>
 
 
 <div class="javascript-example">
@@ -14725,7 +16734,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --form "title=b"\
     --form "content=n"\
     --form "remove_attachment_ids[]=16"\
-    --form "files[]=@C:\Users\marti\AppData\Local\Temp\php18BB.tmp" </code></pre></div>
+    --form "files[]=@C:\Users\marti\AppData\Local\Temp\phpF863.tmp" </code></pre></div>
 
 
 <div class="javascript-example">
@@ -15446,7 +17455,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --header "Accept: application/json" \
     --form "title=b"\
     --form "content=n"\
-    --form "files[]=@C:\Users\marti\AppData\Local\Temp\php18DB.tmp" </code></pre></div>
+    --form "files[]=@C:\Users\marti\AppData\Local\Temp\phpF883.tmp" </code></pre></div>
 
 
 <div class="javascript-example">
@@ -15633,7 +17642,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --form "title=b"\
     --form "content=n"\
     --form "remove_attachment_ids[]=16"\
-    --form "files[]=@C:\Users\marti\AppData\Local\Temp\php18DC.tmp" </code></pre></div>
+    --form "files[]=@C:\Users\marti\AppData\Local\Temp\phpF894.tmp" </code></pre></div>
 
 
 <div class="javascript-example">
@@ -16172,7 +18181,7 @@ Results are ordered newest-first by <code>shift_start</code> then <code>id</code
     --data "{
     \"officer_id\": 16,
     \"hub_id\": 16,
-    \"is_hub_active\": \"1\",
+    \"is_hub_active\": \"0\",
     \"page\": 22,
     \"per_page\": 7
 }"
@@ -16193,7 +18202,7 @@ const headers = {
 let body = {
     "officer_id": 16,
     "hub_id": 16,
-    "is_hub_active": "1",
+    "is_hub_active": "0",
     "page": 22,
     "per_page": 7
 };
@@ -16339,10 +18348,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="is_hub_active"                data-endpoint="GETapi-officer-sessions"
-               value="1"
+               value="0"
                data-component="body">
     <br>
-<p>Example: <code>1</code></p>
+<p>Example: <code>0</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>0</code></li> <li><code>false</code></li> <li><code></code></li> <li><code>0</code></li> <li><code>1</code></li> <li><code>true</code></li> <li><code>1</code></li> <li><code>1</code></li></ul>
         </div>
@@ -16402,7 +18411,7 @@ districts, ordered by username ascending. Pagination is bounded so
     --data "{
     \"district_id\": 16,
     \"department_id\": 16,
-    \"is_active\": \"0\",
+    \"is_active\": \"1\",
     \"page\": 22,
     \"per_page\": 7
 }"
@@ -16423,7 +18432,7 @@ const headers = {
 let body = {
     "district_id": 16,
     "department_id": 16,
-    "is_active": "0",
+    "is_active": "1",
     "page": 22,
     "per_page": 7
 };
@@ -16569,10 +18578,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="is_active"                data-endpoint="GETapi-officers"
-               value="0"
+               value="1"
                data-component="body">
     <br>
-<p>Example: <code>0</code></p>
+<p>Example: <code>1</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>0</code></li> <li><code>false</code></li> <li><code></code></li> <li><code>0</code></li> <li><code>1</code></li> <li><code>true</code></li> <li><code>1</code></li> <li><code>1</code></li></ul>
         </div>
