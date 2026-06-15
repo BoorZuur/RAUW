@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\ChatStatus;
 use App\Enums\IssueStatus;
 use App\Enums\Visibility;
 use Illuminate\Database\Migrations\Migration;
@@ -21,7 +20,6 @@ return new class extends Migration
             $table->foreignId('assigned_officer_id')->nullable()->constrained('officers')->nullOnDelete();
             $table->foreignId('district_id')->constrained('districts')->restrictOnDelete();
             $table->foreignId('duplicate_of_id')->nullable()->constrained('issues')->nullOnDelete();
-            $table->foreignId('chat_closed_by_officer_id')->nullable()->constrained('officers')->nullOnDelete();
             $table->string('title');
             $table->text('content');
             $table->string('postal_code', 10)->nullable();
@@ -29,7 +27,6 @@ return new class extends Migration
             $table->decimal('latitude', 10, 8)->nullable();
             $table->decimal('longitude', 11, 8)->nullable();
             $table->enum('status', IssueStatus::values())->default(IssueStatus::Open->value);
-            $table->enum('chat_status', ChatStatus::values())->default(ChatStatus::Closed->value);
             $table->unsignedTinyInteger('priority')->nullable();
             $table->integer('duplicate_count')->default(0);
             $table->integer('participant_count')->default(0);
@@ -48,7 +45,6 @@ return new class extends Migration
             $table->index('category_id', 'issues_category_id_idx');
             $table->index('assigned_officer_id', 'issues_assigned_officer_id_idx');
             $table->index('duplicate_of_id', 'issues_duplicate_of_id_idx');
-            $table->index('chat_closed_by_officer_id', 'issues_chat_closed_by_officer_id_idx');
             $table->index('created_at', 'issues_created_at_idx');
             $table->index('resolved_at', 'issues_resolved_at_idx');
             $table->index(['district_id', 'created_at', 'id'], 'issues_district_created_at_id_idx');

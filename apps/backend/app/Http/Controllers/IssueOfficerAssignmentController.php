@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Issues\CloseAllOpenIssueChats;
 use App\Enums\IssueStatus;
 use App\Http\Requests\Issues\AssignIssueToOfficerRequest;
 use App\Http\Requests\Issues\UnassignIssueFromOfficerRequest;
@@ -100,8 +101,11 @@ class IssueOfficerAssignmentController extends Controller
      * Status is unchanged; only assigned_officer_id is cleared. Already
      * unassigned issues are idempotent. Non-assignees receive 403.
      */
-    public function destroy(UnassignIssueFromOfficerRequest $request, Issue $issue): IssueResource
-    {
+    public function destroy(
+        UnassignIssueFromOfficerRequest $request,
+        Issue $issue,
+        CloseAllOpenIssueChats $closeAllOpenIssueChats,
+    ): IssueResource {
         /** @var Officer $officer */
         $officer = $request->user();
 
@@ -117,7 +121,7 @@ class IssueOfficerAssignmentController extends Controller
             return new IssueResource($issue);
         }
 
-        OfficerIssueRowLock::withLockedIssue($issue, function (Issue $lockedIssue) use ($officer): void {
+        OfficerIssueRowLock::withLockedIssue($issue, function (Issue $lockedIssue) use ($officer, $closeAllOpenIssueChats): void {
             if ($lockedIssue->assigned_officer_id === null) {
                 return;
             }
@@ -127,6 +131,8 @@ class IssueOfficerAssignmentController extends Controller
                     'Only the assigned officer may unassign from this issue.',
                 );
             }
+
+            $closeAllOpenIssueChats->closeAll($lockedIssue, $officer, withSystemMessage: false);
 
             $lockedIssue->update(['assigned_officer_id' => null]);
         });

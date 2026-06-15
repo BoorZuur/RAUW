@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import U_Nav from '../components/U_Nav';
-import axios from 'axios';
+import axiosOriginal from 'axios';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import Footer from "../components/Footer.jsx";
@@ -19,6 +19,8 @@ export default function MapOverview() {
     const mapRef = useRef(null);
     const leafletMap = useRef(null);
     const markersLayer = useRef([]);
+    // useRef om de actieve tilelayer bij te houden buiten de React state om
+    const activeTileLayer = useRef(null);
 
     const [reports, setReports] = useState([]);
     const [districts, setDistricts] = useState([]);
@@ -26,8 +28,9 @@ export default function MapOverview() {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
     useEffect(() => {
+        let observer = null;
+
         if (!leafletMap.current) {
-            // Verruimde bounds: Zuid-West (Hoek van Holland) naar Noord-Oost
             const regionBounds = L.latLngBounds(
                 [51.75, 4.05],
                 [52.00, 4.65]
@@ -37,11 +40,38 @@ export default function MapOverview() {
                 zoomControl: false,
                 maxBounds: regionBounds,
                 maxBoundsViscosity: 1.0,
-                minZoom: 10 // Verlaagd zodat je het overzicht houdt
+                minZoom: 10
             }).setView([51.9225, 4.47917], 13);
 
             L.control.zoom({ position: 'bottomright' }).addTo(leafletMap.current);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(leafletMap.current);
+
+            const lightTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+            });
+
+            const darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+            });
+
+            // Initialiseer met de juiste modus op basis van de html/body klasse
+            const isDarkInitial = document.documentElement.classList.contains('dark') || document.body.classList.contains('dark');
+
+            activeTileLayer.current = isDarkInitial ? darkTiles : lightTiles;
+            activeTileLayer.current.addTo(leafletMap.current);
+
+            // De MutationObserver kijkt nu naar activeTileLayer.current om closures te voorkomen
+            observer = new MutationObserver(() => {
+                const isDarkNow = document.documentElement.classList.contains('dark') || document.body.classList.contains('dark');
+                const nextLayer = isDarkNow ? darkTiles : lightTiles;
+
+                if (activeTileLayer.current !== nextLayer) {
+                    leafletMap.current.removeLayer(activeTileLayer.current);
+                    nextLayer.addTo(leafletMap.current);
+                    activeTileLayer.current = nextLayer;
+                }
+            });
+
+            observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
         }
 
         const fetchData = async () => {
@@ -49,17 +79,25 @@ export default function MapOverview() {
             const config = { headers: { 'Authorization': `Bearer ${token}` } };
             try {
                 const [issuesRes, distRes] = await Promise.all([
-                    axios.get('http://localhost:8001/api/issues', config),
-                    axios.get('http://localhost:8001/api/districts', config)
+                    axiosOriginal.get('http://localhost:8001/api/issues', config),
+                    axiosOriginal.get('http://localhost:8001/api/districts', config)
                 ]);
                 setReports(issuesRes.data.data || issuesRes.data);
                 setDistricts(distRes.data.data || distRes.data);
             } catch (err) { console.error("Data error", err); }
         };
         fetchData();
+
+        return () => {
+            if (observer) {
+                observer.disconnect();
+            }
+        };
     }, []);
 
     useEffect(() => {
+        if (!leafletMap.current) return;
+
         markersLayer.current.forEach(m => leafletMap.current.removeLayer(m));
         markersLayer.current = [];
 
@@ -81,12 +119,25 @@ export default function MapOverview() {
             .forEach(report => {
                 if (report.latitude && report.longitude) {
                     const marker = L.marker([report.latitude, report.longitude]).addTo(leafletMap.current);
-                    marker.bindPopup(`
-                        <div class="p-2">
-                            <h3 class="font-bold text-lg">${report.title || "Geen titel"}</h3>
-                            <button id="btn-${report.id}" class="mt-2 text-primary-accent font-bold underline">Bekijk details</button>
+
+                    const popupContent = `
+                        <div class="font-label text-primary-text p-1 m-0">
+                            <h3 class="font-headline font-black text-base mb-1">
+                                ${report.title || "Geen titel"}
+                            </h3>
+                            <p class="text-xs text-secondary-text mb-3">
+                                ${report.address || "Geen adres"}
+                            </p>
+                            <button id="btn-${report.id}" class="w-full py-2 px-3 bg-primary-accent text-white text-[10px] font-black uppercase tracking-widest rounded-lg cursor-pointer hover:brightness-110 transition-all">
+                                Bekijk details
+                            </button>
                         </div>
-                    `);
+                    `;
+
+                    marker.bindPopup(popupContent, {
+                        className: 'custom-leaflet-popup'
+                    });
+
                     marker.on('popupopen', () => {
                         const btn = document.getElementById(`btn-${report.id}`);
                         if (btn) btn.onclick = () => console.log("Details:", report.id);
@@ -94,54 +145,57 @@ export default function MapOverview() {
                     markersLayer.current.push(marker);
                 }
             });
-    }, [reports, filters]);
+    }, [reports, filters, districts]);
 
     return (
-        <div className="min-h-screen w-full flex flex-col bg-primary-bg overflow-hidden">
+        <div className="min-h-screen w-full flex flex-col bg-primary-bg text-primary-text overflow-hidden transition-colors duration-300">
             <header className="h-20 shrink-0"><U_Nav /></header>
-            <main className="z-10 grow w-full max-w-6xl mx-auto px-6 pt-26 mt-8 pb-12 md:p-8 flex gap-6 overflow-hidden">
-                <section className="flex-1 bg-primary-bg-cards border-2 border-primary-border rounded-3xl overflow-hidden relative shadow-lg">
-                    <div ref={mapRef} className="absolute inset-0" />
+
+            <main className="z-10 grow w-full max-w-6xl mx-auto px-6 pt-26 mt-8 pb-12 md:p-8 flex flex-col md:flex-row gap-6 overflow-hidden">
+                <section className="flex-1 h-[50vh] md:h-auto bg-primary-bg-cards border-2 border-primary-border rounded-3xl overflow-hidden relative shadow-md">
+                    <div ref={mapRef} className="absolute inset-0 z-0" />
                 </section>
 
-                <aside className="w-80 bg-primary-bg-cards border-2 border-primary-border rounded-3xl p-8 shrink-0 overflow-y-auto space-y-8">
-                    <h1 className="text-2xl font-black text-primary-text">Kaartbeheer</h1>
+                <aside className="w-full md:w-80 bg-primary-bg-cards border-2 border-primary-border rounded-3xl p-8 shrink-0 overflow-y-auto space-y-8 shadow-md">
+                    <h1 className="text-2xl font-black text-primary-text tracking-tight">Kaartbeheer</h1>
 
-                    {/* Categorie Dropdown */}
                     <div className="relative">
-                        <label className="block text-[10px] font-black mb-2 uppercase tracking-widest text-secondary-text">Categorie</label>
-                        <div onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="w-full p-4 bg-primary-bg border-2 border-primary-border rounded-xl cursor-pointer flex justify-between items-center text-primary-text">
-            <span className="text-sm font-medium">
-                {filters.district === 'all' ? "Alle wijken" : districts.find(d=>d.id.toString()===filters.district)?.name}
-            </span>
-                            <span className="text-secondary-text">▼</span>
+                        <label htmlFor="content" className="text-left block text-xs font-bold tracking-wider uppercase mb-1.5 text-primary-text">
+                            Wijk Filter
+                        </label>
+                        <div onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="w-full p-4 bg-primary-bg border-2 border-primary-border rounded-xl cursor-pointer flex justify-between items-center text-primary-text hover:border-primary-accent transition-colors">
+                            <span className="text-sm font-bold">
+                                {filters.district === 'all' ? "Alle wijken" : districts.find(d=>d.id.toString()===filters.district)?.name}
+                            </span>
+                            <span className="text-xs text-secondary-text">{isDropdownOpen ? '▲' : '▼'}</span>
                         </div>
                         {isDropdownOpen && (
-                            <div className="absolute z-50 w-full mt-2 max-h-60 overflow-y-auto bg-primary-bg border-2 border-primary-border rounded-xl p-2 shadow-2xl text-primary-text">
-                                <div onClick={() => {setFilters({...filters, district: 'all'}); setIsDropdownOpen(false)}} className="p-3 cursor-pointer hover:bg-primary-border/20 text-sm">Alle wijken</div>
+                            <div className="absolute z-50 w-full mt-2 max-h-60 overflow-y-auto bg-primary-bg-cards border-2 border-primary-border rounded-xl p-2 shadow-2xl text-primary-text custom-scrollbar">
+                                <div onClick={() => {setFilters({...filters, district: 'all'}); setIsDropdownOpen(false)}} className="p-3 cursor-pointer hover:bg-primary-bg rounded-lg text-sm font-medium">Alle wijken</div>
                                 {districts.map(d => (
-                                    <div key={d.id} onClick={() => {setFilters({...filters, district: d.id.toString()}); setIsDropdownOpen(false)}} className="p-3 cursor-pointer hover:bg-primary-border/20 text-sm">{d.name}</div>
+                                    <div key={d.id} onClick={() => {setFilters({...filters, district: d.id.toString()}); setIsDropdownOpen(false)}} className="p-3 cursor-pointer hover:bg-primary-bg rounded-lg text-sm font-medium">{d.name}</div>
                                 ))}
                             </div>
                         )}
                     </div>
 
-                    {/* Weergave Buttons */}
                     <div>
-                        <label className="block text-[10px] font-black mb-2 uppercase text-secondary-text">Weergave</label>
+                        <label htmlFor="content" className="text-left block text-xs font-bold tracking-wider uppercase mb-1.5 text-primary-text">
+                            Weergave
+                        </label>
                         <div className="grid grid-cols-1 gap-2">
                             {[
-                                { label: 'Alle', value: 'all' },
+                                { label: 'Alle meldingen', value: 'all' },
                                 { label: 'Mijn verhalen', value: 'mine' },
                                 { label: 'Afgehandeld', value: 'resolved' }
                             ].map((btn) => (
                                 <button
                                     key={btn.value}
                                     onClick={() => setFilters({...filters, view: btn.value})}
-                                    className={`px-4 py-3 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${
+                                    className={`px-4 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all cursor-pointer border-2 ${
                                         filters.view === btn.value
-                                            ? 'bg-primary-accent text-white'
-                                            : 'bg-primary-border text-primary-text hover:bg-primary-border/80'
+                                            ? 'bg-primary-accent border-primary-accent text-white shadow-sm'
+                                            : 'bg-primary-bg border-primary-border text-primary-text hover:border-primary-accent'
                                     }`}
                                 >
                                     {btn.label}
@@ -153,7 +207,6 @@ export default function MapOverview() {
             </main>
 
             <Footer/>
-
         </div>
     );
 }

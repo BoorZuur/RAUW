@@ -84,6 +84,7 @@ class AuthProfileResource extends JsonResource
             'id' => $user->id,
             'username' => $user->username,
             'email' => $user->email,
+            'districts' => $this->compactDistricts($user),
         ];
     }
 
@@ -159,17 +160,19 @@ class AuthProfileResource extends JsonResource
 
     /**
      * Return the actor's assigned districts as compact objects, only when the
-     * `districts` relation has already been loaded to avoid lazy queries.
+     * `districts` or `feedDistricts` relation has already been loaded to avoid lazy queries.
      *
      * @return array<int, array<string, mixed>>
      */
-    protected function compactDistricts(Officer|Manager $actor): array
+    protected function compactDistricts(User|Officer|Manager $actor): array
     {
-        if (! $actor->relationLoaded('districts')) {
+        $relation = $actor instanceof User ? 'feedDistricts' : 'districts';
+
+        if (! $actor->relationLoaded($relation)) {
             return [];
         }
 
-        return $actor->getRelation('districts')
+        return $actor->getRelation($relation)
             ->map(static fn (District $district): array => [
                 'id' => $district->id,
                 'name' => $district->name,
