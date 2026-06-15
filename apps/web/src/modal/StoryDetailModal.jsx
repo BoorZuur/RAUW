@@ -147,28 +147,37 @@ export default function StoryDetailModal({ issue, onClose, onAddComment }) {
                         )}
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-primary-bg-cards">
+                    <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar bg-primary-bg-cards">
                         {localComments.length === 0 ? (
-                            <div className="h-full flex flex-col items-center justify-center text-center p-4">
-                                <div className="w-12 h-12 rounded-full border-2 border-dashed border-primary-border flex items-center justify-center mb-2 text-secondary-text/60">💬</div>
-                                <p className="text-xs text-secondary-text font-label font-bold">Nog geen reacties</p>
+                            <div className="h-full flex flex-col items-center justify-center text-center p-6 opacity-60">
+                                <div className="w-16 h-16 rounded-full bg-primary-bg border border-primary-border flex items-center justify-center mb-4 text-2xl">💬</div>
+                                <p className="text-sm font-label font-bold text-primary-text">Nog geen reacties</p>
                             </div>
                         ) : (
                             localComments.map((comment) => (
-                                <div key={comment.id} className="flex gap-3 items-start text-sm font-label animate-fade-in">
-                                    <div className="w-8 h-8 rounded-full bg-primary-bg text-primary-text font-black text-xs flex items-center justify-center shrink-0 border border-primary-border shadow-xs">
-                                        {(comment.user?.name || 'U').charAt(0).toUpperCase()}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-primary-text leading-tight mb-0.5">
-                                            <span className="font-black mr-1.5">{comment.user?.name || 'Buurtbewoner'}</span>
-                                            <span className="text-secondary-text font-medium text-[13px] sm:text-sm wrap-break-word">
-                            {comment.content || comment.body || comment.text || "Geen inhoud"}
-                        </span>
-                                        </p>
-                                        <span className="block text-[10px] text-secondary-text/50 font-bold">
-                        {comment.created_at ? new Date(comment.created_at).toLocaleDateString('nl-NL') : 'Zojuist'}
+                                <div key={comment.id} className="flex gap-3 animate-fade-in group">
+                                    {/* Avatar */}
+                                    <div className="w-8 h-8 rounded-full bg-stone-800 flex items-center justify-center shrink-0 mt-1 border border-primary-border">
+                    <span className="text-[10px] font-black text-primary-accent">
+                        {(comment.user?.name || 'U').charAt(0).toUpperCase()}
                     </span>
+                                    </div>
+
+                                    {/* Tekstbubbel */}
+                                    <div className="flex-1 bg-primary-bg p-3 rounded-2xl rounded-tl-none border border-primary-border shadow-sm w-fit max-w-[90%]">
+                                        <div className="flex flex-wrap items-baseline gap-2">
+                        <span className="font-bold text-[13px] text-white">
+                            {comment.user?.name || 'Buurtbewoner'}
+                        </span>
+                                            <p className="text-[13px] text-stone-200 leading-relaxed whitespace-pre-wrap break-words">
+                                                {comment.content || comment.body || comment.text || "Geen inhoud"}
+                                            </p>
+                                        </div>
+
+                                        {/* Tijdstempel subtiel onderin de bubbel */}
+                                        <div className="text-[9px] text-secondary-text/60 font-bold mt-1.5">
+                                            {comment.created_at ? new Date(comment.created_at).toLocaleDateString('nl-NL', { day: '2-digit', month: 'short' }) : 'Zojuist'}
+                                        </div>
                                     </div>
                                 </div>
                             ))

@@ -5,7 +5,7 @@ import axios from 'axios';
 import U_Nav from '../components/U_Nav';
 import Footer from "../components/Footer.jsx";
 import USignalCard from '../components/U_SignalCard';
-import AccountSignalDetailModal from '../modal/AccountSignalDetailModal.jsx';
+import StoryDetailModal from '../modal/StoryDetailModal.jsx';
 
 const apiClient = axios.create({
     baseURL: 'http://localhost:8001/api',
@@ -42,7 +42,6 @@ export default function Dashboard() {
             try {
                 const userRes = await apiClient.get('/auth/me');
                 setUser(userRes.data.profile);
-
                 const issuesRes = await apiClient.get('/issues?mine=1');
                 const data = issuesRes.data.data || issuesRes.data;
                 setReports(data.map(r => ({ ...r, attachments: r.attachments || [] })));
@@ -58,45 +57,44 @@ export default function Dashboard() {
 
     const handleSelectIssue = async (issue) => {
         try {
-            console.log("Fetching details en alle comments voor:", issue.id);
-            const issueResponse = await apiClient.get(`/api/issues/${issue.id}`);
+            const issueResponse = await apiClient.get(`/issues/${issue.id}`);
             const fullIssueData = issueResponse.data.data || issueResponse.data;
             let allComments = [];
-            let nextPageUrl = `/api/issues/${issue.id}/comments`;
+            let nextPageUrl = `/issues/${issue.id}/comments`;
             try {
                 while (nextPageUrl) {
                     const commentResponse = await apiClient.get(nextPageUrl);
                     const data = commentResponse.data.data || commentResponse.data;
-
                     allComments = [...allComments, ...data];
                     nextPageUrl = commentResponse.data.next_page_url;
                 }
             } catch (commentErr) {
                 console.warn("Kon (sommige) comments niet ophalen:", commentErr);
             }
-            setSelectedIssue({
+            setSelectedReport({
                 ...fullIssueData,
                 comments: allComments
             });
 
         } catch (err) {
             console.error('Kon issue details niet ophalen:', err);
-            setSelectedIssue(issue);
+            setSelectedReport(issue); // VERANDERING: setSelectedReport
         }
     };
 
     const handleAddComment = async (issueId, commentText) => {
         try {
-            const response = await apiClient.post(`/api/issues/${issueId}/comments`, {
+            const response = await apiClient.post(`/issues/${issueId}/comments`, { // URL aangepast
                 content: commentText
             });
             const newComment = response.data.data || response.data;
-            setSelectedIssue(prev => ({
+            setSelectedReport(prev => ({
                 ...prev,
                 comments: [...(prev.comments || []), newComment]
             }));
         } catch (err) {
             console.error('Kon reactie niet plaatsen:', err.response?.data || err);
+            alert('Er ging iets mis bij het plaatsen van je reactie.');
         }
     };
 
@@ -118,7 +116,10 @@ export default function Dashboard() {
 
     return (
         <div className="min-h-screen flex flex-col bg-primary-bg text-primary-text transition-colors duration-300 overflow-x-hidden">
-            <div className="fixed top-0 w-full z-50"><U_Nav/></div>
+            <div className="fixed top-0 w-full z-50">
+                <U_Nav/>
+            </div>
+
             <div className="grow flex w-full pt-26">
                 <div className="group hidden lg:flex w-1/12 xl:w-2/12 flex-col justify-between p-6 select-none opacity-35 hover:opacity-100 transition-all duration-500 ease-in-out cursor-default relative">
                     <div className="w-3 h-3 border-t border-l border-primary-text/40 group-hover:border-primary-accent transition-colors duration-300"></div>
@@ -183,7 +184,7 @@ export default function Dashboard() {
             </div>
             <div className="z-10 bg-primary-bg"><Footer/></div>
             {selectedReport && (
-                <AccountSignalDetailModal issue={selectedReport} onClose={() => setSelectedReport(null)} onAddComment={handleAddComment} />
+                <StoryDetailModal issue={selectedReport} onClose={() => setSelectedReport(null)} onAddComment={handleAddComment} />
             )}
         </div>
     );
