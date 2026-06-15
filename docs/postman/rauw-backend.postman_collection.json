@@ -5439,6 +5439,666 @@
       "description": "Comment management requests. Listing comments works for any active actor who can view the issue; POST/PATCH/DELETE writes require appropriate ownership, manager role, or active shift for officers."
     },
     {
+      "name": "Issue Chat",
+      "item": [
+        {
+          "name": "List Chats",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{officer_hub_active_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/issues/{{issue_id}}/chats?page={{page}}&per_page={{per_page}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "issues",
+                "{{issue_id}}",
+                "chats"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{page}}"
+                },
+                {
+                  "key": "per_page",
+                  "value": "{{per_page}}"
+                }
+              ]
+            },
+            "description": "List 1:1 chats on the canonical issue. Assignee officers see all chats (Tier B, no hub-active required). Eligible users see only their own chat (200 with data: [] when none). Set officer_hub_active_token after Auth / Login Officer at Hub and issue_id after assign-self."
+          },
+          "response": []
+        },
+        {
+          "name": "Open Chat with Issue Owner",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response.id) {",
+                  "    pm.collectionVariables.set('chat_id', String(response.id));",
+                  "    if (pm.environment.name) { pm.environment.set('chat_id', String(response.id)); }",
+                  "}",
+                  "if (response.user_id) {",
+                  "    pm.collectionVariables.set('owner_user_id', String(response.user_id));",
+                  "    if (pm.environment.name) { pm.environment.set('owner_user_id', String(response.user_id)); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{officer_hub_active_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": {{owner_user_id}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/issues/{{issue_id}}/chats/open",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "issues",
+                "{{issue_id}}",
+                "chats",
+                "open"
+              ]
+            },
+            "description": "Open 1:1 chat with the issue owner. Tier C (hub-active). Set owner_user_id from the issue show response user_id or demo user id 1. Stores chat_id. 201 on first open; 200 when idempotent."
+          },
+          "response": []
+        },
+        {
+          "name": "Open Chat with Participant",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response.id) {",
+                  "    pm.collectionVariables.set('chat_id_2', String(response.id));",
+                  "    if (pm.environment.name) { pm.environment.set('chat_id_2', String(response.id)); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{officer_hub_active_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": {{participant_user_id}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/issues/{{issue_id}}/chats/open",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "issues",
+                "{{issue_id}}",
+                "chats",
+                "open"
+              ]
+            },
+            "description": "Open a second parallel chat with another eligible user (participant). Prerequisite: POST .../join as a second user, then set participant_user_id. Stores chat_id_2. Demonstrates multiple 1:1 chats on one issue."
+          },
+          "response": []
+        },
+        {
+          "name": "List Messages",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{officer_hub_active_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/issues/{{issue_id}}/chats/{{chat_id}}/messages?page={{page}}&per_page={{per_page}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "issues",
+                "{{issue_id}}",
+                "chats",
+                "{{chat_id}}",
+                "messages"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{page}}"
+                },
+                {
+                  "key": "per_page",
+                  "value": "{{per_page}}"
+                }
+              ]
+            },
+            "description": "List messages for a chat (open or closed). Tier B for officers. Chronological order."
+          },
+          "response": []
+        },
+        {
+          "name": "Send Message",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response.id) {",
+                  "    pm.collectionVariables.set('chat_message_id', String(response.id));",
+                  "    if (pm.environment.name) { pm.environment.set('chat_message_id', String(response.id)); }",
+                  "}",
+                  "const attachments = response.attachments || [];",
+                  "if (attachments.length > 0 && attachments[0].id) {",
+                  "    pm.collectionVariables.set('chat_attachment_id', String(attachments[0].id));",
+                  "    if (pm.environment.name) { pm.environment.set('chat_attachment_id', String(attachments[0].id)); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{officer_hub_active_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Bericht van de BOA in de chat.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/issues/{{issue_id}}/chats/{{chat_id}}/messages",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "issues",
+                "{{issue_id}}",
+                "chats",
+                "{{chat_id}}",
+                "messages"
+              ]
+            },
+            "description": "Send a text message in an open chat. Tier C for officers. Closed chat returns 422 chat_closed. Stores chat_message_id."
+          },
+          "response": []
+        },
+        {
+          "name": "Send Message with Attachment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response.id) {",
+                  "    pm.collectionVariables.set('chat_message_id', String(response.id));",
+                  "    if (pm.environment.name) { pm.environment.set('chat_message_id', String(response.id)); }",
+                  "}",
+                  "const attachments = response.attachments || [];",
+                  "if (attachments.length > 0 && attachments[0].id) {",
+                  "    pm.collectionVariables.set('chat_attachment_id', String(attachments[0].id));",
+                  "    if (pm.environment.name) { pm.environment.set('chat_attachment_id', String(attachments[0].id)); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{officer_hub_active_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "content",
+                  "value": "Zie bijlage",
+                  "type": "text",
+                  "disabled": true
+                },
+                {
+                  "key": "files[]",
+                  "type": "file",
+                  "src": [],
+                  "description": "Optional images: jpg/jpeg/png/gif/webp, up to 3 files, 5 MB each. content is optional when files are present."
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/issues/{{issue_id}}/chats/{{chat_id}}/messages",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "issues",
+                "{{issue_id}}",
+                "chats",
+                "{{chat_id}}",
+                "messages"
+              ]
+            },
+            "description": "Multipart send with optional text and/or files. Attachment-only messages are valid (disable content field, attach file). Stores chat_message_id and chat_attachment_id."
+          },
+          "response": []
+        },
+        {
+          "name": "Mark Messages Read",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/issues/{{issue_id}}/chats/{{chat_id}}/messages/mark-read",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "issues",
+                "{{issue_id}}",
+                "chats",
+                "{{chat_id}}",
+                "messages",
+                "mark-read"
+              ]
+            },
+            "description": "Mark the other party's unread messages as read in an open chat. Use a user token (issue owner). Returns { marked_read: N }. Closed chat returns 422 chat_closed."
+          },
+          "response": []
+        },
+        {
+          "name": "Download Chat Attachment",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/issues/{{issue_id}}/chats/{{chat_id}}/messages/{{chat_message_id}}/attachments/{{chat_attachment_id}}/download",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "issues",
+                "{{issue_id}}",
+                "chats",
+                "{{chat_id}}",
+                "messages",
+                "{{chat_message_id}}",
+                "attachments",
+                "{{chat_attachment_id}}",
+                "download"
+              ]
+            },
+            "description": "Download a chat message attachment. Chat participants only (403 not_chat_participant for outsiders). Users are not hub-gated; officers need Tier C hub-active token."
+          },
+          "response": []
+        },
+        {
+          "name": "Close Chat",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{officer_hub_active_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/issues/{{issue_id}}/chats/{{chat_id}}/close",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "issues",
+                "{{issue_id}}",
+                "chats",
+                "{{chat_id}}",
+                "close"
+              ]
+            },
+            "description": "Close a single chat (assignee officer, Tier C). Does not insert a system message. Idempotent when already closed."
+          },
+          "response": []
+        },
+        {
+          "name": "Reassignment Handoff",
+          "item": [
+            {
+              "name": "Assign Self Blocked (409)",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{officer_hub_active_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{issue_id}}/assign-self",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{issue_id}}",
+                    "assign-self"
+                  ]
+                },
+                "description": "Smoke test: second officer on an already-assigned issue receives 409 issue_already_assigned (no takeover). Use a different officer token than the current assignee."
+              },
+              "response": []
+            },
+            {
+              "name": "Unassign Self (closes chats)",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{officer_hub_active_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{issue_id}}/unassign-self",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{issue_id}}",
+                    "unassign-self"
+                  ]
+                },
+                "description": "Current assignee unassigns. Closes all open chats without system messages. Handoff step 1 before successor assign-self."
+              },
+              "response": []
+            },
+            {
+              "name": "Assign Self Successor",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{issue_id}}/assign-self",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{issue_id}}",
+                    "assign-self"
+                  ]
+                },
+                "description": "Handoff step 2: successor officer assign-self after prior unassign. Switch access_token to the successor officer hub-active token before running."
+              },
+              "response": []
+            },
+            {
+              "name": "Reopen Chat After Handoff",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"user_id\": {{owner_user_id}}\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{issue_id}}/chats/open",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{issue_id}}",
+                    "chats",
+                    "open"
+                  ]
+                },
+                "description": "Handoff step 3: successor reopens the same chat (200, same chat_id). Prior message history remains readable via List Messages."
+              },
+              "response": []
+            }
+          ],
+          "description": "Officer reassignment without takeover: unassign-self then assign-self (409 preserved when skipping unassign). Open chats close on unassign without system messages."
+        }
+      ],
+      "description": "Private 1:1 issue chats (distinct from Comments). Recommended flow: Login Officer at Hub → Assign Self → set owner_user_id from issue → Open Chat with Issue Owner → optional parallel Open Chat with Participant (after join, set participant_user_id) → Send Message → Mark Messages Read as user → Download attachment → Close Chat. Tier B: list chats/messages. Tier C: open, close, send, mark-read (officers), attachment download (officers)."
+    },
+    {
       "name": "Departments",
       "item": [
         {
@@ -5914,6 +6574,36 @@
     {
       "key": "officer_remote_token",
       "value": "",
+      "type": "string"
+    },
+    {
+      "key": "chat_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "chat_id_2",
+      "value": "2",
+      "type": "string"
+    },
+    {
+      "key": "chat_message_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "chat_attachment_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "owner_user_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "participant_user_id",
+      "value": "2",
       "type": "string"
     }
   ]
