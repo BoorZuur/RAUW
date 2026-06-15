@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Notifications;
 
+use App\Enums\ActorType;
 use App\Enums\IssueStatus;
 use App\Enums\NotificationType;
 use App\Enums\Visibility;
@@ -88,7 +89,7 @@ class NotificationStatusChangeTest extends TestCase
         $this->assertSame('Status gewijzigd', $notification->title);
         $this->assertStringContainsString($issue->title, $notification->body);
         $this->assertStringContainsString($officer->username, $notification->body);
-        $this->assertSame('officer', $notification->actor_type);
+        $this->assertSame(ActorType::Officer, $notification->actor_type);
         $this->assertSame($officer->id, $notification->actor_id);
     }
 

@@ -40,9 +40,13 @@
                   "",
                   "if (response.access_token) {",
                   "    pm.collectionVariables.set('access_token', response.access_token);",
+                  "    pm.collectionVariables.set('officer_remote_token', response.access_token);",
+                  "    pm.collectionVariables.set('officer_access_token', response.access_token);",
                   "",
                   "    if (pm.environment.name) {",
                   "        pm.environment.set('access_token', response.access_token);",
+                  "        pm.environment.set('officer_remote_token', response.access_token);",
+                  "        pm.environment.set('officer_access_token', response.access_token);",
                   "    }",
                   "}"
                 ]
@@ -397,10 +401,14 @@
                   "if (response.access_token) {",
                   "    pm.collectionVariables.set('access_token', response.access_token);",
                   "    pm.collectionVariables.set('officer_hub_active_token', response.access_token);",
+                  "    pm.collectionVariables.set('officer_access_token', response.access_token);",
+                  "    pm.collectionVariables.set('officer_remote_token', response.access_token);",
                   "",
                   "    if (pm.environment.name) {",
                   "        pm.environment.set('access_token', response.access_token);",
                   "        pm.environment.set('officer_hub_active_token', response.access_token);",
+                  "        pm.environment.set('officer_access_token', response.access_token);",
+                  "        pm.environment.set('officer_remote_token', response.access_token);",
                   "    }",
                   "}"
                 ]
@@ -441,7 +449,7 @@
                 "login"
               ]
             },
-            "description": "Log in as demo.officer@example.com at Cluster Centrum coords (hub_id 3). Hub-eligible login starts the shared shift: hub_active: true, hub_active_until ~10h ahead. Re-login at hub does not extend an existing shift. Sanctum hub-active ability is audit-only. Stores access_token and officer_hub_active_token."
+            "description": "Log in as demo.officer@example.com at Cluster Centrum coords (hub_id 3). Hub-eligible login starts the shared shift: hub_active: true, hub_active_until ~10h ahead. Re-login at hub does not extend an existing shift. Sanctum hub-active ability is audit-only. Stores access_token, officer_access_token, officer_hub_active_token, and officer_remote_token (same bearer value)."
           },
           "response": []
         },
@@ -474,10 +482,20 @@
                   "if (response.access_token) {",
                   "    pm.collectionVariables.set('access_token', response.access_token);",
                   "    pm.collectionVariables.set('officer_remote_token', response.access_token);",
+                  "    pm.collectionVariables.set('officer_access_token', response.access_token);",
+                  "",
+                  "    if (response.hub_active) {",
+                  "        pm.collectionVariables.set('officer_hub_active_token', response.access_token);",
+                  "    }",
                   "",
                   "    if (pm.environment.name) {",
                   "        pm.environment.set('access_token', response.access_token);",
                   "        pm.environment.set('officer_remote_token', response.access_token);",
+                  "        pm.environment.set('officer_access_token', response.access_token);",
+                  "",
+                  "        if (response.hub_active) {",
+                  "            pm.environment.set('officer_hub_active_token', response.access_token);",
+                  "        }",
                   "    }",
                   "}"
                 ]
@@ -540,7 +558,18 @@
                   "    pm.expect(response.hub_active).to.eql(true);",
                   "    pm.expect(response.hub_active_until).to.be.a('string').and.not.empty;",
                   "    pm.expect(response.profile.hub_active).to.eql(true);",
-                  "});"
+                  "});",
+                  "",
+                  "// Same bearer token; shared shift is now active for Tier C routes.",
+                  "const remote = pm.collectionVariables.get('officer_remote_token') || pm.environment.get('officer_remote_token') || pm.collectionVariables.get('officer_access_token') || pm.environment.get('officer_access_token');",
+                  "if (remote) {",
+                  "    pm.collectionVariables.set('officer_hub_active_token', remote);",
+                  "    pm.collectionVariables.set('officer_access_token', remote);",
+                  "    if (pm.environment.name) {",
+                  "        pm.environment.set('officer_hub_active_token', remote);",
+                  "        pm.environment.set('officer_access_token', remote);",
+                  "    }",
+                  "}"
                 ]
               }
             }
@@ -551,7 +580,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{officer_remote_token}}",
                   "type": "string"
                 }
               ]
@@ -589,7 +618,7 @@
                 "start-shift"
               ]
             },
-            "description": "Start the officer's shared shift at the assigned hub. Requires an authenticated officer with no active shift (422 shift_already_active if shift already active). Cluster Centrum coordinates locally. Remote coords return 403 outside_hub_radius; missing hub_id returns 403 hub_not_assigned. Does not issue a new token. Run Auth / Login as officer first (without hub-eligible login) or after manager end-shift."
+            "description": "Start the officer's shared shift at the assigned hub. Requires an authenticated officer with no active shift (422 shift_already_active if shift already active). Cluster Centrum coordinates locally. Remote coords return 403 outside_hub_radius; missing hub_id returns 403 hub_not_assigned. Does not issue a new token. Run **Auth / Login Officer Remote** first (uses officer_remote_token), or use any officer token after manager end-shift. On success, copies officer_remote_token to officer_hub_active_token."
           },
           "response": []
         },
@@ -2089,7 +2118,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{officer_hub_active_token}}",
                   "type": "string"
                 }
               ]
@@ -2170,7 +2199,7 @@
                       "bearer": [
                         {
                           "key": "token",
-                          "value": "{{officer_remote_token}}",
+                          "value": "{{officer_access_token}}",
                           "type": "string"
                         }
                       ]
@@ -2217,7 +2246,7 @@
                         }
                       ]
                     },
-                    "description": "Paginated officer notification inbox. Tier B — run Auth / Login Officer Remote first (no hub-active shift required). Optional filters is_read, type, since (ISO 8601). Sets notification_id from the first row when present."
+                    "description": "Paginated officer notification inbox. Tier B — run **Auth / Login Officer at Hub** or **Login Officer Remote** first (uses officer_access_token). Optional filters is_read, type, since (ISO 8601). Sets notification_id from the first row when present."
                   },
                   "response": []
                 },
@@ -2229,7 +2258,7 @@
                       "bearer": [
                         {
                           "key": "token",
-                          "value": "{{officer_remote_token}}",
+                          "value": "{{officer_access_token}}",
                           "type": "string"
                         }
                       ]
@@ -2267,7 +2296,7 @@
                       "bearer": [
                         {
                           "key": "token",
-                          "value": "{{officer_remote_token}}",
+                          "value": "{{officer_access_token}}",
                           "type": "string"
                         }
                       ]
@@ -2319,7 +2348,7 @@
                       "bearer": [
                         {
                           "key": "token",
-                          "value": "{{officer_remote_token}}",
+                          "value": "{{officer_access_token}}",
                           "type": "string"
                         }
                       ]
@@ -2371,7 +2400,7 @@
                       "bearer": [
                         {
                           "key": "token",
-                          "value": "{{officer_remote_token}}",
+                          "value": "{{officer_access_token}}",
                           "type": "string"
                         }
                       ]
@@ -2402,7 +2431,7 @@
                   "response": []
                 }
               ],
-              "description": "Officer self-service notification inbox under /api/officers/me/notifications. All routes are Tier B (no hub-active shift required)."
+              "description": "Officer self-service notification inbox under /api/officers/me/notifications. All routes are Tier B (no hub-active shift required). Authenticate with officer_access_token from any officer login."
             }
           ]
         }
@@ -3399,7 +3428,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{main_manager_access_token}}",
                   "type": "string"
                 }
               ]
@@ -3510,11 +3539,49 @@
             {
               "name": "Similar Check",
               "request": {
-                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
-                "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
-                "body": { "mode": "raw", "raw": "{\n  \"district_id\": {{district_id}},\n  \"category_id\": {{category_id}},\n  \"postal_code\": \"3012AB\",\n  \"address\": \"Coolsingel 1, Rotterdam\",\n  \"latitude\": 51.91712,\n  \"longitude\": 4.47834\n}", "options": { "raw": { "language": "json" } } },
-                "url": { "raw": "{{base_url}}/api/issues/similar-check", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "similar-check" ] },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"district_id\": {{district_id}},\n  \"category_id\": {{category_id}},\n  \"postal_code\": \"3012AB\",\n  \"address\": \"Coolsingel 1, Rotterdam\",\n  \"latitude\": 51.91712,\n  \"longitude\": 4.47834\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/issues/similar-check",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "similar-check"
+                  ]
+                },
                 "description": "Score similar open canonical issues before create. Active users only. Returns own_matches (actor-owned, linkable false) and matches (other users, linkable true), capped at five per bucket. Use a user token from Auth / Login (demo.user@example.com locally)."
               },
               "response": []
@@ -3542,11 +3609,48 @@
                 }
               ],
               "request": {
-                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
-                "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
-                "body": { "mode": "raw", "raw": "{\n  \"title\": \"Zelfde parkeerprobleem\",\n  \"content\": \"Ook bij mij staat er een auto op de stoep.\",\n  \"category_id\": {{category_id}},\n  \"district_id\": {{district_id}},\n  \"postal_code\": \"3012AB\",\n  \"duplicate_of_id\": {{canonical_issue_id}}\n}", "options": { "raw": { "language": "json" } } },
-                "url": { "raw": "{{base_url}}/api/issues", "host": [ "{{base_url}}" ], "path": [ "api", "issues" ] },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Zelfde parkeerprobleem\",\n  \"content\": \"Ook bij mij staat er een auto op de stoep.\",\n  \"category_id\": {{category_id}},\n  \"district_id\": {{district_id}},\n  \"postal_code\": \"3012AB\",\n  \"duplicate_of_id\": {{canonical_issue_id}}\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/issues",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues"
+                  ]
+                },
                 "description": "Create a hidden duplicate child linked to canonical_issue_id. Requires a user token and a canonical target the actor does not own (set canonical_issue_id from another user's open issue or a seeded canonical issue). Returns 201 with visibility hidden and duplicate_of_id set; increments canonical duplicate_count and adds duplicate participation when needed. Stores duplicate_child_issue_id."
               },
               "response": []
@@ -3565,10 +3669,36 @@
                 }
               ],
               "request": {
-                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
-                "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
-                "url": { "raw": "{{base_url}}/api/issues/{{canonical_issue_id}}/join", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{canonical_issue_id}}", "join" ] },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{canonical_issue_id}}/join",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{canonical_issue_id}}",
+                    "join"
+                  ]
+                },
                 "description": "Manually join a canonical issue as participant. Active users only. First join returns 201; repeat join is idempotent (200). Joining a duplicate child id returns 422 cannot_join_duplicate_child. Set canonical_issue_id to a visible canonical issue id."
               },
               "response": []
@@ -3576,10 +3706,36 @@
             {
               "name": "Leave Canonical Issue",
               "request": {
-                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "DELETE",
-                "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
-                "url": { "raw": "{{base_url}}/api/issues/{{canonical_issue_id}}/leave", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{canonical_issue_id}}", "leave" ] },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{canonical_issue_id}}/leave",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{canonical_issue_id}}",
+                    "leave"
+                  ]
+                },
                 "description": "Remove participation on the canonical issue. Active users only. Child route ids resolve to canonical. Returns 204 on success or 422 not_participant when not participating."
               },
               "response": []
@@ -3587,17 +3743,47 @@
             {
               "name": "List Participating Issues",
               "request": {
-                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "GET",
-                "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/api/issues?participating=1&page={{page}}&per_page={{per_page}}",
-                  "host": [ "{{base_url}}" ],
-                  "path": [ "api", "issues" ],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues"
+                  ],
                   "query": [
-                    { "key": "participating", "value": "1", "description": "Users only: owned duplicate children with active canonical participation" },
-                    { "key": "page", "value": "{{page}}" },
-                    { "key": "per_page", "value": "{{per_page}}" }
+                    {
+                      "key": "participating",
+                      "value": "1",
+                      "description": "Users only: owned duplicate children with active canonical participation"
+                    },
+                    {
+                      "key": "page",
+                      "value": "{{page}}"
+                    },
+                    {
+                      "key": "per_page",
+                      "value": "{{per_page}}"
+                    }
                   ]
                 },
                 "description": "List owned duplicate children where the user still participates on the canonical parent. Requires a user token; officers and managers receive 422. Mutually exclusive with mine=1."
@@ -3607,17 +3793,47 @@
             {
               "name": "List Issues - Include Duplicates",
               "request": {
-                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{officer_hub_active_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "GET",
-                "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/api/issues?include_duplicates=1&page={{page}}&per_page={{per_page}}",
-                  "host": [ "{{base_url}}" ],
-                  "path": [ "api", "issues" ],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues"
+                  ],
                   "query": [
-                    { "key": "include_duplicates", "value": "1", "description": "Officers and managers only: include duplicate child rows" },
-                    { "key": "page", "value": "{{page}}" },
-                    { "key": "per_page", "value": "{{per_page}}" }
+                    {
+                      "key": "include_duplicates",
+                      "value": "1",
+                      "description": "Officers and managers only: include duplicate child rows"
+                    },
+                    {
+                      "key": "page",
+                      "value": "{{page}}"
+                    },
+                    {
+                      "key": "per_page",
+                      "value": "{{per_page}}"
+                    }
                   ]
                 },
                 "description": "Officer/manager browse including duplicate children. Log in as demo.officer@example.com or a manager before running. Users receive 422 when include_duplicates is set."
@@ -3627,16 +3843,44 @@
             {
               "name": "List Duplicate Children",
               "request": {
-                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{officer_hub_active_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "GET",
-                "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/api/issues/{{canonical_issue_id}}/duplicates?page={{page}}&per_page={{per_page}}",
-                  "host": [ "{{base_url}}" ],
-                  "path": [ "api", "issues", "{{canonical_issue_id}}", "duplicates" ],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{canonical_issue_id}}",
+                    "duplicates"
+                  ],
                   "query": [
-                    { "key": "page", "value": "{{page}}" },
-                    { "key": "per_page", "value": "{{per_page}}" }
+                    {
+                      "key": "page",
+                      "value": "{{page}}"
+                    },
+                    {
+                      "key": "per_page",
+                      "value": "{{per_page}}"
+                    }
                   ]
                 },
                 "description": "Officer/manager-only paginated list of duplicate children for a canonical issue (oldest first, full Issue payloads). Child route ids return 422 issue_not_canonical. Users receive 403. Set canonical_issue_id to a canonical issue."
@@ -3646,35 +3890,100 @@
             {
               "name": "Mark Issue as Duplicate",
               "request": {
-                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{officer_hub_active_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
-                "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
-                "body": { "mode": "raw", "raw": "{\n  \"duplicate_of_id\": {{canonical_issue_id}}\n}", "options": { "raw": { "language": "json" } } },
-                "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/mark-duplicate", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "mark-duplicate" ] },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"duplicate_of_id\": {{canonical_issue_id}}\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{issue_id}}/mark-duplicate",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{issue_id}}",
+                    "mark-duplicate"
+                  ]
+                },
                 "description": "Officer/manager Tier C workflow: link an existing issue (issue_id path) to canonical duplicate_of_id. Different owners: 200 returns re-parented child Issue (hidden, duplicate_of_id set). Same owner: 200 returns canonical Issue (child hard-deleted). Officers need hub-active. Child must be linkable (open/in_behandeling, unassigned, no resolution, no duplicate children). Conflicts: 404 duplicate_target_not_found; 422 issue_not_linkable, issue_has_duplicates, issue_is_duplicate_child, cannot_duplicate_self, issue_not_matchable."
-              },
-              "response": []
-            },
-            {
-              "name": "Mark Issue as Duplicate",
-              "request": {
-                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
-                "method": "POST",
-                "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
-                "body": { "mode": "raw", "raw": "{\n  \"duplicate_of_id\": {{canonical_issue_id}}\n}", "options": { "raw": { "language": "json" } } },
-                "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/mark-duplicate", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "mark-duplicate" ] },
-                "description": "Officer/manager workflow: link route issue_id as duplicate of canonical_issue_id. Tier C: hub-active required for officers. Different owners: re-parent child (hidden, duplicate_of_id set) and return child Issue. Same owner: merge participants onto canonical, hard-delete child, return canonical Issue. Child must be linkable (open/in_behandeling, unassigned, no resolution). Log in as demo.officer@example.com with an active shift. Use two distinct open issues in the officer district for different-owner branch."
               },
               "response": []
             },
             {
               "name": "Delete Duplicate Child (Keep Participation)",
               "request": {
-                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "DELETE",
-                "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
-                "body": { "mode": "raw", "raw": "{\n  \"leave_participation\": false\n}", "options": { "raw": { "language": "json" } } },
-                "url": { "raw": "{{base_url}}/api/issues/{{duplicate_child_issue_id}}", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{duplicate_child_issue_id}}" ] },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"leave_participation\": false\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{duplicate_child_issue_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{duplicate_child_issue_id}}"
+                  ]
+                },
                 "description": "Hard delete an owned duplicate child while keeping canonical participation (default). Optional JSON body leave_participation false. Decrements canonical duplicate_count. Use duplicate_child_issue_id from Create Issue as Duplicate."
               },
               "response": []
@@ -3682,10 +3991,35 @@
             {
               "name": "Show Canonical as Participant",
               "request": {
-                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "GET",
-                "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
-                "url": { "raw": "{{base_url}}/api/issues/{{canonical_issue_id}}", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{canonical_issue_id}}" ] },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{canonical_issue_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{canonical_issue_id}}"
+                  ]
+                },
                 "description": "Show a canonical issue as a participating user who does not own it. Expect redacted title/content/location/attachments and author { is_participant: true } while status and officer_resolution remain visible. Run after Join Canonical Issue with a user who is not the canonical owner."
               },
               "response": []
@@ -3810,7 +4144,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{officer_hub_active_token}}",
                   "type": "string"
                 }
               ]
@@ -3910,7 +4244,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{officer_hub_active_token}}",
                   "type": "string"
                 }
               ]
@@ -3960,7 +4294,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{officer_hub_active_token}}",
                   "type": "string"
                 }
               ]
@@ -4096,7 +4430,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{officer_hub_active_token}}",
                   "type": "string"
                 }
               ]
@@ -4336,7 +4670,7 @@
                   "bearer": [
                     {
                       "key": "token",
-                      "value": "{{access_token}}",
+                      "value": "{{officer_hub_active_token}}",
                       "type": "string"
                     }
                   ]
@@ -4403,16 +4737,45 @@
             {
               "name": "List Status History",
               "request": {
-                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{officer_hub_active_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "GET",
-                "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/api/issues/{{issue_id}}/status-history?page={{page}}&per_page={{per_page}}",
-                  "host": [ "{{base_url}}" ],
-                  "path": [ "api", "issues", "{{issue_id}}", "status-history" ],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{issue_id}}",
+                    "status-history"
+                  ],
                   "query": [
-                    { "key": "page", "value": "{{page}}" },
-                    { "key": "per_page", "value": "{{per_page}}", "description": "Default 20, max 100" }
+                    {
+                      "key": "page",
+                      "value": "{{page}}"
+                    },
+                    {
+                      "key": "per_page",
+                      "value": "{{per_page}}",
+                      "description": "Default 20, max 100"
+                    }
                   ]
                 },
                 "description": "Officer/manager-only paginated status history, newest first. Tier B (no hub-active required). Duplicate child route ids resolve to canonical parent. Users receive 403. per_page defaults to 20, capped at 100."
@@ -4427,7 +4790,7 @@
                   "bearer": [
                     {
                       "key": "token",
-                      "value": "{{access_token}}",
+                      "value": "{{officer_hub_active_token}}",
                       "type": "string"
                     }
                   ]
@@ -4464,7 +4827,7 @@
                   "bearer": [
                     {
                       "key": "token",
-                      "value": "{{access_token}}",
+                      "value": "{{officer_hub_active_token}}",
                       "type": "string"
                     }
                   ]
@@ -4626,7 +4989,7 @@
                   "bearer": [
                     {
                       "key": "token",
-                      "value": "{{access_token}}",
+                      "value": "{{officer_hub_active_token}}",
                       "type": "string"
                     }
                   ]
@@ -4680,7 +5043,7 @@
                   "bearer": [
                     {
                       "key": "token",
-                      "value": "{{access_token}}",
+                      "value": "{{officer_hub_active_token}}",
                       "type": "string"
                     }
                   ]
@@ -4909,7 +5272,7 @@
                   "bearer": [
                     {
                       "key": "token",
-                      "value": "{{access_token}}",
+                      "value": "{{officer_hub_active_token}}",
                       "type": "string"
                     }
                   ]
@@ -5110,7 +5473,7 @@
                   "bearer": [
                     {
                       "key": "token",
-                      "value": "{{access_token}}",
+                      "value": "{{officer_hub_active_token}}",
                       "type": "string"
                     }
                   ]
@@ -5150,7 +5513,7 @@
                   "bearer": [
                     {
                       "key": "token",
-                      "value": "{{access_token}}",
+                      "value": "{{officer_hub_active_token}}",
                       "type": "string"
                     }
                   ]
@@ -5208,7 +5571,7 @@
                   "bearer": [
                     {
                       "key": "token",
-                      "value": "{{access_token}}",
+                      "value": "{{officer_hub_active_token}}",
                       "type": "string"
                     }
                   ]
@@ -5312,7 +5675,7 @@
                   "bearer": [
                     {
                       "key": "token",
-                      "value": "{{access_token}}",
+                      "value": "{{officer_hub_active_token}}",
                       "type": "string"
                     }
                   ]
@@ -5448,7 +5811,7 @@
                   "bearer": [
                     {
                       "key": "token",
-                      "value": "{{access_token}}",
+                      "value": "{{officer_hub_active_token}}",
                       "type": "string"
                     }
                   ]
@@ -5499,7 +5862,7 @@
                   "bearer": [
                     {
                       "key": "token",
-                      "value": "{{access_token}}",
+                      "value": "{{officer_hub_active_token}}",
                       "type": "string"
                     }
                   ]
@@ -5942,7 +6305,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{officer_hub_active_token}}",
                   "type": "string"
                 }
               ]
@@ -5993,7 +6356,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{officer_hub_active_token}}",
                   "type": "string"
                 }
               ]
@@ -6045,7 +6408,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{officer_hub_active_token}}",
                   "type": "string"
                 }
               ]
@@ -6083,7 +6446,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{officer_hub_active_token}}",
                   "type": "string"
                 }
               ]
@@ -6550,7 +6913,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{officer_hub_active_token}}",
                   "type": "string"
                 }
               ]
@@ -6709,7 +7072,7 @@
                   "bearer": [
                     {
                       "key": "token",
-                      "value": "{{access_token}}",
+                      "value": "{{officer_hub_active_token}}",
                       "type": "string"
                     }
                   ]
@@ -6734,7 +7097,7 @@
                     "assign-self"
                   ]
                 },
-                "description": "Handoff step 2: successor officer assign-self after prior unassign. Switch access_token to the successor officer hub-active token before running."
+                "description": "Handoff step 2: successor officer assign-self after prior unassign. Set officer_hub_active_token to the successor officer's hub-login token before running."
               },
               "response": []
             },
@@ -6746,7 +7109,7 @@
                   "bearer": [
                     {
                       "key": "token",
-                      "value": "{{access_token}}",
+                      "value": "{{officer_hub_active_token}}",
                       "type": "string"
                     }
                   ]
@@ -7126,7 +7489,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{officer_hub_active_token}}",
                   "type": "string"
                 }
               ]
@@ -7211,7 +7574,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{officer_hub_active_token}}",
                   "type": "string"
                 }
               ]
@@ -7261,7 +7624,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{officer_hub_active_token}}",
                   "type": "string"
                 }
               ]
@@ -7331,7 +7694,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{officer_hub_active_token}}",
                   "type": "string"
                 }
               ]
@@ -7418,7 +7781,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{officer_hub_active_token}}",
                   "type": "string"
                 }
               ]
@@ -7575,7 +7938,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{officer_hub_active_token}}",
                   "type": "string"
                 }
               ]
@@ -8072,6 +8435,11 @@
     },
     {
       "key": "officer_hub_active_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "officer_access_token",
       "value": "",
       "type": "string"
     },

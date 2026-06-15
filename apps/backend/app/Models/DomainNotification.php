@@ -50,6 +50,7 @@ class DomainNotification extends Model
         return [
             'recipient_type' => ActorType::class,
             'type' => NotificationType::class,
+            'actor_type' => ActorType::class,
             'payload' => 'array',
             'is_read' => 'boolean',
         ];

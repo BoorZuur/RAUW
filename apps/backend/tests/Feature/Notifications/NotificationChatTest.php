@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Notifications;
 
+use App\Enums\ActorType;
 use App\Enums\ChatStatus;
 use App\Enums\IssueMessageType;
 use App\Enums\IssueStatus;
@@ -88,7 +89,7 @@ class NotificationChatTest extends TestCase
         $this->assertSame('Nieuw bericht', $notification->title);
         $this->assertStringContainsString($issue->title, $notification->body);
         $this->assertStringContainsString($officer->username, $notification->body);
-        $this->assertSame('officer', $notification->actor_type);
+        $this->assertSame(ActorType::Officer, $notification->actor_type);
         $this->assertSame($officer->id, $notification->actor_id);
 
         $messageId = IssueMessage::query()
@@ -120,7 +121,7 @@ class NotificationChatTest extends TestCase
 
         $this->assertNotNull($notification);
         $this->assertSame('Nieuw bericht', $notification->title);
-        $this->assertSame('user', $notification->actor_type);
+        $this->assertSame(ActorType::User, $notification->actor_type);
         $this->assertSame($owner->id, $notification->actor_id);
     }
 
