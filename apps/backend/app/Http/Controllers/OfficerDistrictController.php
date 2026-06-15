@@ -7,6 +7,7 @@ use App\Enums\ActorType;
 use App\Http\Requests\DistrictAssignments\UpdateOfficerDistrictsRequest;
 use App\Models\Manager;
 use App\Models\Officer;
+use App\Support\ActorDistrictAccess;
 use App\Support\ManagerOfficerHubAccess;
 use Illuminate\Http\JsonResponse;
 
@@ -39,6 +40,7 @@ class OfficerDistrictController extends Controller
         ManagerOfficerHubAccess::assertManagerCanManageOfficer($manager, $officer);
 
         $officer->districts()->sync($request->districtIds());
+        ActorDistrictAccess::forget($officer);
 
         // Reload the relations the profile resource embeds so the response
         // reflects the freshly synced districts without lazy queries.

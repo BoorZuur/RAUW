@@ -2,7 +2,6 @@
 
 namespace Database\Factories;
 
-use App\Enums\ChatStatus;
 use App\Enums\IssueStatus;
 use App\Enums\Visibility;
 use App\Models\Category;
@@ -32,7 +31,6 @@ class IssueFactory extends Factory
             'assigned_officer_id' => null,
             'district_id' => District::factory(),
             'duplicate_of_id' => null,
-            'chat_closed_by_officer_id' => null,
             'title' => fake()->sentence(4),
             'content' => fake()->paragraph(),
             'postal_code' => fake()->postcode(),
@@ -40,7 +38,6 @@ class IssueFactory extends Factory
             'latitude' => fake()->latitude(51.8, 52.5),
             'longitude' => fake()->longitude(4.0, 5.5),
             'status' => $status,
-            'chat_status' => fake()->randomElement(ChatStatus::cases()),
             'priority' => fake()->optional()->numberBetween(1, 40),
             'duplicate_count' => 0,
             'participant_count' => 0,

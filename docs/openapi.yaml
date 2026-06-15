@@ -28,19 +28,19 @@ info:
     **Officer shared shift:** Officers share one shift clock via
     `officers.hub_active_until`. **Tier C** workflow writes require `is_active`
     and a future `hub_active_until` — not the bearer token's Sanctum `hub-active`
-    ability (audit-only).     **Tier B** browse reads work without an active shift:
+    ability (audit-only). **Tier B** browse reads work without an active shift:
     `GET /api/issues`, `GET /api/issues/{issueId}` (embeds `officer_resolution`
     when present), `GET /api/issues/{issueId}/duplicates`,
     `GET /api/issues/{issueId}/participants`,
     `GET /api/issues/{issueId}/status-history`,
-    `GET /api/issues/{issueId}/officer-resolution`, `GET /api/officers/{officerId}`,
-    and authenticated issue/resolution attachment downloads. Issue list/show/duplicates/participants/status-history
-    are district-scoped for officers and ordinary managers; main managers are
-    city-wide. Officers must send
-    when present), `GET /api/issues/{issueId}/officer-resolution`,
+    `GET /api/issues/{issueId}/officer-resolution`,
     `GET /api/issues/{issueId}/officer-updates`,
-    `GET /api/issues/{issueId}/comments`, and authenticated
-    issue/resolution/officer-update attachment downloads. Officers must send
+    `GET /api/issues/{issueId}/comments`,
+    `GET /api/officers/{officerId}`,
+    `GET /api/issues/{issueId}/chats`, `GET /api/issues/{issueId}/chats/{chatId}/messages`,
+    and authenticated issue/resolution/officer-update attachment downloads.
+    Issue list/show/duplicates/participants/status-history are district-scoped
+    for officers and ordinary managers; main managers are city-wide. Officers must send
     `latitude` and `longitude` on `POST /api/auth/login`; hub-eligible login or
     `POST /api/auth/start-shift` starts the shift for **10 hours**
     (`OFFICER_HUB_ACTIVE_TTL_HOURS`, default 10). Outside-radius login does not
@@ -50,9 +50,14 @@ info:
 
     **Officer issue writes** use validate-after-lock: visibility and district
     checks run before the transaction; assignee, transition, assignability, and
-    duplicate-resolution checks run on the locked issue row. **Tier C** workflow
-    writes also include `POST /api/issues/{issueId}/mark-duplicate` and
-    `DELETE /api/issues/{issueId}/officer-resolution/attachments/{attachmentId}`.
+    duplicate-resolution checks run on the locked issue row.     **Tier C** workflow
+    writes also include `POST /api/issues/{issueId}/mark-duplicate`,
+    `DELETE /api/issues/{issueId}/officer-resolution/attachments/{attachmentId}`,
+    `PATCH /api/issues/{issueId}/chats/open`, `PATCH /api/issues/{issueId}/chats/{chatId}/close`,
+    `POST /api/issues/{issueId}/chats/{chatId}/messages`,
+    `POST /api/issues/{issueId}/chats/{chatId}/messages/mark-read`, and
+    `GET .../chats/.../attachments/.../download` for officers (chat attachment
+    download is not Tier B whitelisted).
     Officer-resolution attachment uploads (POST/PATCH) enforce the cumulative cap
     and perform disk I/O inside the same `lockForUpdate` transaction so concurrent
     requests cannot exceed the per-resolution limit.
@@ -87,6 +92,22 @@ info:
     | `cannot_duplicate_self` | 422 | Mark-duplicate: child and canonical are the same issue |
     | `issue_not_matchable` | 422 | Mark-duplicate: canonical not `open` or `in_behandeling` |
     | `issue_is_duplicate_child` | 422 | Mark-duplicate: route child is already a duplicate |
+    | `chat_closed` | 422 | Send or mark-read while chat status is `closed` |
+    | `chat_user_not_eligible` | 422 | Open chat: `user_id` is not issue owner or participant |
+    | `not_chat_participant` | 403 | List/view/send/download outside the 1:1 chat partnership |
+    | `chat_not_found` | 404 | Chat id does not belong to the canonical issue in the route |
+
+    **Issue chat (v1):** Multiple parallel 1:1 chats per canonical issue (unique
+    `issue_id` + `user_id`). Only the assigned officer opens or closes chats.
+    Eligible users are the canonical owner or participants. Managers are excluded
+    (**403**). Users with no chats receive **200** with `data: []`. Messages may
+    be read in open or closed chats; send and mark-read require an open chat.
+    Attachment-only messages are allowed (max **3** images, **5 MB** each). No
+    message edit/delete in v1. Officer reassignment handoff: `POST .../unassign-self`
+    then `POST .../assign-self` (no takeover — assign-self keeps **409**
+    `issue_already_assigned`). Unassign closes all open chats without a system
+    message; transitioning the issue to `gesloten` closes all open chats with one
+    system message per chat.
 
     Health check **GET** `/up` (Laravel bootstrap) is intentionally omitted
     from this spec; it is not part of the JSON API contract under `/api`.
@@ -623,14 +644,25 @@ paths:
       summary: Update my district assignments
       description: >-
         Self-service district assignment endpoint for active managers and active
-        officers. Replaces the authenticated actor's district assignments with
-        the supplied district_ids array and returns the refreshed auth profile.
-        Users receive **403** (`This action is unauthorized.`) because they do
-        not have district assignments. Inactive accounts receive **403**
-        (`This account is inactive.`) from global inactive-actor middleware
-        (not whitelisted). The request updates only actor district pivots and
-        never modifies the singular issues.district_id issue location/reference
-        field.
+        officers (including main managers). Replaces the authenticated actor's
+        district assignments with the supplied district_ids array and returns the
+        refreshed auth profile. Users receive **403** (`This action is
+        unauthorized.`) because they do not have district assignments. Inactive
+        accounts receive **403** (`This account is inactive.`) from global
+        inactive-actor middleware (not whitelisted). The request updates only
+        actor district pivots and never modifies the singular issues.district_id
+        issue location/reference field.
+
+        When the authenticated officer or manager has a non-null `hub_id`, every
+        `district_ids` entry must reference an **active** district within that
+        assigned hub (`districts.hub_id = actor.hub_id`). Cross-hub district IDs
+        return **422** validation errors on `district_ids.*`. When `hub_id` is
+        null, any active district is allowed. This hub boundary applies to
+        **self-service only**; main managers retain city-wide issue visibility
+        regardless of their district pivot assignments. Manager-admin district
+        updates (`PATCH /api/managers/{managerId}/districts`,
+        `PATCH /api/officers/{officerId}/districts`) enforce the target actor's
+        hub separately.
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -709,7 +741,14 @@ paths:
                   value:
                     message: This account is inactive.
         '422':
-          $ref: '#/components/responses/ValidationError'
+          description: >-
+            Validation failed. Duplicate `district_ids`, unknown or inactive
+            districts, or — when `hub_id` is set — district IDs outside the
+            actor's assigned hub (`district_ids.*`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
 
   /api/main-managers:
     get:
@@ -2266,6 +2305,13 @@ paths:
         and optional GPS distance bands. Active regular users only; officers,
         managers, inactive users, and unauthenticated requests receive **403**
         (`This action is unauthorized.`). Does not persist an issue.
+
+        The candidate pool respects the same visibility rules as issue list/show
+        for users: `visibility = visible` canonical issues, the actor's own
+        issues (including hidden), and canonical issues the actor participates
+        on (same rules as `GET /api/issues/{issueId}`). Other users' hidden
+        issues are **excluded** from `matches`. The actor's own hidden issues may
+        appear in `own_matches` only (`linkable: false`).
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -2314,16 +2360,17 @@ paths:
       summary: Get an issue by id
       description: >-
         Return one issue with eager-loaded relations. Active users may view issues
-        with `visibility = visible` or issues they own (`issues.user_id` match),
-        including their own hidden issues, or canonical issues they participate on
-        (title/content/location/author/attachments redacted at the resource layer).
-        Active officers and ordinary managers may view issues in their assigned
-        districts only, including hidden issues in those districts. Main managers
-        may view any issue city-wide. Inactive actors receive 403 from global
-        middleware. When the issue exists but is not visible to the caller (for
-        example a hidden issue owned by another user, or an issue outside the
-        actor's district scope), the backend returns 404 rather than 403 to avoid
-        leaking existence.
+        with `visibility = visible`, issues they own (`issues.user_id` match,
+        including their own hidden issues), or canonical issues they participate
+        on (title/content/location/author/attachments redacted at the resource
+        layer). Hidden issues owned by other users are not visible and return
+        **404** (not 403) to avoid leaking existence — the same visibility pool
+        applies to `POST /api/issues/similar-check`. Active officers and ordinary
+        managers may view issues in their assigned districts only, including
+        hidden issues in those districts. Main managers may view any issue
+        city-wide. Inactive actors receive 403 from global middleware. When the
+        issue exists but is outside the actor's district scope, the backend also
+        returns 404 rather than 403.
         `officer_resolution` is embedded with officer and attachments when a
         report exists. Active officers and managers also receive `status_history`
         (newest first, without coordinates); regular users never receive
@@ -4028,6 +4075,439 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
 
+  /api/issues/{issueId}/chats:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags: [ Issue Chat ]
+      summary: List issue chats
+      description: >-
+        List 1:1 chats on the canonical issue. Assignee officers see all chats on
+        the issue (oldest first). Eligible users (canonical owner or participant)
+        see only their own chat; when none exist the response is **200** with
+        `data: []`. Non-assignee officers receive **403** `not_assigned_officer`.
+        Ineligible users receive **403** `not_chat_participant`. Managers receive
+        **403** (`This action is unauthorized.`). Duplicate child route ids
+        resolve to the canonical parent. **Tier B** for officers: no active shared
+        shift required.
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Paginated list of chats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/IssueChat'
+                  links:
+                    type: object
+                    additionalProperties: true
+                  meta:
+                    type: object
+                    properties:
+                      current_page:
+                        type: integer
+                      per_page:
+                        type: integer
+                      total:
+                        type: integer
+                      last_page:
+                        type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                not_assigned_officer:
+                  value:
+                    message: Only the assigned officer may list chats on this issue.
+                    code: not_assigned_officer
+                not_chat_participant:
+                  value:
+                    message: You are not a participant in this chat.
+                    code: not_chat_participant
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/issues/{issueId}/chats/open:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Issue Chat ]
+      summary: Open or reopen a 1:1 chat
+      description: >-
+        Open (or idempotently reopen) a 1:1 chat between the assigned officer and
+        an eligible user (`user_id`: canonical owner or participant). Returns **201**
+        when a new chat row is created and opened; **200** when the chat is already
+        open or an existing closed chat is reopened. Blocked on `gesloten` issues
+        (**422** `issue_closed`). Ineligible `user_id` → **422**
+        `chat_user_not_eligible`. Non-assignee officers → **403**
+        `not_assigned_officer`. **Tier C** for officers (`hub_active_required`
+        without an active shared shift). Managers and users receive **403**.
+        Duplicate child route ids resolve to the canonical parent.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueChatOpen'
+            example:
+              user_id: 1
+      responses:
+        '200':
+          description: Chat already open or reopened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueChat'
+        '201':
+          description: New chat opened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueChat'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                hub_active_required:
+                  value:
+                    message: Hub-active session required.
+                    code: hub_active_required
+                not_assigned_officer:
+                  value:
+                    message: Only the assigned officer may open a chat on this issue.
+                    code: not_assigned_officer
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Unprocessable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                issue_closed:
+                  value:
+                    message: Cannot open a chat on a closed issue.
+                    code: issue_closed
+                chat_user_not_eligible:
+                  value:
+                    message: The selected user is not eligible for a chat on this issue.
+                    code: chat_user_not_eligible
+
+  /api/issues/{issueId}/chats/{chatId}/close:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: chatId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Issue Chat ]
+      summary: Close a single chat
+      description: >-
+        Close one chat on the canonical issue. Assignee officer only. Idempotent
+        when the chat is already closed (**200**). Does not insert a system
+        message (contrast with issue `gesloten` lifecycle). **Tier C** for
+        officers. Managers and users receive **403**. Chat not on canonical issue
+        → **404** `chat_not_found`.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Closed chat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueChat'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                chat_not_found:
+                  value:
+                    message: Chat not found for this issue.
+                    code: chat_not_found
+
+  /api/issues/{issueId}/chats/{chatId}/messages:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: chatId
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags: [ Issue Chat ]
+      summary: List chat messages
+      description: >-
+        List messages for a chat in chronological order (oldest first). Allowed
+        when the chat is open or closed. Only chat participants may read: assignee
+        officer or the chat's `user_id`. Managers receive **403**. **Tier B** for
+        officers (no active shared shift required).
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Paginated messages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/IssueMessage'
+                  links:
+                    type: object
+                    additionalProperties: true
+                  meta:
+                    type: object
+                    properties:
+                      current_page:
+                        type: integer
+                      per_page:
+                        type: integer
+                      total:
+                        type: integer
+                      last_page:
+                        type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                not_chat_participant:
+                  value:
+                    message: You are not a participant in this chat.
+                    code: not_chat_participant
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [ Issue Chat ]
+      summary: Send a chat message
+      description: >-
+        Send a text message and/or up to three image attachments in an **open**
+        chat. `content` is optional when `files` are present; at least one of
+        text or attachments is required. Active users and officers may send;
+        managers are excluded (**403**). Closed chat → **422** `chat_closed`.
+        **Tier C** for officers. Images only: jpg, jpeg, png, gif, webp; max
+        **3** files, **5 MB** each. No edit/delete in v1.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IssueChatMessageCreate'
+      responses:
+        '201':
+          description: Created message
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueMessage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                hub_active_required:
+                  value:
+                    message: Hub-active session required.
+                    code: hub_active_required
+                not_chat_participant:
+                  value:
+                    message: You are not a participant in this chat.
+                    code: not_chat_participant
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Validation or chat closed
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ErrorResponse'
+                  - $ref: '#/components/schemas/ValidationError'
+              examples:
+                chat_closed:
+                  value:
+                    message: Cannot send or mark messages read while the chat is closed.
+                    code: chat_closed
+
+  /api/issues/{issueId}/chats/{chatId}/messages/mark-read:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: chatId
+        in: path
+        required: true
+        schema:
+          type: integer
+    post:
+      tags: [ Issue Chat ]
+      summary: Mark other party's messages read
+      description: >-
+        Mark unread messages from the other chat participant as read in an **open**
+        chat. Returns `{ "marked_read": <integer> }`. Closed chat → **422**
+        `chat_closed`. Active users and officers only; managers **403**. **Tier C**
+        for officers.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Messages marked read
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueChatMarkReadResponse'
+              example:
+                marked_read: 2
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Chat closed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                chat_closed:
+                  value:
+                    message: Cannot send or mark messages read while the chat is closed.
+                    code: chat_closed
+
+  /api/issues/{issueId}/chats/{chatId}/messages/{messageId}/attachments/{attachmentId}/download:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: chatId
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: messageId
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: attachmentId
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags: [ Issue Chat ]
+      summary: Download chat message attachment
+      description: >-
+        Stream a chat message attachment from non-public local storage. Only chat
+        participants may download (assignee officer or the chat's `user_id`).
+        Outsiders receive **403** `not_chat_participant`. Mismatched chat,
+        message, or attachment ids → **404**. Users are not hub-gated; officers
+        require an active shared shift (**Tier C**, route not whitelisted).
+        Open or closed chat; read access follows chat membership, not chat status.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Attachment file stream
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                not_chat_participant:
+                  value:
+                    message: You are not a participant in this chat.
+                    code: not_chat_participant
+                hub_active_required:
+                  value:
+                    message: Hub-active session required.
+                    code: hub_active_required
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /api/categories:
     get:
       tags: [ Categories ]
@@ -4887,6 +5367,16 @@ components:
         errors:
           type: object
           additionalProperties: true
+
+    ErrorResponse:
+      type: object
+      description: Structured API error with stable machine-readable code.
+      required: [ message, code ]
+      properties:
+        message:
+          type: string
+        code:
+          type: string
 
     ValidationError:
       type: object
@@ -5829,10 +6319,13 @@ components:
           uniqueItems: true
           description: >-
             Full replacement set of active district IDs. Use an empty array to
-            clear all actor district assignments. When the target officer or
-            manager has a hub_id, every district must belong to that hub;
-            cross-hub IDs return **422**. Duplicate IDs and inactive or unknown
-            districts return validation errors.
+            clear all actor district assignments. When the actor (self-service)
+            or target (manager-admin) officer or manager has a non-null
+            `hub_id`, every district must be active and belong to that hub
+            (`districts.hub_id`); cross-hub IDs return **422** on
+            `district_ids.*`. When `hub_id` is null, any active district is
+            allowed. Duplicate IDs and inactive or unknown districts also return
+            validation errors.
           items:
             type: integer
 
@@ -6820,6 +7313,176 @@ components:
           type: string
           enum: [ visible, hidden ]
           description: Target visibility for the comment.
+
+    IssueChat:
+      type: object
+      description: >-
+        1:1 chat between the assigned officer and one eligible user on a canonical
+        issue. Unique per (`issue_id`, `user_id`).
+      required: [ id, issue_id, user_id, status, created_at, updated_at ]
+      properties:
+        id:
+          type: integer
+        issue_id:
+          type: integer
+        user_id:
+          type: integer
+        status:
+          type: string
+          enum: [ open, closed ]
+        partner:
+          $ref: '#/components/schemas/IssueChatPartner'
+        opened_by_officer_id:
+          type: integer
+          nullable: true
+        closed_by_officer_id:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    IssueChatPartner:
+      type: object
+      description: >-
+        Alias-safe summary of the chat's citizen partner. Anonymous owners and
+        anonymous participants expose only `is_anonymous` and `display_name`.
+      properties:
+        is_anonymous:
+          type: boolean
+        id:
+          type: integer
+          nullable: true
+        username:
+          type: string
+          nullable: true
+        display_name:
+          type: string
+          nullable: true
+
+    IssueChatOpen:
+      type: object
+      required: [ user_id ]
+      properties:
+        user_id:
+          type: integer
+          description: Canonical owner or participant user id.
+
+    IssueMessage:
+      type: object
+      description: >-
+        Chat message within an issue_chat. System messages expose `meta`; regular
+        messages return `meta: null`. No edit/delete in v1.
+      required: [ id, issue_chat_id, issue_id, message_type, sender_type, is_read, created_at, updated_at ]
+      properties:
+        id:
+          type: integer
+        issue_chat_id:
+          type: integer
+        issue_id:
+          type: integer
+        message_type:
+          type: string
+          enum: [ message, system ]
+        sender_type:
+          type: string
+          enum: [ user, officer, system ]
+        content:
+          type: string
+          nullable: true
+          maxLength: 2000
+        meta:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Present for system messages only (e.g. code chat_closed_status_gesloten).
+        is_read:
+          type: boolean
+        sender:
+          $ref: '#/components/schemas/IssueMessageSender'
+        attachments:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/IssueMessageAttachment'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    IssueMessageSender:
+      type: object
+      description: >-
+        Compact sender summary. User senders on anonymous issues may be redacted.
+        System senders expose only `type: system`.
+      properties:
+        type:
+          type: string
+          enum: [ user, officer, system ]
+        id:
+          type: integer
+          nullable: true
+        username:
+          type: string
+          nullable: true
+        display_name:
+          type: string
+          nullable: true
+        is_anonymous:
+          type: boolean
+          nullable: true
+
+    IssueMessageAttachment:
+      type: object
+      properties:
+        id:
+          type: integer
+        issue_message_id:
+          type: integer
+        original_name:
+          type: string
+        file_type:
+          type: string
+        file_size:
+          type: integer
+        uploaded_at:
+          type: string
+          format: date-time
+        download_url:
+          type: string
+          format: uri
+          description: Authenticated API download URL for the attachment.
+
+    IssueChatMessageCreate:
+      type: object
+      description: >-
+        Multipart body for sending a chat message. At least one of `content` or
+        `files` is required. `content` may be omitted when attachments are present.
+      properties:
+        content:
+          type: string
+          maxLength: 2000
+          description: Optional text when one or more files are attached.
+        files:
+          type: array
+          maxItems: 3
+          items:
+            type: string
+            format: binary
+          description: Optional images (jpg, jpeg, png, gif, webp). Max 3, 5 MB each.
+
+    IssueChatMarkReadResponse:
+      type: object
+      required: [ marked_read ]
+      properties:
+        marked_read:
+          type: integer
+          description: Count of messages marked read in this request.
 
     OfficerIssueUpdate:
       type: object

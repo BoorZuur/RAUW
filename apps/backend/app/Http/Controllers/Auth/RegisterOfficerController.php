@@ -10,6 +10,7 @@ use App\Enums\ActorType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\RegisterOfficerRequest;
 use App\Models\Officer;
+use App\Support\ActorDistrictAccess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 
@@ -53,6 +54,7 @@ class RegisterOfficerController extends Controller
         // Persist any optional district assignments through the pivot. New
         // officers may register with no districts at all.
         $officer->districts()->sync($request->districtIds());
+        ActorDistrictAccess::forget($officer);
 
         // Eager-load the compact district and department relations so
         // AuthProfileResource embeds the same keys as login without lazy queries.

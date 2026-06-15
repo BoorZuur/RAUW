@@ -7,6 +7,7 @@ use App\Actions\Auth\EndOfficerShift;
 use App\Enums\ActorType;
 use App\Http\Requests\HubAssignments\UpdateOfficerHubRequest;
 use App\Models\Officer;
+use App\Support\ActorDistrictAccess;
 use Illuminate\Http\JsonResponse;
 
 class OfficerHubController extends Controller
@@ -28,6 +29,7 @@ class OfficerHubController extends Controller
     {
         $officer->update(['hub_id' => $request->integer('hub_id')]);
         $officer->districts()->sync([]);
+        ActorDistrictAccess::forget($officer);
 
         $this->endOfficerShift->end($officer);
 
