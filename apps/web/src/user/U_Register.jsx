@@ -5,6 +5,11 @@ import { Eye, EyeClosed, Lock, Mail, User } from "lucide-react";
 import RauwLogoImg from '../assets/LogoRAUW.png';
 import BgRotterdam2 from '../assets/AchtergrondRotterdam4.webp';
 
+const apiClient = axios.create({
+    baseURL: 'http://localhost:8001/api',
+    headers: { 'Accept': 'application/json' }
+});
+
 export default function Register() {
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
@@ -16,15 +21,28 @@ export default function Register() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (password !== confirmPassword) { setError('Wachtwoorden komen niet overeen.'); return; }
+        if (password !== confirmPassword) {
+            setError('Wachtwoorden komen niet overeen.');
+            return;
+        }
+
         try {
-            const response = await axios.post('http://localhost:8001/api/auth/register/user', { username, email, password, confirm_password: confirmPassword });
+            // Gebruik van apiClient in plaats van axios direct
+            const response = await apiClient.post('/auth/register/user', {
+                username,
+                email,
+                password,
+                confirm_password: confirmPassword
+            });
+
             if (response.data.access_token) {
                 localStorage.setItem('auth_token', response.data.access_token);
+                localStorage.setItem('user_type', 'user');
+                navigate('/feed');
             }
-            localStorage.setItem('user_type', 'user');
-            navigate('/feed');
-        } catch (err) { setError('Registratie mislukt.'); }
+        } catch (err) {
+            setError('Registratie mislukt.');
+        }
     };
 
     const fields = [
