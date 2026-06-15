@@ -8,7 +8,7 @@ import Register from "./user/U_Register.jsx";
 import Map from "./user/Map.jsx";
 import Feed from "./user/Feed.jsx";
 import Report from "./user/Report.jsx";
-// import NewsFeed from "./user/Newsfeed.jsx";
+import NewsFeed from "./user/Newsfeed.jsx";
 // import Chat from "./user/U_Chat.jsx";
 import Account from "./user/Account.jsx";
 import AccountSettings from "./user/AccountSettings.jsx";
@@ -45,7 +45,7 @@ function App() {
                 { path: "/map", element: <Map /> },
                 { path: "/feed", element: <Feed /> },
                 { path: "/meld", element: <Report /> },
-                // { path: "/nieuws", element: <NewsFeed /> },
+                { path: "/nieuws", element: <NewsFeed /> },
                 // { path: "/chat", element: <Chat /> },
                 { path: "/account", element: <Account /> },
                 { path: "/instellingen", element: <AccountSettings /> },

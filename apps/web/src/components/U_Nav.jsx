@@ -12,13 +12,12 @@ export default function Navbar() {
     const navigate = useNavigate();
     const [showNotifications, setShowNotifications] = useState(false);
 
-    // Google Translate Script dynamisch inladen via useEffect
     useEffect(() => {
         if (!document.getElementById('google-translate-script')) {
             window.googleTranslateElementInit = () => {
                 new window.google.translate.TranslateElement(
                     {
-                        pageLanguage: 'nl', // Je database/app basistaal is Nederlands
+                        pageLanguage: 'nl',
                         layout: window.google.translate.TranslateElement.InlineLayout.SIMPLE,
                     },
                     'google_translate_element'
