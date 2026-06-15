@@ -2,136 +2,19 @@ openapi: 3.0.3
 info:
   title: WIJK App API
   description: >-
-    OpenAPI 3.0 specification (Swagger UI) for the WIJK application derived from
-    the provided ERD. This spec focuses on the main public/admin endpoints used
-    by mobile/web clients and officer/manager consoles. It uses Laravel Sanctum
-    bearer token authentication for API consumers. Issued personal access tokens
-    expire after **7 days** (10080 minutes; `SANCTUM_TOKEN_EXPIRATION` in
-    `config/sanctum.php`, default 10080).
+    OpenAPI 3.0 spec for the WIJK mobile/web API and officer/manager consoles.
 
-    CORS allows explicit origins only (no wildcard): `FRONTEND_URL` (default
-    `http://localhost:5173`) and optional `FRONTEND_URL_PRODUCTION` in
-    `config/cors.php`. Browser clients must call the API from a configured origin.
+    **Auth:** Laravel Sanctum bearer token on all `/api/*` routes except
+    registration and login. Tokens expire after 7 days (`SANCTUM_TOKEN_EXPIRATION`).
 
-    Inactive accounts: after `auth:sanctum` resolves a bearer token, global
-    middleware rejects deactivated users, officers, and managers with **403**
-    (`InactiveAccount`, `code: account_inactive`, message `This account is inactive.`)
-    on protected routes.
-    Login already returns generic **401** (`Invalid credentials.`) for inactive
-    credentials as well as unknown email or wrong password. While inactive,
-    actors may still call **GET** `/api/auth/me`, **POST** `/api/auth/logout`,
-    and **PATCH** `/api/auth/me` (inactive: username and password only; active:
-    full identity fields). All other
-    protected routes, including **PATCH** `/api/auth/me/districts`, return
-    **403** from inactive-actor middleware.
+    **Policies:** Inactive-account handling, officer Tier B/C access, structured
+    error `code` values, issue chat rules, and GPS trust are documented in
+    `docs/api-policy.md` (repository root). Per-endpoint behaviour is in each
+    operation description below.
 
-    **Officer shared shift:** Officers share one shift clock via
-    `officers.hub_active_until`. **Tier C** workflow writes require `is_active`
-    and a future `hub_active_until` — not the bearer token's Sanctum `hub-active`
-    ability (audit-only). **Tier B** browse reads work without an active shift:
-    `GET /api/issues`, `GET /api/issues/{issueId}` (embeds `officer_resolution`
-    when present), `GET /api/issues/{issueId}/duplicates`,
-    `GET /api/issues/{issueId}/participants`,
-    `GET /api/issues/{issueId}/status-history`,
-    `GET /api/issues/{issueId}/officer-resolution`,
-    `GET /api/issues/{issueId}/officer-updates`,
-    `GET /api/issues/{issueId}/comments`,
-    `GET /api/issues/{issueId}/feedback`,
-    `GET /api/officers/me/feedback`,
-    `GET /api/notifications`, `GET /api/notifications/unread-count`,
-    `PATCH /api/notifications/{notificationId}`, `PATCH /api/notifications/bulk-read`,
-    `POST /api/notifications/mark-all-read`,
-    `GET /api/officers/me/notifications`,
-    `GET /api/officers/me/notifications/unread-count`,
-    `PATCH /api/officers/me/notifications/{notificationId}`,
-    `PATCH /api/officers/me/notifications/bulk-read`,
-    `POST /api/officers/me/notifications/mark-all-read`,
-    `GET /api/community-posts`, `GET /api/community-posts/{communityPostId}`,
-    `GET /api/officers/{officerId}`, and authenticated
-    issue/resolution/officer-update/community-post attachment downloads.
-    Issue list/show/duplicates/participants/status-history are district-scoped
-    for officers and ordinary managers; main managers are city-wide. Community
-    post feeds use `CommunityPostFeedQuery` / `CommunityPostVisibilityQuery`:
-    users see posts in subscribed feed districts; officers see assigned districts;
-    managers browse city-wide. Officers must send
-    `latitude` and `longitude` on `POST /api/auth/login`; hub-eligible login or
-    `POST /api/auth/start-shift` starts the shift for **10 hours**
-    (`OFFICER_HUB_ACTIVE_TTL_HOURS`, default 10). Outside-radius login does not
-    clear an active shift. Registration does not start a shift. Logout revokes
-    only the current token; hub reassignment and manager end-shift clear the
-    shift without revoking tokens. Users and managers ignore coordinate fields.
+    **Schemas:** Reusable models and error types live in `docs/openapi/schemas.yaml`.
 
-    **Officer issue writes** use validate-after-lock: visibility and district
-    checks run before the transaction; assignee, transition, assignability, and
-    duplicate-resolution checks run on the locked issue row.     **Tier C** workflow
-    writes also include `POST /api/issues/{issueId}/mark-duplicate`,
-    `DELETE /api/issues/{issueId}/officer-resolution/attachments/{attachmentId}`,
-    `PATCH /api/issues/{issueId}/chats/open`, `PATCH /api/issues/{issueId}/chats/{chatId}/close`,
-    `POST /api/issues/{issueId}/chats/{chatId}/messages`,
-    `POST /api/issues/{issueId}/chats/{chatId}/messages/mark-read`,
-    `POST /api/issues/{issueId}/feedback`, `PATCH /api/issues/{issueId}/feedback/{feedbackId}`,
-    `DELETE /api/issues/{issueId}/feedback/{feedbackId}`, and
-    `GET .../chats/.../attachments/.../download` for officers (chat attachment
-    download is not Tier B whitelisted).
-    Officer-resolution attachment uploads (POST/PATCH) enforce the cumulative cap
-    and perform disk I/O inside the same `lockForUpdate` transaction so concurrent
-    requests cannot exceed the per-resolution limit.
-
-    **GPS trust (v1):** Coordinates are client-reported only. No mock-location
-    detection, no per-request geofence re-check. Shared shift is operational
-    policy, not cryptographic proof of presence. Login and start-shift coords
-    are audited on `officer_sessions` (`start_lat`, `start_lng`,
-    `distance_meters_at_login`).
-
-    **Structured error codes:** Hub- and account-related responses include
-    stable `code` values alongside `message` for mobile clients:
-
-    | Code | HTTP | When |
-    |------|------|------|
-    | `hub_active_required` | 403 | Officer on Tier C without active shared shift |
-    | `hub_not_assigned` | 403 | Officer login or start-shift when `hub_id` is null |
-    | `outside_hub_radius` | 403 | Start-shift outside hub radius / ineligible hub |
-    | `officer_not_in_district` | 403 | Officer workflow on an issue outside assigned districts |
-    | `not_assigned_officer` | 403 | Officer status/unassign/resolution/officer-update write without assignee ownership |
-    | `not_update_author` | 403 | PATCH/DELETE officer update when officer is assignee but not the authoring officer |
-    | `issue_already_assigned` | 409 | Self-assign when another officer already owns the issue |
-    | `officer_resolution_exists` | 409 | Duplicate POST on officer resolution (use PATCH to update) |
-    | `issue_not_assignable` | 422 | Self-assign when issue status is `opgelost` or `gesloten` |
-    | `issue_closed` | 422 | Resolution POST/PATCH/attachment DELETE when issue status is `gesloten` |
-    | `issue_closed` | 422 | Resolution or officer-update POST/PATCH/DELETE when issue status is `gesloten` |
-    | `shift_already_active` | 422 | Start-shift when shift already active |
-    | `account_inactive` | 403 | Inactive actor on a non-whitelisted route |
-    | `duplicate_target_not_found` | 404 | Mark-duplicate: child, target, or resolved canonical not visible |
-    | `issue_not_linkable` | 422 | Mark-duplicate: child not linkable (status, assignee, or resolution) |
-    | `issue_has_duplicates` | 422 | Mark-duplicate: child has duplicate children of its own |
-    | `cannot_duplicate_self` | 422 | Mark-duplicate: child and canonical are the same issue |
-    | `issue_not_matchable` | 422 | Mark-duplicate: canonical not `open` or `in_behandeling` |
-    | `issue_is_duplicate_child` | 422 | Mark-duplicate: route child is already a duplicate |
-    | `chat_closed` | 422 | Send or mark-read while chat status is `closed` |
-    | `chat_user_not_eligible` | 422 | Open chat: `user_id` is not issue owner or participant |
-    | `not_chat_participant` | 403 | List/view/send/download outside the 1:1 chat partnership |
-    | `chat_not_found` | 404 | Chat id does not belong to the canonical issue in the route |
-    | `feedback_not_allowed` | 403 | Feedback write when issue status is not `gesloten` |
-    | `feedback_window_closed` | 403 | Feedback write more than 7 days after last close |
-    | `feedback_edit_window_closed` | 403 | Feedback PATCH/DELETE more than 24 h after `submitted_at` |
-    | `feedback_already_submitted` | 409 | Duplicate feedback `(issue_id, reviewer_user_id)` on POST |
-    | `not_issue_participant` | 403 | User is not an issue participant on feedback POST |
-    | `notification_not_found` | 404 | Notification id does not belong to the authenticated actor |
-
-    **Issue chat (v1):** Multiple parallel 1:1 chats per canonical issue (unique
-    `issue_id` + `user_id`). Only the assigned officer opens or closes chats.
-    Eligible users are the canonical owner or participants. Managers are excluded
-    (**403**). Users with no chats receive **200** with `data: []`. Messages may
-    be read in open or closed chats; send and mark-read require an open chat.
-    Attachment-only messages are allowed (max **3** images, **5 MB** each). No
-    message edit/delete in v1. Officer reassignment handoff: `POST .../unassign-self`
-    then `POST .../assign-self` (no takeover — assign-self keeps **409**
-    `issue_already_assigned`). Unassign closes all open chats without a system
-    message; transitioning the issue to `gesloten` closes all open chats with one
-    system message per chat.
-
-    Health check **GET** `/up` (Laravel bootstrap) is intentionally omitted
-    from this spec; it is not part of the JSON API contract under `/api`.
+    **Health:** `GET /up` is omitted; it is not part of the `/api` JSON contract.
   version: '1.0.0'
 servers:
   - url: /
