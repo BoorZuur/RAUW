@@ -658,10 +658,3 @@ Table community_post_user {
     community_post_id
   }
 }
-
-// Community feed relationships
-Ref: officers.id < community_posts.officer_id
-Ref: users.id <> district_user.user_id
-Ref: districts.id <> district_user.district_id
-Ref: users.id <> community_post_user.user_id
-Ref: community_posts.id <> community_post_user.community_post_id
