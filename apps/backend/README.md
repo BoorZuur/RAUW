@@ -272,6 +272,45 @@ Multiple updates per issue; PATCH/DELETE restricted to the authoring officer (wh
 
 Attachment limits match resolutions: up to **3** images, **5 MB** each. PATCH validates cumulative cap under row lock. Uploads are content-sniffed as allowed images.
 
+### Issue chat (1:1 messaging)
+
+Distinct from **issue comments** (`issue_comments`): comments are a public thread on the issue (users, officers, and managers may post; managers moderate). **Issue chat** is private 1:1 messaging between the **assigned officer** and one eligible citizen per chat row (`issue_chats`, unique per canonical `issue_id` + `user_id`). Multiple parallel chats on the same issue are supported (e.g. owner + participants).
+
+**Who may participate**
+
+| Actor | List chats | Open / close | Read messages | Send / mark-read | Download attachment |
+|--------|------------|--------------|---------------|------------------|---------------------|
+| Assignee officer | All chats on issue | Yes | Any chat on issue | Open chats only | Yes (Tier C for officers) |
+| Eligible user (owner or participant) | Own chat only (`200` + `[]` when none) | No | Own chat (open or closed) | Own open chat only | Yes (not hub-gated) |
+| Non-assignee officer | **403** `not_assigned_officer` | — | — | — | — |
+| Ineligible user | **403** `not_chat_participant` | — | — | — | — |
+| Manager | **403** on all chat routes | — | — | — | — |
+
+Eligible users are the canonical owner or a row in `issue_participants`. Officers open chats with `PATCH /api/issues/{issue}/chats/open` and body `{ "user_id": <id> }`. Returns **201** when a new chat row is created and opened; **200** when already open or when reopening a closed chat. Manual close: `PATCH /api/issues/{issue}/chats/{chat}/close` (no system message).
+
+**Lifecycle side effects**
+
+| Event | Open chats | System message |
+|--------|------------|----------------|
+| `POST .../unassign-self` | All closed | No |
+| Issue status → `gesloten` | All closed | Yes, one per chat (`Chat gesloten omdat de melding is afgerond.`) |
+
+**Reassignment handoff:** There is no takeover. `POST .../assign-self` keeps **409** `issue_already_assigned` when another officer owns the issue. Handoff flow: current assignee `POST .../unassign-self` (closes open chats) → successor `POST .../assign-self` → successor `PATCH .../chats/open` to reopen and continue messaging; prior message history remains readable.
+
+**Messages:** `GET/POST .../chats/{chat}/messages`, `POST .../messages/mark-read`. Read history in open or closed chats; send and mark-read only when chat status is `open` (**422** `chat_closed` when closed). Attachment-only messages are allowed. Up to **3** images (`jpg`, `jpeg`, `png`, `gif`, `webp`), **5 MB** each. No message edit/delete in v1. System messages expose `message_type: system` and `meta` (e.g. `chat_closed_status_gesloten`).
+
+**Tier B** (officers, no shift): `GET .../chats`, `GET .../chats/{chat}/messages`. **Tier C** (officers): open, close, send, mark-read, attachment download.
+
+**Structured error codes (issue chat)**
+
+| Code | HTTP | When |
+|------|------|------|
+| `chat_closed` | 422 | Send or mark-read while chat is `closed` |
+| `chat_user_not_eligible` | 422 | Open chat with user who is not owner/participant |
+| `not_chat_participant` | 403 | List/view/send/download outside chat partnership |
+| `chat_not_found` | 404 | Chat id not on canonical issue in route |
+| `issue_closed` | 422 | Open chat on `gesloten` issue |
+
 **Issue embeds:** `GET /api/issues` includes `officer_resolution` (with officer and attachments when present) and omits `status_history`. `GET /api/issues/{issue}` includes the same `officer_resolution` embed plus `status_history` for officers and managers only (newest first, no lat/lon); regular users never receive `status_history`. Prefer the dedicated GET path for resolution-only reads.
 
 **Structured error codes (officer workflows)**
@@ -339,6 +378,23 @@ After hub login as `demo.officer@example.com` (Cool wijk / `district_id: 1`):
 16. **Mark duplicate (merge)** — Same-owner child + canonical → 200 canonical `IssueResource`; child id returns 404 on subsequent GET.
 17. **Resolution attachment delete** — Assignee `DELETE /api/issues/{id}/officer-resolution/attachments/{attachment}` → 204; repeat → 404. Requires hub-active (Tier C).
 
+### Manual Issue Chat Checklist
+
+After hub login as `demo.officer@example.com`, assign-self on an issue in Cool (`district_id: 1`):
+
+1. **Open chat** — `PATCH /api/issues/{id}/chats/open` with `{ "user_id": <owner> }` → 201; repeat → 200.
+2. **Parallel chats** — Open second chat with a participant `user_id` → two distinct `chat_id` values.
+3. **List (Tier B)** — `GET .../chats` without shift → 200; user with no chat → `data: []`.
+4. **Send** — `POST .../chats/{chat}/messages` with text and/or multipart `files` → 201.
+5. **Closed send block** — Close chat; POST message → 422 `chat_closed`.
+6. **Read closed history** — `GET .../messages` on closed chat → 200.
+7. **Mark read** — `POST .../messages/mark-read` in open chat → `{ "marked_read": N }`; on closed chat → 422.
+8. **Attachment download** — Participant `GET .../attachments/.../download` → 200; outsider → 403 `not_chat_participant`.
+9. **Unassign closes chats** — `POST .../unassign-self` → open chats closed, no system message.
+10. **Handoff** — Second officer: assign-self blocked while assigned → 409; after unassign → assign-self → reopen chat → read prior messages → send.
+11. **Gesloten system message** — Status to `gesloten` → open chats closed with system message per chat.
+12. **Manager excluded** — Manager `GET .../chats` → 403.
+
 For manual API testing, import the Postman collection and local environment from [`../../docs/postman`](../../docs/postman/README.md):
 
 - [`rauw-backend.postman_collection.json`](../../docs/postman/rauw-backend.postman_collection.json)
@@ -393,3 +449,31 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+ # # #   C o m m u n i t y   N e w s   F e e d 
+ 
+ T h e   C o m m u n i t y   N e w s   F e e d   a l l o w s   o f f i c e r s   t o   b r o a d c a s t   d i s t r i c t - s c o p e d   u p d a t e s   t o   u s e r s .   M a i n   m a n a g e r s   m a n a g e   c i t y - w i d e   p o s t s ,   w h i l e   o r d i n a r y   m a n a g e r s   a d m i n i s t e r   p o s t s   w i t h i n   t h e i r   a s s i g n e d   d i s t r i c t s . 
+ 
+ * * D i s t r i c t   S c o p i n g : * *   
+ -   * * U s e r s * *   s e l e c t   t h e i r   i n t e r e s t e d   d i s t r i c t s   v i a   ` P A T C H   / a p i / a u t h / m e / f e e d - d i s t r i c t s ` .   T h e y   c a n   o n l y   b r o w s e   p o s t s   f r o m   t h e s e   s e l e c t e d   d i s t r i c t s .   I f   a   u s e r   h a s   n o t   c o n f i g u r e d   a n y   f e e d   d i s t r i c t s ,   t h e y   w i l l   r e c e i v e   a   ` 4 2 2 `   e r r o r   o n   f e e d   e n d p o i n t s . 
+ -   * * O f f i c e r s * *   a u t o m a t i c a l l y   b r o w s e   p o s t s   i n   t h e i r   a s s i g n e d   d i s t r i c t s   ( ` d i s t r i c t _ o f f i c e r `   p i v o t ) .   T h e y   c a n   c r e a t e   p o s t s   f o r   a n y   a c t i v e   d i s t r i c t   t h e y   a r e   a s s i g n e d   t o . 
+ -   * * M a n a g e r s * *   b r o w s e   p o s t s   c i t y - w i d e   ( a l l   d i s t r i c t s   +   o r p h a n   p o s t s )   b y   d e f a u l t ,   b u t   c a n   f i l t e r   b y   ` d i s t r i c t _ i d ` .   O r d i n a r y   m a n a g e r s   c a n   o n l y   m o d i f y   t h e   v i s i b i l i t y   o f   p o s t s   w i t h i n   t h e i r   a s s i g n e d   d i s t r i c t s   ( ` d i s t r i c t _ m a n a g e r `   p i v o t ) .   M a i n   m a n a g e r s   c a n   m o d i f y   v i s i b i l i t y   f o r   a n y   p o s t   c i t y - w i d e . 
+ 
+ * * P o s t   V i s i b i l i t y   &   O r p h a n   P o s t s : * * 
+ -   P o s t s   h a v e   a   ` v i s i b i l i t y `   s t a t e :   ` v i s i b l e `   o r   ` h i d d e n ` .   U s e r s   o n l y   s e e   ` v i s i b l e `   p o s t s . 
+ -   I f   a   d i s t r i c t   i s   d e a c t i v a t e d   ( ` i s _ a c t i v e `   b e c o m e s   f a l s e ) ,   i t s   u s e r   f e e d   s u b s c r i p t i o n s   ( ` d i s t r i c t _ u s e r ` )   a r e   p r u n e d ,   a n d   t h e   ` d i s t r i c t _ i d `   o f   a l l   i t s   c o m m u n i t y   p o s t s   i s   s e t   t o   ` n u l l `   ( O r p h a n   p o s t s ) . 
+ -   O r p h a n   p o s t s   a r e   e x c l u d e d   f r o m   u s e r   f e e d s   a n d   o f f i c e r   f e e d s .   M a n a g e r s   c a n   s t i l l   s e e   t h e m   c i t y - w i d e .   T h e   o r i g i n a l   a u t h o r i n g   o f f i c e r   c a n   s t i l l   s h o w / u p d a t e / d e l e t e   t h e i r   o w n   o r p h a n   p o s t . 
+ 
+ * * S a v e d   P o s t s : * * 
+ -   U s e r s   c a n   s a v e   v i s i b l e   p o s t s   t o   t h e i r   p e r s o n a l   l i s t   v i a   ` P O S T   / a p i / c o m m u n i t y - p o s t s / { c o m m u n i t y _ p o s t } / s a v e ` . 
+ -   I f   a   s a v e d   p o s t   i s   s u b s e q u e n t l y   h i d d e n ,   t h e   s a v e   i s   a u t o m a t i c a l l y   d e t a c h e d   a n d   t h e   u s e r   c a n   n o   l o n g e r   v i e w   i t . 
+ 
+ * * A t t a c h m e n t s : * * 
+ -   C o m m u n i t y   p o s t s   s u p p o r t   u p   t o   * * 5   a t t a c h m e n t s * *   ( m a x   5   M B   e a c h ) .   A t t a c h m e n t s   c a n   b e   u p l o a d e d   d u r i n g   p o s t   c r e a t i o n   o r   l a t e r   v i a   ` P O S T   / a p i / c o m m u n i t y - p o s t s / { c o m m u n i t y _ p o s t } / a t t a c h m e n t s ` . 
+ 
+ * * H u b   A c t i v e   T i e r s : * * 
+ -   * * T i e r   B   ( N o   s h i f t   r e q u i r e d ) : * *   U s e r s ,   o f f i c e r s ,   a n d   m a n a g e r s   c a n   b r o w s e   p o s t s ,   r e a d   s p e c i f i c   p o s t s ,   v i e w   s a v e d   p o s t s ,   a n d   d o w n l o a d   a t t a c h m e n t s . 
+ -   * * T i e r   C   ( A c t i v e   s h i f t   r e q u i r e d ) : * *   O f f i c e r s   r e q u i r e   a n   a c t i v e   s h a r e d   s h i f t   ( ` h u b _ a c t i v e _ u n t i l `   i n   t h e   f u t u r e )   t o   c r e a t e ,   u p d a t e ,   d e l e t e   p o s t s ,   m o d i f y   v i s i b i l i t y ,   o r   m a n a g e   a t t a c h m e n t s . 
+ 
+ 
+ 

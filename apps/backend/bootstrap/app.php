@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureActorIsActive;
 use App\Http\Middleware\EnsureOfficerHubActive;
+use App\Support\IssueChatConflict;
 use App\Support\Issues\IssueDuplicateConflict;
 use App\Support\OfficerIssueConflict;
 use App\Support\OfficerIssueResolutionIntegrity;
@@ -90,6 +91,17 @@ return Application::configure(basePath: dirname(__DIR__))
             ], $exception->status);
         });
 
+        $exceptions->render(function (IssueChatConflict $exception, Request $request) use ($expectsApiJson) {
+            if (config('app.debug') || ! $expectsApiJson($request)) {
+                return null;
+            }
+
+            return response()->json([
+                'message' => $exception->getMessage(),
+                'code' => $exception->code,
+            ], $exception->status);
+        });
+
         // Officer workflow conflicts (assignee, district, terminal assign, duplicate
         // resolution) are thrown as OfficerIssueConflict and rendered above. Only
         // integrity races on officer_issue_resolutions.issue_id are mapped here.
@@ -151,6 +163,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 || $exception instanceof ModelNotFoundException
                 || $exception instanceof AuthorizationException
                 || $exception instanceof OfficerIssueConflict
+                || $exception instanceof IssueChatConflict
                 || $exception instanceof IssueDuplicateConflict
                 || $exception instanceof QueryException
                 || $exception instanceof HttpExceptionInterface

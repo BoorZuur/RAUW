@@ -1,11 +1,23 @@
-import React from 'react';
+import React, {useState, useRef, useEffect} from 'react';
 
 export default function UserCard({flag, onAction}) {
-    const isProblematicUser = flag.reported_user?.flag_count >= 3;
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const menuRef = useRef(null);
 
-    // Check of er al een actie is uitgevoerd op deze flag
+    const isProblematicUser = flag.reported_user?.flag_count >= 3;
     const isProcessed = flag.action_taken !== "In afwachting";
     
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (menuRef.current && !menuRef.current.contains(event.target)) {
+                setIsMenuOpen(false);
+            }
+        }
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
     const getStatusStyle = (status) => {
         switch (status) {
             case 'In afwachting':
@@ -23,10 +35,15 @@ export default function UserCard({flag, onAction}) {
         }
     };
 
+    const handleMenuAction = (actionType) => {
+        onAction(flag.id, actionType);
+        setIsMenuOpen(false);
+    };
+
     return (
         <tr className="hover:bg-stone-50/40 transition-colors">
             {/* 1. ID */}
-            <td className="py-4 px-6 font-bold text-stone-900 font-mono">
+            <td className="py-4 px-6 font-bold text-stone-900 font-mono w-[70px]">
                 #{flag.id}
             </td>
 
@@ -38,33 +55,37 @@ export default function UserCard({flag, onAction}) {
                     #{flag.comment_id}</div>}
                 {flag.message_id && <div className="text-purple-700 bg-purple-50 px-2 py-1 rounded inline-block">Bericht
                     #{flag.message_id}</div>}
+                {!flag.issue_id && !flag.comment_id && !flag.message_id &&
+                    <span className="text-stone-400 italic">Nvt</span>}
             </td>
 
             {/* 3. Reden & Trigger */}
             <td className="py-4 px-6">
-                <div className="font-semibold text-stone-800">{flag.flag_reason}</div>
-                {flag.matched_keyword && (
-                    <div className="text-xs text-red-500 mt-0.5 font-medium">
+                <div className="font-semibold text-stone-800 truncate">{flag.flag_reason}</div>
+                {flag.matched_keyword ? (
+                    <div className="text-xs text-stone-800 mt-0.5 font-medium truncate">
                         Trigger: <code
-                        className="bg-stone-900 text-white font-mono px-1.5 py-0.5 rounded text-[11px]">"{flag.matched_keyword}"</code>
+                        className=" text-red-500 font-mono px-1.5 py-0.5 rounded text-[11px]">"{flag.matched_keyword}"</code>
                     </div>
+                ) : (
+                    <div className="text-xs text-stone-400 mt-0.5 italic">Geen triggerwoord</div>
                 )}
             </td>
 
             {/* 4. Gerapporteerde Gebruiker */}
             <td className="py-4 px-6">
-                <div className="flex flex-col gap-1">
-                    <span className="font-semibold text-stone-900">
+                <div className="flex flex-col gap-0.5 min-w-0">
+                    <span className="font-semibold text-stone-900 truncate">
                         {flag.reported_user?.username || "Onbekend"}
                     </span>
-                    <div className="flex items-center gap-1.5">
-                        <span className="text-xs text-stone-400">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-xs text-stone-400 truncate max-w-[140px]">
                             {flag.reported_user?.email}
                         </span>
                         {isProblematicUser && (
                             <span
-                                className="bg-red-100 text-red-700 text-[10px] font-bold px-1.5 py-0.5 rounded animate-pulse">
-                                {flag.reported_user.flag_count}x geflagged
+                                className="bg-red-100 text-red-700 text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap">
+                                {flag.reported_user.flag_count}x
                             </span>
                         )}
                     </div>
@@ -73,7 +94,7 @@ export default function UserCard({flag, onAction}) {
 
             {/* 5. Geflagged door */}
             <td className="py-4 px-6">
-                <div className="text-stone-800 font-medium">
+                <div className="text-stone-800 font-medium truncate">
                     {flag.flagged_by_officer?.username || "Onbekend"}
                 </div>
                 <div className="text-xs text-stone-400 font-mono">
@@ -81,7 +102,7 @@ export default function UserCard({flag, onAction}) {
                 </div>
             </td>
 
-            {/* 6. Status (Nu ALTIJD op 1 regel via whitespace-nowrap) */}
+            {/* 6. Status */}
             <td className="py-4 px-6">
                 <span
                     className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${getStatusStyle(flag.action_taken)}`}>
@@ -89,43 +110,49 @@ export default function UserCard({flag, onAction}) {
                 </span>
             </td>
 
-            {/* 7. Actie-knoppen (Worden disabled zodra isProcessed true is) */}
-            <td className="py-4 px-6 text-right whitespace-nowrap">
-                <div className="flex justify-end gap-2">
-                    <button
-                        onClick={() => onAction(flag.id, 'negeren')}
-                        disabled={isProcessed}
-                        className={`px-3 py-1.5 border rounded-lg text-xs font-bold transition-colors ${
-                            isProcessed
-                                ? 'bg-stone-50 border-stone-200 text-stone-400 cursor-not-allowed opacity-60'
-                                : 'border-stone-200 text-stone-600 hover:bg-green-50 hover:text-green-700 hover:border-green-200'
-                        }`}
-                    >
-                        Negeren
-                    </button>
-                    <button
-                        onClick={() => onAction(flag.id, 'delete_content')}
-                        disabled={isProcessed}
-                        className={`px-3 py-1.5 border rounded-lg text-xs font-bold transition-colors ${
-                            isProcessed
-                                ? 'bg-stone-50 border-stone-200 text-stone-400 cursor-not-allowed opacity-60'
-                                : 'border-red-200 text-red-600 hover:bg-red-50'
-                        }`}
-                    >
-                        Verwijder Content
-                    </button>
-                    <button
-                        onClick={() => onAction(flag.id, 'delete_user')}
-                        disabled={isProcessed}
-                        className={`px-3 py-1.5 border rounded-lg text-xs font-bold shadow-sm transition-colors ${
-                            isProcessed
-                                ? 'bg-stone-50 border-stone-200 text-stone-400 cursor-not-allowed opacity-60 shadow-none'
-                                : 'bg-red-600 border-transparent text-white hover:bg-red-700'
-                        }`}
-                    >
-                        Verwijder User
-                    </button>
-                </div>
+            {/* 7. Dropdown */}
+            <td className="py-4 px-6 text-right relative" menu-align-container="true">
+                {isProcessed ? (
+                    <span className="text-xs text-stone-400 italic pr-2 font-medium">Afgehandeld</span>
+                ) : (
+                    <div className="inline-block text-left" ref={menuRef}>
+                        <button
+                            onClick={() => setIsMenuOpen(!isMenuOpen)}
+                            className="bg-white border border-stone-200 text-stone-700 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:bg-stone-50 flex items-center gap-1.5 ml-auto transition-colors"
+                        >
+                            Acties
+                            <svg
+                                className={`w-3 h-3 text-stone-500 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`}
+                                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5"
+                                      d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+                        {isMenuOpen && (
+                            <div
+                                className="absolute right-6 mt-1 w-44 bg-white rounded-xl border border-stone-200 shadow-lg z-50 overflow-hidden py-1 animate-in fade-in duration-100 text-left">
+                                <button
+                                    onClick={() => handleMenuAction('negeren')}
+                                    className="w-full px-4 py-2 text-xs text-left text-stone-700 hover:bg-green-50 hover:text-green-700 font-semibold transition-colors"
+                                >
+                                    Signaal negeren
+                                </button>
+                                <button
+                                    onClick={() => handleMenuAction('delete_content')}
+                                    className="w-full px-4 py-2 text-xs text-left text-red-600 hover:bg-red-50 font-semibold transition-colors border-t border-stone-100"
+                                >
+                                    Verwijder Content
+                                </button>
+                                <button
+                                    onClick={() => handleMenuAction('delete_user')}
+                                    className="w-full px-4 py-2 text-xs text-left text-white bg-red-600 hover:bg-red-700 font-semibold transition-colors"
+                                >
+                                    Verwijder Gebruiker
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
             </td>
         </tr>
     );
