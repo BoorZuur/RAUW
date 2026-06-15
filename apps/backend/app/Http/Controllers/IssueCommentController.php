@@ -22,6 +22,9 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * @group Issue Comments
+ */
 class IssueCommentController extends Controller
 {
     /**

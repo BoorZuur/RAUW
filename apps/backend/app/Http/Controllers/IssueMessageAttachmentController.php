@@ -16,6 +16,9 @@ use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
+/**
+ * @group Issue Chats
+ */
 class IssueMessageAttachmentController extends Controller
 {
     /**

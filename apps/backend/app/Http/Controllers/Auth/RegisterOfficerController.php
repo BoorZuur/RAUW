@@ -14,6 +14,9 @@ use App\Support\ActorDistrictAccess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 
+/**
+ * @group Authentication
+ */
 class RegisterOfficerController extends Controller
 {
     public function __construct(

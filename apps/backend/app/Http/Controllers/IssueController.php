@@ -31,6 +31,9 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Str;
 
+/**
+ * @group Issues
+ */
 class IssueController extends Controller
 {
     /**

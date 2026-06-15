@@ -12,6 +12,9 @@ use App\Models\Officer;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 
+/**
+ * @group Authentication
+ */
 class ProfileUpdateController extends Controller
 {
     public function __construct(

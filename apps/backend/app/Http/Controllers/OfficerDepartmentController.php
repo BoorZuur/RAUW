@@ -8,6 +8,9 @@ use App\Http\Requests\DepartmentAssignments\UpdateOfficerDepartmentsRequest;
 use App\Models\Officer;
 use Illuminate\Http\JsonResponse;
 
+/**
+ * @group Officers
+ */
 class OfficerDepartmentController extends Controller
 {
     public function __construct(

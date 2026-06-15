@@ -15,6 +15,9 @@ use App\Support\Notifications\NotifyStatusChange;
 use App\Support\OfficerIssueDistrictAccess;
 use App\Support\OfficerIssueRowLock;
 
+/**
+ * @group Officer Actions on Issues
+ */
 class IssueOfficerStatusController extends Controller
 {
     /**
