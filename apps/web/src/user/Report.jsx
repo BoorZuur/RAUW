@@ -173,37 +173,51 @@ export default function ReportIssue() {
             return;
         }
 
-        const data = new FormData();
-        Object.keys(formData).forEach(key => data.append(key, formData[key]));
-        data.append('latitude', activePosition.lat);
-        data.append('longitude', activePosition.lng);
-        data.append('is_anonymous', formData.is_anonymous ? 1 : 0);
-        data.append('category_id', parseInt(formData.category_id));
-
-        data.set('district_id', closestDistrict.id);
-        data.set('neighborhood', closestDistrict.name);
-
-        images.forEach((file, index) => {
-            data.append(`images[${index}]`, file);
-        });
+        const issuePayload = {
+            title: formData.title,
+            category_id: parseInt(formData.category_id),
+            address: formData.address,
+            content: formData.content,
+            is_anonymous: formData.is_anonymous ? 1 : 0,
+            latitude: activePosition.lat,
+            longitude: activePosition.lng,
+            district_id: closestDistrict.id,
+            neighborhood: closestDistrict.name
+        };
 
         try {
-            await apiClient.post('/api/issues', data, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+            const issueResponse = await apiClient.post('/api/issues', issuePayload);
+            const issueId = issueResponse.data?.id || issueResponse.data?.data?.id;
+
+            if (!issueId) {
+                throw new Error("Issue succesvol aangemaakt, maar geen ID ontvangen.");
+            }
+
+            if (images.length > 0) {
+                const attachmentData = new FormData();
+                images.forEach((file) => {
+                    attachmentData.append('files[]', file);
+                });
+
+                await apiClient.post(`/api/issues/${issueId}/attachments`, attachmentData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+            }
+
             setSuccess(true);
             setShowConfirm(false);
             setTimeout(() => navigate('/feed'), 2000);
         } catch (err) {
+            console.error("Fout bij aanmaken:", err.response?.data || err);
             setError("Verzenden mislukt: " + (err.response?.data?.message || err.message));
             setShowConfirm(false);
         }
     };
 
     return (
-        <div className="min-h-screen bg-primary-bg text-primary-text flex flex-col transition-colors duration-300">
+        <div className="min-h-screen bg-primary-bg text-primary-text flex flex-col transition-colors duration-300 overflow-x-hidden">
 
-            {/* Custom Applicatie Error Popup (vervanger van de browser alert) */}
+            {/* Custom Applicatie Error Popup */}
             {showMapError && (
                 <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
                     <div className="bg-primary-bg-cards p-8 rounded-3xl border-2 border-primary-border shadow-2xl max-w-sm w-full text-center">
@@ -216,7 +230,7 @@ export default function ReportIssue() {
                         <p className="text-sm text-secondary-text mb-6">{mapErrorMessage}</p>
                         <button
                             onClick={() => setShowMapError(false)}
-                            className="w-full p-3 bg-primary-text text-primary-bg font-black uppercase tracking-widest rounded-xl hover:bg-primary-accent transition-colors"
+                            className="w-full p-3 bg-primary-text text-primary-bg font-black uppercase tracking-widest rounded-xl hover:bg-primary-accent transition-colors cursor-pointer"
                         >
                             Begrepen
                         </button>
@@ -230,8 +244,8 @@ export default function ReportIssue() {
                         <h3 className="text-xl font-black uppercase mb-4">Bevestig melding</h3>
                         <p className="text-sm opacity-70 mb-8">Weet je zeker dat je deze melding wilt versturen?</p>
                         <div className="flex gap-4">
-                            <button onClick={() => setShowConfirm(false)} className="flex-1 p-3 border-2 border-primary-border rounded-xl">Annuleren</button>
-                            <button onClick={handleSubmit} className="flex-1 p-3 bg-secondary-accent text-white rounded-xl font-black uppercase tracking-widest hover:brightness-110">Verstuur</button>
+                            <button onClick={() => setShowConfirm(false)} className="flex-1 p-3 border-2 border-primary-border rounded-xl cursor-pointer">Annuleren</button>
+                            <button onClick={handleSubmit} className="flex-1 p-3 bg-secondary-accent text-white rounded-xl font-black uppercase tracking-widest hover:brightness-110 cursor-pointer">Verstuur</button>
                         </div>
                     </div>
                 </div>
@@ -246,141 +260,217 @@ export default function ReportIssue() {
                 </div>
             )}
 
-            <div className="z-50 relative"><U_Nav /></div>
+            <div className="fixed top-0 w-full z-50"><U_Nav /></div>
 
-            <main className="z-10 grow w-full max-w-6xl mx-auto px-6 pt-26 mt-8 pb-12 grid grid-cols-1 md:grid-cols-2 gap-10">
-                <section className="h-137.5 bg-primary-bg-cards border-2 border-primary-border rounded-3xl p-3 shadow-sm">
-                    <div className="w-full h-full rounded-2xl overflow-hidden border border-primary-border/50">
-                        {/* Prop onLocationError toegevoegd */}
-                        <NativeLeafletMap
-                            position={position}
-                            setPosition={setPosition}
-                            setFormData={setFormData}
-                            districts={districts}
-                            onLocationError={handleMapError}
-                        />
+            {/* Flex wrapper voor de zijkanten + hoofdcontent */}
+            <div className="grow flex w-full pt-26">
+
+                {/* ==================== LINKER PANEL: HANDHAVING & TOEZICHT KETEN ==================== */}
+                <div className="group hidden lg:flex w-1/12 xl:w-2/12 flex-col justify-between p-6 select-none opacity-35 hover:opacity-100 transition-all duration-500 ease-in-out cursor-default relative">
+                    <div className="w-3 h-3 border-t border-l border-primary-text/40 group-hover:border-primary-accent transition-colors duration-300"></div>
+
+                    <div className="w-full flex flex-col items-center justify-center gap-12 my-auto transition-transform duration-500">
+                        <div className="flex flex-col items-center group-hover:scale-105 transition-transform duration-300">
+                            <svg className="w-10 h-10 stroke-current text-primary-text group-hover:text-primary-accent transition-colors duration-500" viewBox="0 0 24 24" fill="none" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                                <circle cx="12" cy="11" r="2" className="opacity-60" />
+                            </svg>
+                        </div>
+                        <div className="w-px h-6 bg-primary-text/20 group-hover:bg-primary-accent/40 transition-colors"></div>
+                        <div className="flex flex-col items-center group-hover:scale-105 transition-transform duration-300 delay-75">
+                            <svg className="w-10 h-10 stroke-current text-primary-text group-hover:text-primary-accent transition-colors duration-500" viewBox="0 0 24 24" fill="none" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                                <circle cx="9" cy="7" r="4" />
+                                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                            </svg>
+                        </div>
+                        <div className="w-px h-6 bg-primary-text/20 group-hover:bg-primary-accent/40 transition-colors"></div>
+                        <div className="flex flex-col items-center group-hover:scale-105 transition-transform duration-300 delay-150">
+                            <svg className="w-10 h-10 stroke-current text-primary-text group-hover:text-primary-accent transition-colors duration-500" viewBox="0 0 24 24" fill="none" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="22 11.08 12 19 9 16" />
+                                <path d="M22 4L12 14.01l-3-3" className="opacity-40" />
+                                <circle cx="12" cy="12" r="10" strokeDasharray="3 3" className="opacity-50" />
+                            </svg>
+                        </div>
                     </div>
-                </section>
 
-                <section className="bg-primary-bg-cards border-2 border-primary-border rounded-3xl p-6 shadow-sm">
-                    <h2 className="text-xl font-black mb-6 uppercase tracking-widest text-primary-text">Signaal Melden</h2>
-                    {error && <p className="text-red-600 font-bold mb-4 p-3 bg-red-100 rounded-lg text-sm">{error}</p>}
+                    <div className="w-6 h-px bg-primary-text/30 group-hover:bg-primary-accent transition-colors duration-300"></div>
+                </div>
 
-                    <div className="space-y-6 p-2">
-                        {/* Titel */}
-                        <div>
-                            <label htmlFor="title" className="text-left block text-xs font-bold tracking-wider uppercase mb-1.5 text-primary-text">
-                                Titel
-                            </label>
-                            <input id="title" className="w-full p-3 bg-primary-bg border-2 border-primary-border rounded-lg text-sm focus:outline-none focus:border-primary-accent"
-                                   value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
-                        </div>
-
-                        {/* Categorie */}
-                        <div className="relative">
-                            <label id="category-label" className="text-left block text-xs font-bold tracking-wider uppercase mb-1.5 text-primary-text">
-                                Categorie
-                            </label>
-                            <button
-                                type="button"
-                                aria-haspopup="listbox"
-                                aria-expanded={isDropdownOpen}
-                                aria-labelledby="category-label"
-                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                className="w-full p-3 bg-primary-bg border-2 border-primary-border rounded-lg cursor-pointer flex justify-between items-center text-sm focus:outline-none focus:border-primary-accent"
-                            >
-                                <span>{getSelectedCategoryName()}</span>
-                                <svg className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </button>
-                            {isDropdownOpen && (
-                                <div role="listbox" className="absolute z-50 w-full mt-1 max-h-56 overflow-y-auto bg-primary-bg-cards border-2 border-primary-border rounded-lg p-1 shadow-xl text-sm">
-                                    {getAllCategoriesFlattened().map(cat => (
-                                        <div
-                                            key={cat.id}
-                                            role="option"
-                                            aria-selected={formData.category_id === cat.id}
-                                            onClick={() => { setFormData({...formData, category_id: cat.id}); setIsDropdownOpen(false); }}
-                                            className={`p-2.5 cursor-pointer rounded transition-colors hover:bg-primary-border/40 ${cat.isChild ? 'pl-6 text-secondary-text text-xs' : 'font-bold uppercase text-primary-text'}`}
-                                        >
-                                            {cat.name}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Adres */}
-                        <div>
-                            <label htmlFor="address" className="text-left block text-xs font-bold tracking-wider uppercase mb-1.5 text-primary-text">
-                                Adres
-                            </label>
-                            <input id="address" className="w-full p-3 bg-primary-bg border-2 border-primary-border rounded-lg text-sm focus:outline-none focus:border-primary-accent"
-                                   value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} onBlur={handleGeocode} />
-                        </div>
-
-                        {/* Uitleg */}
-                        <div>
-                            <label htmlFor="content" className="text-left block text-xs font-bold tracking-wider uppercase mb-1.5 text-primary-text">
-                                Uitleg
-                            </label>
-                            <textarea id="content" className="w-full p-3 h-20 bg-primary-bg border-2 border-primary-border rounded-lg text-sm focus:outline-none focus:border-primary-accent"
-                                      placeholder="Context & Behoefte" value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} />
-                        </div>
-
-                        {/* Foto */}
-                        <div>
-                            <label htmlFor="file-upload" className="text-left block text-xs font-bold tracking-wider uppercase mb-1.5 text-primary-text">
-                                Foto (optioneel)
-                            </label>
-                            <input
-                                id="file-upload"
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => setImages(Array.from(e.target.files))}
-                                className="w-full p-2 bg-primary-bg border-2 border-primary-border rounded-lg text-sm file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-black file:uppercase file:bg-primary-text file:text-primary-bg hover:file:cursor-pointer"
+                {/* ==================== MIDDEN: HOOFDCONTENT REPORT ISSUE ==================== */}
+                <main className="z-10 grow w-full max-w-6xl mx-auto px-6 mt-8 pb-12 grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <section className="h-137.5 bg-primary-bg-cards border-2 border-primary-border rounded-3xl p-3 shadow-sm">
+                        <div className="w-full h-full rounded-2xl overflow-hidden border border-primary-border/50">
+                            <NativeLeafletMap
+                                position={position}
+                                setPosition={setPosition}
+                                setFormData={setFormData}
+                                districts={districts}
+                                onLocationError={handleMapError}
                             />
                         </div>
+                    </section>
 
-                        {/* Anoniem optie */}
-                        <div className="relative flex items-center justify-between p-4 bg-primary-bg-cards border-2 border-primary-border rounded-2xl transition-all duration-200 hover:border-primary-accent/50 focus-within:ring-2 focus-within:ring-primary-accent/30 group">
-                            <div className="flex flex-col gap-0.5 select-none pr-4">
-                                <label htmlFor="is_anonymous" className="text-xs font-black uppercase tracking-widest text-primary-text cursor-pointer">
-                                    Anoniem melden
+                    <section className="bg-primary-bg-cards border-2 border-primary-border rounded-3xl p-6 shadow-sm">
+                        <h2 className="text-xl font-black mb-6 uppercase tracking-widest text-primary-text">Signaal Melden</h2>
+                        {error && <p className="text-red-600 font-bold mb-4 p-3 bg-red-100 rounded-lg text-sm">{error}</p>}
+
+                        <div className="space-y-6 p-2">
+                            {/* Titel */}
+                            <div>
+                                <label htmlFor="title" className="text-left block text-xs font-bold tracking-wider uppercase mb-1.5 text-primary-text">
+                                    Titel
                                 </label>
+                                <input id="title" className="w-full p-3 bg-primary-bg border-2 border-primary-border rounded-lg text-sm text-primary-text focus:outline-none focus:border-primary-accent"
+                                       value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
                             </div>
 
-                            <div className="relative flex items-center">
-                                <input
-                                    type="checkbox"
-                                    id="is_anonymous"
-                                    checked={formData.is_anonymous}
-                                    onChange={e => setFormData({...formData, is_anonymous: e.target.checked})}
-                                    className="peer appearance-none w-6 h-6 rounded-lg border-2 border-primary-border bg-primary-bg checked:bg-primary-text checked:border-primary-text transition-all duration-150 cursor-pointer focus:ring-0 focus:outline-none"
-                                />
-                                <svg
-                                    className="absolute left-1.5 top-1.5 w-3 h-3 text-primary-bg pointer-events-none opacity-0 scale-50 peer-checked:opacity-100 peer-checked:scale-100 transition-all duration-150"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                    strokeWidth={4}
+                            {/* Categorie */}
+                            <div className="relative">
+                                <label id="category-label" className="text-left block text-xs font-bold tracking-wider uppercase mb-1.5 text-primary-text">
+                                    Categorie
+                                </label>
+                                <button
+                                    type="button"
+                                    aria-haspopup="listbox"
+                                    aria-expanded={isDropdownOpen}
+                                    aria-labelledby="category-label"
+                                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                    className="w-full p-3 bg-primary-bg border-2 border-primary-border rounded-lg cursor-pointer flex justify-between items-center text-sm text-primary-text focus:outline-none focus:border-primary-accent"
                                 >
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                </svg>
+                                    <span>{getSelectedCategoryName()}</span>
+                                    <svg className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                                {isDropdownOpen && (
+                                    <div role="listbox" className="absolute z-50 w-full mt-1 max-h-56 overflow-y-auto bg-primary-bg-cards border-2 border-primary-border rounded-lg p-1 shadow-xl text-sm custom-scrollbar">
+                                        {getAllCategoriesFlattened().map(cat => (
+                                            <div
+                                                key={cat.id}
+                                                role="option"
+                                                aria-selected={formData.category_id === cat.id}
+                                                onClick={() => { setFormData({...formData, category_id: cat.id}); setIsDropdownOpen(false); }}
+                                                className={`p-2.5 cursor-pointer rounded transition-colors hover:bg-primary-border/40 ${cat.isChild ? 'pl-6 text-secondary-text text-xs' : 'font-bold uppercase text-primary-text'}`}
+                                            >
+                                                {cat.name}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
-                        </div>
 
-                        <button
-                            onClick={() => setShowConfirm(true)}
-                            className="w-full h-12 mt-4 bg-primary-text text-primary-bg hover:bg-primary-accent font-black uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-[0.98]"
-                        >
-                            Verstuur melding
-                        </button>
+                            {/* Adres */}
+                            <div>
+                                <label htmlFor="address" className="text-left block text-xs font-bold tracking-wider uppercase mb-1.5 text-primary-text">
+                                    Adres
+                                </label>
+                                <input id="address" className="w-full p-3 bg-primary-bg border-2 border-primary-border rounded-lg text-sm text-primary-text focus:outline-none focus:border-primary-accent"
+                                       value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} onBlur={handleGeocode} />
+                            </div>
+
+                            {/* Uitleg */}
+                            <div>
+                                <label htmlFor="content" className="text-left block text-xs font-bold tracking-wider uppercase mb-1.5 text-primary-text">
+                                    Uitleg
+                                </label>
+                                <textarea id="content" className="w-full p-3 h-20 bg-primary-bg border-2 border-primary-border rounded-lg text-sm text-primary-text focus:outline-none focus:border-primary-accent"
+                                          placeholder="Context & Behoefte" value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} />
+                            </div>
+
+                            {/* Foto */}
+                            <div>
+                                <label htmlFor="file-upload" className="text-left block text-xs font-bold tracking-wider uppercase mb-1.5 text-primary-text">
+                                    Foto (optioneel)
+                                </label>
+                                <input
+                                    id="file-upload"
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => setImages(Array.from(e.target.files))}
+                                    className="w-full p-2 bg-primary-bg border-2 border-primary-border rounded-lg text-sm text-primary-text file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-black file:uppercase file:bg-primary-text file:text-primary-bg hover:file:cursor-pointer"
+                                />
+                            </div>
+
+                            {/* Anoniem optie */}
+                            <div className="relative flex items-center justify-between p-4 bg-primary-bg-cards border-2 border-primary-border rounded-2xl transition-all duration-200 hover:border-primary-accent/50 focus-within:ring-2 focus-within:ring-primary-accent/30 group">
+                                <div className="flex flex-col gap-0.5 select-none pr-4">
+                                    <label htmlFor="is_anonymous" className="text-xs font-black uppercase tracking-widest text-primary-text cursor-pointer">
+                                        Anoniem melden
+                                    </label>
+                                </div>
+
+                                <div className="relative flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        id="is_anonymous"
+                                        checked={formData.is_anonymous}
+                                        onChange={e => setFormData({...formData, is_anonymous: e.target.checked})}
+                                        className="peer appearance-none w-6 h-6 rounded-lg border-2 border-primary-border bg-primary-bg checked:bg-primary-text checked:border-primary-text transition-all duration-150 cursor-pointer focus:ring-0 focus:outline-none"
+                                    />
+                                    <svg
+                                        className="absolute left-1.5 top-1.5 w-3 h-3 text-primary-bg pointer-events-none opacity-0 scale-50 peer-checked:opacity-100 peer-checked:scale-100 transition-all duration-150"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                        strokeWidth={4}
+                                    >
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => setShowConfirm(true)}
+                                className="w-full h-12 mt-4 bg-primary-text text-primary-bg hover:bg-primary-accent font-black uppercase tracking-widest rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center active:scale-[0.98]"
+                            >
+                                Verstuur melding
+                            </button>
+                        </div>
+                    </section>
+                </main>
+
+                {/* ==================== RECHTER PANEL: ROTTERDAM IDENTITEIT ==================== */}
+                <div className="group hidden lg:flex w-1/12 xl:w-2/12 flex-col justify-between p-6 select-none opacity-35 hover:opacity-100 transition-all duration-500 ease-in-out cursor-default relative">
+                    <div className="w-3 h-3 border-t border-r border-primary-text/40 group-hover:border-primary-accent transition-colors duration-300 self-end"></div>
+
+                    <div className="w-full flex flex-col items-center justify-center gap-12 my-auto transition-transform duration-500">
+                        <div className="flex flex-col items-center group-hover:scale-105 transition-transform duration-300">
+                            <svg className="w-10 h-10 stroke-current text-primary-text group-hover:text-primary-accent transition-colors duration-500" viewBox="0 0 24 24" fill="none" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M4 20 L15 4 L18 5 L10 20" />
+                                <line x1="2" y1="20" x2="22" y2="20" />
+                                <line x1="14" y1="6" x2="20" y2="20" className="opacity-40" />
+                                <line x1="13" y1="9" x2="17" y2="20" className="opacity-40" />
+                            </svg>
+                        </div>
+                        <div className="w-[1px] h-6 bg-primary-text/20 group-hover:bg-primary-accent/40 transition-colors"></div>
+                        <div className="flex flex-col items-center group-hover:scale-105 transition-transform duration-300 delay-75">
+                            <svg className="w-10 h-10 stroke-current text-primary-text group-hover:text-primary-accent transition-colors duration-500" viewBox="0 0 24 24" fill="none" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="2" y="10" width="6" height="11" />
+                                <rect x="9" y="3" width="6" height="18" />
+                                <rect x="16" y="8" width="6" height="13" />
+                            </svg>
+                        </div>
+                        <div className="w-px h-6 bg-primary-text/20 group-hover:bg-primary-accent/40 transition-colors"></div>
+                        <div className="flex flex-col items-center group-hover:scale-105 transition-transform duration-300 delay-150">
+                            <svg className="w-10 h-10 stroke-current text-primary-text group-hover:text-primary-accent transition-colors duration-500" viewBox="0 0 24 24" fill="none" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="12" y1="5" x2="12" y2="19" />
+                                <line x1="8" y1="9" x2="16" y2="9" />
+                                <path d="M5 12a7 7 0 0 0 14 0" />
+                                <circle cx="12" cy="4" r="1" />
+                            </svg>
+                        </div>
                     </div>
-                </section>
-            </main>
-            <Footer/>
+
+                    <div className="w-6 h-px bg-primary-text/30 group-hover:bg-primary-accent transition-colors duration-300 self-end"></div>
+                </div>
+
+            </div>
+
+            <div className="z-10 bg-primary-bg">
+                <Footer />
+            </div>
         </div>
     );
 }

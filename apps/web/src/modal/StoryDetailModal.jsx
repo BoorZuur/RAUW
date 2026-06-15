@@ -1,7 +1,33 @@
-import React, { useState } from 'react';
-
+import React, { useState, useEffect } from 'react';
+import AttachmentImage from '../components/AttachmentImage';
 export default function StoryDetailModal({ issue, onClose, onAddComment }) {
     const [commentText, setCommentText] = useState('');
+    const [localComments, setLocalComments] = useState(issue.comments || []);
+    const [isFetching, setIsFetching] = useState(false);
+
+    useEffect(() => {
+        if (!issue?.id) return;
+
+        const fetchAllComments = async () => {
+            let allComments = [];
+            let nextPage = `/api/issues/${issue.id}/comments?per_page=100`;
+
+            try {
+                while (nextPage) {
+                    const response = await apiClient.get(nextPage);
+                    const data = response.data.data || response.data;
+                    allComments = [...allComments, ...data];
+                    nextPage = response.data.next_page_url ? response.data.next_page_url.replace(window.location.origin, '') : null;
+                }
+
+                setLocalComments(allComments);
+            } catch (err) {
+                console.error("Kon niet alle comments ophalen:", err);
+            }
+        };
+
+        fetchAllComments();
+    }, [issue.id]);
 
     if (!issue) return null;
 
@@ -11,7 +37,7 @@ export default function StoryDetailModal({ issue, onClose, onAddComment }) {
         content,
         address,
         created_at,
-        image_url,
+        attachments = [],
         followers,
         participant_count,
         status,
@@ -50,13 +76,12 @@ export default function StoryDetailModal({ issue, onClose, onAddComment }) {
     const handleCommentSubmit = (e) => {
         e.preventDefault();
         if (!commentText.trim()) return;
-        onAddComment?.(id || issue.id, commentText);
+        onAddComment?.(id, commentText);
         setCommentText('');
     };
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-            {/* Sluitknop */}
             <button
                 onClick={onClose}
                 className="absolute top-6 right-6 text-white hover:text-primary-accent transition-colors cursor-pointer p-2 z-50 focus:outline-none"
@@ -67,16 +92,11 @@ export default function StoryDetailModal({ issue, onClose, onAddComment }) {
                 </svg>
             </button>
 
-            {/* Main Layout Container */}
             <div className="w-full max-w-5xl h-[85vh] bg-primary-bg-cards border border-primary-border rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row">
-
-                {/* LINKERKANT: Visueel gesplitst voor WCAG AAA Contrast */}
                 <div className="flex-1 bg-primary-bg flex flex-col h-1/2 md:h-full border-b md:border-b-0 md:border-r border-primary-border">
-
-                    {/* Top: Afbeelding of Fallback */}
                     <div className="w-full h-48 md:h-64 bg-stone-950 flex items-center justify-center relative shrink-0 overflow-hidden border-b border-primary-border">
-                        {image_url ? (
-                            <img src={image_url} alt={title} className="w-full h-full object-cover" />
+                        {attachments && attachments.length > 0 ? (
+                            <AttachmentImage attachment={attachments[0]} className="w-full h-full object-cover" alt={title} />
                         ) : (
                             <div className="flex flex-col items-center gap-2 text-stone-400">
                                 <svg className="w-8 h-8 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
@@ -87,38 +107,29 @@ export default function StoryDetailModal({ issue, onClose, onAddComment }) {
                         )}
                     </div>
 
-                    {/* Bottom: Informatie Text Area met hoog contrast */}
                     <div className="flex-1 p-6 sm:p-8 bg-stone-950 overflow-y-auto custom-scrollbar flex flex-col justify-start">
                         <div className="flex flex-wrap items-center gap-2 mb-4">
-                            {/* Locatie */}
                             <span className="text-[10px] sm:text-[11px] font-label font-black uppercase tracking-widest text-primary-accent bg-primary-accent/10 border border-primary-accent/30 px-2.5 py-1 rounded-md">
                                 {address || "Rotterdam"}
                             </span>
-                            {/* Status Badge */}
                             <span className={`px-2.5 py-1 rounded-md text-[10px] sm:text-[11px] font-label font-black uppercase tracking-wider shadow-xs ${statusDetails.className}`}>
                                 {statusDetails.label}
                             </span>
-                            {/* Categorie Badge */}
                             {category && (
                                 <span className="bg-stone-800 text-stone-200 border border-stone-700 px-2.5 py-1 rounded-md text-[10px] sm:text-[11px] font-label font-bold uppercase tracking-wider">
                                     {category.name || category}
                                 </span>
                             )}
                         </div>
-
-                        {/* Titel */}
                         <h2 className="font-headline font-black text-xl sm:text-3xl tracking-tight leading-tight text-white mb-4">
                             {title}
                         </h2>
-
-                        {/* Omschrijving */}
                         <p className="font-label text-sm text-stone-200/95 leading-relaxed max-w-2xl antialiased">
                             {content}
                         </p>
                     </div>
                 </div>
 
-                {/* RECHTERKANT: Volgers & Reacties Feed */}
                 <div className="w-full md:w-100 flex flex-col h-1/2 md:h-full bg-primary-bg-cards shrink-0">
                     {/* Header */}
                     <div className="p-4 border-b border-primary-border flex items-center justify-between bg-primary-bg/40">
@@ -136,16 +147,14 @@ export default function StoryDetailModal({ issue, onClose, onAddComment }) {
                         )}
                     </div>
 
-                    {/* Scrollbare Reactielijst */}
                     <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-primary-bg-cards">
-                        {comments.length === 0 ? (
+                        {localComments.length === 0 ? (
                             <div className="h-full flex flex-col items-center justify-center text-center p-4">
                                 <div className="w-12 h-12 rounded-full border-2 border-dashed border-primary-border flex items-center justify-center mb-2 text-secondary-text/60">💬</div>
                                 <p className="text-xs text-secondary-text font-label font-bold">Nog geen reacties</p>
-                                <p className="text-[11px] text-secondary-text/60 font-label mt-0.5">Wees de eerste om een update te delen.</p>
                             </div>
                         ) : (
-                            comments.map((comment) => (
+                            localComments.map((comment) => (
                                 <div key={comment.id} className="flex gap-3 items-start text-sm font-label animate-fade-in">
                                     <div className="w-8 h-8 rounded-full bg-primary-bg text-primary-text font-black text-xs flex items-center justify-center shrink-0 border border-primary-border shadow-xs">
                                         {(comment.user?.name || 'U').charAt(0).toUpperCase()}
@@ -153,11 +162,13 @@ export default function StoryDetailModal({ issue, onClose, onAddComment }) {
                                     <div className="flex-1 min-w-0">
                                         <p className="text-primary-text leading-tight mb-0.5">
                                             <span className="font-black mr-1.5">{comment.user?.name || 'Buurtbewoner'}</span>
-                                            <span className="text-secondary-text font-medium text-[13px] sm:text-sm wrap-break-word">{comment.body || comment.text}</span>
+                                            <span className="text-secondary-text font-medium text-[13px] sm:text-sm wrap-break-word">
+                            {comment.content || comment.body || comment.text || "Geen inhoud"}
+                        </span>
                                         </p>
                                         <span className="block text-[10px] text-secondary-text/50 font-bold">
-                                            {comment.created_at ? new Date(comment.created_at).toLocaleDateString('nl-NL') : 'Zojuist'}
-                                        </span>
+                        {comment.created_at ? new Date(comment.created_at).toLocaleDateString('nl-NL') : 'Zojuist'}
+                    </span>
                                     </div>
                                 </div>
                             ))
