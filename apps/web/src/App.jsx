@@ -20,12 +20,6 @@ import H_ReportsOverview from "./handhaver/H_ReportsOverview.jsx";
 import HandhaverLogin from "./handhaver/H_Login.jsx";
 import HandhaverRegister from "./handhaver/H_Register.jsx";
 
-// import M_dashboard from "./manager/M_dashboard.jsx";
-// import FlaggedDashboard from "./manager/Flagged_Dashboard.jsx";
-// import ReportsOverview from "./manager/M_ReportsOverview.jsx";
-// import UserManagement from "./manager/UserManagement.jsx";
-import ManagerLogin from "./manager/M_Login.jsx";
-
 // Beveiligingscomponent
 const PortalGuard = ({ allowedType }) => {
     const token = localStorage.getItem("auth_token");
@@ -43,7 +37,6 @@ function App() {
         {path: "/registreer", element: <Register/>},
         {path: "/loginhandhaver", element: <HandhaverLogin/>},
         {path: "/registreerhandhaver", element: <HandhaverRegister/>},
-        {path: "/loginmanager", element: <ManagerLogin/>},
 
         // 2. User Routes
         {
@@ -70,16 +63,6 @@ function App() {
             ]
         },
 
-        // 4. Manager Routes
-        // {
-        //     element: <PortalGuard allowedType="manager" />,
-        //     children: [
-        //         { path: "/dashboard", element: <M_dashboard /> },
-        //         { path: "/flaggeddashboard", element: <FlaggedDashboard /> },
-        //         { path: "/rapportoverzicht", element: <ReportsOverview /> },
-        //         { path: "/gebruikermanagement", element: <UserManagement /> },
-        //     ]
-        // }
     ]);
 
     return <RouterProvider router={router} />;
