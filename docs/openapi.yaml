@@ -38,6 +38,14 @@ info:
     `GET /api/issues/{issueId}/comments`,
     `GET /api/issues/{issueId}/feedback`,
     `GET /api/officers/me/feedback`,
+    `GET /api/notifications`, `GET /api/notifications/unread-count`,
+    `PATCH /api/notifications/{notificationId}`, `PATCH /api/notifications/bulk-read`,
+    `POST /api/notifications/mark-all-read`,
+    `GET /api/officers/me/notifications`,
+    `GET /api/officers/me/notifications/unread-count`,
+    `PATCH /api/officers/me/notifications/{notificationId}`,
+    `PATCH /api/officers/me/notifications/bulk-read`,
+    `POST /api/officers/me/notifications/mark-all-read`,
     `GET /api/community-posts`, `GET /api/community-posts/{communityPostId}`,
     `GET /api/officers/{officerId}`, and authenticated
     issue/resolution/officer-update/community-post attachment downloads.
@@ -108,6 +116,7 @@ info:
     | `feedback_edit_window_closed` | 403 | Feedback PATCH/DELETE more than 24 h after `submitted_at` |
     | `feedback_already_submitted` | 409 | Duplicate feedback `(issue_id, reviewer_user_id)` on POST |
     | `not_issue_participant` | 403 | User is not an issue participant on feedback POST |
+    | `notification_not_found` | 404 | Notification id does not belong to the authenticated actor |
 
     **Issue chat (v1):** Multiple parallel 1:1 chats per canonical issue (unique
     `issue_id` + `user_id`). Only the assigned officer opens or closes chats.
@@ -5948,6 +5957,364 @@ paths:
         '409':
           $ref: '#/components/responses/ConflictError'
 
+  /api/notifications/unread-count:
+    get:
+      tags: [ Notifications ]
+      summary: Get unread notification count (user)
+      description: >-
+        Lightweight unread count for the authenticated active user. Officers and
+        managers receive **403** (`This action is unauthorized.`). Use
+        `GET /api/notifications` for the paginated list; this endpoint does not
+        include unread count in list `meta`.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Unread count
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationUnreadCount'
+              example:
+                count: 3
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/notifications/bulk-read:
+    patch:
+      tags: [ Notifications ]
+      summary: Mark multiple notifications read (user)
+      description: >-
+        Mark unread notifications as read for the authenticated active user by
+        id. Only ids owned by the actor are updated; foreign ids are silently
+        skipped. Returns the number of rows updated. Officers and managers
+        receive **403**.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationBulkReadRequest'
+            example:
+              ids: [ 1, 2, 3 ]
+      responses:
+        '200':
+          description: Bulk update result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationUpdatedCount'
+              example:
+                updated: 2
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/notifications/mark-all-read:
+    post:
+      tags: [ Notifications ]
+      summary: Mark all notifications read (user)
+      description: >-
+        Mark every unread notification for the authenticated active user as read.
+        Not filter-scoped. Returns the number of rows updated. Officers and
+        managers receive **403**.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Mark-all result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationUpdatedCount'
+              example:
+                updated: 5
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/notifications:
+    get:
+      tags: [ Notifications ]
+      summary: List notifications (user)
+      description: >-
+        Paginated list of domain notifications for the authenticated active user,
+        ordered `created_at desc`, `id desc`. Officers and managers receive
+        **403**. Optional filters: `is_read` (boolean), `type`
+        (`NotificationType`), and `since` (ISO 8601 datetime — returns rows with
+        `created_at` strictly after `since` for incremental polling). Pagination
+        uses `page` and `per_page` (default **20**, max **100**).
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: is_read
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: When set, filter by read state.
+        - name: type
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/NotificationType'
+          description: Filter by notification type.
+        - name: since
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Return notifications created strictly after this timestamp.
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Paginated notifications
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainNotificationPaginated'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/notifications/{notificationId}:
+    parameters:
+      - name: notificationId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Notifications ]
+      summary: Mark one notification read (user)
+      description: >-
+        Mark a single notification as read. Request body must include
+        `{ "is_read": true }` only. Idempotent when already read. Returns the
+        updated `DomainNotification` resource. Foreign or unknown ids return
+        **404** with message `notification_not_found`. Officers and managers
+        receive **403**.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationMarkReadRequest'
+            example:
+              is_read: true
+      responses:
+        '200':
+          description: Updated notification
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DomainNotification'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Notification not found for actor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                notification_not_found:
+                  value:
+                    message: notification_not_found
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/officers/me/notifications/unread-count:
+    get:
+      tags: [ Notifications ]
+      summary: Get unread notification count (officer)
+      description: >-
+        Lightweight unread count for the authenticated active officer. Officers
+        may call this without an active shared shift (**Tier B**). Users and
+        managers receive **403**.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Unread count
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationUnreadCount'
+              example:
+                count: 1
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/officers/me/notifications/bulk-read:
+    patch:
+      tags: [ Notifications ]
+      summary: Mark multiple notifications read (officer)
+      description: >-
+        Officer mirror of `PATCH /api/notifications/bulk-read`. **Tier B** —
+        no hub-active shift required. Only ids owned by the officer are updated;
+        foreign ids are silently skipped.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationBulkReadRequest'
+            example:
+              ids: [ 10, 11 ]
+      responses:
+        '200':
+          description: Bulk update result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationUpdatedCount'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/officers/me/notifications/mark-all-read:
+    post:
+      tags: [ Notifications ]
+      summary: Mark all notifications read (officer)
+      description: >-
+        Officer mirror of `POST /api/notifications/mark-all-read`. **Tier B** —
+        marks every unread officer notification as read.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Mark-all result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationUpdatedCount'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/officers/me/notifications:
+    get:
+      tags: [ Notifications ]
+      summary: List notifications (officer)
+      description: >-
+        Paginated list of domain notifications for the authenticated active
+        officer. **Tier B** — officers may poll without an active shared shift.
+        Same filters and pagination as the user list (`is_read`, `type`, `since`,
+        `page`, `per_page`). Users and managers receive **403**.
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: is_read
+          in: query
+          required: false
+          schema:
+            type: boolean
+        - name: type
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/NotificationType'
+        - name: since
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+      responses:
+        '200':
+          description: Paginated notifications
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainNotificationPaginated'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/officers/me/notifications/{notificationId}:
+    parameters:
+      - name: notificationId
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags: [ Notifications ]
+      summary: Mark one notification read (officer)
+      description: >-
+        Officer mirror of `PATCH /api/notifications/{notificationId}`. **Tier B**.
+        Request body must include `{ "is_read": true }`. Foreign ids return
+        **404** `notification_not_found`.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationMarkReadRequest'
+            example:
+              is_read: true
+      responses:
+        '200':
+          description: Updated notification
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DomainNotification'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Notification not found for actor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                notification_not_found:
+                  value:
+                    message: notification_not_found
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -8529,4 +8896,124 @@ components:
           type: string
           format: date-time
           nullable: true
+
+    NotificationType:
+      type: string
+      description: Canonical domain notification type (snake_case).
+      enum:
+        - status_change
+        - new_message
+        - new_issue
+        - chat_opened
+        - chat_closed
+        - new_comment
+        - resolution_posted
+        - feedback_received
+        - new_community_post
+        - issue_hidden
+
+    DomainNotification:
+      type: object
+      description: >-
+        Domain notification resource returned by list and mark-read endpoints.
+        Matches `DomainNotificationResource`.
+      properties:
+        id:
+          type: integer
+        type:
+          $ref: '#/components/schemas/NotificationType'
+        title:
+          type: string
+        body:
+          type: string
+          nullable: true
+        is_read:
+          type: boolean
+        issue_id:
+          type: integer
+          nullable: true
+        community_post_id:
+          type: integer
+          nullable: true
+        payload:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Optional navigation metadata (e.g. chat_id, comment_id, message_id).
+        actor_type:
+          type: string
+          nullable: true
+          enum: [ user, officer, manager ]
+        actor_id:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    DomainNotificationPaginated:
+      type: object
+      description: >-
+        Laravel paginator envelope for `GET /api/notifications` and officer
+        mirror routes.
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/DomainNotification'
+        links:
+          type: object
+          additionalProperties: true
+        meta:
+          type: object
+          properties:
+            current_page:
+              type: integer
+            per_page:
+              type: integer
+            total:
+              type: integer
+            last_page:
+              type: integer
+
+    NotificationUnreadCount:
+      type: object
+      required: [ count ]
+      properties:
+        count:
+          type: integer
+          description: Number of unread notifications for the authenticated actor.
+
+    NotificationBulkReadRequest:
+      type: object
+      required: [ ids ]
+      properties:
+        ids:
+          type: array
+          minItems: 1
+          items:
+            type: integer
+          description: Notification ids to mark read. Foreign ids are skipped.
+
+    NotificationMarkReadRequest:
+      type: object
+      required: [ is_read ]
+      properties:
+        is_read:
+          type: boolean
+          enum: [ true ]
+          description: Must be `true`; only marking read is supported in v1.
+
+    NotificationUpdatedCount:
+      type: object
+      required: [ updated ]
+      properties:
+        updated:
+          type: integer
+          description: Number of notification rows updated.
 

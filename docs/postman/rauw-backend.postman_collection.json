@@ -2131,6 +2131,280 @@
             "description": "Implemented officer self-service district assignment flow. Replace the authenticated officer's district assignments through district_officer. district_ids must be an array of active existing district IDs without duplicates; use an empty array to clear assignments. Returns the refreshed auth profile with districts and never modifies issues.district_id."
           },
           "response": []
+        },
+        {
+          "name": "Me",
+          "item": [
+            {
+              "name": "Notifications",
+              "item": [
+                {
+                  "name": "List Notifications",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test('Officer notification list succeeded', function () {",
+                          "    pm.response.to.have.status(200);",
+                          "});",
+                          "",
+                          "if (pm.response.code === 200) {",
+                          "    const body = pm.response.json();",
+                          "    const first = body.data && body.data[0];",
+                          "    if (first && first.id) {",
+                          "        pm.collectionVariables.set('notification_id', first.id);",
+                          "        if (pm.environment.name) {",
+                          "            pm.environment.set('notification_id', first.id);",
+                          "        }",
+                          "    }",
+                          "}"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{officer_remote_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json",
+                        "type": "text"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/api/officers/me/notifications?page={{page}}&per_page={{per_page}}&is_read=&type=&since=",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "officers",
+                        "me",
+                        "notifications"
+                      ],
+                      "query": [
+                        {
+                          "key": "page",
+                          "value": "{{page}}"
+                        },
+                        {
+                          "key": "per_page",
+                          "value": "{{per_page}}"
+                        },
+                        {
+                          "key": "is_read",
+                          "value": ""
+                        },
+                        {
+                          "key": "type",
+                          "value": ""
+                        },
+                        {
+                          "key": "since",
+                          "value": ""
+                        }
+                      ]
+                    },
+                    "description": "Paginated officer notification inbox. Tier B — run Auth / Login Officer Remote first (no hub-active shift required). Optional filters is_read, type, since (ISO 8601). Sets notification_id from the first row when present."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get Unread Count",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{officer_remote_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json",
+                        "type": "text"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/api/officers/me/notifications/unread-count",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "officers",
+                        "me",
+                        "notifications",
+                        "unread-count"
+                      ]
+                    },
+                    "description": "Lightweight unread count for the authenticated officer. Tier B."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Mark Notification Read",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{officer_remote_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json",
+                        "type": "text"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"is_read\": true\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/api/officers/me/notifications/{{notification_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "officers",
+                        "me",
+                        "notifications",
+                        "{{notification_id}}"
+                      ]
+                    },
+                    "description": "Mark one officer notification read. Run List Notifications first to set notification_id. Foreign ids return 404 notification_not_found."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Bulk Mark Read",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{officer_remote_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json",
+                        "type": "text"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"ids\": [{{notification_id}}]\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/api/officers/me/notifications/bulk-read",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "officers",
+                        "me",
+                        "notifications",
+                        "bulk-read"
+                      ]
+                    },
+                    "description": "Mark multiple officer notifications read by id. Foreign ids are skipped silently. Tier B."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Mark All Read",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{officer_remote_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json",
+                        "type": "text"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/api/officers/me/notifications/mark-all-read",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "officers",
+                        "me",
+                        "notifications",
+                        "mark-all-read"
+                      ]
+                    },
+                    "description": "Mark every unread officer notification as read. Tier B."
+                  },
+                  "response": []
+                }
+              ],
+              "description": "Officer self-service notification inbox under /api/officers/me/notifications. All routes are Tier B (no hub-active shift required)."
+            }
+          ]
         }
       ],
       "description": "Officer-focused request examples. List Officer Sessions requires main_manager_access_token. List officers is available to active officers and managers. Disable and enable officer require an active manager token (access_token after Login as a manager). The district self-service update entry is implemented for active officers."
@@ -6518,7 +6792,265 @@
       "description": "Private 1:1 issue chats (distinct from Comments). Recommended flow: Login Officer at Hub → Assign Self → set owner_user_id from issue → Open Chat with Issue Owner → optional parallel Open Chat with Participant (after join, set participant_user_id) → Send Message → Mark Messages Read as user → Download attachment → Close Chat. Tier B: list chats/messages. Tier C: open, close, send, mark-read (officers), attachment download (officers)."
     },
     {
-      "name": "Departments",
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "List Notifications",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('User notification list succeeded', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const body = pm.response.json();",
+                  "    const first = body.data && body.data[0];",
+                  "    if (first && first.id) {",
+                  "        pm.collectionVariables.set('notification_id', first.id);",
+                  "        if (pm.environment.name) {",
+                  "            pm.environment.set('notification_id', first.id);",
+                  "        }",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/notifications?page={{page}}&per_page={{per_page}}&is_read=&type=&since=",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{page}}"
+                },
+                {
+                  "key": "per_page",
+                  "value": "{{per_page}}"
+                },
+                {
+                  "key": "is_read",
+                  "value": ""
+                },
+                {
+                  "key": "type",
+                  "value": ""
+                },
+                {
+                  "key": "since",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Paginated user notification inbox. Active users only; officers and managers receive 403. Optional filters is_read, type, since (ISO 8601 for incremental polling). Sets notification_id from the first row when present."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Unread Count",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/notifications/unread-count",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "unread-count"
+              ]
+            },
+            "description": "Lightweight unread count for the authenticated user. Separate from list meta."
+          },
+          "response": []
+        },
+        {
+          "name": "Mark Notification Read",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"is_read\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/notifications/{{notification_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "{{notification_id}}"
+              ]
+            },
+            "description": "Mark one user notification read. Run List Notifications first to set notification_id. Idempotent when already read. Foreign ids return 404 notification_not_found."
+          },
+          "response": []
+        },
+        {
+          "name": "Bulk Mark Read",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ids\": [{{notification_id}}]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/notifications/bulk-read",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "bulk-read"
+              ]
+            },
+            "description": "Mark multiple user notifications read by id. Foreign ids are skipped silently."
+          },
+          "response": []
+        },
+        {
+          "name": "Mark All Read",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/notifications/mark-all-read",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "mark-all-read"
+              ]
+            },
+            "description": "Mark every unread user notification as read (not filter-scoped)."
+          },
+          "response": []
+        }
+      ],
+      "description": "User notification inbox under /api/notifications. Active users only. Poll with since for incremental fetch; use unread-count for badge counts."
+    },
+    {
       "name": "Community Posts",
       "item": [
         {
@@ -7450,6 +7982,11 @@
     },
     {
       "key": "feedback_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "notification_id",
       "value": "1",
       "type": "string"
     },
