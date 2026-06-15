@@ -111,4 +111,10 @@ class Officer extends Authenticatable
     {
         return $this->hasMany(OfficerSession::class);
     }
+
+    public function communityPosts(): HasMany
+    {
+        return $this->hasMany(CommunityPost::class);
+    }
 }
+

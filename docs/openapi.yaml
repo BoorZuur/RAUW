@@ -36,11 +36,14 @@ info:
     `GET /api/issues/{issueId}/officer-resolution`,
     `GET /api/issues/{issueId}/officer-updates`,
     `GET /api/issues/{issueId}/comments`,
-    `GET /api/officers/{officerId}`,
-    `GET /api/issues/{issueId}/chats`, `GET /api/issues/{issueId}/chats/{chatId}/messages`,
-    and authenticated issue/resolution/officer-update attachment downloads.
+    `GET /api/community-posts`, `GET /api/community-posts/{communityPostId}`,
+    `GET /api/officers/{officerId}`, and authenticated
+    issue/resolution/officer-update/community-post attachment downloads.
     Issue list/show/duplicates/participants/status-history are district-scoped
-    for officers and ordinary managers; main managers are city-wide. Officers must send
+    for officers and ordinary managers; main managers are city-wide. Community
+    post feeds use `CommunityPostFeedQuery` / `CommunityPostVisibilityQuery`:
+    users see posts in subscribed feed districts; officers see assigned districts;
+    managers browse city-wide. Officers must send
     `latitude` and `longitude` on `POST /api/auth/login`; hub-eligible login or
     `POST /api/auth/start-shift` starts the shift for **10 hours**
     (`OFFICER_HUB_ACTIVE_TTL_HOURS`, default 10). Outside-radius login does not
@@ -749,6 +752,79 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ValidationError'
+
+  /api/auth/me/feed-districts:
+    patch:
+      tags: [ Auth ]
+      summary: Update my community feed districts (users only)
+      description: >-
+        Self-service feed district subscription endpoint for active users.
+        Replaces the authenticated user's `feedDistricts` pivot with the supplied
+        `district_ids` array and returns the refreshed auth profile. User profiles
+        expose subscribed districts under `profile.districts` (sourced from
+        `feedDistricts`, not officer/manager assignment pivots). Officers and
+        managers receive **403** (`This action is unauthorized.`) when they have
+        an active shared shift. Officers without an active shared shift receive
+        **403** `hub_active_required` because this route is under
+        `officer.hub-active` middleware but is not Tier B whitelisted. Inactive
+        accounts receive **403** (`This account is inactive.`) from global
+        inactive-actor middleware.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DistrictAssignmentUpdate'
+            example:
+              district_ids: [1, 2]
+      responses:
+        '200':
+          description: Refreshed user profile with feed districts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthCurrentProfileResponse'
+              example:
+                actor_type: user
+                profile:
+                  id: 1
+                  username: demo-user
+                  email: demo.user@example.com
+                  districts:
+                    - id: 1
+                      name: Cool
+                      postal_prefix: '3012'
+                    - id: 2
+                      name: Oude Westen
+                      postal_prefix: '3014'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: >-
+            Forbidden. Officers without an active shared shift receive
+            `hub_active_required` (route is not Tier B whitelisted). Officers
+            and managers with an active shift receive `This action is
+            unauthorized.` (users only).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/HubError'
+                  - $ref: '#/components/schemas/Error'
+              examples:
+                hubActiveRequired:
+                  summary: Officer without active shared shift
+                  value:
+                    message: Hub-active session required.
+                    code: hub_active_required
+                userOnly:
+                  summary: Officer or manager actor
+                  value:
+                    message: This action is unauthorized.
+        '422':
+          $ref: '#/components/responses/ValidationError'
 
   /api/main-managers:
     get:
@@ -4075,6 +4151,57 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
 
+  /api/community-posts:
+    get:
+      tags: [ Community Posts ]
+      summary: List community posts
+      description: >-
+        Paginated community news feed for any authenticated active actor.
+        Scoping uses `CommunityPostFeedQuery` and `CommunityPostVisibilityQuery`:
+        users see only `visible` posts in subscribed feed districts
+        (`feedDistricts`); officers and managers see `visible` and `hidden`
+        posts within their feed scope (assigned districts or city-wide).
+        Optional `district_id` narrows within the actor's feed scope.
+        Users may pass `saved_only=1` to list only posts they saved (ignored for
+        officers and managers). User list responses include `is_saved` on each
+        post when applicable. Officers may call this without a hub-active shift
+        (Tier B). Default page size is 15.
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: district_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Optional district filter within the actor's feed scope.
+        - name: saved_only
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Users only. When true, return only saved posts.
+        - $ref: '#/components/parameters/page'
+      responses:
+        '200':
+          description: Paginated community posts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommunityPostPaginated'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [ Community Posts ]
+      summary: Create a community post
+      description: >-
+        Create a community post as an authenticated active officer with an active
+        shared shift (Tier C). The officer must be assigned to the target
+        `district_id`; otherwise the backend returns **403** with
+        `You are not assigned to this district.` Users and managers receive
+        **403** from FormRequest authorization.
   /api/issues/{issueId}/chats:
     parameters:
       - name: issueId
@@ -4172,6 +4299,46 @@ paths:
         content:
           application/json:
             schema:
+              $ref: '#/components/schemas/CommunityPostCreate'
+            example:
+              district_id: 1
+              title: Wijkupdate parkeerregels
+              content: Vanaf volgende week gelden nieuwe parkeerregels in Cool.
+              visibility: visible
+      responses:
+        '201':
+          description: Community post created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommunityPost'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: >-
+            Forbidden. Users and managers receive `This action is unauthorized.`
+            Officers without an active shared shift receive `hub_active_required`.
+            Officers not assigned to `district_id` receive
+            `You are not assigned to this district.`
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/HubError'
+                  - $ref: '#/components/schemas/OfficerWorkflowError'
+                  - $ref: '#/components/schemas/Error'
+              examples:
+                hubActiveRequired:
+                  summary: Officer without active shared shift
+                  value:
+                    message: Hub-active session required.
+                    code: hub_active_required
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/community-posts/{communityPostId}:
+    parameters:
+      - name: communityPostId
               $ref: '#/components/schemas/IssueChatOpen'
             example:
               user_id: 1
@@ -4230,6 +4397,14 @@ paths:
         required: true
         schema:
           type: integer
+    get:
+      tags: [ Community Posts ]
+      summary: Show a community post
+      description: >-
+        Return one community post when visible to the authenticated actor.
+        Returns **404** when the post is outside feed/visibility scope (no
+        enumeration). User responses include `is_saved` when applicable.
+        Officers may call this without a hub-active shift (Tier B).
       - name: chatId
         in: path
         required: true
@@ -4248,6 +4423,96 @@ paths:
         - bearerAuth: [ ]
       responses:
         '200':
+          description: Community post resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommunityPost'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [ Community Posts ]
+      summary: Replace a community post
+      description: >-
+        Full update of a community post. Only the authoring active officer may
+        update content or district. Requires hub-active shift (Tier C). When
+        `district_id` changes, the officer must be assigned to the new district.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommunityPostUpdate'
+      responses:
+        '200':
+          description: Updated community post
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommunityPost'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    patch:
+      tags: [ Community Posts ]
+      summary: Update a community post
+      description: >-
+        Partial update of a community post. Only the authoring active officer
+        may update. Requires hub-active shift (Tier C).
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommunityPostUpdate'
+      responses:
+        '200':
+          description: Updated community post
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommunityPost'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [ Community Posts ]
+      summary: Delete a community post
+      description: >-
+        Delete a community post. Active managers may delete any post. Active
+        officers may delete only posts they authored. Requires hub-active shift
+        for officers (Tier C). Returns **204** with an empty body.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '204':
+          description: Community post deleted; no response body
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/community-posts/{communityPostId}/visibility:
+    parameters:
+      - name: communityPostId
           description: Closed chat
           content:
             application/json:
@@ -4280,6 +4545,57 @@ paths:
         required: true
         schema:
           type: integer
+    patch:
+      tags: [ Community Posts ]
+      summary: Set community post visibility
+      description: >-
+        Set a community post's visibility to `visible` or `hidden`. Active
+        officers may update only posts they authored. Active managers may update
+        any post; ordinary managers are limited to posts in their assigned
+        districts; main managers are city-wide. Officers require hub-active shift
+        (Tier C). Hiding a post detaches all user saves.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommunityPostVisibilityUpdate'
+            example:
+              visibility: hidden
+      responses:
+        '200':
+          description: Updated community post
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommunityPost'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/community-posts/{communityPostId}/attachments:
+    parameters:
+      - name: communityPostId
+        in: path
+        required: true
+        schema:
+          type: integer
+    post:
+      tags: [ Community Posts, Attachments ]
+      summary: Upload community post attachments
+      description: >-
+        Upload 1–5 attachments to a community post. Each post may hold at most 5
+        attachments total; each file is limited to 5 MB. Restricted to the
+        authoring officer or officers assigned to the post's district. Requires
+        hub-active shift (Tier C). Files are stored on the non-public local disk
+        and served only through the authenticated download endpoint.
       - name: chatId
         in: path
         required: true
@@ -4356,6 +4672,37 @@ paths:
         content:
           multipart/form-data:
             schema:
+              type: object
+              required: [ attachments ]
+              properties:
+                attachments:
+                  type: array
+                  minItems: 1
+                  maxItems: 5
+                  items:
+                    type: string
+                    format: binary
+      responses:
+        '201':
+          description: Uploaded attachments (flat JSON array, no data wrapper)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CommunityPostAttachment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/community-posts/{communityPostId}/attachments/{attachmentId}:
+    parameters:
+      - name: communityPostId
               $ref: '#/components/schemas/IssueChatMessageCreate'
       responses:
         '201':
@@ -4404,11 +4751,24 @@ paths:
         required: true
         schema:
           type: integer
+      - name: attachmentId
       - name: chatId
         in: path
         required: true
         schema:
           type: integer
+    delete:
+      tags: [ Community Posts, Attachments ]
+      summary: Delete a community post attachment
+      description: >-
+        Hard delete one attachment from a community post. Active managers may
+        delete any attachment. Active officers may delete attachments only on
+        posts they authored. Requires hub-active shift for officers (Tier C).
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '204':
+          description: Attachment deleted; no response body
     post:
       tags: [ Issue Chat ]
       summary: Mark other party's messages read
@@ -4434,6 +4794,10 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /api/community-posts/{communityPostId}/attachments/{attachmentId}/download:
+    parameters:
+      - name: communityPostId
         '422':
           description: Chat closed
           content:
@@ -4469,6 +4833,14 @@ paths:
         schema:
           type: integer
     get:
+      tags: [ Community Posts, Attachments ]
+      summary: Download a community post attachment
+      description: >-
+        Stream an attachment from non-public local storage. Visibility-only
+        authorization: any authenticated actor who can view the parent post may
+        download. Officers may call this without a hub-active shift (Tier B).
+        The attachment must belong to the post in the route; missing backing file
+        returns **404**.
       tags: [ Issue Chat ]
       summary: Download chat message attachment
       description: >-
@@ -4491,6 +4863,47 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/community-posts/{communityPostId}/save:
+    parameters:
+      - name: communityPostId
+        in: path
+        required: true
+        schema:
+          type: integer
+    post:
+      tags: [ Community Posts ]
+      summary: Save a community post
+      description: >-
+        Save a visible community post to the authenticated user's saved list.
+        Users only. The post must be visible and in one of the user's feed
+        districts; otherwise **404**. Idempotent when already saved. Returns
+        **201** with an empty JSON body.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '201':
+          description: Post saved; empty response body
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [ Community Posts ]
+      summary: Unsave a community post
+      description: >-
+        Remove a community post from the authenticated user's saved list. Users
+        only. Returns **204** with an empty body. Idempotent when not saved.
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '204':
+          description: Post unsaved; no response body
+        '401':
+          $ref: '#/components/responses/Unauthorized'
           description: Forbidden
           content:
             application/json:
@@ -5156,6 +5569,9 @@ paths:
         officers, ordinary managers, inactive managers, and unauthenticated
         requests receive **403**. Set `is_active` to false to deactivate or true
         to reactivate; this is the sole activation path (no `/disable` route).
+        Deactivating (`is_active: false`) orphans community posts in that
+        district (`district_id` set to null) and removes the district from all
+        user feed pivots (`DetachDistrictFromCommunityFeeds`).
       security:
         - bearerAuth: [ ]
       requestBody:
@@ -5953,7 +6369,10 @@ components:
 
     AuthUserProfile:
       type: object
-      description: Clean user profile payload returned in auth responses.
+      description: >-
+        Clean user profile payload returned in auth responses. When the
+        `feedDistricts` relation is loaded, subscribed community feed districts
+        are exposed under `districts`.
       required: [ id, username, email ]
       properties:
         id:
@@ -5963,6 +6382,13 @@ components:
         email:
           type: string
           format: email
+        districts:
+          type: array
+          description: >-
+            Compact feed district objects from the `district_user` pivot when
+            `feedDistricts` is loaded.
+          items:
+            $ref: '#/components/schemas/AuthDistrictProfile'
 
     AuthOfficerProfile:
       type: object
@@ -7586,4 +8012,141 @@ components:
           format: date-time
         download_url:
           type: string
+
+    CommunityPost:
+      type: object
+      description: Community news post resource.
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        content:
+          type: string
+        visibility:
+          type: string
+          enum: [ visible, hidden ]
+        district:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            postal_prefix:
+              type: string
+        officer:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            username:
+              type: string
+            badge_number:
+              type: string
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommunityPostAttachment'
+        is_saved:
+          type: boolean
+          description: Present on user list/show responses when applicable.
+        saved_count:
+          type: integer
+          description: Number of users who saved this post.
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CommunityPostPaginated:
+      type: object
+      description: Laravel paginator envelope for GET `/api/community-posts`.
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommunityPost'
+        links:
+          type: object
+          additionalProperties: true
+        meta:
+          type: object
+          properties:
+            current_page:
+              type: integer
+            per_page:
+              type: integer
+            total:
+              type: integer
+            last_page:
+              type: integer
+
+    CommunityPostCreate:
+      type: object
+      required: [ district_id, title, content, visibility ]
+      properties:
+        district_id:
+          type: integer
+          description: Active district where the officer is assigned.
+        title:
+          type: string
+          maxLength: 255
+        content:
+          type: string
+          maxLength: 5000
+        visibility:
+          type: string
+          enum: [ visible, hidden ]
+
+    CommunityPostUpdate:
+      type: object
+      properties:
+        district_id:
+          type: integer
+          description: Active district where the officer is assigned.
+        title:
+          type: string
+          maxLength: 255
+        content:
+          type: string
+          maxLength: 5000
+
+    CommunityPostVisibilityUpdate:
+      type: object
+      required: [ visibility ]
+      properties:
+        visibility:
+          type: string
+          enum: [ visible, hidden ]
+
+    CommunityPostAttachment:
+      type: object
+      description: >-
+        Community post attachment metadata. Files are stored on the non-public
+        local disk and downloaded through the authenticated download route.
+      properties:
+        id:
+          type: integer
+        file_url:
+          type: string
+          nullable: true
+        original_name:
+          type: string
+          nullable: true
+        file_type:
+          type: string
+          nullable: true
+        file_size:
+          type: integer
+          nullable: true
+          description: File size in bytes. Each uploaded file is limited to 5 MB.
+        uploaded_at:
+          type: string
+          format: date-time
+          nullable: true
 

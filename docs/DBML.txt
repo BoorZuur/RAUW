@@ -47,7 +47,7 @@ Table districts {
   center_lat       decimal(10,8) [not null]
   center_lng       decimal(11,8) [not null]
   radius_meters    int          [note: 'Straal voor automatische toewijzing']
-  is_active        tinyint(1)   [not null, default: 1]
+  is_active        tinyint(1)   [not null, default: 1, note: 'Deactivatie (is_active=false) orphaned community posts (district_id=null) en verwijdert feed pivots (DetachDistrictFromCommunityFeeds)']
   created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
   updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
 }
@@ -585,3 +585,65 @@ Table report_snapshots {
   }
 }
 
+Table district_user {
+  user_id     int      [not null, ref: > users.id]
+  district_id int      [not null, ref: > districts.id]
+  created_at  datetime [note: 'User community feed districts; synced via PATCH /api/auth/me/feed-districts']
+
+  indexes {
+    (user_id, district_id) [pk]
+    district_id
+  }
+}
+
+Table community_posts {
+  id          int          [pk, increment]
+  officer_id  int          [not null, ref: > officers.id, note: 'restrictOnDelete']
+  district_id int          [ref: > districts.id, note: 'nullOnDelete; nullable after district deactivation orphans post (DetachDistrictFromCommunityFeeds)']
+  title       varchar(255) [not null]
+  content     text         [not null]
+  visibility  varchar(20)  [not null, default: 'visible', note: 'visible | hidden']
+  created_at  datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at  datetime     [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    district_id
+    officer_id
+    created_at
+    (visibility, created_at)
+    (district_id, created_at, id)
+  }
+}
+
+Table community_post_attachments {
+  id                int          [pk, increment]
+  community_post_id int          [not null, ref: > community_posts.id]
+  file_path         varchar(500) [not null]
+  file_url          varchar(500) [note: 'legacy/display; downloads via API']
+  original_name     varchar(255)
+  file_type         varchar(100)
+  file_size         bigint
+  uploaded_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    community_post_id
+  }
+}
+
+Table community_post_user {
+  user_id           int      [not null, ref: > users.id]
+  community_post_id int      [not null, ref: > community_posts.id]
+  created_at        datetime
+
+  indexes {
+    (user_id, community_post_id) [pk]
+    community_post_id
+  }
+}
+
+// Community feed relationships
+Ref: officers.id < community_posts.officer_id
+Ref: users.id <> district_user.user_id
+Ref: districts.id <> district_user.district_id
+Ref: users.id <> community_post_user.user_id
+Ref: community_posts.id <> community_post_user.community_post_id

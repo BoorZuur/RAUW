@@ -89,6 +89,9 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active'])->prefi
     // validated `district_ids` array and the refreshed auth profile is returned.
     Route::patch('me/districts', ProfileDistrictController::class)->name('auth.me.districts.update');
 
+    // Self-service feed districts update for users.
+    Route::patch('me/feed-districts', [\App\Http\Controllers\Auth\UserFeedDistrictController::class, 'update'])->name('user-feed-districts.update');
+
     // Self-service identity updates. Active users, officers, and managers may
     // PATCH their own username, email, and password; officers may also update
     // badge_number. Department, district, and privileged fields are rejected
@@ -425,4 +428,30 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     Route::patch('issues/{issue}/comments/{comment}', [IssueCommentController::class, 'update'])->name('issues.comments.update');
     Route::delete('issues/{issue}/comments/{comment}', [IssueCommentController::class, 'destroy'])->name('issues.comments.destroy');
     Route::patch('issues/{issue}/comments/{comment}/visibility', [IssueCommentController::class, 'updateVisibility'])->name('issues.comments.visibility.update');
+    // Community Posts CRUD. Listing and reads are available to any authenticated actor
+    // and rely on CommunityPostFeedQuery / CommunityPostVisibilityQuery for scoping.
+    // Users require an active district subscription (feedDistricts) matching the post.
+    // Officers use their district_officer scope automatically. Managers browse city-wide.
+    // Writes (create/update/delete) are restricted to active officers with an active shared
+    // shift (Tier C). Ordinary managers can update visibility in their districts; main
+    // managers can update visibility city-wide.
+    Route::get('community-posts', [\App\Http\Controllers\CommunityPostController::class, 'index'])->name('community-posts.index');
+    Route::post('community-posts', [\App\Http\Controllers\CommunityPostController::class, 'store'])->name('community-posts.store');
+    Route::get('community-posts/{community_post}', [\App\Http\Controllers\CommunityPostController::class, 'show'])->name('community-posts.show');
+    Route::match(['put', 'patch'], 'community-posts/{community_post}', [\App\Http\Controllers\CommunityPostController::class, 'update'])->name('community-posts.update');
+    Route::delete('community-posts/{community_post}', [\App\Http\Controllers\CommunityPostController::class, 'destroy'])->name('community-posts.destroy');
+    Route::patch('community-posts/{community_post}/visibility', [\App\Http\Controllers\CommunityPostController::class, 'updateVisibility'])->name('community-posts.visibility.update');
+
+    // Community Post Attachments. Same rules as issue attachments (max 5 files, 5 MB each).
+    // Download uses visibility-only authorization (Tier B).
+    // Upload/Delete are Tier C (hub-active required) and restricted to the authoring officer
+    // or officers assigned to the post's district.
+    Route::post('community-posts/{community_post}/attachments', [\App\Http\Controllers\CommunityPostAttachmentController::class, 'store'])->name('community-posts.attachments.store');
+    Route::get('community-posts/{community_post}/attachments/{attachment}/download', [\App\Http\Controllers\CommunityPostAttachmentController::class, 'download'])->name('community-posts.attachments.download');
+    Route::delete('community-posts/{community_post}/attachments/{attachment}', [\App\Http\Controllers\CommunityPostAttachmentController::class, 'destroy'])->name('community-posts.attachments.destroy');
+
+    // Saved Community Posts (User only). Users can save visible posts in their feed districts.
+    // Indexing saved posts uses `GET /api/community-posts?saved_only=1`.
+    Route::post('community-posts/{community_post}/save', [\App\Http\Controllers\Auth\UserSavedCommunityPostController::class, 'store'])->name('community-posts.save');
+    Route::delete('community-posts/{community_post}/save', [\App\Http\Controllers\Auth\UserSavedCommunityPostController::class, 'destroy'])->name('community-posts.unsave');
 });

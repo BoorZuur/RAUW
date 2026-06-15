@@ -76,4 +76,15 @@ class User extends Authenticatable
     {
         return $this->hasMany(UserReview::class);
     }
+
+    public function feedDistricts(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(District::class, 'district_user');
+    }
+
+    public function savedCommunityPosts(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(CommunityPost::class, 'community_post_user');
+    }
 }
+
