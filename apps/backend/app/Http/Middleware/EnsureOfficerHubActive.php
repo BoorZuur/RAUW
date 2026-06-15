@@ -50,6 +50,11 @@ class EnsureOfficerHubActive
         'community-posts.attachments.download',
         'issues.chats.index',
         'issues.chats.messages.index',
+        'officers.me.notifications.index',
+        'officers.me.notifications.unread-count',
+        'officers.me.notifications.update',
+        'officers.me.notifications.bulk-read',
+        'officers.me.notifications.mark-all-read',
     ];
 
     public function handle(Request $request, Closure $next): Response
