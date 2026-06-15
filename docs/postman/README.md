@@ -73,7 +73,7 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 | `base_url` | `http://127.0.0.1:8001` | Change this to point at another backend without editing each request. |
 | `access_token` | blank | Filled automatically after **Auth / Login**, **Register User**, or **Register Officer**. Default token for users, officers, and general protected routes. |
 | `officer_hub_active_token` | blank | Filled by **Auth / Login Officer at Hub** when `hub_active: true`. |
-| `officer_remote_token` | blank | Filled by **Auth / Login Officer Remote** when `hub_active: false`. Used by **Officer Workflow Blocked (403 Smoke)**. |
+| `officer_remote_token` | blank | Filled by **Auth / Login Officer Remote** when `hub_active: false`. Used by **Officer Workflow Blocked (403 Smoke)** and **Officer Remote — List Community Posts (Tier B)**. |
 | `main_manager_access_token` | blank | Filled by **Auth / Login as Main Manager** (`demo.manager@example.com` locally). Required for **Managers** folder, **Officers / List Officer Sessions**, and department create/update/deactivate/delete. |
 | `manager_access_token` | blank | Set manually after logging in as an ordinary manager (`is_main_manager: false`). Use for officer district assignment and to verify category/district/department mutations return **403** for non-main managers. |
 | `inactive_access_token` | blank | Copy a token before deactivating an actor in the database; used by **Auth / Inactive Actor - List Issues (403 Smoke)**. |
@@ -92,12 +92,14 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 | `department_filter` | `wijkbeheer` | Example value for the issue list query param `department` (department code). Any-match against rows in `department_issue`. Not sent in create/update bodies. |
 | `page` | `1` | Example issue list page. |
 | `per_page` | `20` | Example issue list page size. Backend caps this at 100. |
+| `community_post_id` | `1` | Filled automatically after **Community Posts / Create Community Post**. |
+| `community_post_attachment_id` | `1` | Filled automatically after **Community Posts / Upload Community Post Attachments**. |
 
 ## Recommended Request Order
 
 1. Run **Auth / Register User** or **Auth / Register Officer** to create a public actor and auto-login, or run **Auth / Login** with an existing demo account. Officer registration requires at least one existing department ID, **latitude**, and **longitude**; local seeded departments normally include IDs `1` and `2`.
 2. Run **Auth / Current Profile** to inspect the actor attached to the stored token.
-3. **Officer shared shift flow:** Run **Auth / Login Officer at Hub** to start the shared shift, then **Issues / Officer workflows** writes (assign-self, status, resolution). **Tier B browse** (`GET /api/issues`, show, officer-resolution show, comments index, attachment downloads) works without an active shift. Run **Auth / Start Shift** when logged in without an active shift. Run **Auth / Login Officer Remote** (no active shift) then **Auth / Officer Workflow Blocked (403 Smoke)** — expects `hub_active_required` on **Tier C** `POST .../assign-self`, not on issue list. **Managers / End Officer Shift** clears the shift without revoking tokens. Profile, start-shift, and reference reads work without an active shift.
+3. **Officer shared shift flow:** Run **Auth / Login Officer at Hub** to start the shared shift, then **Issues / Officer workflows** writes (assign-self, status, resolution). **Tier B browse** (`GET /api/issues`, show, officer-resolution show, comments index, attachment downloads, `GET /api/community-posts`, show, attachment download) works without an active shift. Run **Auth / Start Shift** when logged in without an active shift. Run **Auth / Login Officer Remote** (no active shift) then **Auth / Officer Workflow Blocked (403 Smoke)** — expects `hub_active_required` on **Tier C** `POST .../assign-self`, not on issue or community post list. Run **Auth / Officer Remote — List Community Posts (Tier B)** to confirm community browse returns 200 without a shift. **Managers / End Officer Shift** clears the shift without revoking tokens. Profile, start-shift, and reference reads work without an active shift.
 4. Run **Hubs / List Hubs**, **Districts / List Districts**, and **Departments / List Departments** to find local IDs for assignment examples.
 5. Run **Auth / Login as Main Manager** (`demo.manager@example.com` / `password`) to populate `main_manager_access_token` and `access_token` for manager administration.
 6. Run **Officers / List Officer Sessions** to inspect login audit rows (manager only).
@@ -116,6 +118,7 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 18. **Officer issue updates:** After assign-self (step 17), run **Create Officer Update** → **List Officer Updates** → **Update Officer Update** → **Download Officer Update Attachment** → **Delete Officer Update**. `officer_update_id` and `officer_update_attachment_id` are set automatically by **Create Officer Update** when the collection test script runs. Tier C writes require hub login; list and download work without an active shift (Tier B).
 19. To test ordinary-manager privileges, log in as a created manager and copy the token to `manager_access_token` before **Managers / Update Officer Districts** or to confirm category/district/department mutations return **403** (not for successful category writes).
 20. Run **Auth / Logout** when finished.
+21. **Community news feed:** As a user, run **Auth / Update My Feed Districts**, then **Community Posts / List Community Posts**. As an officer with hub login, run **Community Posts / Create Community Post** (stores `community_post_id`), then attachment and visibility examples. As a user with feed districts set, run **Save Community Post** and **List Saved Community Posts** (`saved_only=1`).
 
 The collection stores the returned `access_token` automatically after a successful login, user registration, or officer registration. Manager creation intentionally does not update `access_token` because it returns only the created manager profile. If you disable collection scripts or the token is not stored, copy the `access_token` value from the auth response into the active Postman environment's `access_token` variable before calling protected endpoints.
 
@@ -305,10 +308,19 @@ Successful response shape:
   "profile": {
     "id": 1,
     "username": "demo.user",
-    "email": "demo.user@example.com"
+    "email": "demo.user@example.com",
+    "districts": [
+      {
+        "id": 1,
+        "name": "Cool",
+        "postal_prefix": "3012"
+      }
+    ]
   }
 }
 ```
+
+User profiles expose subscribed community feed districts under `districts` when `feedDistricts` is loaded (login, registration, and `GET /api/auth/me`).
 
 Common error response:
 
@@ -410,6 +422,22 @@ Request body:
 ```
 
 The request replaces the authenticated officer's full district assignment set through the `district_officer` pivot and returns the refreshed auth profile with `districts`. It does not reassign issues or modify `issues.district_id`.
+
+#### Update My Feed Districts
+
+`PATCH {{base_url}}/api/auth/me/feed-districts`
+
+Requires `Authorization: Bearer <token>` for an active user. Officers and managers receive `403 Forbidden`.
+
+Request body replaces the user's feed district subscriptions:
+
+```json
+{
+  "district_ids": [1, 2]
+}
+```
+
+Use an empty array to clear all subscriptions. Every ID must reference an active district and duplicates are rejected. The response is the refreshed auth profile with `districts` populated from `feedDistricts`.
 
 ### List Main Managers
 
@@ -827,7 +855,7 @@ Issue responses include read-only `status`, `assigned_officer_id`, and `visibili
 
 ### Officer issue workflows
 
-**Tier B** (browse without shift): `GET /api/issues`, `GET /api/issues/{issue}`, `GET .../officer-resolution`, `GET .../officer-updates`, `GET .../comments`, and attachment downloads (issue, resolution, and officer-update). **Tier C** (hub-active required): assign-self, unassign-self, status PATCH, resolution POST/PATCH, officer-update POST/PATCH/DELETE. Tier C without shift → **403** `hub_active_required`. District scoping on workflow writes: officer must be in the issue's district via `district_officer` or **403** `officer_not_in_district`. Officer writes use validate-after-lock (mutable checks after `lockForUpdate`). Resolution and officer-update attachment uploads enforce the cumulative cap and perform disk I/O inside the same locked transaction.
+**Tier B** (browse without shift): `GET /api/issues`, `GET /api/issues/{issue}`, `GET .../officer-resolution`, `GET .../officer-updates`, `GET .../comments`, attachment downloads (issue, resolution, and officer-update), `GET /api/community-posts`, `GET /api/community-posts/{communityPost}`, and `GET /api/community-posts/{communityPost}/attachments/{attachment}/download`. **Tier C** (hub-active required): assign-self, unassign-self, status PATCH, resolution POST/PATCH, officer-update POST/PATCH/DELETE, and community post writes (create/update/delete/visibility/attachment upload-delete). Tier C without shift → **403** `hub_active_required`. District scoping on workflow writes: officer must be in the issue's district via `district_officer` or **403** `officer_not_in_district`. Officer writes use validate-after-lock (mutable checks after `lockForUpdate`). Resolution and officer-update attachment uploads enforce the cumulative cap and perform disk I/O inside the same locked transaction.
 
 **Self-assign / unassign**
 
@@ -978,4 +1006,75 @@ When the issue owner comments on an anonymous issue, the response redacts the au
 ```
 
 Officer and manager comments always expose real identity with `is_anonymous: false`.
+
+### Community Posts
+
+Community post endpoints power the community news feed. Users subscribe to districts via `PATCH /api/auth/me/feed-districts` and see posts through `CommunityPostFeedQuery` / `CommunityPostVisibilityQuery`. Officers create and edit their own posts in assigned districts; managers browse city-wide and may moderate visibility or delete posts.
+
+Common requests:
+
+- `GET {{base_url}}/api/community-posts` — paginated feed. Users see only `visible` posts; officers and managers also see `hidden` posts in scope. Optional `district_id` and `saved_only=1` (users only; `district_id` optional for saved list).
+- `POST {{base_url}}/api/community-posts` — create post (active officer, hub-active Tier C).
+- `GET {{base_url}}/api/community-posts/{id}` — show one post when visible (Tier B).
+- `PATCH {{base_url}}/api/community-posts/{id}` — update own post (authoring officer, Tier C).
+- `PATCH {{base_url}}/api/community-posts/{id}/visibility` — set `visible` or `hidden`. Hiding detaches all saves.
+- `DELETE {{base_url}}/api/community-posts/{id}` — delete post (manager any; officer own only).
+- `POST {{base_url}}/api/community-posts/{id}/attachments` — multipart `attachments[]`, max 5 files, 5 MB each (Tier C).
+- `GET {{base_url}}/api/community-posts/{id}/attachments/{attachment}/download` — visibility-only download (Tier B).
+- `DELETE {{base_url}}/api/community-posts/{id}/attachments/{attachment}` — delete attachment (manager any; authoring officer only for officers, Tier C).
+- `POST {{base_url}}/api/community-posts/{id}/save` — save post (users only, visible + in feed district).
+- `DELETE {{base_url}}/api/community-posts/{id}/save` — unsave post (users only).
+
+Create body example:
+
+```json
+{
+  "district_id": 1,
+  "title": "Wijkupdate parkeerregels",
+  "content": "Vanaf volgende week gelden nieuwe parkeerregels in Cool.",
+  "visibility": "visible"
+}
+```
+
+Successful post response shape (wrapped in `data`):
+
+```json
+{
+  "data": {
+    "id": 1,
+    "title": "Wijkupdate parkeerregels",
+    "content": "Vanaf volgende week gelden nieuwe parkeerregels in Cool.",
+    "visibility": "visible",
+    "district": {
+      "id": 1,
+      "name": "Cool",
+      "postal_prefix": "3012"
+    },
+    "officer": {
+      "id": 1,
+      "username": "demo-officer",
+      "badge_number": "BOA-0001"
+    },
+    "attachments": [],
+    "saved_count": 0,
+    "created_at": "2026-06-10T12:00:00+00:00",
+    "updated_at": "2026-06-10T12:00:00+00:00"
+  }
+}
+```
+
+Attachment upload returns a flat JSON array (no `data` wrapper):
+
+```json
+[
+  {
+    "id": 1,
+    "file_url": null,
+    "original_name": "photo.jpg",
+    "file_type": "image/jpeg",
+    "file_size": 12345,
+    "uploaded_at": "2026-06-10T12:05:00+00:00"
+  }
+]
+```
 

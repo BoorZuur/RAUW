@@ -89,4 +89,30 @@ class CommunityPostAttachmentTest extends TestCase
 
         $response->assertStatus(200);
     }
+
+    public function test_officer_without_active_shift_can_download_attachment(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('local');
+        $officer = \App\Models\Officer::factory()->create(['is_active' => true, 'hub_active_until' => null]);
+        $district = \App\Models\District::factory()->create(['is_active' => true]);
+        $officer->districts()->attach($district->id);
+
+        $post = \App\Models\CommunityPost::factory()->create([
+            'district_id' => $district->id,
+            'visibility' => 'visible',
+        ]);
+
+        $file = \Illuminate\Http\Testing\File::create('test.jpg', 100);
+        $path = $file->store('community-post-attachments', 'local');
+
+        $attachment = \App\Models\CommunityPostAttachment::factory()->create([
+            'community_post_id' => $post->id,
+            'file_path' => $path,
+            'file_type' => 'image/jpeg',
+        ]);
+
+        $this->actingAs($officer, 'sanctum')
+            ->getJson("/api/community-posts/{$post->id}/attachments/{$attachment->id}/download")
+            ->assertOk();
+    }
 }

@@ -114,4 +114,44 @@ class CommunityPostManagementTest extends TestCase
 
         $this->assertDatabaseMissing('community_post_user', ['user_id' => $user->id, 'community_post_id' => $post->id]);
     }
+
+    public function test_officer_without_active_shift_can_browse_community_posts(): void
+    {
+        $officer = \App\Models\Officer::factory()->create(['is_active' => true, 'hub_active_until' => null]);
+        $district = \App\Models\District::factory()->create(['is_active' => true]);
+        $officer->districts()->attach($district->id);
+
+        $post = \App\Models\CommunityPost::factory()->create([
+            'district_id' => $district->id,
+            'visibility' => 'visible',
+        ]);
+
+        $this->actingAs($officer, 'sanctum')
+            ->getJson('/api/community-posts')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $post->id);
+
+        $this->actingAs($officer, 'sanctum')
+            ->getJson("/api/community-posts/{$post->id}")
+            ->assertOk()
+            ->assertJsonPath('data.id', $post->id);
+    }
+
+    public function test_officer_without_active_shift_cannot_create_community_post(): void
+    {
+        $officer = \App\Models\Officer::factory()->create(['is_active' => true, 'hub_active_until' => null]);
+        $district = \App\Models\District::factory()->create(['is_active' => true]);
+        $officer->districts()->attach($district->id);
+
+        $this->actingAs($officer, 'sanctum')
+            ->postJson('/api/community-posts', [
+                'district_id' => $district->id,
+                'title' => 'Test',
+                'content' => 'Test body',
+                'visibility' => 'visible',
+            ])
+            ->assertForbidden()
+            ->assertJsonPath('code', 'hub_active_required');
+    }
 }
