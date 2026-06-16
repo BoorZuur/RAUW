@@ -325,6 +325,14 @@ class NotificationChatTest extends TestCase
         $this->assertSame('Oplossing geplaatst', $notification->title);
         $this->assertStringContainsString($issue->title, $notification->body);
         $this->assertStringContainsString($officer->username, $notification->body);
+
+        $this->assertSame(
+            0,
+            DomainNotification::query()
+                ->where('type', NotificationType::StatusChange)
+                ->where('issue_id', $issue->id)
+                ->count(),
+        );
     }
 
     public function test_resolution_update_notifies_participants_again(): void

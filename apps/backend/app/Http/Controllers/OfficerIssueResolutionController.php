@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\IssueStatus;
 use App\Http\Requests\Issues\ShowOfficerIssueResolutionRequest;
 use App\Http\Requests\Issues\StoreOfficerIssueResolutionRequest;
 use App\Http\Requests\Issues\UpdateOfficerIssueResolutionRequest;
 use App\Http\Resources\OfficerIssueResolutionResource;
 use App\Models\Issue;
+use App\Models\IssueStatusHistory;
 use App\Models\Officer;
 use App\Models\OfficerIssueResolution;
+use App\Support\IssueStatusTransition;
 use App\Support\IssueVisibilityQuery;
 use App\Support\OfficerIssueConflict;
 use App\Support\OfficerIssueDistrictAccess;
@@ -102,6 +105,29 @@ class OfficerIssueResolutionController extends Controller
 
                 if ($files !== []) {
                     $pathsWrittenDuringRequest = self::attachUploadedFiles($resolution, $files);
+                }
+
+                if ($lockedIssue->status === IssueStatus::InProgress) {
+                    $oldStatus = $lockedIssue->status;
+                    $newStatus = IssueStatus::Resolved;
+
+                    IssueStatusHistory::query()->create([
+                        'issue_id' => $lockedIssue->getKey(),
+                        'changed_by_officer_id' => $officer->getKey(),
+                        'old_status' => $oldStatus,
+                        'new_status' => $newStatus,
+                        'note' => 'Oplossing geplaatst',
+                        'changed_at' => now(),
+                    ]);
+
+                    $lockedIssue->update([
+                        'status' => $newStatus,
+                        'resolved_at' => IssueStatusTransition::resolvedAtForTransition(
+                            $oldStatus,
+                            $newStatus,
+                            $lockedIssue->resolved_at,
+                        ),
+                    ]);
                 }
 
                 $notifyResolutionPosted->notify($lockedIssue, $officer);

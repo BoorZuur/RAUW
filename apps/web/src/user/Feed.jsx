@@ -70,7 +70,7 @@ export default function Feed() {
         apiClient.get('/api/issues')
             .then(res => {
                 const data = Array.isArray(res.data) ? res.data : (res.data.data || []);
-                const closedIssues = data.filter(s => s.status === 'gesloten');
+                const closedIssues = data.filter(s => s.status === 'opgelost');
                 const sortedClosed = [...closedIssues].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
                 if (sortedClosed.length > 0) {
