@@ -10,6 +10,7 @@ use App\Models\Officer;
 use App\Models\User;
 use App\Support\IssueChatConflict;
 use App\Support\Issues\IssueChatParticipantEligibility;
+use App\Support\Notifications\NotifyChatOpened;
 use App\Support\OfficerIssueRowLock;
 
 class OpenIssueChat
@@ -17,9 +18,15 @@ class OpenIssueChat
     /**
      * Open or reopen a 1:1 chat between the assignee officer and an eligible user.
      */
-    public function open(Officer $officer, Issue $canonical, User $partnerUser): IssueChat
-    {
-        return OfficerIssueRowLock::withLockedIssue($canonical, function (Issue $locked) use ($officer, $partnerUser): IssueChat {
+    public function open(
+        Officer $officer,
+        Issue $canonical,
+        User $partnerUser,
+        ?NotifyChatOpened $notifyChatOpened = null,
+    ): IssueChat {
+        $notifyChatOpened ??= new NotifyChatOpened;
+
+        return OfficerIssueRowLock::withLockedIssue($canonical, function (Issue $locked) use ($officer, $partnerUser, $notifyChatOpened): IssueChat {
             OfficerIssueRowLock::assertAssignee(
                 $officer,
                 $locked,
@@ -53,6 +60,8 @@ class OpenIssueChat
             ]);
 
             $chat->refresh();
+
+            $notifyChatOpened->notify($locked, $chat, $officer);
 
             return $chat;
         });

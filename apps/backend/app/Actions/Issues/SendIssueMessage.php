@@ -11,10 +11,12 @@ use App\Models\Officer;
 use App\Models\User;
 use App\Support\Issues\IssueChatAccess;
 use App\Support\Issues\IssueChatMessageAttachments;
+use App\Support\Notifications\NotifyNewMessage;
 use App\Support\UploadedFileValidator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -32,6 +34,7 @@ class SendIssueMessage
         IssueChat $chat,
         ?string $content,
         array $files = [],
+        ?NotifyNewMessage $notifyNewMessage = null,
     ): IssueMessage {
         IssueChatAccess::assertCanSendInChat($actor, $chat, $canonical);
 
@@ -42,25 +45,39 @@ class SendIssueMessage
             ? IssueMessageSenderType::Officer
             : IssueMessageSenderType::User;
 
+        $notifyNewMessage ??= new NotifyNewMessage;
         $pathsWrittenDuringRequest = [];
 
         try {
-            $message = $chat->messages()->create([
-                'issue_id' => $canonical->getKey(),
-                'message_type' => IssueMessageType::Message,
-                'sender_type' => $senderType,
-                'user_id' => $actor instanceof User ? $actor->getKey() : null,
-                'officer_id' => $actor instanceof Officer ? $actor->getKey() : null,
-                'content' => $normalizedContent,
-                'meta' => null,
-                'is_read' => false,
-            ]);
+            return DB::transaction(function () use (
+                $actor,
+                $canonical,
+                $chat,
+                $normalizedContent,
+                $senderType,
+                $files,
+                $notifyNewMessage,
+                &$pathsWrittenDuringRequest,
+            ): IssueMessage {
+                $message = $chat->messages()->create([
+                    'issue_id' => $canonical->getKey(),
+                    'message_type' => IssueMessageType::Message,
+                    'sender_type' => $senderType,
+                    'user_id' => $actor instanceof User ? $actor->getKey() : null,
+                    'officer_id' => $actor instanceof Officer ? $actor->getKey() : null,
+                    'content' => $normalizedContent,
+                    'meta' => null,
+                    'is_read' => false,
+                ]);
 
-            if ($files !== []) {
-                $pathsWrittenDuringRequest = $this->attachUploadedFiles($chat, $message, $files);
-            }
+                if ($files !== []) {
+                    $pathsWrittenDuringRequest = $this->attachUploadedFiles($chat, $message, $files);
+                }
 
-            return $message->fresh(['attachments']);
+                $notifyNewMessage->notify($message, $chat, $canonical, $actor);
+
+                return $message->fresh(['attachments']);
+            });
         } catch (Throwable $exception) {
             self::deleteDiskFiles($pathsWrittenDuringRequest);
 

@@ -5,7 +5,7 @@ Use this Postman collection to test the backend-only authentication API against 
 ## Files
 
 - `rauw-backend.postman_collection.json` — importable Postman Collection v2.1 file.
-- `rauw-local.postman_environment.json` — local environment with `base_url` set to `http://127.0.0.1:8001`, an empty `access_token` variable, and default issue/filter variables for issue examples.
+- `rauw-local.postman_environment.json` — local environment with `base_url` set to `http://127.0.0.1:8001`, empty token variables (`access_token`, `officer_hub_active_token`, `officer_remote_token`), and default issue/filter variables for issue examples.
 
 ## Required Local Backend Setup
 
@@ -72,8 +72,9 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 |----------|-------------|-------|
 | `base_url` | `http://127.0.0.1:8001` | Change this to point at another backend without editing each request. |
 | `access_token` | blank | Filled automatically after **Auth / Login**, **Register User**, or **Register Officer**. Default token for users, officers, and general protected routes. |
+| `officer_access_token` | blank | Set by any officer login or registration. Use for **Officers / Me / Notifications** and other Tier B officer reads. |
 | `officer_hub_active_token` | blank | Filled by **Auth / Login Officer at Hub** when `hub_active: true`. |
-| `officer_remote_token` | blank | Filled by **Auth / Login Officer Remote** when `hub_active: false`. Used by **Officer Workflow Blocked (403 Smoke)** and **Officer Remote — List Community Posts (Tier B)**. |
+| `officer_remote_token` | blank | Filled by **Auth / Login Officer Remote** and hub login (same bearer). Used by **Officer Workflow Blocked (403 Smoke)** and **Start Shift**. |
 | `main_manager_access_token` | blank | Filled by **Auth / Login as Main Manager** (`demo.manager@example.com` locally). Required for **Managers** folder, **Officers / List Officer Sessions**, and department create/update/deactivate/delete. |
 | `manager_access_token` | blank | Set manually after logging in as an ordinary manager (`is_main_manager: false`). Use for officer district assignment and to verify category/district/department mutations return **403** for non-main managers. |
 | `inactive_access_token` | blank | Copy a token before deactivating an actor in the database; used by **Auth / Inactive Actor - List Issues (403 Smoke)**. |
@@ -128,7 +129,7 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 20. Run **Auth / Logout** when finished.
 21. **Community news feed:** As a user, run **Auth / Update My Feed Districts**, then **Community Posts / List Community Posts**. As an officer with hub login, run **Community Posts / Create Community Post** (stores `community_post_id`), then attachment and visibility examples. As a user with feed districts set, run **Save Community Post** and **List Saved Community Posts** (`saved_only=1`).
 
-The collection stores the returned `access_token` automatically after a successful login, user registration, or officer registration. Manager creation intentionally does not update `access_token` because it returns only the created manager profile. If you disable collection scripts or the token is not stored, copy the `access_token` value from the auth response into the active Postman environment's `access_token` variable before calling protected endpoints.
+The collection stores the returned `access_token` automatically after a successful login, user registration, or officer registration. **Officer Tier C workflow requests use `officer_hub_active_token` and `officer_remote_token` instead**, so you can log in as a user or manager afterward without breaking officer workflow examples. Run **Auth / Login Officer at Hub** before Tier C officer writes; that request sets both `access_token` and `officer_hub_active_token`. Run **Auth / Login Officer Remote** (or **Register Officer**) for Tier B browse smoke tests via `officer_remote_token`. Manager creation intentionally does not update `access_token` because it returns only the created manager profile. If you disable collection scripts or the token is not stored, copy the `access_token` value from the auth response into the active Postman environment's `access_token` variable before calling protected endpoints.
 
 Issue examples also store `issue_id` after issue creation, `comment_id` after **Comments / Add Comment**, `feedback_id` after **Issues / Issue feedback / Submit Feedback**, `chat_id` / `chat_message_id` / `chat_attachment_id` after **Issue Chat** sends, and `attachment_id` / `attachment_download_url` after attachment upload. Attachment upload returns a `data: [...]` wrapper, and the collection stores these variables from `response.data[0]`. Attachment upload uses local, non-public development storage. Downloads and deletes require `Authorization: Bearer <token>` and use authenticated API routes.
 

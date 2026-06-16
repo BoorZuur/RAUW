@@ -7,12 +7,14 @@ use App\Models\Issue;
 use App\Models\IssueChat;
 use App\Models\Officer;
 use App\Support\IssueChatConflict;
+use App\Support\Notifications\NotifyChatClosed;
 use App\Support\OfficerIssueRowLock;
 
 class CloseIssueChat
 {
     public function __construct(
         private readonly InsertIssueChatSystemMessage $insertSystemMessage,
+        private readonly NotifyChatClosed $notifyChatClosed = new NotifyChatClosed,
     ) {}
 
     /**
@@ -49,6 +51,8 @@ class CloseIssueChat
             }
 
             $chat->refresh();
+
+            $this->notifyChatClosed->notify($locked, $chat, $officer);
 
             return $chat;
         });
