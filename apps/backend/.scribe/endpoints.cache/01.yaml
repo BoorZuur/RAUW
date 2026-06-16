@@ -425,7 +425,7 @@ endpoints:
         name: is_active
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -437,7 +437,7 @@ endpoints:
       department_ids:
         - 16
       priority: 22
-      is_active: false
+      is_active: true
     fileParameters: []
     responses: []
     responseFields: []

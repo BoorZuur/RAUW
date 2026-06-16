@@ -1,0 +1,2594 @@
+openapi: 3.0.3
+info:
+  title: WIJK App API Schemas
+  version: '1.0.0'
+  description: >-
+    Component schemas externalized from docs/openapi.yaml. Referenced via
+    `schemas.yaml#/components/schemas/{Name}` from the main spec.
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties: true
+
+    ErrorResponse:
+      type: object
+      description: Structured API error with stable machine-readable code.
+      required: [ message, code ]
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+
+    ValidationError:
+      type: object
+      properties:
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+
+    ConflictError:
+      type: object
+      properties:
+        message:
+          type: string
+      example:
+        message: Cannot delete a main category while it still has subcategories.
+
+    HubError:
+      type: object
+      description: >-
+        Hub-related error with stable machine-readable `code` for mobile clients.
+        `message` is for logs and debugging; clients should branch on `code`.
+      required: [ message, code ]
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+          enum: [ hub_active_required, hub_not_assigned, outside_hub_radius ]
+
+    AccountInactiveError:
+      type: object
+      description: Inactive actor on a non-whitelisted protected route.
+      required: [ message, code ]
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+          enum: [ account_inactive ]
+
+    ShiftError:
+      type: object
+      description: Start-shift conflict or validation error with stable `code`.
+      required: [ message, code ]
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+          enum: [ shift_already_active ]
+
+    OfficerWorkflowError:
+      type: object
+      description: >-
+        Officer issue workflow error with stable machine-readable `code`.
+        Returned when district scoping, assignee ownership, or update-author
+        checks fail on officer workflow routes.
+      required: [ message, code ]
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+          enum: [ not_assigned_officer, not_update_author, officer_not_in_district ]
+
+    IssueWorkflowConflictError:
+      type: object
+      description: >-
+        Issue officer workflow conflict with stable machine-readable `code`.
+      required: [ message, code ]
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+          enum: [ issue_already_assigned, officer_resolution_exists ]
+
+    IssueWorkflowUnprocessableError:
+      type: object
+      description: >-
+        Officer issue workflow rejection with stable `code` and HTTP 422.
+        Distinct from Laravel field validation (`ValidationError`) used for
+        invalid status transitions.
+      required: [ message, code ]
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+          enum: [ issue_not_assignable, issue_closed ]
+
+    IssueDuplicateConflictError:
+      type: object
+      description: >-
+        Duplicate-linking or participation conflict with stable machine-readable
+        `code`. Rendered by `IssueDuplicateConflict` for JSON API requests.
+      required: [ message, code ]
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+          enum:
+            - issue_not_canonical
+            - issue_not_matchable
+            - duplicate_target_not_found
+            - not_participant
+            - cannot_join_duplicate_child
+            - cannot_duplicate_self
+            - issue_is_duplicate_child
+            - issue_not_linkable
+            - issue_has_duplicates
+
+    MarkIssueAsDuplicateRequest:
+      type: object
+      required: [ duplicate_of_id ]
+      description: >-
+        Officer/manager payload for POST `/api/issues/{issueId}/mark-duplicate`.
+        Links the route child issue to the canonical target identified by
+        `duplicate_of_id`. When the target is itself a duplicate child, the
+        server resolves to the canonical parent before linking.
+      properties:
+        duplicate_of_id:
+          type: integer
+          description: Primary key of the canonical (or duplicate-child) target issue.
+
+    StartOfficerShiftRequest:
+      type: object
+      required: [ latitude, longitude ]
+      properties:
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          description: Device GPS latitude for hub-radius evaluation.
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          description: Device GPS longitude for hub-radius evaluation.
+
+    StartOfficerShiftResponse:
+      type: object
+      description: >-
+        Shared shift started. Does not include token fields; use the existing
+        bearer token.
+      required: [ hub_active, hub_active_until, profile ]
+      properties:
+        hub_active:
+          type: boolean
+        hub_active_until:
+          type: string
+          format: date-time
+        profile:
+          $ref: '#/components/schemas/AuthOfficerProfile'
+
+    LoginRequest:
+      type: object
+      required: [ email, password ]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          description: >-
+            Required for officers; ignored for users and managers. Device GPS
+            latitude used for hub-radius evaluation.
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          description: >-
+            Required for officers; ignored for users and managers. Device GPS
+            longitude used for hub-radius evaluation.
+
+    MainManagerUpdate:
+      type: object
+      description: >-
+        Partial main-manager identity update. All fields are optional; send only
+        fields to change. When password is present, confirm_password is required
+        and must match. Privileged fields (is_main_manager, is_active,
+        created_by_manager_id, department_ids, and district_ids) are not
+        accepted on this path.
+      properties:
+        username:
+          type: string
+          maxLength: 50
+          description: Unique manager username. Uniqueness is checked within managers.
+        email:
+          type: string
+          format: email
+          description: Unique email address across users, officers, and managers.
+        password:
+          type: string
+          format: password
+          minLength: 8
+        confirm_password:
+          type: string
+          format: password
+          description: Required when password is present; must exactly match password.
+
+    ManagerCreate:
+      type: object
+      required: [ username, email, password, confirm_password, department_ids ]
+      properties:
+        username:
+          type: string
+          maxLength: 50
+          description: Unique manager username. Uniqueness is checked within managers.
+        email:
+          type: string
+          format: email
+          description: Unique manager email address across users, officers, and managers.
+        password:
+          type: string
+          format: password
+          minLength: 8
+        confirm_password:
+          type: string
+          format: password
+          description: Must exactly match password.
+        department_ids:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          description: >-
+            Existing active department IDs (`is_active=true`). Managers must have
+            one or more departments; inactive or unknown IDs return 422.
+          items:
+            type: integer
+        district_ids:
+          type: array
+          uniqueItems: true
+          description: Optional active district IDs to attach through the district_manager pivot.
+          items:
+            type: integer
+
+    Officer:
+      type: object
+      description: Officer resource returned by officer list and administration endpoints.
+      properties:
+        actor_type:
+          type: string
+          enum: [ officer ]
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        badge_number:
+          type: string
+        is_active:
+          type: boolean
+        hub_id:
+          type: integer
+          nullable: true
+        hub:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Hub'
+        departments:
+          type: array
+          description: Compact department objects. Officers must have one or more departments.
+          items:
+            $ref: '#/components/schemas/AuthDepartmentProfile'
+        districts:
+          type: array
+          description: Compact district objects assigned through the district_officer pivot.
+          items:
+            $ref: '#/components/schemas/AuthDistrictProfile'
+
+    OfficerSession:
+      type: object
+      description: >-
+        Officer login session audit record. Created on officer login and
+        start-shift. Session `id` is the public identifier; internal token FK
+        is not exposed. Manager read-only listing via GET /api/officer-sessions.
+      properties:
+        id:
+          type: integer
+        officer_id:
+          type: integer
+        officer:
+          type: object
+          nullable: true
+          description: Compact officer summary when eager-loaded.
+          properties:
+            id:
+              type: integer
+            username:
+              type: string
+            badge_number:
+              type: string
+        hub_id:
+          type: integer
+          nullable: true
+        hub:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Hub'
+        shift_start:
+          type: string
+          format: date-time
+        shift_end:
+          type: string
+          format: date-time
+          nullable: true
+        start_lat:
+          type: number
+          format: double
+          nullable: true
+        start_lng:
+          type: number
+          format: double
+          nullable: true
+        distance_meters_at_login:
+          type: integer
+          nullable: true
+        is_hub_active:
+          type: boolean
+        hub_active_until:
+          type: string
+          format: date-time
+          nullable: true
+        last_lat:
+          type: number
+          format: double
+          nullable: true
+        last_lng:
+          type: number
+          format: double
+          nullable: true
+        last_seen_at:
+          type: string
+          format: date-time
+          nullable: true
+        is_active:
+          type: boolean
+          description: Open session; false after logout or officer disable.
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Manager:
+      type: object
+      description: Manager resource returned by manager creation. No bearer token is issued.
+      properties:
+        actor_type:
+          type: string
+          enum: [ manager ]
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        is_active:
+          type: boolean
+        is_main_manager:
+          type: boolean
+        created_by_manager_id:
+          type: integer
+          nullable: true
+        hub_id:
+          type: integer
+          nullable: true
+        hub:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Hub'
+        departments:
+          type: array
+          description: Compact department objects. Managers must have one or more departments.
+          items:
+            $ref: '#/components/schemas/AuthDepartmentProfile'
+        districts:
+          type: array
+          description: Compact district objects assigned through the district_manager pivot.
+          items:
+            $ref: '#/components/schemas/AuthDistrictProfile'
+
+    OfficerRegisterRequest:
+      type: object
+      required: [ username, email, password, confirm_password, badge_number, department_ids, latitude, longitude ]
+      properties:
+        username:
+          type: string
+          maxLength: 50
+          description: Unique officer username. Uniqueness is checked within officers.
+        email:
+          type: string
+          format: email
+          description: Unique officer email address across users, officers, and managers.
+        password:
+          type: string
+          format: password
+          minLength: 8
+        confirm_password:
+          type: string
+          format: password
+          description: Must exactly match password.
+        badge_number:
+          type: string
+          maxLength: 20
+          description: Unique officer badge number.
+        department_ids:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          description: >-
+            Existing active department IDs. Officers must have one or more
+            departments; inactive department IDs are rejected with 422.
+          items:
+            type: integer
+        district_ids:
+          type: array
+          uniqueItems: true
+          description: Optional active district IDs to attach through the district_officer pivot.
+          items:
+            type: integer
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          description: Required device GPS latitude for hub-radius evaluation.
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          description: Required device GPS longitude for hub-radius evaluation.
+
+    UserRegisterRequest:
+      type: object
+      required: [ username, email, password, confirm_password ]
+      properties:
+        username:
+          type: string
+          maxLength: 50
+          description: Unique user username. Uniqueness is checked within users.
+        email:
+          type: string
+          format: email
+          description: Unique user email address across users, officers, and managers.
+        password:
+          type: string
+          format: password
+          minLength: 8
+        confirm_password:
+          type: string
+          format: password
+          description: Must exactly match password.
+
+    AuthProfileUpdate:
+      type: object
+      description: >-
+        Partial self-service identity update. All fields are optional; send only
+        fields to change. Active actors: users and managers may send username,
+        email, and password; officers may also send badge_number. Inactive actors
+        may only send username and password (email and badge_number are
+        prohibited with 422). When password is present, confirm_password is
+        required and must match. Department, district, `hub_id`, `hub_active_until`,
+        and other privileged fields are not accepted on this path (prohibited → 422).
+      properties:
+        username:
+          type: string
+          maxLength: 50
+          description: Unique username within the authenticated actor's table.
+        email:
+          type: string
+          format: email
+          description: Unique email address across users, officers, and managers.
+        password:
+          type: string
+          format: password
+          minLength: 8
+        confirm_password:
+          type: string
+          format: password
+          description: Required when password is present; must exactly match password.
+        badge_number:
+          type: string
+          maxLength: 20
+          description: Officers only. Unique officer badge number.
+
+    AuthResponse:
+      type: object
+      description: >-
+        Auth response wrapper. Token-issuing responses include token_type and
+        access_token. The actor_type field is emitted once at the top level and
+        is not duplicated inside profile. Officer responses also include
+        hub_active and hub_active_until at the top level (mirrored inside profile).
+      required: [ token_type, access_token, actor_type, profile ]
+      properties:
+        token_type:
+          type: string
+          example: Bearer
+        access_token:
+          type: string
+          description: >-
+            Plain-text Laravel Sanctum token. Use as Authorization Bearer header
+            value (format `Bearer <token>`). Officers may carry the `hub-active`
+            Sanctum ability for audit when login or start-shift was hub-eligible;
+            workflow access is gated on the shared shift column, not this ability.
+        actor_type:
+          type: string
+          enum: [ user, officer, manager ]
+        hub_active:
+          type: boolean
+          description: >-
+            Officers only. True when the officer has an active shared shift
+            (`hub_active_until` in the future). Omitted for users and managers.
+        hub_active_until:
+          type: string
+          format: date-time
+          nullable: true
+          description: >-
+            Officers only. ISO 8601 expiry of the shared shift (now +
+            OFFICER_HUB_ACTIVE_TTL_HOURS). Null when hub_active is false.
+            Omitted for users and managers.
+        profile:
+          oneOf:
+            - $ref: '#/components/schemas/AuthUserProfile'
+            - $ref: '#/components/schemas/AuthOfficerProfile'
+            - $ref: '#/components/schemas/AuthManagerProfile'
+
+    AuthCurrentProfileResponse:
+      type: object
+      description: >-
+        Current authenticated actor response. No token fields are included.
+        actor_type is emitted once at the top level and is not duplicated inside
+        profile. Officer responses also include hub_active and hub_active_until
+        at the top level (mirrored inside profile), derived from the officer's
+        shared shift column.
+      required: [ actor_type, profile ]
+      properties:
+        actor_type:
+          type: string
+          enum: [ user, officer, manager ]
+        hub_active:
+          type: boolean
+          description: Officers only. True when the officer has an active shared shift.
+        hub_active_until:
+          type: string
+          format: date-time
+          nullable: true
+          description: Officers only. Shared shift expiry; null when inactive.
+        profile:
+          oneOf:
+            - $ref: '#/components/schemas/AuthUserProfile'
+            - $ref: '#/components/schemas/AuthOfficerProfile'
+            - $ref: '#/components/schemas/AuthManagerProfile'
+
+    AuthUserProfile:
+      type: object
+      description: >-
+        Clean user profile payload returned in auth responses. When the
+        `feedDistricts` relation is loaded, subscribed community feed districts
+        are exposed under `districts`.
+      required: [ id, username, email ]
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        districts:
+          type: array
+          description: >-
+            Compact feed district objects from the `district_user` pivot when
+            `feedDistricts` is loaded.
+          items:
+            $ref: '#/components/schemas/AuthDistrictProfile'
+
+    AuthOfficerProfile:
+      type: object
+      description: >-
+        Safe officer profile payload returned by login, officer registration, and
+        current profile. Internal fields such as actor_type, district_id, and
+        is_active are omitted. Includes hub_active and hub_active_until derived
+        from the officer's shared shift column (`officers.hub_active_until`).
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        badge_number:
+          type: string
+        hub_id:
+          type: integer
+          nullable: true
+        hub:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Hub'
+        departments:
+          type: array
+          description: Compact department objects. Officers must have one or more departments.
+          items:
+            $ref: '#/components/schemas/AuthDepartmentProfile'
+        districts:
+          type: array
+          description: Compact district objects assigned through the district_officer pivot.
+          items:
+            $ref: '#/components/schemas/AuthDistrictProfile'
+        hub_active:
+          type: boolean
+          description: True when the officer has an active shared shift.
+        hub_active_until:
+          type: string
+          format: date-time
+          nullable: true
+          description: ISO 8601 shared shift expiry; null when not active.
+
+    AuthManagerProfile:
+      type: object
+      description: Safe manager profile payload returned by login and current profile. Internal fields such as actor_type, district_id, is_active, and created_by_manager_id are omitted.
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        departments:
+          type: array
+          description: Compact department objects. Managers must have one or more departments.
+          items:
+            $ref: '#/components/schemas/AuthDepartmentProfile'
+        is_main_manager:
+          type: boolean
+        hub_id:
+          type: integer
+          nullable: true
+        hub:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Hub'
+        districts:
+          type: array
+          description: Compact district objects assigned through the district_manager pivot.
+          items:
+            $ref: '#/components/schemas/AuthDistrictProfile'
+
+    AuthDepartmentProfile:
+      type: object
+      description: Compact department data returned in actor auth/profile payloads.
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+          example: wijkbeheer
+        name:
+          type: string
+          example: Wijkbeheer
+
+    AuthDistrictProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        postal_prefix:
+          type: string
+
+    Hub:
+      type: object
+      description: >-
+        Rotterdam BOA cluster hub. Districts belong to exactly one hub. Officers
+        and managers have a home hub via hub_id; their district pivots must stay
+        within that hub. New hubs are inactive by default until activated.
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          example: Cluster Centrum
+        address:
+          type: string
+          example: Zalmstraat 7
+        postal_code:
+          type: string
+          example: '3016 DS'
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        radius_meters:
+          type: integer
+          description: >-
+            Hub login radius in meters (Haversine from hub coordinates). Used for
+            officer hub-active evaluation. Distinct from districts.radius_meters
+            (district auto-assignment). Default 100; main managers may set 10–5000
+            on create/update.
+          example: 100
+        is_active:
+          type: boolean
+          example: true
+        districts_count:
+          type: integer
+          nullable: true
+        officers_count:
+          type: integer
+          nullable: true
+        managers_count:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    HubCreate:
+      type: object
+      required: [ name, address, postal_code, latitude, longitude ]
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        address:
+          type: string
+          maxLength: 255
+        postal_code:
+          type: string
+          maxLength: 10
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+        is_active:
+          type: boolean
+          default: false
+          description: >-
+            Optional. Defaults to false when omitted; send true to create an
+            already-active hub.
+        radius_meters:
+          type: integer
+          minimum: 10
+          maximum: 5000
+          default: 100
+          description: >-
+            Optional hub login radius in meters. Defaults to 100 when omitted.
+
+    HubUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        address:
+          type: string
+          maxLength: 255
+        postal_code:
+          type: string
+          maxLength: 10
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+        is_active:
+          type: boolean
+          description: >-
+            Set to false to deactivate or true to reactivate. Sole activation
+            path for hubs (no `/disable` route). Deactivation returns **422**
+            when active districts or active officers remain assigned to the hub.
+            Managers assigned to the hub do not block deactivation.
+        radius_meters:
+          type: integer
+          minimum: 10
+          maximum: 5000
+          description: Hub login radius in meters (10–5000).
+
+    HubAssignmentUpdate:
+      type: object
+      required: [ hub_id ]
+      properties:
+        hub_id:
+          type: integer
+          description: >-
+            Existing active hub ID (`is_active=true`). Inactive or unknown hub
+            IDs return **422**. Changing hub clears the actor's district pivot
+            so assignments can be re-established within the new hub.
+
+    District:
+      type: object
+      description: >-
+        District record (Rotterdam wijk). Each district belongs to one hub.
+        Managers and officers are assigned to districts through district_manager
+        and district_officer many-to-many pivots within their home hub. The
+        issues.district_id field remains a singular issue location/reference and
+        is not changed by actor district assignment endpoints.
+      properties:
+        id:
+          type: integer
+        hub_id:
+          type: integer
+        hub:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Hub'
+        name:
+          type: string
+        postal_prefix:
+          type: string
+        center_lat:
+          type: number
+          format: double
+        center_lng:
+          type: number
+          format: double
+        radius_meters:
+          type: integer
+          nullable: true
+        is_active:
+          type: boolean
+        managers_count:
+          type: integer
+          nullable: true
+        officers_count:
+          type: integer
+          nullable: true
+        issues_count:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    DistrictCreate:
+      type: object
+      required: [ name, hub_id, center_lat, center_lng ]
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        hub_id:
+          type: integer
+          description: Existing active hub ID (`is_active=true`) the district belongs to.
+        postal_prefix:
+          type: string
+          maxLength: 10
+          nullable: true
+        center_lat:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        center_lng:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+        radius_meters:
+          type: integer
+          minimum: 1
+          nullable: true
+        is_active:
+          type: boolean
+          default: true
+
+    DistrictUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        hub_id:
+          type: integer
+          description: >-
+            Existing active hub ID (`is_active=true`) when reassigning a
+            district to another hub.
+        postal_prefix:
+          type: string
+          maxLength: 10
+          nullable: true
+        center_lat:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        center_lng:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+        radius_meters:
+          type: integer
+          minimum: 1
+          nullable: true
+        is_active:
+          type: boolean
+          description: >-
+            Set to false to deactivate or true to reactivate. Sole activation
+            path for districts.
+
+    DistrictAssignmentUpdate:
+      type: object
+      required: [ district_ids ]
+      properties:
+        district_ids:
+          type: array
+          uniqueItems: true
+          description: >-
+            Full replacement set of active district IDs. Use an empty array to
+            clear all actor district assignments. When the actor (self-service)
+            or target (manager-admin) officer or manager has a non-null
+            `hub_id`, every district must be active and belong to that hub
+            (`districts.hub_id`); cross-hub IDs return **422** on
+            `district_ids.*`. When `hub_id` is null, any active district is
+            allowed. Duplicate IDs and inactive or unknown districts also return
+            validation errors.
+          items:
+            type: integer
+
+    DepartmentAssignmentUpdate:
+      type: object
+      required: [ department_ids ]
+      properties:
+        department_ids:
+          type: array
+          uniqueItems: true
+          description: >-
+            Full replacement set of active department IDs (`is_active=true`) from
+            the departments table. The key must be present. Use an empty array to
+            clear all actor department assignments (valid for PATCH; differs from
+            create/register flows that require at least one department). Duplicate,
+            inactive, and unknown department IDs return **422**.
+          items:
+            type: integer
+
+    Category:
+      type: object
+      description: >-
+        Category resource. Categories are assigned to departments through the
+        category_department many-to-many pivot. Categories use a two-level
+        hierarchy: main categories have parent_id null and use priority for
+        ordering (lower number = higher urgency); subcategories reference a main
+        category through parent_id, order alphabetically by name, and cannot
+        have children (no sub-under-sub).
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        is_active:
+          type: boolean
+        parent_id:
+          type: integer
+          nullable: true
+        is_main_category:
+          type: boolean
+        priority:
+          type: integer
+          nullable: true
+          description: Main-category ordering value; lower number means higher priority. Null for subcategories.
+        parent:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/CategoryParentSummary'
+        departments:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/DepartmentSummary'
+        children:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/Category'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CategoryParentSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+
+    DepartmentSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+          example: wijkbeheer
+        name:
+          type: string
+          example: Wijkbeheer
+        is_active:
+          type: boolean
+
+    CategoryDepartmentAssignment:
+      type: object
+      description: Pivot assignment between a category and a department.
+      properties:
+        category_id:
+          type: integer
+        department_id:
+          type: integer
+
+    CategoryCreate:
+      type: object
+      required: [ name, department_ids ]
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        parent_id:
+          type: integer
+          nullable: true
+          description: >-
+            Null for main categories. Subcategories must reference an active main
+            category; subcategories cannot have children (no sub-under-sub).
+        department_ids:
+          type: array
+          minItems: 1
+          description: Existing department ids to attach through the category_department pivot.
+          items:
+            type: integer
+        priority:
+          type: integer
+          minimum: 0
+          maximum: 255
+          nullable: true
+          description: Main categories only; lower number means higher priority.
+        is_active:
+          type: boolean
+          default: true
+
+    CategoryUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        parent_id:
+          type: integer
+          nullable: true
+          description: >-
+            When present, must reference a main category. Subcategories cannot
+            have children.
+        department_ids:
+          type: array
+          minItems: 1
+          description: When present, replaces the category's department assignments.
+          items:
+            type: integer
+        priority:
+          type: integer
+          minimum: 0
+          maximum: 255
+          nullable: true
+          description: Main categories only; lower number means higher priority.
+        is_active:
+          type: boolean
+          description: >-
+            Set to false to deactivate or true to reactivate. Sole activation
+            path for categories.
+
+    Department:
+      type: object
+      description: >-
+        Department table row. Categories are assigned to one or more departments
+        through category_department. Managers reference one or more departments
+        through department_manager. Officers reference one or more departments
+        through department_officer. Activation and deactivation use PATCH with
+        `is_active` (main manager only). Deleting a department is blocked while
+        it is assigned to managers or officers;
+        otherwise it cascades only category and issue pivot assignments and does
+        not delete category or issue rows. Issue departments are derived from
+        categories, stored through the department_issue pivot, and exposed to
+        clients as read-only arrays.
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+          example: wijkbeheer
+        name:
+          type: string
+          example: Wijkbeheer
+        is_active:
+          type: boolean
+        categories_count:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    DepartmentCreate:
+      type: object
+      required: [ code, name ]
+      properties:
+        code:
+          type: string
+          maxLength: 50
+          description: Stable unique department code.
+        name:
+          type: string
+          maxLength: 100
+        is_active:
+          type: boolean
+          default: true
+
+    DepartmentUpdate:
+      type: object
+      properties:
+        code:
+          type: string
+          maxLength: 50
+          description: Stable unique department code.
+        name:
+          type: string
+          maxLength: 100
+        is_active:
+          type: boolean
+          description: >-
+            Set to false to deactivate or true to reactivate. Sole activation
+            path for departments. Deactivation may return **409** when still
+            referenced.
+
+    IssueCreate:
+      type: object
+      description: >-
+        Client payload for creating an issue (active regular users only).
+        district_id is required and must reference an active district.
+        Departments are derived server-side from the selected category's
+        department assignments and are not accepted in the request. The integer
+        priority (unsigned tinyint scale, lower = higher urgency) is derived
+        server-side from the selected category's main-category priority and must
+        not be sent; legacy string priorities (laag/midden/zwaar) are not accepted.
+        Removed legacy locality fields are not accepted. Anonymous aliases are
+        generated server-side; anonymous issues remain owned by the authenticated
+        user via user_id.
+      required: [ title, content, category_id, district_id ]
+      properties:
+        title:
+          type: string
+          maxLength: 255
+        content:
+          type: string
+        category_id:
+          type: integer
+        district_id:
+          type: integer
+          description: Required active district ID for the issue location/reference.
+        latitude:
+          type: number
+          format: double
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        postal_code:
+          type: string
+          nullable: true
+        is_anonymous:
+          type: boolean
+          default: false
+        duplicate_of_id:
+          type: integer
+          nullable: true
+          description: >-
+            Optional canonical (or canonical-resolved) issue id. When present,
+            creates a hidden duplicate child linked to the target instead of a
+            standalone issue. Omitted for normal creates.
+
+    SimilarCheckRequest:
+      type: object
+      description: >-
+        Input for scoring similar open canonical issues before create. Active
+        regular users only.
+      required: [ district_id, category_id ]
+      properties:
+        district_id:
+          type: integer
+          description: Active district id; candidates must match this district.
+        category_id:
+          type: integer
+          description: Active category id used for category-match scoring.
+        postal_code:
+          type: string
+          nullable: true
+          maxLength: 10
+        address:
+          type: string
+          nullable: true
+          maxLength: 255
+        latitude:
+          type: number
+          format: double
+          nullable: true
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          format: double
+          nullable: true
+          minimum: -180
+          maximum: 180
+
+    SimilarIssueMatch:
+      type: object
+      description: One scored similar-issue candidate from similar-check.
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        status:
+          type: string
+          enum: [ open, in_behandeling, opgelost, gesloten ]
+        category_id:
+          type: integer
+        district_id:
+          type: integer
+        duplicate_count:
+          type: integer
+        participant_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        confidence:
+          type: string
+          enum: [ high, medium, low ]
+        linkable:
+          type: boolean
+          description: >-
+            False for the actor's own issues in `own_matches`; true for other
+            users' issues in `matches`.
+
+    SimilarCheckResponse:
+      type: object
+      description: Top similar-issue matches split by ownership.
+      properties:
+        own_matches:
+          type: array
+          items:
+            $ref: '#/components/schemas/SimilarIssueMatch'
+        matches:
+          type: array
+          items:
+            $ref: '#/components/schemas/SimilarIssueMatch'
+
+    DeleteIssueRequest:
+      type: object
+      description: >-
+        Optional JSON body for DELETE `/api/issues/{issueId}`. Applies when
+        deleting a duplicate child owned by the authenticated user.
+      properties:
+        leave_participation:
+          type: boolean
+          default: false
+          description: >-
+            When true, remove the owner's participation row on the canonical
+            parent and decrement `participant_count`. When false (default), keep
+            canonical participation.
+
+    IssueUpdate:
+      type: object
+      description: >-
+        Owner-editable issue fields. All fields are optional for PATCH/PUT and
+        only supplied fields are changed. user_id, status, priority,
+        visibility, anonymous_alias, department assignments, and counters are
+        server-owned; priority and visibility must not be sent. When category_id
+        is supplied, departments and integer priority are re-derived from that
+        category's main-category priority. Officers and managers change
+        visibility through PATCH /api/issues/{issueId}/visibility. The public
+        API no longer accepts removed legacy locality fields or client-supplied
+        department values.
+      properties:
+        title:
+          type: string
+          maxLength: 255
+        content:
+          type: string
+        category_id:
+          type: integer
+        district_id:
+          type: integer
+        postal_code:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        latitude:
+          type: number
+          format: double
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          nullable: true
+        is_anonymous:
+          type: boolean
+
+    IssueVisibilityUpdate:
+      type: object
+      required: [ visibility ]
+      description: >-
+        Officer/manager visibility write payload. Active officers and active
+        managers may set an issue to visible or hidden when they can view the
+        issue.
+      properties:
+        visibility:
+          type: string
+          enum: [ visible, hidden ]
+          description: Target visibility for the issue.
+
+    Issue:
+      type: object
+      description: >-
+        Issue resource. Anonymous issues remain user-owned in the database
+        through user_id, but the response exposes only an author display alias
+        such as Melder#A1B2C3D4 and never leaks the owning user's id. Non-anonymous
+        issues include author identity when loaded. Participants viewing a canonical
+        they joined (but do not own) receive status, resolution, counters, and
+        participation context while title, content, location, author, and
+        attachments are redacted. Participation context flags (`is_duplicate_child`,
+        `canonical_issue_id`, `is_participant`, `participant_joined_via`,
+        `via_issue_id`) are returned for regular users only. Attachments include
+        authenticated download URLs only. Department assignments are stored in
+        department_issue, derived from the issue category, and exposed as a
+        read-only departments array only (no singular department property on
+        requests or responses).
+      properties:
+        id:
+          type: integer
+        category_id:
+          type: integer
+        district_id:
+          type: integer
+        title:
+          type: string
+        content:
+          type: string
+        postal_code:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        latitude:
+          type: number
+          format: double
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          nullable: true
+        departments:
+          type: array
+          nullable: true
+          description: >-
+            Read-only compact departments assigned to the issue through the
+            department_issue pivot. Derived from the selected category on create
+            and whenever category_id changes.
+          items:
+            $ref: '#/components/schemas/AuthDepartmentProfile'
+        status:
+          type: string
+          enum: [ open, in_behandeling, opgelost, gesloten ]
+        assigned_officer_id:
+          type: integer
+          nullable: true
+          description: >-
+            Read-only nullable officer assignee id. Not accepted on user-owned create
+            or update requests. Active officers set or clear it through POST
+            `/api/issues/{issueId}/assign-self` and POST
+            `/api/issues/{issueId}/unassign-self`.
+        visibility:
+          type: string
+          enum: [visible, hidden]
+          description: >-
+            Issue visibility. Visible issues appear in public-scoped lists; hidden
+            issues are visible only to officers, managers, and the owning user.
+            Not accepted on user-owned create or update requests. Active officers
+            and managers may change it through PATCH /api/issues/{issueId}/visibility.
+        priority:
+          type: integer
+          nullable: true
+          description: >-
+            Server-derived integer priority copied from the issue category's
+            main-category priority on create and whenever category_id changes.
+            Lower number means higher urgency; same scale as categories.priority.
+        is_anonymous:
+          type: boolean
+        author:
+          $ref: '#/components/schemas/IssueAuthor'
+        participant_count:
+          type: integer
+        duplicate_count:
+          type: integer
+        duplicate_of_id:
+          type: integer
+          nullable: true
+          description: >-
+            Present on duplicate child issues for owners of the child and for
+            officers/managers. Omitted for other actors and for canonical issues
+            viewed by non-officers.
+        is_duplicate_child:
+          type: boolean
+          description: >-
+            Regular users only. True when this issue row is a duplicate child
+            (`duplicate_of_id` is set).
+        canonical_issue_id:
+          type: integer
+          nullable: true
+          description: >-
+            Regular users only. Canonical parent id when `is_duplicate_child` is
+            true; otherwise null.
+        is_participant:
+          type: boolean
+          description: >-
+            Regular users only. Whether the authenticated user participates on
+            the canonical issue for this payload.
+        participant_joined_via:
+          type: string
+          nullable: true
+          enum: [ creator, manual, duplicate ]
+          description: >-
+            Regular users only. How the actor joined the canonical issue when
+            `is_participant` is true.
+        via_issue_id:
+          type: integer
+          nullable: true
+          description: >-
+            Regular users only. Duplicate child id when the actor joined via
+            `duplicate`; null for creator/manual joins.
+        category:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+        district:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+        attachments:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/IssueAttachment'
+        status_history:
+          type: array
+          nullable: true
+          description: >-
+            Unpaginated status change audit trail embed. Included only for active
+            officers and managers on GET issue show (newest first). Omitted on
+            GET issue list and never returned to regular users. Rows do not
+            include officer coordinates. For paginated history, use GET
+            `/api/issues/{issueId}/status-history` (duplicate child route ids
+            resolve to the canonical parent).
+          items:
+            $ref: '#/components/schemas/IssueStatusHistory'
+        officer_resolution:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/OfficerIssueResolution'
+          description: >-
+            Embedded officer field report (with officer and attachments) when
+            present and the actor may view the issue. Included on GET issue list
+            and show when eager-loaded. Use GET
+            `/api/issues/{issueId}/officer-resolution` for resolution-only reads.
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        resolved_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    IssueAuthor:
+      type: object
+      description: >-
+        Ownership-safe author summary. For anonymous issues this contains only
+        is_anonymous=true and display_name with the stable alias; user_id is not
+        returned even though the database keeps ownership via issues.user_id.
+        For non-anonymous issues with the user relation loaded, id and username
+        are exposed and display_name equals username.
+      properties:
+        is_anonymous:
+          type: boolean
+        id:
+          type: integer
+          nullable: true
+        username:
+          type: string
+          nullable: true
+        display_name:
+          type: string
+          description: >-
+            Username for non-anonymous authors when the user relation is loaded;
+            stable anonymous alias (e.g. Melder#A1B2C3D4) for anonymous issues.
+          example: Melder#A1B2C3D4
+
+    IssueParticipant:
+      type: object
+      description: >-
+        Participant row on a canonical issue. Returned by GET
+        `/api/issues/{issueId}/participants` for officers and managers.
+      properties:
+        id:
+          type: integer
+        joined_via:
+          type: string
+          enum: [ creator, manual, duplicate ]
+          description: >-
+            How the user joined: `creator` (normal issue create),
+            `manual` (POST join), or `duplicate` (create with duplicate_of_id).
+        via_issue_id:
+          type: integer
+          nullable: true
+          description: Duplicate child issue id when joined_via is `duplicate`.
+        joined_at:
+          type: string
+          format: date-time
+        is_anonymous:
+          type: boolean
+          description: >-
+            When true, the `user` object exposes only `is_anonymous` and
+            `display_name`; `user_id` and `username` are not returned.
+        user:
+          oneOf:
+            - $ref: '#/components/schemas/IssueParticipantUserIdentified'
+            - $ref: '#/components/schemas/IssueParticipantUserAnonymous'
+
+    IssueParticipantUserIdentified:
+      type: object
+      description: Identified participant user summary.
+      required: [ id ]
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+
+    IssueParticipantUserAnonymous:
+      type: object
+      description: Anonymous participant user summary.
+      required: [ is_anonymous, display_name ]
+      properties:
+        is_anonymous:
+          type: boolean
+          enum: [ true ]
+        display_name:
+          type: string
+          description: >-
+            Stable alias derived from the canonical issue, duplicate child, or
+            participant id (e.g. Melder#A1B2C3D4 or Deelnemer#000042).
+          example: Deelnemer#000042
+
+    IssueAttachment:
+      type: object
+      description: >-
+        Attachment metadata. Files are stored in non-public local development
+        storage and are downloadable only through the authenticated download_url.
+        Raw storage paths and public file URLs are not exposed.
+      properties:
+        id:
+          type: integer
+        issue_id:
+          type: integer
+        original_name:
+          type: string
+          nullable: true
+        file_type:
+          type: string
+          nullable: true
+        file_size:
+          type: integer
+          nullable: true
+          description: File size in bytes. Each uploaded file is limited to 5 MB.
+        uploaded_at:
+          type: string
+          format: date-time
+        download_url:
+          type: string
+          description: Authenticated download endpoint for this attachment.
+
+    IssueStatusUpdate:
+      type: object
+      required: [ status ]
+      description: >-
+        Officer status update payload. Only the assigned active officer may
+        submit this on PATCH `/api/issues/{issueId}/status`.
+      properties:
+        status:
+          type: string
+          enum: [ open, in_behandeling, opgelost, gesloten ]
+          description: >-
+            Target status. Directed transitions: `open` → `in_behandeling`;
+            `in_behandeling` → `opgelost`; `opgelost` → `gesloten`. Same status
+            or invalid transitions return 422.
+        note:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: Optional audit note stored on the status history row.
+
+    IssueStatusHistoryPaginated:
+      type: object
+      description: >-
+        Laravel paginator envelope for GET `/api/issues/{issueId}/status-history`.
+        Rows are newest-first `IssueStatusHistory` entries. Duplicate child route
+        ids resolve to the canonical parent before querying.
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/IssueStatusHistory'
+        links:
+          type: object
+          additionalProperties: true
+        meta:
+          type: object
+          properties:
+            current_page:
+              type: integer
+            per_page:
+              type: integer
+            total:
+              type: integer
+            last_page:
+              type: integer
+
+    IssueStatusHistory:
+      type: object
+      description: >-
+        One row in the issue status audit trail. Exposed to officers and
+        managers only. Does not include officer GPS coordinates.
+      properties:
+        id:
+          type: integer
+        issue_id:
+          type: integer
+        changed_by_officer_id:
+          type: integer
+          nullable: true
+        old_status:
+          type: string
+          nullable: true
+          enum: [ open, in_behandeling, opgelost, gesloten ]
+        new_status:
+          type: string
+          enum: [ open, in_behandeling, opgelost, gesloten ]
+        note:
+          type: string
+          nullable: true
+        changed_at:
+          type: string
+          format: date-time
+        officer:
+          type: object
+          nullable: true
+          description: Compact officer summary when changedByOfficer is loaded.
+          properties:
+            id:
+              type: integer
+            username:
+              type: string
+
+    OfficerIssueResolution:
+      type: object
+      description: >-
+        Officer field report describing how an issue was handled. At most one
+        per issue (`officer_issue_resolutions.issue_id` unique). Distinct from
+        user satisfaction feedback in `issue_resolutions`.
+      properties:
+        id:
+          type: integer
+        issue_id:
+          type: integer
+        officer_id:
+          type: integer
+          nullable: true
+          description: >-
+            Officer who created or last edited the report. Overwritten on each
+            successful PATCH (last editor).
+        title:
+          type: string
+        content:
+          type: string
+        officer:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            username:
+              type: string
+        attachments:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/OfficerIssueResolutionAttachment'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    OfficerIssueResolutionCreate:
+      type: object
+      required: [ title, content ]
+      description: >-
+        Multipart create payload for POST
+        `/api/issues/{issueId}/officer-resolution`. Assignee-only; one report
+        per issue.
+      properties:
+        title:
+          type: string
+          maxLength: 255
+        content:
+          type: string
+          maxLength: 10000
+        files:
+          type: array
+          maxItems: 3
+          items:
+            type: string
+            format: binary
+          description: >-
+            Optional image attachments (jpg, jpeg, png, gif, webp). Up to 3
+            files, each at most 5 MB. Content-sniffed after extension rules.
+
+    OfficerIssueResolutionUpdate:
+      type: object
+      required: [ title, content ]
+      description: >-
+        Multipart update payload for PATCH
+        `/api/issues/{issueId}/officer-resolution`. Assignee-only.
+      properties:
+        title:
+          type: string
+          maxLength: 255
+        content:
+          type: string
+          maxLength: 10000
+        files:
+          type: array
+          maxItems: 3
+          items:
+            type: string
+            format: binary
+          description: >-
+            Optional new image attachments. Combined count after
+            `remove_attachment_ids` must not exceed 3; each file at most 5 MB.
+            Content-sniffed after extension rules.
+        remove_attachment_ids:
+          type: array
+          items:
+            type: integer
+          description: >-
+            Attachment ids owned by this resolution to delete before upload.
+            Ids that do not belong to the resolution return **422** on this field.
+
+    OfficerIssueResolutionAttachment:
+      type: object
+      description: >-
+        Officer resolution attachment metadata. Files are stored on non-public
+        local development storage and are downloadable only through
+        `download_url`.
+      properties:
+        id:
+          type: integer
+        issue_id:
+          type: integer
+        original_name:
+          type: string
+          nullable: true
+        file_type:
+          type: string
+          nullable: true
+        file_size:
+          type: integer
+          nullable: true
+          description: File size in bytes. Each uploaded file is limited to 5 MB.
+        uploaded_at:
+          type: string
+          format: date-time
+        download_url:
+          type: string
+          description: Authenticated download endpoint for this attachment.
+
+    IssueComment:
+      type: object
+      description: >-
+        Comment posted on an issue by a user, officer, or manager.
+      required: [ id, issue_id, author_type, content, is_flagged, visibility, author, created_at, updated_at ]
+      properties:
+        id:
+          type: integer
+        issue_id:
+          type: integer
+        author_type:
+          type: string
+          enum: [ user, officer, manager ]
+        content:
+          type: string
+          maxLength: 2000
+        is_flagged:
+          type: boolean
+        visibility:
+          type: string
+          enum: [ visible, hidden ]
+        author:
+          $ref: '#/components/schemas/IssueCommentAuthor'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    IssueCommentAuthor:
+      type: object
+      description: >-
+        Ownership-safe author summary. User-authored comments on anonymous issues
+        by the issue owner expose only is_anonymous=true and display_name with the
+        stable alias; id and username are not returned. All viewers see the same
+        redacted shape. Officer and manager comments always expose real identity
+        with is_anonymous=false. Non-redacted user comments expose id, username,
+        and display_name with is_anonymous=false.
+      properties:
+        is_anonymous:
+          type: boolean
+        id:
+          type: integer
+          nullable: true
+        username:
+          type: string
+          nullable: true
+        display_name:
+          type: string
+          nullable: true
+          description: >-
+            Username for non-anonymous authors when the relation is loaded;
+            stable anonymous alias (e.g. Melder#A1B2C3D4) when redacted.
+
+    IssueCommentCreate:
+      type: object
+      required: [ content ]
+      properties:
+        content:
+          type: string
+          maxLength: 2000
+          description: Plain text content of the comment (max 2000 characters).
+
+    IssueCommentUpdate:
+      type: object
+      required: [ content ]
+      properties:
+        content:
+          type: string
+          maxLength: 2000
+          description: Updated plain text content of the comment (max 2000 characters).
+
+    IssueCommentVisibilityUpdate:
+      type: object
+      required: [ visibility ]
+      properties:
+        visibility:
+          type: string
+          enum: [ visible, hidden ]
+          description: Target visibility for the comment.
+
+    IssueFeedback:
+      type: object
+      description: >-
+        User satisfaction feedback on a closed issue (one row per participant per
+        issue). Distinct from officer field reports in `officer_issue_resolutions`.
+      required: [ id, issue_id, is_satisfied, submitted_at, reviewer ]
+      properties:
+        id:
+          type: integer
+        issue_id:
+          type: integer
+        is_satisfied:
+          type: boolean
+          description: Whether the reviewer is satisfied with how the issue was resolved.
+        comment:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: Optional free-text explanation.
+        submitted_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Set on PATCH; null until first edit.
+        reviewer:
+          $ref: '#/components/schemas/IssueCommentAuthor'
+
+    IssueFeedbackCreate:
+      type: object
+      required: [ is_satisfied ]
+      properties:
+        is_satisfied:
+          type: boolean
+          description: Required satisfaction boolean (ja/nee).
+        comment:
+          type: string
+          maxLength: 2000
+          description: Optional explanation (max 2000 characters).
+
+    IssueFeedbackUpdate:
+      type: object
+      properties:
+        is_satisfied:
+          type: boolean
+          description: Updated satisfaction boolean.
+        comment:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: Updated comment; send null to clear.
+
+    IssueFeedbackError:
+      type: object
+      description: >-
+        Issue feedback authorization or window rejection with stable
+        machine-readable `code`.
+      required: [ message, code ]
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+          enum:
+            - feedback_not_allowed
+            - feedback_window_closed
+            - feedback_edit_window_closed
+            - not_issue_participant
+
+    IssueFeedbackConflictError:
+      type: object
+      description: >-
+        Duplicate issue feedback submission with stable machine-readable `code`.
+      required: [ message, code ]
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+          enum: [ feedback_already_submitted ]
+
+    IssueChat:
+      type: object
+      description: >-
+        1:1 chat between the assigned officer and one eligible user on a canonical
+        issue. Unique per (`issue_id`, `user_id`).
+      required: [ id, issue_id, user_id, status, created_at, updated_at ]
+      properties:
+        id:
+          type: integer
+        issue_id:
+          type: integer
+        user_id:
+          type: integer
+        status:
+          type: string
+          enum: [ open, closed ]
+        partner:
+          $ref: '#/components/schemas/IssueChatPartner'
+        opened_by_officer_id:
+          type: integer
+          nullable: true
+        closed_by_officer_id:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    IssueChatPartner:
+      type: object
+      description: >-
+        Alias-safe summary of the chat's citizen partner. Anonymous owners and
+        anonymous participants expose only `is_anonymous` and `display_name`.
+      properties:
+        is_anonymous:
+          type: boolean
+        id:
+          type: integer
+          nullable: true
+        username:
+          type: string
+          nullable: true
+        display_name:
+          type: string
+          nullable: true
+
+    IssueChatOpen:
+      type: object
+      required: [ user_id ]
+      properties:
+        user_id:
+          type: integer
+          description: Canonical owner or participant user id.
+
+    IssueMessage:
+      type: object
+      description: >-
+        Chat message within an issue_chat. System messages expose `meta`; regular
+        messages return `meta: null`. No edit/delete in v1.
+      required: [ id, issue_chat_id, issue_id, message_type, sender_type, is_read, created_at, updated_at ]
+      properties:
+        id:
+          type: integer
+        issue_chat_id:
+          type: integer
+        issue_id:
+          type: integer
+        message_type:
+          type: string
+          enum: [ message, system ]
+        sender_type:
+          type: string
+          enum: [ user, officer, system ]
+        content:
+          type: string
+          nullable: true
+          maxLength: 2000
+        meta:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Present for system messages only (e.g. code chat_closed_status_gesloten).
+        is_read:
+          type: boolean
+        sender:
+          $ref: '#/components/schemas/IssueMessageSender'
+        attachments:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/IssueMessageAttachment'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    IssueMessageSender:
+      type: object
+      description: >-
+        Compact sender summary. User senders on anonymous issues may be redacted.
+        System senders expose only `type: system`.
+      properties:
+        type:
+          type: string
+          enum: [ user, officer, system ]
+        id:
+          type: integer
+          nullable: true
+        username:
+          type: string
+          nullable: true
+        display_name:
+          type: string
+          nullable: true
+        is_anonymous:
+          type: boolean
+          nullable: true
+
+    IssueMessageAttachment:
+      type: object
+      properties:
+        id:
+          type: integer
+        issue_message_id:
+          type: integer
+        original_name:
+          type: string
+        file_type:
+          type: string
+        file_size:
+          type: integer
+        uploaded_at:
+          type: string
+          format: date-time
+        download_url:
+          type: string
+          format: uri
+          description: Authenticated API download URL for the attachment.
+
+    IssueChatMessageCreate:
+      type: object
+      description: >-
+        Multipart body for sending a chat message. At least one of `content` or
+        `files` is required. `content` may be omitted when attachments are present.
+      properties:
+        content:
+          type: string
+          maxLength: 2000
+          description: Optional text when one or more files are attached.
+        files:
+          type: array
+          maxItems: 3
+          items:
+            type: string
+            format: binary
+          description: Optional images (jpg, jpeg, png, gif, webp). Max 3, 5 MB each.
+
+    IssueChatMarkReadResponse:
+      type: object
+      required: [ marked_read ]
+      properties:
+        marked_read:
+          type: integer
+          description: Count of messages marked read in this request.
+
+    OfficerIssueUpdate:
+      type: object
+      description: >-
+        Officer update posted during issue handling. Can have multiple updates
+        per issue.
+      properties:
+        id:
+          type: integer
+        issue_id:
+          type: integer
+        officer_id:
+          type: integer
+          nullable: true
+        title:
+          type: string
+        content:
+          type: string
+        officer:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            username:
+              type: string
+        attachments:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/OfficerIssueUpdateAttachment'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    OfficerIssueUpdateCreate:
+      type: object
+      required: [ title, content ]
+      description: Payload to create an officer update. Assignee only.
+      properties:
+        title:
+          type: string
+          maxLength: 255
+        content:
+          type: string
+          maxLength: 10000
+        files:
+          type: array
+          maxItems: 3
+          items:
+            type: string
+            format: binary
+          description: Optional images (jpg, jpeg, png, gif, webp). Max 3, 5 MB each.
+
+    OfficerIssueUpdateUpdate:
+      type: object
+      required: [ title, content ]
+      description: Payload to update an officer update. Author assignee only.
+      properties:
+        title:
+          type: string
+          maxLength: 255
+        content:
+          type: string
+          maxLength: 10000
+        files:
+          type: array
+          maxItems: 3
+          items:
+            type: string
+            format: binary
+          description: Optional new attachments. Max 3 total after removals.
+        remove_attachment_ids:
+          type: array
+          items:
+            type: integer
+          description: Attachment IDs to delete before upload.
+
+    OfficerIssueUpdateAttachment:
+      type: object
+      description: Update attachment metadata.
+      properties:
+        id:
+          type: integer
+        issue_id:
+          type: integer
+        original_name:
+          type: string
+          nullable: true
+        file_type:
+          type: string
+          nullable: true
+        file_size:
+          type: integer
+          nullable: true
+        uploaded_at:
+          type: string
+          format: date-time
+        download_url:
+          type: string
+
+    CommunityPost:
+      type: object
+      description: Community news post resource.
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        content:
+          type: string
+        visibility:
+          type: string
+          enum: [ visible, hidden ]
+        district:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            postal_prefix:
+              type: string
+        officer:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            username:
+              type: string
+            badge_number:
+              type: string
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommunityPostAttachment'
+        is_saved:
+          type: boolean
+          description: Present on user list/show responses when applicable.
+        saved_count:
+          type: integer
+          description: Number of users who saved this post.
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CommunityPostPaginated:
+      type: object
+      description: Laravel paginator envelope for GET `/api/community-posts`.
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommunityPost'
+        links:
+          type: object
+          additionalProperties: true
+        meta:
+          type: object
+          properties:
+            current_page:
+              type: integer
+            per_page:
+              type: integer
+            total:
+              type: integer
+            last_page:
+              type: integer
+
+    CommunityPostCreate:
+      type: object
+      required: [ district_id, title, content, visibility ]
+      properties:
+        district_id:
+          type: integer
+          description: Active district where the officer is assigned.
+        title:
+          type: string
+          maxLength: 255
+        content:
+          type: string
+          maxLength: 5000
+        visibility:
+          type: string
+          enum: [ visible, hidden ]
+
+    CommunityPostUpdate:
+      type: object
+      properties:
+        district_id:
+          type: integer
+          description: Active district where the officer is assigned.
+        title:
+          type: string
+          maxLength: 255
+        content:
+          type: string
+          maxLength: 5000
+
+    CommunityPostVisibilityUpdate:
+      type: object
+      required: [ visibility ]
+      properties:
+        visibility:
+          type: string
+          enum: [ visible, hidden ]
+
+    CommunityPostAttachment:
+      type: object
+      description: >-
+        Community post attachment metadata. Files are stored on the non-public
+        local disk and downloaded through the authenticated download route.
+      properties:
+        id:
+          type: integer
+        file_url:
+          type: string
+          nullable: true
+        original_name:
+          type: string
+          nullable: true
+        file_type:
+          type: string
+          nullable: true
+        file_size:
+          type: integer
+          nullable: true
+          description: File size in bytes. Each uploaded file is limited to 5 MB.
+        uploaded_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    NotificationType:
+      type: string
+      description: Canonical domain notification type (snake_case).
+      enum:
+        - status_change
+        - new_message
+        - new_issue
+        - chat_opened
+        - chat_closed
+        - new_comment
+        - resolution_posted
+        - feedback_received
+        - new_community_post
+        - issue_hidden
+
+    DomainNotification:
+      type: object
+      description: >-
+        Domain notification resource returned by list and mark-read endpoints.
+        Matches `DomainNotificationResource`.
+      properties:
+        id:
+          type: integer
+        type:
+          $ref: '#/components/schemas/NotificationType'
+        title:
+          type: string
+        body:
+          type: string
+          nullable: true
+        is_read:
+          type: boolean
+        issue_id:
+          type: integer
+          nullable: true
+        community_post_id:
+          type: integer
+          nullable: true
+        payload:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Optional navigation metadata (e.g. chat_id, comment_id, message_id).
+        actor_type:
+          type: string
+          nullable: true
+          enum: [ user, officer, manager ]
+        actor_id:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    DomainNotificationPaginated:
+      type: object
+      description: >-
+        Laravel paginator envelope for `GET /api/notifications` and officer
+        mirror routes.
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/DomainNotification'
+        links:
+          type: object
+          additionalProperties: true
+        meta:
+          type: object
+          properties:
+            current_page:
+              type: integer
+            per_page:
+              type: integer
+            total:
+              type: integer
+            last_page:
+              type: integer
+
+    NotificationUnreadCount:
+      type: object
+      required: [ count ]
+      properties:
+        count:
+          type: integer
+          description: Number of unread notifications for the authenticated actor.
+
+    NotificationBulkReadRequest:
+      type: object
+      required: [ ids ]
+      properties:
+        ids:
+          type: array
+          minItems: 1
+          items:
+            type: integer
+          description: Notification ids to mark read. Foreign ids are skipped.
+
+    NotificationMarkReadRequest:
+      type: object
+      required: [ is_read ]
+      properties:
+        is_read:
+          type: boolean
+          enum: [ true ]
+          description: Must be `true`; only marking read is supported in v1.
+
+    NotificationUpdatedCount:
+      type: object
+      required: [ updated ]
+      properties:
+        updated:
+          type: integer
+          description: Number of notification rows updated.

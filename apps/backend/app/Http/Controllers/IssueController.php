@@ -6,12 +6,14 @@ use App\Actions\Issues\CreateIssue;
 use App\Actions\Issues\CreateIssueAsDuplicate;
 use App\Actions\Issues\DeleteDuplicateChild;
 use App\Actions\Issues\ReparentOnCanonicalDelete;
+use App\Enums\Visibility;
 use App\Http\Requests\Issues\DeleteIssueRequest;
 use App\Http\Requests\Issues\IndexIssueRequest;
 use App\Http\Requests\Issues\ShowIssueRequest;
 use App\Http\Requests\Issues\StoreIssueRequest;
 use App\Http\Requests\Issues\UpdateIssueRequest;
 use App\Http\Requests\Issues\UpdateIssueVisibilityRequest;
+use App\Support\Notifications\NotifyIssueHidden;
 use App\Support\Issues\IssueListScope;
 use App\Support\IssueVisibilityQuery;
 use App\Http\Resources\IssueResource;
@@ -307,15 +309,25 @@ class IssueController extends Controller
      * IssueVisibilityQuery::canViewIssue(), matching show behavior: issues the
      * actor cannot view return 404. Only the visibility field is updated.
      */
-    public function updateVisibility(UpdateIssueVisibilityRequest $request, Issue $issue): IssueResource
-    {
+    public function updateVisibility(
+        UpdateIssueVisibilityRequest $request,
+        Issue $issue,
+        NotifyIssueHidden $notifyIssueHidden,
+    ): IssueResource {
         if (! IssueVisibilityQuery::canViewIssue($issue, $request->user())) {
             abort(404);
         }
 
+        $newVisibility = $request->enum('visibility', Visibility::class);
+        $wasHidden = $issue->visibility === Visibility::Hidden;
+
         $issue->update([
-            'visibility' => $request->enum('visibility'),
+            'visibility' => $newVisibility,
         ]);
+
+        if ($newVisibility === Visibility::Hidden && ! $wasHidden) {
+            $notifyIssueHidden->notify($issue, $request->user());
+        }
 
         $issue->refresh()->load(self::ISSUE_RELATIONS);
 

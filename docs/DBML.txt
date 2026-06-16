@@ -547,18 +547,23 @@ Table user_reviews {
 }
 
 Table domain_notifications {
-  id               int          [pk, increment]
-  recipient_type   varchar(10)  [not null, note: 'user | officer | manager']
-  user_id          int          [ref: > users.id, note: 'nullOnDelete']
-  officer_id       int          [ref: > officers.id, note: 'nullOnDelete']
-  manager_id       int          [ref: > managers.id, note: 'nullOnDelete']
-  issue_id         int          [ref: > issues.id, note: 'nullOnDelete']
-  type             varchar(50)  [not null, note: 'status_change | new_issue | priority_raised | new_message | flagged']
-  title            varchar(255) [not null]
-  body             text
-  is_read          tinyint(1)   [not null, default: 0]
-  created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
-  updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  id                int          [pk, increment]
+  recipient_type    varchar(10)  [not null, note: 'user | officer | manager']
+  user_id           int          [ref: > users.id, note: 'nullOnDelete']
+  officer_id        int          [ref: > officers.id, note: 'nullOnDelete']
+  manager_id        int          [ref: > managers.id, note: 'nullOnDelete']
+  issue_id          int          [ref: > issues.id, note: 'nullOnDelete']
+  community_post_id int          [ref: > community_posts.id, note: 'nullOnDelete; deep link for new_community_post']
+  type              varchar(50)  [not null, note: 'status_change | new_message | new_issue | chat_opened | chat_closed | new_comment | resolution_posted | feedback_received | new_community_post | issue_hidden']
+  title             varchar(255) [not null]
+  body              text
+  payload           json         [note: 'nullable navigation metadata (chat_id, comment_id, message_id, etc.)']
+  actor_type        varchar(10)  [note: 'nullable; user | officer | manager — who triggered the event']
+  actor_id          bigint       [note: 'nullable unsignedBigInteger; polymorphic actor reference without FK']
+  is_read           tinyint(1)   [not null, default: 0]
+  dedup_key         varchar(191) [unique, note: 'nullable unique; type-prefixed deduplication key (insertOrIgnore)']
+  created_at        datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at        datetime     [not null, default: `CURRENT_TIMESTAMP`]
 
   indexes {
     (user_id, recipient_type, is_read, created_at) [name: 'domain_notifications_user_recipient_read_created_idx']

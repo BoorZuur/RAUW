@@ -122,7 +122,7 @@ endpoints:
         name: mine
         description: ''
         required: false
-        example: '1'
+        example: 'true'
         type: string
         enumValues:
           - '1'
@@ -204,7 +204,7 @@ endpoints:
       status: in_behandeling
       assigned_officer_id: 16
       unassigned: '1'
-      mine: '1'
+      mine: 'true'
       participating: 'true'
       include_duplicates: '1'
       visibility: hidden

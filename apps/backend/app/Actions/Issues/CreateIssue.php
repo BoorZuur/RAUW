@@ -8,6 +8,7 @@ use App\Models\Issue;
 use App\Models\IssueParticipant;
 use App\Models\User;
 use App\Support\IssuePriorityResolver;
+use App\Support\Notifications\NotifyNewIssue;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Response;
@@ -21,9 +22,11 @@ class CreateIssue
      *
      * @param  array<string, mixed>  $validated
      */
-    public function create(User $author, array $validated): Issue
+    public function create(User $author, array $validated, ?NotifyNewIssue $notifyNewIssue = null): Issue
     {
-        return DB::transaction(function () use ($author, $validated): Issue {
+        $notifyNewIssue ??= new NotifyNewIssue;
+
+        return DB::transaction(function () use ($author, $validated, $notifyNewIssue): Issue {
             $attributes = $this->buildIssueAttributes($author, $validated);
             $category = $this->resolveCategory((int) $attributes['category_id']);
 
@@ -41,6 +44,8 @@ class CreateIssue
                 'via_issue_id' => null,
                 'joined_at' => now(),
             ]);
+
+            $notifyNewIssue->notify($issue, $author);
 
             return $issue;
         });
