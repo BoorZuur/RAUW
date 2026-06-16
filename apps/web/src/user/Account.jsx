@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Settings, User, Loader2, LogOut } from 'lucide-react';
 import axios from 'axios';
 import U_Nav from '../components/U_Nav';
 import Footer from "../components/Footer.jsx";
 import USignalCard from '../components/U_SignalCard';
 import AccountDetailModal from '../modal/AccountDetailModal.jsx';
+import { getMyIssues, getFollowedIssues, deleteIssue } from '../services/issueService';
 
 const apiClient = axios.create({
     baseURL: 'http://localhost:8001/api',
@@ -18,33 +19,54 @@ apiClient.interceptors.request.use(config => {
     return config;
 });
 
+const FOLLOWED_TAB = 'verhalen die u volgt';
+const tabs = ['nieuw', 'in behandeling', 'opgelost', 'afgehandeld', FOLLOWED_TAB];
+
+const statusMap = {
+    'nieuw': 'open',
+    'in behandeling': 'in_behandeling',
+    'opgelost': 'opgelost',
+    'afgehandeld': 'gesloten',
+};
+
+function normalizeIssue(issue) {
+    return { ...issue, attachments: issue.attachments || [] };
+}
+
 export default function Dashboard() {
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState('nieuw');
+    const location = useLocation();
+    const [activeTab, setActiveTab] = useState(() => (
+        tabs.includes(location.state?.tab) ? location.state.tab : 'nieuw'
+    ));
     const [user, setUser] = useState(null);
     const [reports, setReports] = useState([]);
+    const [followedReports, setFollowedReports] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [selectedReport, setSelectedReport] = useState(null);
 
-    const statusMap = {
-        'nieuw': 'open',
-        'in behandeling': 'in_behandeling',
-        'opgelost': 'opgelost',
-        'afgehandeld': 'gesloten',
+    const refetchFollowedReports = async () => {
+        try {
+            const followedData = await getFollowedIssues();
+            setFollowedReports(followedData.map(normalizeIssue));
+        } catch (err) {
+            console.error('Kon gevolgde verhalen niet ophalen:', err);
+        }
     };
-
-    const tabs = ['nieuw', 'in behandeling', 'opgelost', 'afgehandeld', 'verhalen die u volgt'];
 
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const userRes = await apiClient.get('/auth/me');
+                const [userRes, mineData, followedData] = await Promise.all([
+                    apiClient.get('/auth/me'),
+                    getMyIssues(),
+                    getFollowedIssues(),
+                ]);
                 setUser(userRes.data.profile);
-                const issuesRes = await apiClient.get('/issues?mine=1');
-                const data = issuesRes.data.data || issuesRes.data;
-                setReports(data.map(r => ({ ...r, attachments: r.attachments || [] })));
+                setReports(mineData.map(normalizeIssue));
+                setFollowedReports(followedData.map(normalizeIssue));
             } catch (err) {
                 console.error(err);
                 setError('Kon gegevens niet ophalen.');
@@ -100,13 +122,14 @@ export default function Dashboard() {
         }
     };
 
-    const filteredReports = reports.filter(r => {
-        if (activeTab === 'verhalen die u volgt') return r.is_followed;
-        const targetStatus = statusMap[activeTab];
-        if (!targetStatus) return false;
-        return r.status?.toLowerCase() === targetStatus.toLowerCase() ||
-            r.status?.toLowerCase() === activeTab.toLowerCase();
-    });
+    const filteredReports = activeTab === FOLLOWED_TAB
+        ? followedReports
+        : reports.filter((report) => {
+            const targetStatus = statusMap[activeTab];
+            if (!targetStatus) return false;
+            return report.status?.toLowerCase() === targetStatus.toLowerCase()
+                || report.status?.toLowerCase() === activeTab.toLowerCase();
+        });
 
     const getGreeting = () => {
         const hour = new Date().getHours();
@@ -121,11 +144,12 @@ export default function Dashboard() {
         navigate('/login');
     };
 
-    const handleDeleteIssue = async (issueId) => {
+    const handleDeleteIssue = async (issueId, { leaveParticipation } = {}) => {
         try {
-            await apiClient.delete(`/issues/${issueId}`);
+            await deleteIssue(issueId, { leaveParticipation });
             setReports(prev => prev.filter(r => r.id !== issueId));
             setSelectedReport(null);
+            await refetchFollowedReports();
         } catch (err) {
             alert('Kon het issue niet verwijderen.');
         }
@@ -144,18 +168,26 @@ export default function Dashboard() {
 
     const handleParticipationChange = (updatedIssue) => {
         setSelectedReport((prev) => (prev ? { ...prev, ...updatedIssue, comments: prev.comments } : updatedIssue));
+
+        const patch = {
+            participant_count: updatedIssue.participant_count,
+            is_participant: updatedIssue.is_participant,
+            default_comment_is_anonymous: updatedIssue.default_comment_is_anonymous,
+            title: updatedIssue.title,
+            content: updatedIssue.content,
+        };
+
         setReports((prev) => prev.map((report) => (
-            report.id === updatedIssue.id
-                ? {
-                    ...report,
-                    participant_count: updatedIssue.participant_count,
-                    is_participant: updatedIssue.is_participant,
-                    default_comment_is_anonymous: updatedIssue.default_comment_is_anonymous,
-                    title: updatedIssue.title ?? report.title,
-                    content: updatedIssue.content ?? report.content,
-                }
-                : report
+            report.id === updatedIssue.id ? { ...report, ...patch } : report
         )));
+
+        if (!updatedIssue.is_participant) {
+            setFollowedReports((prev) => prev.filter((report) => report.id !== updatedIssue.id));
+        } else {
+            setFollowedReports((prev) => prev.map((report) => (
+                report.id === updatedIssue.id ? { ...report, ...patch } : report
+            )));
+        }
     };
 
     return (
@@ -222,13 +254,23 @@ export default function Dashboard() {
                             ))}
                         </nav>
                         <div className="space-y-3">
-                            {filteredReports.map(report => (
-                                <USignalCard
-                                    key={report.id}
-                                    issue={report}
-                                    onClick={() => handleSelectIssue(report)}
-                                />
-                            ))}
+                            {activeTab === FOLLOWED_TAB && filteredReports.length === 0 ? (
+                                <div className="text-center py-12 px-6 bg-primary-bg-cards border border-primary-border rounded-2xl">
+                                    <p className="font-headline font-black text-lg text-primary-text mb-2">Je volgt nog geen verhalen</p>
+                                    <p className="text-sm text-secondary-text max-w-md mx-auto">
+                                        Volg verhalen via de feed met de knop <span className="font-bold text-primary-text">Volgen</span>, of koppel je melding aan een bestaand verhaal tijdens het melden.
+                                    </p>
+                                </div>
+                            ) : (
+                                filteredReports.map((report) => (
+                                    <USignalCard
+                                        key={report.id}
+                                        issue={report}
+                                        onClick={() => handleSelectIssue(report)}
+                                        subtitle={report.is_duplicate_child ? 'Gekoppeld aan een verhaal' : undefined}
+                                    />
+                                ))
+                            )}
                         </div>
                     </section>
                 </main>

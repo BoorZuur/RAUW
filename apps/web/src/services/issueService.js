@@ -73,6 +73,11 @@ export async function leaveIssue(issueId) {
     await apiClient.delete(`/issues/${issueId}/leave`);
 }
 
+export async function getMyIssues() {
+    const response = await apiClient.get('/issues', { params: { mine: 1 } });
+    return unwrapList(response);
+}
+
 export async function getFollowedIssues() {
     const response = await apiClient.get('/issues', { params: { followed: 1 } });
     return unwrapList(response);

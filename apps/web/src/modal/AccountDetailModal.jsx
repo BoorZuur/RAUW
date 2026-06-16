@@ -35,6 +35,7 @@ export default function AccountDetailModal({ issue, onClose, onAddComment, onDel
     const [editForm, setEditForm] = useState({ title: issue?.title || '', content: issue?.content || '' });
     const [error, setError] = useState(null);
     const [confirmAction, setConfirmAction] = useState(null);
+    const [leaveParticipationOnDelete, setLeaveParticipationOnDelete] = useState(false);
 
     const commentsContainerRef = useRef(null);
     const wasNearBottomRef = useRef(true);
@@ -215,12 +216,48 @@ export default function AccountDetailModal({ issue, onClose, onAddComment, onDel
                 <div className="absolute inset-0 z-60 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
                     <div className="bg-stone-900 border border-primary-border p-6 rounded-2xl shadow-xl max-w-sm w-full">
                         <h3 className="text-white font-black text-lg mb-2">Weet je het zeker?</h3>
-                        <p className="text-stone-400 text-sm mb-6">{confirmAction === 'delete' ? 'Deze issue wordt definitief verwijderd.' : 'Wijzigingen opslaan?'}</p>
+                        <p className="text-stone-400 text-sm mb-4">
+                            {confirmAction === 'delete'
+                                ? (issue.is_duplicate_child
+                                    ? 'Deze gekoppelde melding wordt definitief verwijderd.'
+                                    : 'Deze issue wordt definitief verwijderd.')
+                                : 'Wijzigingen opslaan?'}
+                        </p>
+                        {confirmAction === 'delete' && issue.is_duplicate_child ? (
+                            <label className="flex items-center gap-3 mb-6 cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    checked={leaveParticipationOnDelete}
+                                    onChange={(e) => setLeaveParticipationOnDelete(e.target.checked)}
+                                    className="w-4 h-4 rounded border-primary-border bg-primary-bg accent-primary-accent cursor-pointer"
+                                />
+                                <span className="text-sm text-stone-300">Ook stoppen met volgen</span>
+                            </label>
+                        ) : (
+                            <div className="mb-6" />
+                        )}
                         <div className="flex gap-3">
-                            <button type="button" onClick={() => setConfirmAction(null)} className="flex-1 py-2 rounded-xl bg-stone-800 text-white font-bold">Annuleren</button>
                             <button
                                 type="button"
-                                onClick={() => { confirmAction === 'delete' ? onDeleteIssue(id) : handleSaveEdit(); setConfirmAction(null); }}
+                                onClick={() => {
+                                    setConfirmAction(null);
+                                    setLeaveParticipationOnDelete(false);
+                                }}
+                                className="flex-1 py-2 rounded-xl bg-stone-800 text-white font-bold"
+                            >
+                                Annuleren
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (confirmAction === 'delete') {
+                                        onDeleteIssue(id, { leaveParticipation: leaveParticipationOnDelete });
+                                        setLeaveParticipationOnDelete(false);
+                                    } else {
+                                        handleSaveEdit();
+                                    }
+                                    setConfirmAction(null);
+                                }}
                                 className={`flex-1 py-2 rounded-xl font-bold ${confirmAction === 'delete' ? 'bg-red-600' : 'bg-primary-accent'}`}
                             >
                                 Bevestigen
