@@ -71,8 +71,9 @@ export default function FollowIssueButton({ issue, currentUserId, onParticipatio
         setIsLoading(true);
 
         try {
+            // First join returns 201; repeat join is idempotent (200) — both are success.
             const updated = await joinIssue(joinTargetId, { isAnonymous: isAnonymousFollow });
-            mergeUpdatedIssue(updated);
+            mergeUpdatedIssue({ ...updated, is_participant: true });
             setIsAnonymousFollow(false);
         } catch (err) {
             const code = err?.response?.data?.code;
