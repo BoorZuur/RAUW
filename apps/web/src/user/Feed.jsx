@@ -51,18 +51,21 @@ export default function Feed() {
         }
     };
 
-    const handleAddComment = async (issueId, commentText) => {
+    const handleAddComment = async (issueId, commentText, isAnonymous = false) => {
         try {
             const response = await apiClient.post(`/api/issues/${issueId}/comments`, {
-                content: commentText
+                content: commentText,
+                is_anonymous: isAnonymous,
             });
             const newComment = response.data.data || response.data;
             setSelectedIssue(prev => ({
                 ...prev,
                 comments: [...(prev.comments || []), newComment]
             }));
+            return newComment;
         } catch (err) {
             console.error('Kon reactie niet plaatsen:', err.response?.data || err);
+            throw err;
         }
     };
 

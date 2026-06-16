@@ -1,40 +1,97 @@
-import React, { useState, useEffect } from 'react';
-import { Trash2, Edit2, X, Check, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Trash2, Edit2, X, Check, AlertCircle, Pencil } from 'lucide-react';
 import AttachmentImage from '../components/AttachmentImage';
-import axios from 'axios';
+import { getCommentAuthorDisplayName } from '../utils/authorDisplay';
+import { COMMENT_MAX_LENGTH, COMMENT_WARN_AT } from '../constants/commentLimits';
+import { getCommentErrorMessage } from '../utils/commentErrors';
+import { fetchIssueComments, updateIssueComment, deleteIssueComment } from '../services/issueCommentService';
+import { useIssueCommentPolling } from '../hooks/useIssueCommentPolling';
 
-const apiClient = axios.create({
-    baseURL: 'http://localhost:8001/api',
-    headers: { 'Accept': 'application/json' }
-});
+function resolveDefaultAnonymous(issue) {
+    if (typeof issue?.default_comment_is_anonymous === 'boolean') {
+        return issue.default_comment_is_anonymous;
+    }
+    return Boolean(issue?.is_anonymous && issue?.author?.is_anonymous);
+}
 
-export default function StoryDetailModal({ issue, onClose, onAddComment, onDeleteIssue, onUpdateIssue }) {
+function getLengthClass(length) {
+    if (length >= COMMENT_MAX_LENGTH) return 'text-red-500';
+    if (length >= COMMENT_WARN_AT) return 'text-amber-500';
+    return 'text-secondary-text';
+}
+
+export default function AccountDetailModal({ issue, onClose, onAddComment, onDeleteIssue, onUpdateIssue }) {
     const [commentText, setCommentText] = useState('');
+    const [isAnonymousComment, setIsAnonymousComment] = useState(() => resolveDefaultAnonymous(issue));
     const [localComments, setLocalComments] = useState(issue?.comments || []);
+    const [commentError, setCommentError] = useState(null);
+    const [editingCommentId, setEditingCommentId] = useState(null);
+    const [editDraft, setEditDraft] = useState('');
+    const [deleteCommentTarget, setDeleteCommentTarget] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editForm, setEditForm] = useState({ title: issue?.title || '', content: issue?.content || '' });
     const [error, setError] = useState(null);
     const [confirmAction, setConfirmAction] = useState(null);
 
+    const commentsContainerRef = useRef(null);
+    const wasNearBottomRef = useRef(true);
+    const prevCountRef = useRef((issue?.comments || []).length);
+
+    useEffect(() => {
+        setIsAnonymousComment(resolveDefaultAnonymous(issue));
+    }, [issue?.id, issue?.default_comment_is_anonymous, issue?.is_anonymous, issue?.author?.is_anonymous]);
+
     useEffect(() => {
         if (!issue?.id) return;
-        const fetchAllComments = async () => {
-            let allComments = [];
-            let nextPage = `issues/${issue.id}/comments?per_page=100`;
-            try {
-                while (nextPage) {
-                    const response = await apiClient.get(nextPage);
-                    const data = response.data.data || response.data;
-                    allComments = [...allComments, ...data];
-                    nextPage = response.data.next_page_url ? response.data.next_page_url.split('/api/')[1] : null;
+
+        let cancelled = false;
+
+        fetchIssueComments(issue.id)
+            .then((comments) => {
+                if (!cancelled) {
+                    setLocalComments(comments);
+                    prevCountRef.current = comments.length;
                 }
-                setLocalComments(allComments);
-            } catch (err) {
-                console.error("Kon comments niet ophalen:", err);
-            }
+            })
+            .catch((err) => {
+                console.error('Kon comments niet ophalen:', err);
+            });
+
+        return () => {
+            cancelled = true;
         };
-        fetchAllComments();
     }, [issue?.id]);
+
+    const handlePollComments = useCallback((serverComments) => {
+        const prevCount = prevCountRef.current;
+        const shouldScroll = serverComments.length > prevCount && wasNearBottomRef.current;
+
+        setLocalComments(serverComments);
+        prevCountRef.current = serverComments.length;
+
+        if (shouldScroll) {
+            requestAnimationFrame(() => {
+                const el = commentsContainerRef.current;
+                if (el) {
+                    el.scrollTop = el.scrollHeight;
+                }
+            });
+        }
+    }, []);
+
+    useIssueCommentPolling({
+        issueId: issue?.id,
+        enabled: Boolean(issue?.id),
+        paused: editingCommentId !== null,
+        onComments: handlePollComments,
+    });
+
+    const handleCommentsScroll = () => {
+        const el = commentsContainerRef.current;
+        if (!el) return;
+        wasNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight <= 80;
+    };
 
     if (!issue) return null;
 
@@ -52,6 +109,9 @@ export default function StoryDetailModal({ issue, onClose, onAddComment, onDelet
         }
     };
     const statusDetails = getStatusDetails(status);
+    const showIdentifiedWarning = !isAnonymousComment && (issue.is_anonymous || issue.default_comment_is_anonymous);
+    const commentLength = commentText.length;
+    const editLength = editDraft.length;
 
     const handleSaveEdit = async () => {
         setError(null);
@@ -59,26 +119,124 @@ export default function StoryDetailModal({ issue, onClose, onAddComment, onDelet
             await onUpdateIssue(id, editForm);
             setIsEditing(false);
         } catch (err) {
-            setError("Het opslaan is mislukt.");
+            setError('Het opslaan is mislukt.');
+        }
+    };
+
+    const handleCommentSubmit = async (e) => {
+        e.preventDefault();
+        const text = commentText.trim();
+        if (!text || commentLength > COMMENT_MAX_LENGTH || isSubmitting) return;
+
+        setCommentError(null);
+        const submittedText = commentText;
+        setCommentText('');
+        setIsSubmitting(true);
+
+        try {
+            const newComment = await onAddComment?.(id, text, isAnonymousComment);
+            if (newComment) {
+                setLocalComments((prev) => {
+                    const exists = prev.some((c) => c.id === newComment.id);
+                    if (exists) {
+                        return prev.map((c) => (c.id === newComment.id ? newComment : c));
+                    }
+                    return [...prev, newComment];
+                });
+                prevCountRef.current += 1;
+                requestAnimationFrame(() => {
+                    const el = commentsContainerRef.current;
+                    if (el) {
+                        el.scrollTop = el.scrollHeight;
+                        wasNearBottomRef.current = true;
+                    }
+                });
+            }
+        } catch (err) {
+            setCommentText(submittedText);
+            setCommentError(getCommentErrorMessage(err));
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const startEdit = (comment) => {
+        setEditingCommentId(comment.id);
+        setEditDraft(comment.content || comment.body || '');
+        setCommentError(null);
+    };
+
+    const cancelEdit = () => {
+        setEditingCommentId(null);
+        setEditDraft('');
+    };
+
+    const saveEdit = async (commentId) => {
+        const text = editDraft.trim();
+        if (!text || editLength > COMMENT_MAX_LENGTH) return;
+
+        setCommentError(null);
+
+        try {
+            const updated = await updateIssueComment(id, commentId, text);
+            setLocalComments((prev) => prev.map((c) => (c.id === commentId ? updated : c)));
+            setEditingCommentId(null);
+            setEditDraft('');
+        } catch (err) {
+            setCommentError(getCommentErrorMessage(err));
+        }
+    };
+
+    const confirmDeleteComment = async () => {
+        if (!deleteCommentTarget) return;
+
+        const commentId = deleteCommentTarget.id;
+        setCommentError(null);
+
+        try {
+            await deleteIssueComment(id, commentId);
+            setLocalComments((prev) => prev.filter((c) => c.id !== commentId));
+            prevCountRef.current = Math.max(0, prevCountRef.current - 1);
+            setDeleteCommentTarget(null);
+        } catch (err) {
+            setDeleteCommentTarget(null);
+            setCommentError(getCommentErrorMessage(err));
         }
     };
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-            {confirmAction && (
+            {confirmAction ? (
                 <div className="absolute inset-0 z-60 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
                     <div className="bg-stone-900 border border-primary-border p-6 rounded-2xl shadow-xl max-w-sm w-full">
                         <h3 className="text-white font-black text-lg mb-2">Weet je het zeker?</h3>
                         <p className="text-stone-400 text-sm mb-6">{confirmAction === 'delete' ? 'Deze issue wordt definitief verwijderd.' : 'Wijzigingen opslaan?'}</p>
                         <div className="flex gap-3">
-                            <button onClick={() => setConfirmAction(null)} className="flex-1 py-2 rounded-xl bg-stone-800 text-white font-bold">Annuleren</button>
-                            <button onClick={() => { confirmAction === 'delete' ? onDeleteIssue(id) : handleSaveEdit(); setConfirmAction(null); }} className={`flex-1 py-2 rounded-xl font-bold ${confirmAction === 'delete' ? 'bg-red-600' : 'bg-primary-accent'}`}>
+                            <button type="button" onClick={() => setConfirmAction(null)} className="flex-1 py-2 rounded-xl bg-stone-800 text-white font-bold">Annuleren</button>
+                            <button
+                                type="button"
+                                onClick={() => { confirmAction === 'delete' ? onDeleteIssue(id) : handleSaveEdit(); setConfirmAction(null); }}
+                                className={`flex-1 py-2 rounded-xl font-bold ${confirmAction === 'delete' ? 'bg-red-600' : 'bg-primary-accent'}`}
+                            >
                                 Bevestigen
                             </button>
                         </div>
                     </div>
                 </div>
-            )}
+            ) : null}
+
+            {deleteCommentTarget ? (
+                <div className="absolute inset-0 z-60 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="bg-stone-900 border border-primary-border p-6 rounded-2xl shadow-xl max-w-sm w-full">
+                        <h3 className="text-white font-black text-lg mb-2">Weet je het zeker?</h3>
+                        <p className="text-stone-400 text-sm mb-6">Deze reactie wordt definitief verwijderd.</p>
+                        <div className="flex gap-3">
+                            <button type="button" onClick={() => setDeleteCommentTarget(null)} className="flex-1 py-2 rounded-xl bg-stone-800 text-white font-bold">Annuleren</button>
+                            <button type="button" onClick={confirmDeleteComment} className="flex-1 py-2 rounded-xl font-bold bg-red-600 text-white">Verwijderen</button>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
 
             <button onClick={onClose} className="absolute top-6 right-6 text-white hover:text-primary-accent z-50"><X className="w-8 h-8" /></button>
 
@@ -95,7 +253,6 @@ export default function StoryDetailModal({ issue, onClose, onAddComment, onDelet
 
             <div className="w-full max-w-5xl h-[85vh] bg-primary-bg-cards border border-primary-border rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row">
                 <div className="flex-1 bg-primary-bg flex flex-col h-1/2 md:h-full border-b md:border-b-0 md:border-r border-primary-border">
-                    {/* Attachment sectie teruggeplaatst */}
                     <div className="w-full h-48 md:h-64 bg-stone-950 flex items-center justify-center relative shrink-0 overflow-hidden border-b border-primary-border">
                         {attachments && attachments.length > 0 ? (
                             <AttachmentImage attachment={attachments[0]} className="w-full h-full object-cover" alt={title} />
@@ -105,24 +262,31 @@ export default function StoryDetailModal({ issue, onClose, onAddComment, onDelet
                     </div>
 
                     <div className="flex-1 p-6 sm:p-8 bg-stone-950 overflow-y-auto custom-scrollbar">
-                        {error && <div className="mb-4 p-3 bg-red-500/20 text-red-500 rounded-xl flex items-center gap-2 text-sm font-bold">
-                            <AlertCircle className="w-4 h-4"/>
-                            {error}
-                        </div>}
+                        {error ? (
+                            <div className="mb-4 p-3 bg-red-500/20 text-red-500 rounded-xl flex items-center gap-2 text-sm font-bold">
+                                <AlertCircle className="w-4 h-4" />
+                                {error}
+                            </div>
+                        ) : null}
                         {isEditing ? (
                             <div className="flex flex-col gap-4">
-                                <input className="text-3xl font-black bg-transparent border-b border-primary-border text-white focus:outline-none"
-                                       value={editForm.title} onChange={(e) => setEditForm({...editForm, title: e.target.value})} />
-                                <textarea className="w-full h-48 bg-primary-bg p-4 rounded-xl border border-primary-border text-stone-200"
-                                          value={editForm.content} onChange={(e) => setEditForm({...editForm, content: e.target.value})} />
+                                <input
+                                    className="text-3xl font-black bg-transparent border-b border-primary-border text-white focus:outline-none"
+                                    value={editForm.title}
+                                    onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                                />
+                                <textarea
+                                    className="w-full h-48 bg-primary-bg p-4 rounded-xl border border-primary-border text-stone-200"
+                                    value={editForm.content}
+                                    onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
+                                />
                             </div>
                         ) : (
                             <>
-                                {/* Status badges teruggeplaatst */}
                                 <div className="flex flex-wrap items-center gap-2 mb-4">
-                                    <span className="text-[10px] font-label font-black uppercase tracking-widest text-primary-accent bg-primary-accent/10 border border-primary-accent/30 px-2.5 py-1 rounded-md">{address || "Rotterdam"}</span>
+                                    <span className="text-[10px] font-label font-black uppercase tracking-widest text-primary-accent bg-primary-accent/10 border border-primary-accent/30 px-2.5 py-1 rounded-md">{address || 'Rotterdam'}</span>
                                     <span className={`px-2.5 py-1 rounded-md text-[10px] font-label font-black uppercase ${statusDetails.className}`}>{statusDetails.label}</span>
-                                    {category && <span className="bg-stone-800 text-stone-200 border border-stone-700 px-2.5 py-1 rounded-md text-[10px] font-label font-bold uppercase">{category.name || category}</span>}
+                                    {category ? <span className="bg-stone-800 text-stone-200 border border-stone-700 px-2.5 py-1 rounded-md text-[10px] font-label font-bold uppercase">{category.name || category}</span> : null}
                                 </div>
                                 <h2 className="font-headline font-black text-xl sm:text-3xl text-white mb-4">{title}</h2>
                                 <p className="font-label text-sm text-stone-200/95 leading-relaxed">{content}</p>
@@ -133,27 +297,140 @@ export default function StoryDetailModal({ issue, onClose, onAddComment, onDelet
 
                 <div className="w-full md:w-100 flex flex-col h-1/2 md:h-full bg-primary-bg-cards shrink-0">
                     <div className="p-4 border-b border-primary-border font-black text-sm text-primary-text">{totalFollowers} volgers</div>
-                    <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                        {localComments.map((comment) => (
-                            <div key={comment.id} className="flex gap-3">
-                                <div className="w-8 h-8 rounded-full bg-stone-800 flex items-center justify-center shrink-0">
-                                    <span className="text-[10px] font-black text-primary-accent">{(comment.user?.name || 'U').charAt(0).toUpperCase()}</span>
-                                </div>
-                                <div className="flex-1 bg-primary-bg p-3 rounded-2xl rounded-tl-none border border-primary-border">
-                                    <p className="text-[13px] text-stone-200">{comment.content || comment.body}</p>
-                                </div>
+
+                    <div
+                        ref={commentsContainerRef}
+                        onScroll={handleCommentsScroll}
+                        className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar"
+                    >
+                        {localComments.length === 0 ? (
+                            <div className="h-full flex flex-col items-center justify-center text-center p-6 opacity-60">
+                                <div className="w-16 h-16 rounded-full bg-primary-bg border border-primary-border flex items-center justify-center mb-4 text-2xl">💬</div>
+                                <p className="text-sm font-label font-bold text-primary-text">Nog geen reacties</p>
                             </div>
-                        ))}
+                        ) : (
+                            localComments.map((comment) => {
+                                const authorName = getCommentAuthorDisplayName(comment);
+                                const isEditingComment = editingCommentId === comment.id;
+
+                                return (
+                                    <div key={comment.id} className="flex gap-3 group">
+                                        <div className="w-8 h-8 rounded-full bg-stone-800 flex items-center justify-center shrink-0 mt-1 border border-primary-border">
+                                            <span className="text-[10px] font-black text-primary-accent">{authorName.charAt(0).toUpperCase()}</span>
+                                        </div>
+                                        <div className="flex-1 bg-primary-bg p-3 rounded-2xl rounded-tl-none border border-primary-border w-fit max-w-[90%]">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <span className="font-bold text-[13px] text-white shrink-0">{authorName}</span>
+                                                {(comment.can_update || comment.can_delete) && !isEditingComment ? (
+                                                    <div className="flex items-center gap-1 shrink-0">
+                                                        {comment.can_update ? (
+                                                            <button type="button" onClick={() => startEdit(comment)} className="p-1 text-secondary-text hover:text-primary-accent transition-colors" aria-label="Bewerken">
+                                                                <Pencil className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        ) : null}
+                                                        {comment.can_delete ? (
+                                                            <button type="button" onClick={() => setDeleteCommentTarget(comment)} className="p-1 text-secondary-text hover:text-red-500 transition-colors" aria-label="Verwijderen">
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        ) : null}
+                                                    </div>
+                                                ) : null}
+                                            </div>
+
+                                            {isEditingComment ? (
+                                                <div className="mt-2 flex flex-col gap-2">
+                                                    <textarea
+                                                        value={editDraft}
+                                                        onChange={(e) => {
+                                                            setEditDraft(e.target.value);
+                                                            if (commentError) setCommentError(null);
+                                                        }}
+                                                        maxLength={COMMENT_MAX_LENGTH}
+                                                        rows={3}
+                                                        className="w-full bg-stone-900 border border-primary-border rounded-xl p-2 text-[13px] text-stone-200 focus:outline-none focus:border-primary-accent resize-none"
+                                                    />
+                                                    <p className={`text-[10px] font-bold text-right ${getLengthClass(editLength)}`}>
+                                                        {editLength}/{COMMENT_MAX_LENGTH}
+                                                    </p>
+                                                    <div className="flex gap-2 justify-end">
+                                                        <button type="button" onClick={cancelEdit} className="text-[11px] font-label font-bold uppercase text-secondary-text hover:text-white">Annuleren</button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => saveEdit(comment.id)}
+                                                            disabled={!editDraft.trim() || editLength > COMMENT_MAX_LENGTH}
+                                                            className="text-[11px] font-label font-black uppercase text-primary-accent disabled:opacity-30"
+                                                        >
+                                                            Opslaan
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <p className="text-[13px] text-stone-200 mt-1 whitespace-pre-wrap break-words">{comment.content || comment.body}</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
                     </div>
-                    <form
-                        onSubmit={(e) => { e.preventDefault();
-                            onAddComment?.(id, commentText); setCommentText(''); }}
-                        className="p-4 border-t border-primary-border">
-                        <input
-                            type="text"
-                            value={commentText} onChange={(e) => setCommentText(e.target.value)}
-                            placeholder="Reactie..."
-                            className="w-full bg-primary-bg p-2 rounded-xl border border-primary-border text-white" />
+
+                    <form onSubmit={handleCommentSubmit} className="p-4 border-t border-primary-border">
+                        {commentError ? (
+                            <div className="mb-3 p-3 bg-red-500/20 text-red-500 rounded-xl flex items-center gap-2 text-sm font-bold">
+                                <AlertCircle className="w-4 h-4 shrink-0" />
+                                {commentError}
+                            </div>
+                        ) : null}
+
+                        <div className="relative flex items-center justify-between p-3 mb-2 bg-primary-bg-cards border-2 border-primary-border rounded-2xl transition-all duration-200 hover:border-primary-accent/50 focus-within:ring-2 focus-within:ring-primary-accent/30">
+                            <label htmlFor="account_comment_is_anonymous" className="text-xs font-black uppercase tracking-widest text-primary-text cursor-pointer select-none pr-4">
+                                Anoniem reageren
+                            </label>
+                            <div className="relative flex items-center">
+                                <input
+                                    type="checkbox"
+                                    id="account_comment_is_anonymous"
+                                    checked={isAnonymousComment}
+                                    onChange={(e) => setIsAnonymousComment(e.target.checked)}
+                                    className="peer appearance-none w-6 h-6 rounded-lg border-2 border-primary-border bg-primary-bg checked:bg-primary-text checked:border-primary-text transition-all duration-150 cursor-pointer focus:ring-0 focus:outline-none"
+                                />
+                                <svg className="absolute left-1.5 top-1.5 w-3 h-3 text-primary-bg pointer-events-none opacity-0 scale-50 peer-checked:opacity-100 peer-checked:scale-100 transition-all duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                        </div>
+
+                        {isAnonymousComment ? (
+                            <p className="text-[11px] text-secondary-text mb-2">Je reactie is zichtbaar onder een alias.</p>
+                        ) : showIdentifiedWarning ? (
+                            <p className="text-[11px] text-amber-500/90 mb-2">Je gebruikersnaam wordt zichtbaar.</p>
+                        ) : null}
+
+                        <div className="flex flex-col gap-1 bg-primary-bg border border-primary-border rounded-xl px-3 py-1 focus-within:border-primary-accent transition-colors">
+                            <div className="flex items-end gap-2">
+                                <textarea
+                                    value={commentText}
+                                    onChange={(e) => {
+                                        setCommentText(e.target.value);
+                                        if (commentError) setCommentError(null);
+                                    }}
+                                    maxLength={COMMENT_MAX_LENGTH}
+                                    rows={2}
+                                    placeholder="Reactie..."
+                                    className="w-full bg-transparent text-sm py-2 text-primary-text placeholder-secondary-text/60 font-label focus:outline-none resize-none"
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={!commentText.trim() || commentLength > COMMENT_MAX_LENGTH || isSubmitting}
+                                    className="text-xs font-label font-black uppercase tracking-wider text-primary-accent disabled:opacity-30 disabled:cursor-not-allowed pb-2 shrink-0"
+                                >
+                                    Plaatsen
+                                </button>
+                            </div>
+                            <p className={`text-[10px] font-bold text-right pb-1 ${getLengthClass(commentLength)}`}>
+                                {commentLength}/{COMMENT_MAX_LENGTH}
+                            </p>
+                        </div>
                     </form>
                 </div>
             </div>

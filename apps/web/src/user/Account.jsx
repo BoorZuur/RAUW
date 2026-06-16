@@ -82,19 +82,21 @@ export default function Dashboard() {
         }
     };
 
-    const handleAddComment = async (issueId, commentText) => {
+    const handleAddComment = async (issueId, commentText, isAnonymous = false) => {
         try {
             const response = await apiClient.post(`/issues/${issueId}/comments`, {
-                content: commentText
+                content: commentText,
+                is_anonymous: isAnonymous,
             });
             const newComment = response.data.data || response.data;
             setSelectedReport(prev => ({
                 ...prev,
                 comments: [...(prev.comments || []), newComment]
             }));
+            return newComment;
         } catch (err) {
             console.error('Kon reactie niet plaatsen:', err.response?.data || err);
-            alert('Er ging iets mis bij het plaatsen van je reactie.');
+            throw err;
         }
     };
 
