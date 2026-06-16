@@ -241,7 +241,13 @@ export default function ReportIssue() {
         return () => clearTimeout(timer);
     }, [position, formData.category_id, formData.address, districts]);
 
+    const hasContent = formData.content.trim().length > 0;
+
     const handleConfirmSubmit = async () => {
+        if (!formData.content.trim()) {
+            return;
+        }
+
         setSubmitError(null);
         setIsCheckingDuplicates(true);
 
@@ -410,7 +416,7 @@ export default function ReportIssue() {
                             <button
                                 type="button"
                                 onClick={handleConfirmSubmit}
-                                disabled={isCheckingDuplicates}
+                                disabled={isCheckingDuplicates || !hasContent}
                                 className="flex-1 p-3 bg-secondary-accent text-white rounded-xl font-black uppercase tracking-widest hover:brightness-110 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
                             >
                                 {isCheckingDuplicates ? (
@@ -515,7 +521,7 @@ export default function ReportIssue() {
 
                     <section className="bg-primary-bg-cards border-2 border-primary-border rounded-3xl p-6 shadow-sm">
                         <h2 className="text-xl font-black mb-6 uppercase tracking-widest text-primary-text">
-                            Signaal Melden
+                            Melding melden
                         </h2>
                         {error ? (
                             <p className="text-red-600 font-bold mb-4 p-3 bg-red-100 rounded-lg text-sm">
@@ -630,7 +636,7 @@ export default function ReportIssue() {
                                 <textarea
                                     id="content"
                                     className="w-full p-3 h-20 bg-primary-bg border-2 border-primary-border rounded-lg text-sm text-primary-text focus:outline-none focus:border-primary-accent"
-                                    placeholder="Context & Behoefte"
+                                    placeholder="Context en behoefte"
                                     value={formData.content}
                                     onChange={(e) =>
                                         setFormData({ ...formData, content: e.target.value })
@@ -696,7 +702,7 @@ export default function ReportIssue() {
                             <button
                                 type="button"
                                 onClick={() => setShowConfirm(true)}
-                                disabled={isCheckingDuplicates || isSubmitting}
+                                disabled={isCheckingDuplicates || isSubmitting || !hasContent}
                                 className="w-full h-12 mt-4 bg-primary-text text-primary-bg hover:bg-primary-accent font-black uppercase tracking-widest rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center active:scale-[0.98] disabled:opacity-50"
                             >
                                 Verstuur melding

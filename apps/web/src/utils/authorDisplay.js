@@ -1,8 +1,4 @@
 export function getIssueAuthorDisplayName(issue) {
-    if (issue?.author?.is_participant && !issue?.author?.display_name) {
-        return 'Deelnemer';
-    }
-
     return issue?.author?.display_name || issue?.author?.username || 'Buurtbewoner';
 }
 

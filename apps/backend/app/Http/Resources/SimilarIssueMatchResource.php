@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Models\Issue;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Collection;
 
 /**
  * Serializes a scored similar-issue candidate for similar-check responses.
@@ -33,6 +34,22 @@ class SimilarIssueMatchResource extends JsonResource
             'score' => $this->resource['score'],
             'confidence' => $this->resource['confidence'],
             'linkable' => (bool) $this->resource['linkable'],
+            'attachments' => $this->attachmentsPayload($issue),
         ];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function attachmentsPayload(Issue $issue): array
+    {
+        if (! $issue->relationLoaded('attachments')) {
+            return [];
+        }
+
+        /** @var Collection<int, \App\Models\IssueAttachment> $attachments */
+        $attachments = $issue->getRelation('attachments');
+
+        return IssueAttachmentResource::collection($attachments->take(1))->resolve();
     }
 }

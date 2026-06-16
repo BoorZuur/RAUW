@@ -64,7 +64,7 @@ class IssueController extends Controller
      * in assigned districts (including hidden); main managers see all issues
      * city-wide. Duplicate child rows are excluded by default per actor
      * (`IssueListScope`); users may use `participating=1` for owned children
-     * with canonical participation, `followed=1` for deduped followed stories,
+     * with canonical participation, `followed=1` for followed canonical issues,
      * and officers/managers may use `include_duplicates=1` to include children.
      * A single Eloquent query applies the optional `district_id`, `department`,
      * `category_id`, `status`, `assigned_officer_id`, `unassigned`, `mine`,

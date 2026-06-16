@@ -3,7 +3,8 @@ import AttachmentImage from './AttachmentImage';
 import { getIssueDisplayTitle } from '../utils/issueParticipation';
 
 export default function USignalCard({ issue, onClick, subtitle }) {
-    const { address, created_at, status, attachments = [] } = issue || {};
+    const { address, created_at, status } = issue || {};
+    const attachments = Array.isArray(issue?.attachments) ? issue.attachments : [];
     const title = getIssueDisplayTitle(issue);
     const formattedDate = created_at ? new Date(created_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
 

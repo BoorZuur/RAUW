@@ -52,10 +52,9 @@ class IndexIssueRequest extends FormRequest
      * `participating` filter (`participating=1`) restricts active users to
      * owned duplicate children where they still participate on the canonical
      * parent; officers and managers cannot use `participating` and receive
-     * 422. The `followed` filter (`followed=1`) returns a deduped list of
-     * canonical stories the user follows (active participation on the
-     * canonical), preferring an owned duplicate child row when one exists;
-     * own canonical reports are excluded; officers and managers cannot use
+     * 422. The `followed` filter (`followed=1`) returns canonical issues the
+     * user participates on (excluding own reports); owned duplicate children
+     * appear under `mine=1` only; officers and managers cannot use
      * `followed` and receive 422. `mine`, `participating`, and `followed` are
      * pairwise mutually exclusive (422 when combined).
      * The `include_duplicates` filter (`include_duplicates=1`) includes
@@ -122,7 +121,7 @@ class IndexIssueRequest extends FormRequest
     }
 
     /**
-     * Whether the client requested deduped followed canonical stories.
+     * Whether the client requested followed canonical issues.
      */
     public function wantsFollowed(): bool
     {

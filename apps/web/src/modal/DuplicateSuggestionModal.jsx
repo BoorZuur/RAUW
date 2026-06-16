@@ -45,7 +45,7 @@ export default function DuplicateSuggestionModal({
                 <h3 className="text-xl font-black uppercase mb-2">Lijkt op een bestaende melding</h3>
                 <p className="text-sm text-secondary-text mb-6">
                     Er zijn vergelijkbare meldingen in de buurt. Koppel je melding aan een bestaand
-                    verhaal om updates te volgen, of meld toch een nieuw signaal.
+                    verhaal om updates te volgen, of meld toch een nieuwe melding.
                 </p>
 
                 <div className="flex-1 overflow-y-auto space-y-3 mb-6 pr-1 custom-scrollbar">

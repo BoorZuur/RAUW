@@ -336,6 +336,13 @@ export default function AccountDetailModal({ issue, onClose, onAddComment, onDel
                                     {category ? <span className="bg-stone-800 text-stone-200 border border-stone-700 px-2.5 py-1 rounded-md text-[10px] font-label font-bold uppercase">{category.name || category}</span> : null}
                                 </div>
                                 <h2 className="font-headline font-black text-xl sm:text-3xl text-white mb-4">{displayTitle}</h2>
+                                <div className="mb-4">
+                                    <FollowIssueButton
+                                        issue={issue}
+                                        currentUserId={currentUserId}
+                                        onParticipationChange={onParticipationChange}
+                                    />
+                                </div>
                                 <p className="font-label text-sm text-stone-200/95 leading-relaxed">{displayContent}</p>
                             </>
                         )}
@@ -344,14 +351,7 @@ export default function AccountDetailModal({ issue, onClose, onAddComment, onDel
 
                 <div className="w-full md:w-100 flex flex-col h-1/2 md:h-full bg-primary-bg-cards shrink-0">
                     <div className="p-4 border-b border-primary-border flex items-center justify-between bg-primary-bg/40">
-                        <div className="flex items-center gap-3">
-                            <span className="font-black text-sm text-primary-text">{totalFollowers} volgers</span>
-                            <FollowIssueButton
-                                issue={issue}
-                                currentUserId={currentUserId}
-                                onParticipationChange={onParticipationChange}
-                            />
-                        </div>
+                        <span className="font-black text-sm text-primary-text">{totalFollowers} volgers</span>
                         {formattedDate ? (
                             <span className="text-[11px] text-secondary-text font-label uppercase font-bold tracking-wider">
                                 {formattedDate}

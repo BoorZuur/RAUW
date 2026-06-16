@@ -3,7 +3,8 @@ import AttachmentImage from './AttachmentImage';
 import { getIssueDisplayTitle } from '../utils/issueParticipation';
 
 export default function StoryCard({ issue, onClick }) {
-    const { content, address, created_at, attachments = [], participant_count, followers, status, category, district, duplicate_count } = issue || {};
+    const { content, address, created_at, participant_count, followers, status, category, district, duplicate_count } = issue || {};
+    const attachments = Array.isArray(issue?.attachments) ? issue.attachments : [];
     const displayTitle = getIssueDisplayTitle(issue);
     const totalFollowers = typeof participant_count === 'number' ? participant_count : (Array.isArray(followers) ? followers.length : 0);
     const statusDetails = { label: status || 'Open', className: 'bg-primary-accent text-white' };

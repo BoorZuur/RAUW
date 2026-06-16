@@ -87,31 +87,11 @@ class IssueParticipantVisibility
     /**
      * Whether canonical title/content/location fields should be redacted for the actor.
      *
-     * Participants viewing a canonical they joined (but do not own) receive status and
-     * officer resolution only. Officers and managers are never redacted; owners and
-     * duplicate-child owners always receive the full payload.
+     * @deprecated Participants receive the same issue payload as other viewers.
      */
     public function shouldRedactCanonicalContent(?Authenticatable $actor = null): bool
     {
-        $actor ??= $this->actor;
-
-        if ($actor instanceof Officer || $actor instanceof Manager) {
-            return false;
-        }
-
-        if (! $actor instanceof User) {
-            return false;
-        }
-
-        if ($this->isDuplicateChild()) {
-            return false;
-        }
-
-        if ($this->issue->user_id === $actor->getKey()) {
-            return false;
-        }
-
-        return $this->isParticipant();
+        return false;
     }
 
     /**

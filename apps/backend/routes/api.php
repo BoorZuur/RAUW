@@ -124,7 +124,7 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active'])->prefi
 // non-main managers, and inactive managers all receive a 403. The endpoint is
 // rate-limited to mitigate abuse. No login token is issued for the created
 // manager, who must authenticate via `POST /api/auth/login`.
-Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'throttle:30,1'])->group(function (): void {
+Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'throttle:120,1'])->group(function (): void {
     // Main-manager-protected main manager listing. Authorization is narrowed
     // inside IndexMainManagerRequest to an authenticated, active main manager
     // only; users, officers, non-main managers, and inactive managers all

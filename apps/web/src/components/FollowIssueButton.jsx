@@ -147,47 +147,49 @@ export default function FollowIssueButton({ issue, currentUserId, onParticipatio
                 </div>
             ) : null}
 
-            <div className="flex flex-col items-end gap-2">
+            <div className="flex flex-col gap-2">
                 {error ? (
-                    <div className="flex items-center gap-1.5 text-[11px] text-red-500 font-bold max-w-[200px] text-right">
+                    <div className="flex items-center gap-1.5 text-[11px] text-red-500 font-bold">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         <span>{error}</span>
                     </div>
                 ) : null}
 
-                {!isParticipant ? (
-                    <div className="flex flex-col items-end gap-2">
-                        <label className="flex items-center gap-2 cursor-pointer select-none">
-                            <span className="text-[10px] font-label font-bold uppercase tracking-wider text-secondary-text">
-                                Anoniem volgen
-                            </span>
-                            <input
-                                type="checkbox"
-                                checked={isAnonymousFollow}
-                                onChange={(e) => setIsAnonymousFollow(e.target.checked)}
+                <div className="flex flex-wrap items-center gap-3">
+                    {!isParticipant ? (
+                        <>
+                            <button
+                                type="button"
+                                onClick={handleJoin}
                                 disabled={isLoading}
-                                className="w-4 h-4 rounded border-primary-border bg-primary-bg accent-primary-accent cursor-pointer"
-                            />
-                        </label>
+                                className="px-4 py-2 rounded-xl text-xs font-label font-black uppercase tracking-wider bg-primary-accent text-white hover:brightness-110 transition-all disabled:opacity-50"
+                            >
+                                Volgen
+                            </button>
+                            <label className="flex items-center gap-2 cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    checked={isAnonymousFollow}
+                                    onChange={(e) => setIsAnonymousFollow(e.target.checked)}
+                                    disabled={isLoading}
+                                    className="w-4 h-4 rounded border-primary-border bg-primary-bg accent-primary-accent cursor-pointer"
+                                />
+                                <span className="text-xs font-label font-bold text-secondary-text">
+                                    Anoniem volgen
+                                </span>
+                            </label>
+                        </>
+                    ) : (
                         <button
                             type="button"
-                            onClick={handleJoin}
+                            onClick={() => setShowLeaveConfirm(true)}
                             disabled={isLoading}
-                            className="px-3 py-1.5 rounded-lg text-[11px] font-label font-black uppercase tracking-wider bg-primary-accent text-white hover:brightness-110 transition-all disabled:opacity-50"
+                            className="px-4 py-2 rounded-xl text-xs font-label font-black uppercase tracking-wider border border-primary-border text-primary-text hover:border-primary-accent transition-all disabled:opacity-50"
                         >
-                            Volgen
+                            Ontvolgen
                         </button>
-                    </div>
-                ) : (
-                    <button
-                        type="button"
-                        onClick={() => setShowLeaveConfirm(true)}
-                        disabled={isLoading}
-                        className="px-3 py-1.5 rounded-lg text-[11px] font-label font-black uppercase tracking-wider border border-primary-border text-primary-text hover:border-primary-accent transition-all disabled:opacity-50"
-                    >
-                        Ontvolgen
-                    </button>
-                )}
+                    )}
+                </div>
             </div>
         </>
     );

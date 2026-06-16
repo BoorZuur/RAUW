@@ -60,7 +60,7 @@ class IssueFollowedListTest extends TestCase
         $this->assertContains($canonical->id, $ids);
     }
 
-    public function test_duplicate_child_returns_child_not_canonical(): void
+    public function test_duplicate_child_participation_returns_canonical_not_child(): void
     {
         $user = User::factory()->create();
         $owner = User::factory()->create();
@@ -84,11 +84,11 @@ class IssueFollowedListTest extends TestCase
 
         $ids = $this->followedIds($user);
 
-        $this->assertContains($child->id, $ids);
-        $this->assertNotContains($canonical->id, $ids);
+        $this->assertContains($canonical->id, $ids);
+        $this->assertNotContains($child->id, $ids);
     }
 
-    public function test_child_and_participation_returns_child_only(): void
+    public function test_child_and_participation_returns_canonical_only(): void
     {
         $user = User::factory()->create();
         $owner = User::factory()->create();
@@ -112,7 +112,7 @@ class IssueFollowedListTest extends TestCase
 
         $ids = $this->followedIds($user);
 
-        $this->assertSame([$child->id], $ids);
+        $this->assertSame([$canonical->id], $ids);
     }
 
     public function test_own_canonical_report_is_excluded_from_followed_list(): void

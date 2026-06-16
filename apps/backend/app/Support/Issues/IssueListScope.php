@@ -14,9 +14,9 @@ class IssueListScope
     /**
      * Apply duplicate-related list filters for the authenticated actor.
      *
-     * When `followed=1`, narrows to deduped followed canonical stories (owned
-     * duplicate child when present, otherwise the canonical row). When
-     * `participating=1`, narrows to owned duplicate children with active
+     * When `followed=1`, narrows to canonical issues the actor participates on
+     * (excluding own reports). Owned duplicate children appear under `mine=1`.
+     * When `participating=1`, narrows to owned duplicate children with active
      * canonical participation. Otherwise applies default duplicate exclusion
      * rules (users: hide others' children; officers/managers: hide children
      * unless `include_duplicates=1`).
@@ -89,11 +89,11 @@ class IssueListScope
     }
 
     /**
-     * Restrict the list to deduped followed canonical stories for the actor.
+     * Restrict the list to canonical issues the actor follows.
      *
-     * Returns owned duplicate children when the actor still participates on the
-     * canonical parent; otherwise returns canonical issues the actor follows
-     * (excluding own reports and rows where an owned child still exists).
+     * Returns canonical rows where the actor is an active participant, excluding
+     * issues they own (those appear under `mine=1`, including owned duplicate
+     * children).
      */
     public static function applyFollowedFilter(Builder $query, Model $actor): Builder
     {
@@ -103,32 +103,14 @@ class IssueListScope
 
         $userId = $actor->getKey();
 
-        return $query->where(function (Builder $followed) use ($userId): void {
-            $followed->where(function (Builder $scoped) use ($userId): void {
-                $scoped->where('user_id', $userId)
-                    ->whereNotNull('duplicate_of_id')
-                    ->whereExists(function ($participantQuery) use ($userId): void {
-                        $participantQuery->selectRaw('1')
-                            ->from('issue_participants')
-                            ->whereColumn('issue_participants.issue_id', 'issues.duplicate_of_id')
-                            ->where('issue_participants.user_id', $userId);
-                    });
-            })->orWhere(function (Builder $scoped) use ($userId): void {
-                $scoped->whereNull('duplicate_of_id')
-                    ->where('user_id', '!=', $userId)
-                    ->whereExists(function ($participantQuery) use ($userId): void {
-                        $participantQuery->selectRaw('1')
-                            ->from('issue_participants')
-                            ->whereColumn('issue_participants.issue_id', 'issues.id')
-                            ->where('issue_participants.user_id', $userId);
-                    })
-                    ->whereNotExists(function ($childQuery) use ($userId): void {
-                        $childQuery->selectRaw('1')
-                            ->from('issues as owned_children')
-                            ->whereColumn('owned_children.duplicate_of_id', 'issues.id')
-                            ->where('owned_children.user_id', $userId);
-                    });
+        return $query
+            ->whereNull('duplicate_of_id')
+            ->where('user_id', '!=', $userId)
+            ->whereExists(function ($participantQuery) use ($userId): void {
+                $participantQuery->selectRaw('1')
+                    ->from('issue_participants')
+                    ->whereColumn('issue_participants.issue_id', 'issues.id')
+                    ->where('issue_participants.user_id', $userId);
             });
-        });
     }
 }
