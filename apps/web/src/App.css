@@ -1,6 +1,36 @@
 @import url('https://fonts.googleapis.com/css2?family=Fredoka:wdth,wght@106.2,440&family=Nunito:ital,wght@0,200..1000;1,200..1000&family=Shippori+Antique&display=swap');
 @import "tailwindcss";
 
+/*
+Saliegroen
+#979d86
+#8b9277
+#a9ad99
+#b2b6a4
+#c6c9bb
+
+Creme
+#dbc3ae
+#d3b69c
+#e6d5c7
+#ece0d5
+#f2eae3
+
+Zacht roze
+#fed9d2
+#fdbcaf
+#fdcdc3
+#feeeeb
+#ffffff
+
+Terracotta
+#9f5b55
+#92544f
+#b0726d
+#bf8b88
+#cda4a2
+*/
+
 @theme {
     --color-primary-text: var(--primary-text);
     --color-secondary-text: var(--secondary-text);
@@ -9,19 +39,21 @@
     --color-primary-border: var(--primary-border);
     --color-primary-accent: var(--primary-accent);
     --color-secondary-accent: var(--secondary-accent);
+    --color-test-one: var(--test-one); /*Hereeeeee*/
     --font-headline: "Fredoka", serif;
     --font-body: "Nunito", serif;
     --font-label: "Shippori Antique", sans-serif;
 }
 
 :root {
-    --primary-bg: #f8f6f2;
-    --primary-bg-cards: #edeae5;
-    --primary-border: #d4cfc8;
-    --primary-text: #2a2724;
-    --secondary-text: #615a53;
-    --primary-accent: #b8860b;
-    --secondary-accent: #2d4c38;
+    --primary-bg: #f2eae3;
+    --primary-bg-cards: #a9ad99;
+    --primary-border: #fdfaef;
+    --primary-text:  #584338;
+    --secondary-text: #36392d;
+    --primary-accent: #896958;
+    --secondary-accent: #92544f;
+    --test-one: rgba(70, 156, 86, 0.13);
     color-scheme: light dark;
     font-synthesis: none;
     text-rendering: optimizeLegibility;
