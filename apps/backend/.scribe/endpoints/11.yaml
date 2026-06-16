@@ -29,14 +29,14 @@ endpoints:
         name: issue_id
         description: 'The ID of the issue.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      issue_id: 1
+      issue_id: 16
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
@@ -109,14 +109,14 @@ endpoints:
         name: issue_id
         description: 'The ID of the issue.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      issue_id: 1
+      issue_id: 16
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
@@ -168,7 +168,7 @@ endpoints:
         name: issue_id
         description: 'The ID of the issue.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
@@ -179,15 +179,15 @@ endpoints:
         name: chat_id
         description: 'The ID of the chat.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      issue_id: 1
-      chat_id: 1
+      issue_id: 16
+      chat_id: 16
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters: []
@@ -227,7 +227,7 @@ endpoints:
         name: issue_id
         description: 'The ID of the issue.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
@@ -238,15 +238,15 @@ endpoints:
         name: chat_id
         description: 'The ID of the chat.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      issue_id: 1
-      chat_id: 1
+      issue_id: 16
+      chat_id: 16
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
@@ -319,7 +319,7 @@ endpoints:
         name: issue_id
         description: 'The ID of the issue.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
@@ -330,15 +330,15 @@ endpoints:
         name: chat_id
         description: 'The ID of the chat.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      issue_id: 1
-      chat_id: 1
+      issue_id: 16
+      chat_id: 16
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
@@ -404,7 +404,7 @@ endpoints:
         name: issue_id
         description: 'The ID of the issue.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
@@ -415,15 +415,15 @@ endpoints:
         name: chat_id
         description: 'The ID of the chat.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      issue_id: 1
-      chat_id: 1
+      issue_id: 16
+      chat_id: 16
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters: []
@@ -463,7 +463,7 @@ endpoints:
         name: issue_id
         description: 'The ID of the issue.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
@@ -474,7 +474,7 @@ endpoints:
         name: chat_id
         description: 'The ID of the chat.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
@@ -485,7 +485,7 @@ endpoints:
         name: message_id
         description: 'The ID of the message.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
@@ -503,9 +503,9 @@ endpoints:
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      issue_id: 1
-      chat_id: 1
-      message_id: 1
+      issue_id: 16
+      chat_id: 16
+      message_id: 16
       attachment_id: 16
     queryParameters: []
     cleanQueryParameters: []

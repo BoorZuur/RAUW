@@ -83,7 +83,7 @@ endpoints:
         name: status
         description: ''
         required: false
-        example: opgelost
+        example: in_behandeling
         type: string
         enumValues:
           - open
@@ -169,7 +169,7 @@ endpoints:
         name: visibility
         description: ''
         required: false
-        example: visible
+        example: hidden
         type: string
         enumValues:
           - visible
@@ -203,13 +203,13 @@ endpoints:
       district_id: 16
       department: architecto
       category_id: 16
-      status: opgelost
+      status: in_behandeling
       assigned_officer_id: 16
       unassigned: '1'
       mine: '1'
       participating: 'true'
       include_duplicates: '1'
-      visibility: visible
+      visibility: hidden
       page: 22
       per_page: 7
     fileParameters: []
@@ -356,7 +356,7 @@ endpoints:
         name: is_anonymous
         description: ''
         required: false
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -448,7 +448,7 @@ endpoints:
       address: v
       latitude: -89
       longitude: -179
-      is_anonymous: true
+      is_anonymous: false
       duplicate_of_id: 16
     fileParameters: []
     responses: []
@@ -601,14 +601,14 @@ endpoints:
         name: issue_id
         description: 'The ID of the issue.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      issue_id: 1
+      issue_id: 16
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
@@ -686,14 +686,14 @@ endpoints:
         name: issue_id
         description: 'The ID of the issue.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      issue_id: 1
+      issue_id: 16
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
@@ -750,14 +750,14 @@ endpoints:
         name: issue_id
         description: 'The ID of the issue.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      issue_id: 1
+      issue_id: 16
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
@@ -838,14 +838,14 @@ endpoints:
         name: id
         description: 'The ID of the issue.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      id: 1
+      id: 16
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters: []
@@ -907,14 +907,14 @@ endpoints:
         name: id
         description: 'The ID of the issue.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      id: 1
+      id: 16
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
@@ -1011,7 +1011,7 @@ endpoints:
         name: is_anonymous
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -1048,7 +1048,7 @@ endpoints:
       address: v
       latitude: -89
       longitude: -179
-      is_anonymous: false
+      is_anonymous: true
     fileParameters: []
     responses: []
     responseFields: []
@@ -1088,14 +1088,14 @@ endpoints:
         name: issue_id
         description: 'The ID of the issue.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      issue_id: 1
+      issue_id: 16
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
@@ -1104,7 +1104,7 @@ endpoints:
         name: visibility
         description: ''
         required: true
-        example: visible
+        example: hidden
         type: string
         enumValues:
           - visible
@@ -1113,7 +1113,7 @@ endpoints:
         nullable: false
         deprecated: false
     cleanBodyParameters:
-      visibility: visible
+      visibility: hidden
     fileParameters: []
     responses: []
     responseFields: []
@@ -1156,14 +1156,14 @@ endpoints:
         name: id
         description: 'The ID of the issue.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      id: 1
+      id: 16
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
@@ -1172,14 +1172,14 @@ endpoints:
         name: leave_participation
         description: ''
         required: false
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanBodyParameters:
-      leave_participation: true
+      leave_participation: false
     fileParameters: []
     responses: []
     responseFields: []
