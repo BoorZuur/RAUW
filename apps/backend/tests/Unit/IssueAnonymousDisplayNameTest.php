@@ -58,6 +58,6 @@ class IssueAnonymousDisplayNameTest extends TestCase
         ]);
 
         $result = IssueAnonymousDisplayName::derive($user, $issue);
-        $this->assertEquals(['is_anonymous' => true, 'display_name' => 'Deelnemer#' . str_pad((string) $participant->id, 4, '0', STR_PAD_LEFT)], $result);
+        $this->assertEquals(['is_anonymous' => true, 'display_name' => 'Deelnemer#' . str_pad((string) $participant->id, 6, '0', STR_PAD_LEFT)], $result);
     }
 }

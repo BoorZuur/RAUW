@@ -11,6 +11,7 @@ use App\Models\Officer;
 use App\Models\OfficerIssueResolution;
 use App\Models\User;
 use App\Support\Issues\IssueAnonymousDisplayName;
+use App\Support\Issues\IssueCommentAnonymity;
 use App\Support\Issues\IssueParticipantVisibility;
 use App\Support\IssueVisibilityQuery;
 use Illuminate\Http\Request;
@@ -126,7 +127,7 @@ class IssueResource extends JsonResource
             'created_at' => $issue->created_at,
             'updated_at' => $issue->updated_at,
             'resolved_at' => $issue->resolved_at,
-        ], $this->maybeDuplicateOfId($issue, $visibility), $visibility->contextFlags(), $this->maybeStatusHistory($issue, $request), $this->maybeOfficerResolution($issue, $request), $this->maybeFeedback($issue, $request));
+        ], $this->maybeDuplicateOfId($issue, $visibility), $visibility->contextFlags(), $this->maybeDefaultCommentIsAnonymous($issue, $request), $this->maybeStatusHistory($issue, $request), $this->maybeOfficerResolution($issue, $request), $this->maybeFeedback($issue, $request));
     }
 
     /**
@@ -241,6 +242,24 @@ class IssueResource extends JsonResource
         }
 
         return IssueAttachmentResource::collection($issue->getRelation('attachments'))->resolve();
+    }
+
+    /**
+     * Include default comment anonymity toggle for authenticated users.
+     *
+     * @return array<string, mixed>
+     */
+    protected function maybeDefaultCommentIsAnonymous(Issue $issue, Request $request): array
+    {
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            return [];
+        }
+
+        return [
+            'default_comment_is_anonymous' => (new IssueCommentAnonymity)->defaultForUserOnIssue($actor, $issue),
+        ];
     }
 
     /**
