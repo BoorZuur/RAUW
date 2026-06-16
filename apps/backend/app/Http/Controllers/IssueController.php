@@ -88,8 +88,8 @@ class IssueController extends Controller
             $request,
         )
             ->when(
-                $request->filled('district_id'),
-                fn ($query) => $query->where('district_id', $request->integer('district_id')),
+                count($request->districtIds()) > 0,
+                fn ($query) => $query->whereIn('district_id', $request->districtIds()),
             )
             ->when(
                 $request->filled('department'),
@@ -103,8 +103,11 @@ class IssueController extends Controller
                 fn ($query) => $query->where('category_id', $request->integer('category_id')),
             )
             ->when(
-                $request->filled('status'),
-                fn ($query) => $query->where('status', $request->input('status')),
+                count($request->statuses()) > 0,
+                fn ($query) => $query->whereIn(
+                    'status',
+                    array_map(fn ($status) => $status->value, $request->statuses()),
+                ),
             )
             ->when(
                 $request->filled('assigned_officer_id'),

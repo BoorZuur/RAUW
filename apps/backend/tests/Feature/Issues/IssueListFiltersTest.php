@@ -251,4 +251,108 @@ class IssueListFiltersTest extends TestCase
         $response->assertUnprocessable()
             ->assertJsonValidationErrors(['exclude_mine']);
     }
+
+    public function test_multi_district_filter_returns_issues_from_both_districts(): void
+    {
+        $user = User::factory()->create();
+        $category = Category::factory()->withDepartments()->create();
+        $districtA = District::factory()->create();
+        $districtB = District::factory()->create();
+
+        $issueA = Issue::factory()->withStatus(IssueStatus::Open)->create([
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'district_id' => $districtA->id,
+        ]);
+
+        $issueB = Issue::factory()->withStatus(IssueStatus::Open)->create([
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'district_id' => $districtB->id,
+        ]);
+
+        $otherDistrict = District::factory()->create();
+        $excluded = Issue::factory()->withStatus(IssueStatus::Open)->create([
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'district_id' => $otherDistrict->id,
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders($user))
+            ->getJson('/api/issues?district_id[]='.$districtA->id.'&district_id[]='.$districtB->id);
+
+        $response->assertOk();
+
+        $ids = collect($response->json('data'))->pluck('id')->all();
+
+        $this->assertContains($issueA->id, $ids);
+        $this->assertContains($issueB->id, $ids);
+        $this->assertNotContains($excluded->id, $ids);
+    }
+
+    public function test_multi_status_filter_returns_matching_issues_only(): void
+    {
+        $user = User::factory()->create();
+        $category = Category::factory()->withDepartments()->create();
+        $district = District::factory()->create();
+
+        $openIssue = Issue::factory()->withStatus(IssueStatus::Open)->create([
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'district_id' => $district->id,
+        ]);
+
+        $inProgressIssue = Issue::factory()->withStatus(IssueStatus::InProgress)->create([
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'district_id' => $district->id,
+        ]);
+
+        $resolvedIssue = Issue::factory()->withStatus(IssueStatus::Resolved)->create([
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'district_id' => $district->id,
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders($user))
+            ->getJson('/api/issues?status[]=open&status[]=in_behandeling');
+
+        $response->assertOk();
+
+        $ids = collect($response->json('data'))->pluck('id')->all();
+
+        $this->assertContains($openIssue->id, $ids);
+        $this->assertContains($inProgressIssue->id, $ids);
+        $this->assertNotContains($resolvedIssue->id, $ids);
+    }
+
+    public function test_single_district_id_backward_compatibility(): void
+    {
+        $user = User::factory()->create();
+        $category = Category::factory()->withDepartments()->create();
+        $districtA = District::factory()->create();
+        $districtB = District::factory()->create();
+
+        $issueA = Issue::factory()->withStatus(IssueStatus::Open)->create([
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'district_id' => $districtA->id,
+        ]);
+
+        Issue::factory()->withStatus(IssueStatus::Open)->create([
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'district_id' => $districtB->id,
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders($user))
+            ->getJson('/api/issues?district_id='.$districtA->id);
+
+        $response->assertOk();
+
+        $ids = collect($response->json('data'))->pluck('id')->all();
+
+        $this->assertContains($issueA->id, $ids);
+        $this->assertCount(1, $ids);
+    }
 }

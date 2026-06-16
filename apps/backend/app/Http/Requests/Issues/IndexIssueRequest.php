@@ -68,8 +68,12 @@ class IndexIssueRequest extends FormRequest
      * and duplicate children for officers/managers unless opted in. The
      * `visibility` filter (`visible` or `hidden`) narrows officer/manager lists
      * to one visibility value; when omitted they see all issues. Users cannot
-     * use `visibility` and receive 422. The `status` filter accepts any
-     * `IssueStatus` enum value and is available to all active actors. The
+     * use `visibility` and receive 422. The `district_id` and `status` filters
+     * accept a single value or an array (`district_id[]=1&district_id[]=2`);
+     * multiple values within each filter use OR semantics, and filters are
+     * combined with AND semantics across filter types. The `status` filter
+     * accepts any `IssueStatus` enum value and is available to all active
+     * actors. The
      * `assigned_officer_id` and `unassigned` filters are available to officers
      * and managers only; users receive 422. `assigned_officer_id` and
      * `unassigned` are mutually exclusive (422 when both are set). The
@@ -78,16 +82,34 @@ class IndexIssueRequest extends FormRequest
      * is applied against the issue departments relationship with any-match
      * semantics. Pagination is bounded so `per_page` can never exceed a safe
      * maximum.
-     *
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('district_id') && ! is_array($this->input('district_id'))) {
+            $this->merge([
+                'district_id' => [$this->input('district_id')],
+            ]);
+        }
+
+        if ($this->has('status') && ! is_array($this->input('status'))) {
+            $this->merge([
+                'status' => [$this->input('status')],
+            ]);
+        }
+    }
+
+    /**
      * @return array<string, array<int, mixed>>
      */
     public function rules(): array
     {
         return [
-            'district_id' => ['sometimes', 'integer', Rule::exists('districts', 'id')],
+            'district_id' => ['sometimes', 'array'],
+            'district_id.*' => ['integer', Rule::exists('districts', 'id')],
             'department' => ['sometimes', 'string', Rule::exists('departments', 'code')],
             'category_id' => ['sometimes', 'integer', Rule::exists('categories', 'id')],
-            'status' => ['sometimes', Rule::enum(IssueStatus::class)],
+            'status' => ['sometimes', 'array'],
+            'status.*' => [Rule::enum(IssueStatus::class)],
             'assigned_officer_id' => ['sometimes', 'integer', Rule::exists('officers', 'id')],
             'unassigned' => ['sometimes', Rule::in(['1', 'true', true, 1])],
             'mine' => ['sometimes', Rule::in(['1', 'true', true, 1])],
@@ -99,6 +121,53 @@ class IndexIssueRequest extends FormRequest
             'page' => ['sometimes', 'integer', 'min:1'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:'.self::MAX_PER_PAGE],
         ];
+    }
+
+    /**
+     * Normalized district ids from a single value or array input (empty = no filter).
+     *
+     * @return list<int>
+     */
+    public function districtIds(): array
+    {
+        if (! $this->filled('district_id')) {
+            return [];
+        }
+
+        $value = $this->input('district_id');
+
+        if (! is_array($value)) {
+            return [(int) $value];
+        }
+
+        return array_values(array_map(fn ($id) => (int) $id, $value));
+    }
+
+    /**
+     * Normalized status values from a single value or array input (empty = no filter).
+     *
+     * @return list<IssueStatus>
+     */
+    public function statuses(): array
+    {
+        if (! $this->filled('status')) {
+            return [];
+        }
+
+        $value = $this->input('status');
+
+        if (! is_array($value)) {
+            $status = IssueStatus::tryFrom((string) $value);
+
+            return $status !== null ? [$status] : [];
+        }
+
+        return array_values(array_filter(array_map(
+            fn ($status) => $status instanceof IssueStatus
+                ? $status
+                : IssueStatus::tryFrom((string) $status),
+            $value,
+        )));
     }
 
     /**
@@ -305,19 +374,23 @@ class IndexIssueRequest extends FormRequest
             }
 
             if (
-                $this->filled('district_id')
+                count($this->districtIds()) > 0
                 && (
                     $actor instanceof Officer
                     || ($actor instanceof Manager && ! ActorDistrictAccess::isMainManager($actor))
                 )
             ) {
-                $districtId = $this->integer('district_id');
+                $assignedDistrictIds = ActorDistrictAccess::assignedDistrictIds($actor);
 
-                if (! in_array($districtId, ActorDistrictAccess::assignedDistrictIds($actor), true)) {
-                    $validator->errors()->add(
-                        'district_id',
-                        'The selected district is not assigned to you.',
-                    );
+                foreach ($this->districtIds() as $districtId) {
+                    if (! in_array($districtId, $assignedDistrictIds, true)) {
+                        $validator->errors()->add(
+                            'district_id',
+                            'The selected district is not assigned to you.',
+                        );
+
+                        break;
+                    }
                 }
             }
         });

@@ -2,13 +2,13 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
-import { Filter, ChevronDown, Loader2 } from 'lucide-react';
+import { Filter, MapPin, ChevronDown, Loader2 } from 'lucide-react';
 import U_Nav from '../components/U_Nav';
 import Footer from '../components/Footer.jsx';
 import StoryDetailModal from '../modal/StoryDetailModal.jsx';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
-import { listIssuesForMap, getIssue } from '../services/issueService';
+import { listIssuesForMapWithFilters, getIssue } from '../services/issueService';
 import { createIssueComment, fetchIssueComments } from '../services/issueCommentService';
 
 const apiClient = axios.create({
@@ -30,8 +30,10 @@ const DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
+const STATUS_KEYS = ['open', 'in_behandeling', 'opgelost', 'gesloten'];
+const SCOPE_KEYS = ['mine', 'exclude_mine', 'followed'];
+
 const VIEW_OPTIONS = [
-    { label: 'Alle meldingen', value: 'all' },
     { label: 'Zonder eigen verhalen', value: 'exclude_mine', requiresAuth: true },
     { label: 'Mijn verhalen', value: 'mine', requiresAuth: true },
     { label: 'Nieuw', value: 'open' },
@@ -41,12 +43,10 @@ const VIEW_OPTIONS = [
     { label: 'Gevolgde verhalen', value: 'followed', requiresAuth: true },
 ];
 
-function viewToApiParams(view) {
-    if (view === 'all') return {};
-    if (view === 'exclude_mine') return { excludeMine: true };
-    if (view === 'mine') return { mine: true };
-    if (view === 'followed') return { followed: true };
-    return { status: view };
+function splitViewKeys(selectedViewKeys) {
+    const statuses = selectedViewKeys.filter((key) => STATUS_KEYS.includes(key));
+    const scopes = selectedViewKeys.filter((key) => SCOPE_KEYS.includes(key));
+    return { statuses, scopes };
 }
 
 export default function MapOverview() {
@@ -57,8 +57,10 @@ export default function MapOverview() {
 
     const [reports, setReports] = useState([]);
     const [districts, setDistricts] = useState([]);
-    const [filters, setFilters] = useState({ district: 'all', view: 'all' });
-    const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [selectedDistrictIds, setSelectedDistrictIds] = useState([]);
+    const [selectedViewKeys, setSelectedViewKeys] = useState([]);
+    const [isDistrictOpen, setIsDistrictOpen] = useState(false);
+    const [isViewOpen, setIsViewOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedIssue, setSelectedIssue] = useState(null);
     const [currentUserId, setCurrentUserId] = useState(null);
@@ -171,9 +173,11 @@ export default function MapOverview() {
         const loadReports = async () => {
             setIsLoading(true);
             try {
-                const issues = await listIssuesForMap({
-                    districtId: filters.district,
-                    ...viewToApiParams(filters.view),
+                const { statuses, scopes } = splitViewKeys(selectedViewKeys);
+                const issues = await listIssuesForMapWithFilters({
+                    districtIds: selectedDistrictIds,
+                    statuses,
+                    scopes,
                 });
                 setReports(issues);
             } catch (err) {
@@ -185,7 +189,7 @@ export default function MapOverview() {
         };
 
         loadReports();
-    }, [filters]);
+    }, [selectedDistrictIds, selectedViewKeys]);
 
     useEffect(() => {
         if (!leafletMap.current) return;
@@ -230,16 +234,21 @@ export default function MapOverview() {
         (opt) => !opt.requiresAuth || isLoggedIn,
     );
 
-    const selectedDistrictLabel =
-        filters.district === 'all'
-            ? 'Alle wijken'
-            : districts.find((d) => d.id.toString() === filters.district)?.name || 'Wijk';
+    const toggleDistrict = (districtId) => {
+        const id = districtId.toString();
+        setSelectedDistrictIds((prev) =>
+            prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
+        );
+    };
 
-    const selectedViewLabel =
-        VIEW_OPTIONS.find((opt) => opt.value === filters.view)?.label || 'Alle meldingen';
+    const toggleViewKey = (key) => {
+        setSelectedViewKeys((prev) =>
+            prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key],
+        );
+    };
 
-    const activeFilterCount =
-        (filters.district !== 'all' ? 1 : 0) + (filters.view !== 'all' ? 1 : 0);
+    const selectedDistrictCount = selectedDistrictIds.length;
+    const selectedViewCount = selectedViewKeys.length;
 
     return (
         <div className="min-h-screen w-full flex flex-col bg-primary-bg text-primary-text overflow-hidden transition-colors duration-300">
@@ -309,85 +318,120 @@ export default function MapOverview() {
                     <section className="flex-1 min-h-[50vh] md:min-h-[calc(100vh-14rem)] bg-primary-bg-cards border-2 border-primary-border rounded-3xl overflow-hidden relative shadow-md">
                         <div ref={mapRef} className="absolute inset-0 z-0" />
 
-                        <div className="absolute top-4 left-4 z-20">
-                            <button
-                                type="button"
-                                onClick={() => setIsFilterOpen(!isFilterOpen)}
-                                className="flex items-center gap-2 px-4 py-3 bg-primary-bg-cards border border-primary-border rounded-xl text-sm font-bold hover:border-primary-accent transition-all shadow-lg"
-                            >
-                                <Filter size={16} className="text-primary-accent" />
-                                <span>Filters</span>
-                                {activeFilterCount > 0 ? (
-                                    <span className="ml-1 px-1.5 py-0.5 text-[10px] font-black bg-primary-accent text-white rounded-full">
-                                        {activeFilterCount}
-                                    </span>
+                        <div className="absolute top-4 left-4 z-20 flex flex-col sm:flex-row gap-2">
+                            <div className="relative">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsDistrictOpen((open) => !open);
+                                        setIsViewOpen(false);
+                                    }}
+                                    className="flex items-center gap-2 px-4 py-3 bg-primary-bg-cards border border-primary-border rounded-xl text-sm font-bold hover:border-primary-accent transition-all shadow-lg"
+                                >
+                                    <MapPin size={16} className="text-primary-accent" />
+                                    <span>Wijken</span>
+                                    {selectedDistrictCount > 0 ? (
+                                        <span className="ml-1 px-1.5 py-0.5 text-[10px] font-black bg-primary-accent text-white rounded-full">
+                                            {selectedDistrictCount}
+                                        </span>
+                                    ) : null}
+                                    <ChevronDown
+                                        size={16}
+                                        className={`transition-transform ${isDistrictOpen ? 'rotate-180' : ''}`}
+                                    />
+                                </button>
+
+                                {isDistrictOpen ? (
+                                    <div className="absolute mt-2 w-72 p-4 bg-primary-bg-cards border border-primary-border rounded-xl shadow-2xl">
+                                        <p className="text-left text-xs font-bold tracking-wider uppercase mb-3 text-primary-text flex items-center gap-1.5">
+                                            <MapPin size={14} className="text-primary-accent" />
+                                            Wijken
+                                        </p>
+                                        <label className="flex items-center gap-2.5 py-2 cursor-pointer hover:opacity-80">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedDistrictCount === 0}
+                                                onChange={() => setSelectedDistrictIds([])}
+                                                className="rounded border-primary-border text-primary-accent focus:ring-primary-accent"
+                                            />
+                                            <span className="text-sm font-medium">Alle wijken</span>
+                                        </label>
+                                        <div className="border-t border-primary-border my-2" />
+                                        <div className="max-h-48 overflow-y-auto space-y-1">
+                                            {districts.map((district) => {
+                                                const id = district.id.toString();
+                                                return (
+                                                    <label
+                                                        key={district.id}
+                                                        className="flex items-center gap-2.5 py-2 cursor-pointer hover:opacity-80"
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedDistrictIds.includes(id)}
+                                                            onChange={() => toggleDistrict(id)}
+                                                            className="rounded border-primary-border text-primary-accent focus:ring-primary-accent"
+                                                        />
+                                                        <span className="text-sm font-medium">{district.name}</span>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
                                 ) : null}
-                                <ChevronDown
-                                    size={16}
-                                    className={`transition-transform ${isFilterOpen ? 'rotate-180' : ''}`}
-                                />
-                            </button>
+                            </div>
 
-                            {isFilterOpen ? (
-                                <div className="mt-2 w-72 p-4 bg-primary-bg-cards border border-primary-border rounded-xl shadow-2xl space-y-4">
-                                    <div>
-                                        <label
-                                            htmlFor="map-district-filter"
-                                            className="text-left block text-xs font-bold tracking-wider uppercase mb-1.5 text-primary-text"
-                                        >
-                                            Wijk
-                                        </label>
-                                        <select
-                                            id="map-district-filter"
-                                            value={filters.district}
-                                            onChange={(e) =>
-                                                setFilters((prev) => ({
-                                                    ...prev,
-                                                    district: e.target.value,
-                                                }))
-                                            }
-                                            className="w-full p-3 bg-primary-bg border-2 border-primary-border rounded-xl text-sm font-medium text-primary-text focus:border-primary-accent outline-none"
-                                        >
-                                            <option value="all">Alle wijken</option>
-                                            {districts.map((d) => (
-                                                <option key={d.id} value={d.id.toString()}>
-                                                    {d.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
+                            <div className="relative">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsViewOpen((open) => !open);
+                                        setIsDistrictOpen(false);
+                                    }}
+                                    className="flex items-center gap-2 px-4 py-3 bg-primary-bg-cards border border-primary-border rounded-xl text-sm font-bold hover:border-primary-accent transition-all shadow-lg"
+                                >
+                                    <Filter size={16} className="text-primary-accent" />
+                                    <span>Weergave</span>
+                                    {selectedViewCount > 0 ? (
+                                        <span className="ml-1 px-1.5 py-0.5 text-[10px] font-black bg-primary-accent text-white rounded-full">
+                                            {selectedViewCount}
+                                        </span>
+                                    ) : null}
+                                    <ChevronDown
+                                        size={16}
+                                        className={`transition-transform ${isViewOpen ? 'rotate-180' : ''}`}
+                                    />
+                                </button>
 
-                                    <div>
-                                        <label
-                                            htmlFor="map-view-filter"
-                                            className="text-left block text-xs font-bold tracking-wider uppercase mb-1.5 text-primary-text"
-                                        >
+                                {isViewOpen ? (
+                                    <div className="absolute mt-2 w-72 p-4 bg-primary-bg-cards border border-primary-border rounded-xl shadow-2xl">
+                                        <p className="text-left text-xs font-bold tracking-wider uppercase mb-3 text-primary-text flex items-center gap-1.5">
+                                            <Filter size={14} className="text-primary-accent" />
                                             Weergave
-                                        </label>
-                                        <select
-                                            id="map-view-filter"
-                                            value={filters.view}
-                                            onChange={(e) =>
-                                                setFilters((prev) => ({
-                                                    ...prev,
-                                                    view: e.target.value,
-                                                }))
-                                            }
-                                            className="w-full p-3 bg-primary-bg border-2 border-primary-border rounded-xl text-sm font-medium text-primary-text focus:border-primary-accent outline-none"
-                                        >
+                                        </p>
+                                        <div className="space-y-1">
                                             {availableViewOptions.map((opt) => (
-                                                <option key={opt.value} value={opt.value}>
-                                                    {opt.label}
-                                                </option>
+                                                <label
+                                                    key={opt.value}
+                                                    className="flex items-center gap-2.5 py-2 cursor-pointer hover:opacity-80"
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedViewKeys.includes(opt.value)}
+                                                        onChange={() => toggleViewKey(opt.value)}
+                                                        className="rounded border-primary-border text-primary-accent focus:ring-primary-accent"
+                                                    />
+                                                    <span className="text-sm font-medium">{opt.label}</span>
+                                                </label>
                                             ))}
-                                        </select>
+                                        </div>
+                                        {selectedViewCount === 0 ? (
+                                            <p className="mt-3 text-[10px] text-secondary-text font-label">
+                                                Geen selectie = alle meldingen
+                                            </p>
+                                        ) : null}
                                     </div>
-
-                                    <p className="text-[10px] text-secondary-text font-label">
-                                        {selectedDistrictLabel} · {selectedViewLabel}
-                                    </p>
-                                </div>
-                            ) : null}
+                                ) : null}
+                            </div>
                         </div>
 
                         {isLoading ? (

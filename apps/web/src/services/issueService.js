@@ -97,14 +97,20 @@ export async function getIssue(issueId) {
  * Fetches all issues for the map, applying server-side filters and paginating
  * through every page (per_page=100, max allowed by IndexIssueRequest).
  */
-export async function listIssuesForMap({ districtId, status, mine, followed, excludeMine } = {}) {
+export async function listIssuesForMap({
+    districtIds = [],
+    statuses = [],
+    mine,
+    followed,
+    excludeMine,
+} = {}) {
     const params = { per_page: 100 };
 
-    if (districtId != null && districtId !== '' && districtId !== 'all') {
-        params.district_id = districtId;
+    if (districtIds.length > 0) {
+        params.district_id = districtIds.length === 1 ? districtIds[0] : districtIds;
     }
-    if (status) {
-        params.status = status;
+    if (statuses.length > 0) {
+        params.status = statuses.length === 1 ? statuses[0] : statuses;
     }
     if (mine) {
         params.mine = 1;
@@ -136,6 +142,53 @@ export async function listIssuesForMap({ districtId, status, mine, followed, exc
     } while (page <= lastPage);
 
     return allIssues;
+}
+
+const SCOPE_PARAMS = {
+    mine: { mine: true },
+    followed: { followed: true },
+    exclude_mine: { excludeMine: true },
+};
+
+/**
+ * Fetches map issues with multi-select district/status filters and optional
+ * scope keys. Multiple scopes trigger parallel fetches merged by issue id (OR).
+ */
+export async function listIssuesForMapWithFilters({
+    districtIds = [],
+    statuses = [],
+    scopes = [],
+} = {}) {
+    const base = { districtIds, statuses };
+
+    if (scopes.length === 0) {
+        return listIssuesForMap(base);
+    }
+
+    if (scopes.length === 1) {
+        return listIssuesForMap({
+            ...base,
+            ...SCOPE_PARAMS[scopes[0]],
+        });
+    }
+
+    const results = await Promise.all(
+        scopes.map((scope) =>
+            listIssuesForMap({
+                ...base,
+                ...SCOPE_PARAMS[scope],
+            }),
+        ),
+    );
+
+    const byId = new Map();
+    for (const issues of results) {
+        for (const issue of issues) {
+            byId.set(issue.id, issue);
+        }
+    }
+
+    return Array.from(byId.values());
 }
 
 export async function deleteIssue(issueId, { leaveParticipation } = {}) {
