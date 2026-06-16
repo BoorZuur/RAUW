@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Eye, EyeClosed, Lock, Mail, User, IdCard, MapPin, Loader2 } from "lucide-react";
 import RauwLogoImg from '../assets/LogoRAUW.png';
@@ -216,7 +215,7 @@ export default function Register() {
                     <p className="mt-6 text-sm text-center text-secondary-text">
                         Al een account?{' '}
                         <button
-                            onClick={() => navigate('/loginhandhaver')}
+                            onClick={() => { window.location.href = '/loginhandhaver'; }}
                             className="text-primary-text font-bold hover:underline cursor-pointer"
                         >
                             Inloggen
