@@ -6,6 +6,8 @@ import { COMMENT_MAX_LENGTH, COMMENT_WARN_AT } from '../constants/commentLimits'
 import { getCommentErrorMessage } from '../utils/commentErrors';
 import { fetchIssueComments, updateIssueComment, deleteIssueComment } from '../services/issueCommentService';
 import { useIssueCommentPolling } from '../hooks/useIssueCommentPolling';
+import FollowIssueButton from '../components/FollowIssueButton';
+import { getIssueDisplayTitle, getIssueDisplayContent } from '../utils/issueParticipation';
 
 function resolveDefaultAnonymous(issue) {
     if (typeof issue?.default_comment_is_anonymous === 'boolean') {
@@ -20,7 +22,7 @@ function getLengthClass(length) {
     return 'text-secondary-text';
 }
 
-export default function AccountDetailModal({ issue, onClose, onAddComment, onDeleteIssue, onUpdateIssue }) {
+export default function AccountDetailModal({ issue, onClose, onAddComment, onDeleteIssue, onUpdateIssue, currentUserId, onParticipationChange }) {
     const [commentText, setCommentText] = useState('');
     const [isAnonymousComment, setIsAnonymousComment] = useState(() => resolveDefaultAnonymous(issue));
     const [localComments, setLocalComments] = useState(issue?.comments || []);
@@ -95,7 +97,10 @@ export default function AccountDetailModal({ issue, onClose, onAddComment, onDel
 
     if (!issue) return null;
 
-    const { id, title, content, address, created_at, attachments = [], followers, participant_count, status, category } = issue;
+    const { id, address, created_at, attachments = [], followers, participant_count, status, category } = issue;
+    const displayTitle = getIssueDisplayTitle(issue);
+    const displayContent = getIssueDisplayContent(issue);
+    const displayAttachments = Array.isArray(attachments) ? attachments : [];
     const totalFollowers = typeof participant_count === 'number' ? participant_count : (Array.isArray(followers) ? followers.length : 0);
     const formattedDate = created_at ? new Date(created_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
 
@@ -254,10 +259,15 @@ export default function AccountDetailModal({ issue, onClose, onAddComment, onDel
             <div className="w-full max-w-5xl h-[85vh] bg-primary-bg-cards border border-primary-border rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row">
                 <div className="flex-1 bg-primary-bg flex flex-col h-1/2 md:h-full border-b md:border-b-0 md:border-r border-primary-border">
                     <div className="w-full h-48 md:h-64 bg-stone-950 flex items-center justify-center relative shrink-0 overflow-hidden border-b border-primary-border">
-                        {attachments && attachments.length > 0 ? (
-                            <AttachmentImage attachment={attachments[0]} className="w-full h-full object-cover" alt={title} />
+                        {displayAttachments.length > 0 ? (
+                            <AttachmentImage attachment={displayAttachments[0]} className="w-full h-full object-cover" alt={displayTitle} />
                         ) : (
-                            <div className="text-stone-400 font-label text-xs uppercase font-black">Geen afbeelding</div>
+                            <div className="flex flex-col items-center gap-2 text-stone-400">
+                                <svg className="w-8 h-8 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                                </svg>
+                                <span className="font-label text-xs uppercase font-black tracking-widest opacity-60">Geen afbeelding</span>
+                            </div>
                         )}
                     </div>
 
@@ -288,15 +298,29 @@ export default function AccountDetailModal({ issue, onClose, onAddComment, onDel
                                     <span className={`px-2.5 py-1 rounded-md text-[10px] font-label font-black uppercase ${statusDetails.className}`}>{statusDetails.label}</span>
                                     {category ? <span className="bg-stone-800 text-stone-200 border border-stone-700 px-2.5 py-1 rounded-md text-[10px] font-label font-bold uppercase">{category.name || category}</span> : null}
                                 </div>
-                                <h2 className="font-headline font-black text-xl sm:text-3xl text-white mb-4">{title}</h2>
-                                <p className="font-label text-sm text-stone-200/95 leading-relaxed">{content}</p>
+                                <h2 className="font-headline font-black text-xl sm:text-3xl text-white mb-4">{displayTitle}</h2>
+                                <p className="font-label text-sm text-stone-200/95 leading-relaxed">{displayContent}</p>
                             </>
                         )}
                     </div>
                 </div>
 
                 <div className="w-full md:w-100 flex flex-col h-1/2 md:h-full bg-primary-bg-cards shrink-0">
-                    <div className="p-4 border-b border-primary-border font-black text-sm text-primary-text">{totalFollowers} volgers</div>
+                    <div className="p-4 border-b border-primary-border flex items-center justify-between bg-primary-bg/40">
+                        <div className="flex items-center gap-3">
+                            <span className="font-black text-sm text-primary-text">{totalFollowers} volgers</span>
+                            <FollowIssueButton
+                                issue={issue}
+                                currentUserId={currentUserId}
+                                onParticipationChange={onParticipationChange}
+                            />
+                        </div>
+                        {formattedDate ? (
+                            <span className="text-[11px] text-secondary-text font-label uppercase font-bold tracking-wider">
+                                {formattedDate}
+                            </span>
+                        ) : null}
+                    </div>
 
                     <div
                         ref={commentsContainerRef}

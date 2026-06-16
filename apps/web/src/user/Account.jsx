@@ -142,6 +142,22 @@ export default function Dashboard() {
         }
     };
 
+    const handleParticipationChange = (updatedIssue) => {
+        setSelectedReport((prev) => (prev ? { ...prev, ...updatedIssue, comments: prev.comments } : updatedIssue));
+        setReports((prev) => prev.map((report) => (
+            report.id === updatedIssue.id
+                ? {
+                    ...report,
+                    participant_count: updatedIssue.participant_count,
+                    is_participant: updatedIssue.is_participant,
+                    default_comment_is_anonymous: updatedIssue.default_comment_is_anonymous,
+                    title: updatedIssue.title ?? report.title,
+                    content: updatedIssue.content ?? report.content,
+                }
+                : report
+        )));
+    };
+
     return (
         <div className="min-h-screen flex flex-col bg-primary-bg text-primary-text transition-colors duration-300 overflow-x-hidden">
             <div className="fixed top-0 w-full z-50">
@@ -237,6 +253,8 @@ export default function Dashboard() {
                     onAddComment={handleAddComment}
                     onDeleteIssue={handleDeleteIssue}
                     onUpdateIssue={handleUpdateIssue}
+                    currentUserId={user?.id}
+                    onParticipationChange={handleParticipationChange}
                 />
             )}
         </div>
