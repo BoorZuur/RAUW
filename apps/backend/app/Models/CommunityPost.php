@@ -51,5 +51,10 @@ class CommunityPost extends Model
     {
         return $this->belongsToMany(User::class, 'community_post_user');
     }
+
+    public function notifications(): HasMany
+    {
+        return $this->hasMany(DomainNotification::class);
+    }
 }
 
