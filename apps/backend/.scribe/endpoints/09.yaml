@@ -147,7 +147,7 @@ endpoints:
         name: status
         description: ''
         required: true
-        example: opgelost
+        example: gesloten
         type: string
         enumValues:
           - open
@@ -169,7 +169,7 @@ endpoints:
         nullable: true
         deprecated: false
     cleanBodyParameters:
-      status: opgelost
+      status: gesloten
       note: b
     fileParameters: []
     responses: []

@@ -107,6 +107,9 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active'])->prefi
     // validated `district_ids` array and the refreshed auth profile is returned.
     Route::patch('me/districts', ProfileDistrictController::class)->name('auth.me.districts.update');
 
+    // Self-service hub assignment updates. Only active officers may update their own hub.
+    Route::patch('me/hub', \App\Http\Controllers\Auth\ProfileHubController::class)->name('auth.me.hub.update');
+
     // Self-service feed districts update for users.
     Route::patch('me/feed-districts', [\App\Http\Controllers\Auth\UserFeedDistrictController::class, 'update'])->name('user-feed-districts.update');
 

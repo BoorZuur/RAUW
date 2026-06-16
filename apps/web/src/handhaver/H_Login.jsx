@@ -41,7 +41,7 @@ export default function Login() {
 
         try {
             // We sturen nu verplicht latitude en longitude mee zoals de backend eist
-            const response = await axios.post('http://localhost:8001/api/auth/login', {
+            const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/login`, {
                 email,
                 password,
                 latitude: finalLat,

@@ -131,7 +131,7 @@ endpoints:
         name: is_active
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -154,7 +154,7 @@ endpoints:
       postal_code: gzmiyv
       latitude: -89
       longitude: -179
-      is_active: false
+      is_active: true
       radius_meters: 19
     fileParameters: []
     responses: []
@@ -548,7 +548,7 @@ endpoints:
         name: is_active
         description: ''
         required: false
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -561,7 +561,7 @@ endpoints:
       center_lat: -89
       center_lng: -179
       radius_meters: 4
-      is_active: true
+      is_active: false
     fileParameters: []
     responses: []
     responseFields: []
