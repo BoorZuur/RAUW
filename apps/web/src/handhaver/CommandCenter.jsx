@@ -216,27 +216,8 @@ function CommandCenter() {
     };
 
     const activeIssuesCount = issues.filter(issue => issue.status === 'open' || issue.status === 'in_behandeling').length;
-    
-    // Average response time calculation:
-    const resolvedIssues = issues.filter(issue => issue.status === 'in_behandeling' || issue.status === 'opgelost' || issue.status === 'gesloten');
-    let avgResponseTimeText = "N/A";
-    if (resolvedIssues.length > 0) {
-        let totalTime = 0;
-        let count = 0;
-        resolvedIssues.forEach(issue => {
-            if (issue.updated_at && issue.created_at) {
-                const updated = new Date(issue.updated_at);
-                const created = new Date(issue.created_at);
-                if (updated > created) {
-                    totalTime += (updated - created) / (1000 * 60); // minutes
-                    count++;
-                }
-            }
-        });
-        if (count > 0) {
-            avgResponseTimeText = `${Math.round(totalTime / count)} min`;
-        }
-    }
+    const urgentIssuesCount = issues.filter(issue => issue.priority === 1 && (issue.status === 'open' || issue.status === 'in_behandeling')).length;
+
 
     return (
         <div className="app-layout">
@@ -252,20 +233,12 @@ function CommandCenter() {
                         <div className="metric-icon warning">⚠️</div>
                     </div>
 
-                    <div className="metric-card">
+                    <div className="metric-card" style={{ borderColor: '#fecaca' }}>
                         <div className="metric-info">
-                            <span className="metric-title">GEM. OPVOLGTIJD</span>
-                            <span className="metric-value">{avgResponseTimeText}</span>
+                            <span className="metric-title" style={{ color: '#dc2626' }}>URGENTE MELDINGEN</span>
+                            <span className="metric-value" style={{ color: '#dc2626' }}>{urgentIssuesCount}</span>
                         </div>
-                        <div className="metric-icon clock">🕒</div>
-                    </div>
-
-                    <div className="metric-card">
-                        <div className="metric-info">
-                            <span className="metric-title">COMMUNITY SCORE</span>
-                            <span className="metric-value">N/A</span>
-                        </div>
-                        <div className="metric-icon community">👥</div>
+                        <div className="metric-icon" style={{ backgroundColor: '#fef2f2', color: '#dc2626' }}>🚨</div>
                     </div>
                 </section>
 

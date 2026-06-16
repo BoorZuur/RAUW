@@ -224,7 +224,7 @@ Can still make this into a single class to prevent repeating things*/
 /* Metrics Cards Styling <- might convert to a component*/
 .metrics-row {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 16px;
 }
 

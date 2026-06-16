@@ -75,6 +75,27 @@ function H_ReportsOverview() {
     const solutionPercentage = totalIssues > 0 ? Math.round((resolvedCount / totalIssues) * 100) + '%' : '0%';
     const highUrgencyCount = issues.filter(issue => issue.priority === 1).length;
 
+    // Average response time calculation:
+    const resolvedIssuesReport = issues.filter(issue => issue.status === 'in_behandeling' || issue.status === 'opgelost' || issue.status === 'gesloten');
+    let avgResponseTimeText = "N/A";
+    if (resolvedIssuesReport.length > 0) {
+        let totalTime = 0;
+        let count = 0;
+        resolvedIssuesReport.forEach(issue => {
+            if (issue.updated_at && issue.created_at) {
+                const updated = new Date(issue.updated_at);
+                const created = new Date(issue.created_at);
+                if (updated > created) {
+                    totalTime += (updated - created) / (1000 * 60); // minutes
+                    count++;
+                }
+            }
+        });
+        if (count > 0) {
+            avgResponseTimeText = `${Math.round(totalTime / count)} min`;
+        }
+    }
+
     // Basic aggregations for the charts
     const categoryCounts = {};
     const urgencyCounts = {};
@@ -153,10 +174,16 @@ function H_ReportsOverview() {
                         aantal={highUrgencyCount.toString()}
                         kleur="text-red-600"
                     />
+
+                    <InformationCard
+                        titel="Gem. Opvolgtijd"
+                        aantal={avgResponseTimeText}
+                        kleur="text-blue-600"
+                    />
                 </div>
                 </section>
 
-                <section className={`reports-charts-grid ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
+                {/* <section className={`reports-charts-grid ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
                     <div className="analytics-card">
                         <h3>Meldingen per Categorie</h3>
                         {Object.keys(categoryCounts).length > 0 ? (
@@ -210,7 +237,7 @@ function H_ReportsOverview() {
                             </div>
                         )}
                     </div>
-                </section>
+                </section> */}
 
             </main>
         </div>
