@@ -1,41 +1,15 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { MessageCircle, Map, Megaphone, Moon, Newspaper, Sun, User, Bell } from 'lucide-react';
+import { MessageCircle, Map, Megaphone, Moon, Newspaper, Sun, User } from 'lucide-react';
 import RauwLogoImg from '../assets/LogoRAUW.png';
 import { useTheme } from '../ThemeContext.jsx';
 import GoogleTranslator from './GoogleTranslator.jsx';
-import Notification from './Notification.jsx';
-import * as apiClient from "leaflet/src/dom/DomUtil.js";
+import NotificationTray from './NotificationTray.jsx';
 
 export default function Navbar() {
     const { isDark, toggleTheme } = useTheme();
     const location = useLocation();
     const navigate = useNavigate();
-
-    const toastRef = useRef();
-    const lastCommentCount = useRef(0);
-    const issueId = "123";
-
-    useEffect(() => {
-        const poll = setInterval(async () => {
-            try {
-                const res = await apiClient.get(`/issues/${issueId}`);
-                const currentComments = res.data.comments || [];
-
-                if (currentComments.length > lastCommentCount.current && lastCommentCount.current !== 0) {
-                    toastRef.current.show('Nieuwe activiteit', 'Er is een nieuwe reactie geplaatst!', 'info');
-                }
-                lastCommentCount.current = currentComments.length;
-            } catch (err) {
-                console.error("Polling fout:", err);
-            }
-        }, 5000);
-        return () => clearInterval(poll);
-    }, [issueId]);
-
-    const handleNotificationClick = () => {
-        toastRef.current.show('Berichten', 'Je bent bij met alle updates!', 'info');
-    };
 
     useEffect(() => {
         if (!document.getElementById('google-translate-script')) {
@@ -105,16 +79,7 @@ export default function Navbar() {
                     {isDark ? <Sun className="w-5 h-5"/> : <Moon className="w-5 h-5"/>}
                 </button>
 
-                <button
-                    onClick={handleNotificationClick}
-                    className="p-3 rounded-2xl hover:bg-black/10 dark:hover:bg-white/10 transition-all relative"
-                    aria-label="Bekijk notificaties"
-                >
-                    <Bell className="w-5 h-5"/>
-                    <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-primary-accent rounded-full border border-primary-bg"></span>
-                </button>
-
-                <Notification ref={toastRef} />
+                <NotificationTray />
 
                 <button onClick={() => navigate('/account')}
                         aria-label="Ga naar accountinstellingen"
