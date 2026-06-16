@@ -64,13 +64,13 @@ class IssueController extends Controller
      * in assigned districts (including hidden); main managers see all issues
      * city-wide. Duplicate child rows are excluded by default per actor
      * (`IssueListScope`); users may use `participating=1` for owned children
-     * with canonical participation, and officers/managers may use
-     * `include_duplicates=1` to include children. A single Eloquent query
-     * applies the optional `district_id`, `department`, `category_id`, `status`,
-     * `assigned_officer_id`, `unassigned`, `mine`, `participating`,
-     * `include_duplicates`, and `visibility` filters conditionally and
-     * cumulatively (AND with visibility), so any subset (or all) of the
-     * filters may be combined to narrow the result set.
+     * with canonical participation, `followed=1` for deduped followed stories,
+     * and officers/managers may use `include_duplicates=1` to include children.
+     * A single Eloquent query applies the optional `district_id`, `department`,
+     * `category_id`, `status`, `assigned_officer_id`, `unassigned`, `mine`,
+     * `participating`, `followed`, `include_duplicates`, and `visibility`
+     * filters conditionally and cumulatively (AND with visibility), so any
+     * subset (or all) of the filters may be combined to narrow the result set.
      * The `department` filter is resolved through the issue departments
      * relationship with any-match semantics. Results are eager loaded (including
      * `officer_resolution` with officer and attachments when a report exists;
@@ -131,6 +131,15 @@ class IssueController extends Controller
             ->orderByDesc('id')
             ->paginate($request->perPage())
             ->withQueryString();
+
+        if ($request->wantsFollowed() && $request->user() instanceof User) {
+            /** @var User $actor */
+            $actor = $request->user();
+
+            $issues->getCollection()->each(
+                fn (Issue $issue) => $issue->loadActorParticipant($actor),
+            );
+        }
 
         return IssueResource::collection($issues);
     }

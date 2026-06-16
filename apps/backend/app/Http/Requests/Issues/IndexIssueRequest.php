@@ -44,15 +44,20 @@ class IndexIssueRequest extends FormRequest
      * assigned districts; main managers: city-wide).
      * Filters are optional and composable: `district_id`, `department`,
      * `category_id`, `status`, `assigned_officer_id`, `unassigned`, `mine`,
-     * `participating`, `include_duplicates`, and `visibility` may be combined
-     * to narrow the scoped result set (AND semantics). The `mine` filter
-     * (`mine=1` or equivalent truthy query values) restricts active users to
-     * issues they own (`issues.user_id`), including owned duplicate children;
-     * officers and managers cannot use `mine` and receive 422. The
+     * `participating`, `followed`, `include_duplicates`, and `visibility` may
+     * be combined to narrow the scoped result set (AND semantics). The `mine`
+     * filter (`mine=1` or equivalent truthy query values) restricts active
+     * users to issues they own (`issues.user_id`), including owned duplicate
+     * children; officers and managers cannot use `mine` and receive 422. The
      * `participating` filter (`participating=1`) restricts active users to
      * owned duplicate children where they still participate on the canonical
-     * parent; officers and managers cannot use `participating` and receive 422.
-     * `mine` and `participating` are mutually exclusive (422 when both are set).
+     * parent; officers and managers cannot use `participating` and receive
+     * 422. The `followed` filter (`followed=1`) returns a deduped list of
+     * canonical stories the user follows (active participation on the
+     * canonical), preferring an owned duplicate child row when one exists;
+     * own canonical reports are excluded; officers and managers cannot use
+     * `followed` and receive 422. `mine`, `participating`, and `followed` are
+     * pairwise mutually exclusive (422 when combined).
      * The `include_duplicates` filter (`include_duplicates=1`) includes
      * duplicate child rows for officers and managers; users cannot use it and
      * receive 422. Default browse excludes others' duplicate children for users
@@ -83,6 +88,7 @@ class IndexIssueRequest extends FormRequest
             'unassigned' => ['sometimes', Rule::in(['1', 'true', true, 1])],
             'mine' => ['sometimes', Rule::in(['1', 'true', true, 1])],
             'participating' => ['sometimes', Rule::in(['1', 'true', true, 1])],
+            'followed' => ['sometimes', Rule::in(['1', 'true', true, 1])],
             'include_duplicates' => ['sometimes', Rule::in(['1', 'true', true, 1])],
             'visibility' => ['sometimes', Rule::enum(Visibility::class)],
             'page' => ['sometimes', 'integer', 'min:1'],
@@ -116,6 +122,18 @@ class IndexIssueRequest extends FormRequest
     }
 
     /**
+     * Whether the client requested deduped followed canonical stories.
+     */
+    public function wantsFollowed(): bool
+    {
+        if (! $this->filled('followed')) {
+            return false;
+        }
+
+        return in_array($this->input('followed'), ['1', 'true', true, 1], true);
+    }
+
+    /**
      * Whether the client requested duplicate child rows in officer/manager lists.
      */
     public function wantsIncludeDuplicates(): bool
@@ -140,10 +158,11 @@ class IndexIssueRequest extends FormRequest
     }
 
     /**
-     * Reject role-incompatible list filters: `mine` and `participating` for
-     * officers/managers; `visibility`, `assigned_officer_id`, `unassigned`, and
-     * `include_duplicates` for users; mutually exclusive `mine` and
-     * `participating`; and mutually exclusive assignee filters.
+     * Reject role-incompatible list filters: `mine`, `participating`, and
+     * `followed` for officers/managers; `visibility`, `assigned_officer_id`,
+     * `unassigned`, and `include_duplicates` for users; pairwise mutually
+     * exclusive `mine`, `participating`, and `followed`; and mutually exclusive
+     * assignee filters.
      */
     public function withValidator(Validator $validator): void
     {
@@ -165,6 +184,13 @@ class IndexIssueRequest extends FormRequest
                 );
             }
 
+            if ($this->wantsFollowed() && $isOfficerOrManager) {
+                $validator->errors()->add(
+                    'followed',
+                    'The followed filter is only available to users.',
+                );
+            }
+
             if ($this->wantsIncludeDuplicates() && ! $isOfficerOrManager) {
                 $validator->errors()->add(
                     'include_duplicates',
@@ -181,6 +207,30 @@ class IndexIssueRequest extends FormRequest
                 $validator->errors()->add(
                     'participating',
                     'The participating filter cannot be used together with the mine filter.',
+                );
+            }
+
+            if ($this->wantsFollowed() && $this->wantsMine()) {
+                $validator->errors()->add(
+                    'followed',
+                    'The followed filter cannot be used together with the mine filter.',
+                );
+
+                $validator->errors()->add(
+                    'mine',
+                    'The mine filter cannot be used together with the followed filter.',
+                );
+            }
+
+            if ($this->wantsFollowed() && $this->wantsParticipating()) {
+                $validator->errors()->add(
+                    'followed',
+                    'The followed filter cannot be used together with the participating filter.',
+                );
+
+                $validator->errors()->add(
+                    'participating',
+                    'The participating filter cannot be used together with the followed filter.',
                 );
             }
 
