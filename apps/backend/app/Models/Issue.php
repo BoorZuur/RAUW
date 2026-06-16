@@ -27,6 +27,7 @@ use Illuminate\Support\Collection;
     'longitude',
     'status',
     'priority',
+    'resolved_at',
     'visibility',
     'is_anonymous',
     'anonymous_alias',

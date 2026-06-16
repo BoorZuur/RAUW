@@ -5089,7 +5089,7 @@
                     "officer-resolution"
                   ]
                 },
-                "description": "Create the officer field report (once per issue). Tier C: hub-active required. Multipart. Current assignee only. Returns 403 hub_active_required without an active shift, 403 officer_not_in_district when the issue district is outside the officer pivot, or 403 not_assigned_officer for non-assignees. Duplicate POST returns 409 officer_resolution_exists. Blocked when issue status is gesloten (422 issue_closed); opgelost remains writable. Up to 3 images, 5 MB each, content-sniffed after extension rules. Attachment cap enforcement and upload disk I/O run inside the lockForUpdate transaction."
+                "description": "Create the officer field report (once per issue). Tier C: hub-active required. Multipart. Current assignee only. Returns 403 hub_active_required without an active shift, 403 officer_not_in_district when the issue district is outside the officer pivot, or 403 not_assigned_officer for non-assignees. Duplicate POST returns 409 officer_resolution_exists. Blocked when issue status is gesloten (422 issue_closed); opgelost without an existing report remains writable. When status is in_behandeling, POST also transitions the issue to opgelost, appends status history (note: \"Oplossing geplaatst\"), and sets resolved_at; no separate status-change notification. POST on open does not change status. Response body is OfficerIssueResolution only. Up to 3 images, 5 MB each, content-sniffed after extension rules. Attachment cap enforcement and upload disk I/O run inside the lockForUpdate transaction."
               },
               "response": [
                 {

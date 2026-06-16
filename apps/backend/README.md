@@ -251,7 +251,7 @@ Distinct from user satisfaction feedback in `issue_resolutions`. At most **one**
 | Method | Path | Who | Notes |
 |--------|------|-----|-------|
 | `GET` | `/api/issues/{issue}/officer-resolution` | Any actor who can view the issue | **404** when no report exists. |
-| `POST` | `/api/issues/{issue}/officer-resolution` | Current assignee (multipart) | **409** `officer_resolution_exists` on duplicate; use PATCH to update. **422** `issue_closed` when status is `gesloten`; `opgelost` remains writable. Attachment cap enforcement and upload disk I/O run inside the locked transaction. |
+| `POST` | `/api/issues/{issue}/officer-resolution` | Current assignee (multipart) | **409** `officer_resolution_exists` on duplicate (including when a report already exists on `opgelost`); use PATCH to update. **422** `issue_closed` when status is `gesloten`; `opgelost` without an existing report remains writable. When status is `in_behandeling`, POST also transitions the issue to `opgelost`, appends one status history row (`note: "Oplossing geplaatst"`), and sets `resolved_at`; it does **not** emit a separate status-change notification. POST on `open` does not change status. Response body is `OfficerIssueResolution` only (not the full issue). Attachment cap enforcement and upload disk I/O run inside the locked transaction. |
 | `PATCH` | `/api/issues/{issue}/officer-resolution` | Current assignee (multipart) | Update title/content; optional `remove_attachment_ids` and new `files`. `officer_id` is overwritten with the editing officer (last editor). **422** `issue_closed` when status is `gesloten`; `opgelost` remains writable. **422** on `remove_attachment_ids` when ids do not belong to the resolution. Attachment cap enforcement and upload disk I/O run inside the locked transaction. |
 | `GET` | `/api/issues/{issue}/officer-resolution/attachments/{attachment}/download` | Any actor who can view the issue (Tier B) | Visibility-only auth (`IssueVisibilityQuery::canViewIssue`, Q8 / D15-A) in `authorize()`; users probing hidden issues they do not own receive **404**; other unauthorized actors receive **403**. Attachment must belong to the route resolution; missing backing file → **404**. Streams from non-public local storage. |
 | `DELETE` | `/api/issues/{issue}/officer-resolution/attachments/{attachment}` | Current assignee only | Removes attachment row and backing file. Repeat DELETE → **404**. **Tier C** — officers need an active shared shift. |
@@ -377,11 +377,11 @@ After hub login as `demo.officer@example.com` (Cool wijk / `district_id: 1`):
 3. **Conflict** — Second officer assigns same issue → 409 `issue_already_assigned`.
 3b. **Terminal assign block** — `POST .../assign-self` on `opgelost`/`gesloten` issue → 422 `issue_not_assignable`.
 4. **Unassign** — Current assignee `POST .../unassign-self` → 200, assignee cleared, status unchanged.
-5. **Status** — `PATCH /api/issues/{id}/status` with `{ "status": "opgelost", "note": "Fixed" }` → 200, history row, `resolved_at` set.
+5. **Status** — `PATCH /api/issues/{id}/status` with `{ "status": "opgelost", "note": "Fixed" }` → 200, history row, `resolved_at` set. Use this when moving to `opgelost` without posting a resolution, or for other directed transitions (`open` → `in_behandeling`, `opgelost` → `gesloten`).
 6. **Invalid transition** — Direct `open` → `opgelost` → 422. Direct `in_behandeling` → `gesloten` → 422.
 7. **Not assigned** — Another officer PATCH status → 403 `not_assigned_officer`.
 8. **List vs show embeds** — `GET /api/issues` includes `officer_resolution` when present and omits `status_history`. Officer/manager `GET /api/issues/{id}` adds `status_history` (newest first, no lat/lon); user GET omits `status_history`.
-9. **Resolution create** — Multipart POST with title, content, images → 201; second POST → 409.
+9. **Resolution create** — Multipart POST with title, content, images → 201; second POST → 409. On `in_behandeling` issues, POST also moves status to `opgelost` with history (`note: "Oplossing geplaatst"`) and `resolved_at`—no separate step 5 PATCH needed for that case. POST on `open` leaves status unchanged.
 10. **Resolution update** — PATCH with new title/content, remove one attachment, add one → 200, ≤3 attachments total.
 10b. **Resolution blocked on gesloten** — PATCH (or POST) on issue with status `gesloten` → 422 `issue_closed`; `opgelost` issues remain writable.
 11. **Resolution read** — User, officer, manager who can view issue → GET `/officer-resolution` 200; hidden issue → 404.

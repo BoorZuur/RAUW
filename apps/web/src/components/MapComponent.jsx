@@ -3,7 +3,6 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
 
-// Haversine formule om de afstand in meters te berekenen tussen twee coördinaten
 const getDistance = (lat1, lon1, lat2, lon2) => {
     const R = 6371e3; // Straal van de aarde in meters
     const φ1 = lat1 * Math.PI / 180;
@@ -21,7 +20,6 @@ export default function NativeLeafletMap({ position, setPosition, setFormData, d
 
     useEffect(() => {
         if (!leafletMap.current) {
-            // Ruime grenzen rondom Rotterdam voor de kaartrestrictie
             const rotterdamBounds = L.latLngBounds(
                 L.latLng(51.80, 4.00),
                 L.latLng(52.05, 4.65)
@@ -38,30 +36,26 @@ export default function NativeLeafletMap({ position, setPosition, setFormData, d
                 attribution: '&copy; OpenStreetMap & CartoDB'
             }).addTo(leafletMap.current);
 
-            // Click Handler met Backend Geofencing Validatie
             leafletMap.current.on('click', async (e) => {
                 const { lat, lng } = e.latlng;
 
-                // 1. Check of de klik binnen een wijk uit de backend valt (inclusief de 2000m marge)
                 let insideKnownDistrict = false;
 
                 if (districts && districts.length > 0) {
                     insideKnownDistrict = districts.some(d => {
                         const dist = getDistance(lat, lng, d.center_lat, d.center_lng);
-                        const searchRadius = d.radius_meters + 2000; // Dezelfde marge als in je submit handler
+                        const searchRadius = d.radius_meters + 2000;
                         return dist < searchRadius;
                     });
                 }
 
-                // Als het buiten de bekende backend wijken valt, triggeren we de custom popup
                 if (!insideKnownDistrict) {
                     if (onLocationError) {
                         onLocationError("Deze locatie valt buiten een bekend wijkgebied binnen de database van de Gemeente Rotterdam.");
                     }
-                    return; // Breek af: marker wordt niet verplaatst en adres wordt niet overschreven
+                    return;
                 }
 
-                // 2. Als de locatie wél binnen een wijk valt, halen we het adres op via Nominatim
                 try {
                     const res = await axios.get(`https://nominatim.openstreetmap.org/reverse`, {
                         params: { lat, lon: lng, format: 'json' }
