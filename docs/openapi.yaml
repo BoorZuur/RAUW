@@ -3499,13 +3499,19 @@ paths:
         District scoping applies (**403** `officer_not_in_district`). Duplicate
         POST returns **409** `officer_resolution_exists`; use PATCH to update an
         existing report. Blocked when issue status is `gesloten` (**422**
-        `issue_closed`); issues in `opgelost` remain writable. Up to **3** image
-        attachments (`jpg`, `jpeg`, `png`, `gif`, `webp`), each at most **5 MB**.
-        After extension rules pass, uploads are content-sniffed as allowed images;
-        mismatches return **422**. Attachment cap enforcement and disk I/O run
-        inside the same `lockForUpdate` transaction as assignee and writability
-        checks. Files are stored on non-public local storage and served only
-        through authenticated download endpoints.
+        `issue_closed`); issues in `opgelost` without an existing report remain
+        writable. When issue status is `in_behandeling`, POST atomically transitions
+        the issue to `opgelost`, appends one status history row (`note:
+        "Oplossing geplaatst"`), and sets `resolved_at`; it does **not** emit a
+        separate status-change notification. POST on `open` does not change status.
+        The response body remains `OfficerIssueResolution` only (not the full
+        issue). Up to **3** image attachments (`jpg`, `jpeg`, `png`, `gif`,
+        `webp`), each at most **5 MB**. After extension rules pass, uploads are
+        content-sniffed as allowed images; mismatches return **422**. Attachment
+        cap enforcement and disk I/O run inside the same `lockForUpdate`
+        transaction as assignee and writability checks. Files are stored on
+        non-public local storage and served only through authenticated download
+        endpoints.
       security:
         - bearerAuth: [ ]
       requestBody:
