@@ -1,36 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Fredoka:wdth,wght@106.2,440&family=Nunito:ital,wght@0,200..1000;1,200..1000&family=Shippori+Antique&display=swap');
 @import "tailwindcss";
 
-/*
-Saliegroen
-#979d86
-#8b9277
-#a9ad99
-#b2b6a4
-#c6c9bb
-
-Creme
-#dbc3ae
-#d3b69c
-#e6d5c7
-#ece0d5
-#f2eae3
-
-Zacht roze
-#fed9d2
-#fdbcaf
-#fdcdc3
-#feeeeb
-#ffffff
-
-Terracotta
-#9f5b55
-#92544f
-#b0726d
-#bf8b88
-#cda4a2
-*/
-
 @theme {
     --color-primary-text: var(--primary-text);
     --color-secondary-text: var(--secondary-text);
@@ -39,7 +9,6 @@ Terracotta
     --color-primary-border: var(--primary-border);
     --color-primary-accent: var(--primary-accent);
     --color-secondary-accent: var(--secondary-accent);
-    --color-test-one: var(--test-one); /*Hereeeeee*/
     --font-headline: "Fredoka", serif;
     --font-body: "Nunito", serif;
     --font-label: "Shippori Antique", sans-serif;
@@ -53,7 +22,6 @@ Terracotta
     --secondary-text: #36392d;
     --primary-accent: #896958;
     --secondary-accent: #92544f;
-    --test-one: rgba(70, 156, 86, 0.13);
     color-scheme: light dark;
     font-synthesis: none;
     text-rendering: optimizeLegibility;
@@ -63,32 +31,32 @@ Terracotta
 
 .dark {
     --primary-bg: #0d0d0c;
-    --primary-bg-cards: #171614;
-    --primary-border: #3d3a33;
-    --primary-text: #e6e1da;
-    --secondary-text: #a8a39a;
-    --primary-accent: #d4af37;
-    --secondary-accent: #6ee7b7;
+    --primary-bg-cards: #36392d;
+    --primary-border: #8b9277;
+    --primary-text: #ece0d5;
+    --secondary-text: #fdfaef;
+    --primary-accent: #cda4a2;
+    --secondary-accent: #feeeeb;
 }
 
 .mode-protanopia {
-    --primary-bg: #f5f5f5;
-    --primary-bg-cards: #e8e8e8;
-    --primary-border: #595959;
-    --primary-text: #000000;
-    --secondary-text: #262626;
-    --primary-accent: #005fbc;
-    --secondary-accent: #1e3a2e;
+    --primary-bg: #ebebe3;
+    --primary-bg-cards: #a5a69b;
+    --primary-border: #fafae0;
+    --primary-text: #4c473a;
+    --secondary-text: #38382e;
+    --primary-accent: #766f5a;
+    --secondary-accent: #6a6452;
 }
 
 .mode-deuteranopia {
-    --primary-bg: #f5f5f5;
-    --primary-bg-cards: #e0e0e0;
-    --primary-border: #666666;
-    --primary-text: #000000;
-    --secondary-text: #212121;
-    --primary-accent: #007bbd;
-    --secondary-accent: #2d4c38;
+    --primary-bg: #edede3;
+    --primary-bg-cards: #aba998;
+    --primary-border: #fbfbe0;
+    --primary-text: #4e4638;
+    --secondary-text: #3a372d;
+    --primary-accent: #7a6e57;
+    --secondary-accent: #70624e;
 }
 
 .mode-tritanopia {
@@ -102,33 +70,33 @@ Terracotta
 }
 
 .mode-achromatopsia {
-    --primary-bg: #ffffff;
-    --primary-bg-cards: #f2f2f2;
-    --primary-border: #000000;
-    --primary-text: #000000;
-    --secondary-text: #333333;
-    --primary-accent: #000000;
-    --secondary-accent: #000000;
+    --primary-bg: #f3e9e9;
+    --primary-bg-cards: #aaa9a5;
+    --primary-border: #fdf9f5;
+    --primary-text: #574442;
+    --secondary-text: #363833;
+    --primary-accent: #886963;
+    --secondary-accent: #93545b;
 }
 
 .mode-protanopia.dark {
     --primary-bg: #0d0d0c;
-    --primary-bg-cards: #1a1a1a;
-    --primary-border: #4d4d4d;
-    --primary-text: #e6e1da;
-    --secondary-text: #b3b3b3;
-    --primary-accent: #4da6ff;
-    --secondary-accent: #4ade80;
+    --primary-bg-cards: #38382e;
+    --primary-border: #8f8f7a;
+    --primary-text: #deded5;
+    --secondary-text: #fafae0;
+    --primary-accent: #aeada3;
+    --secondary-accent: #f4f4eb;
 }
 
 .mode-deuteranopia.dark {
     --primary-bg: #0d0d0c;
-    --primary-bg-cards: #1a1a1a;
-    --primary-border: #4d4d4d;
-    --primary-text: #e6e1da;
-    --secondary-text: #b3b3b3;
-    --primary-accent: #3399ff;
-    --secondary-accent: #4ade80;
+    --primary-bg-cards: #3a372d;
+    --primary-border: #959175;
+    --primary-text: #e2e1d5;
+    --secondary-text: #fbfbe0;
+    --primary-accent: #b4aba0;
+    --secondary-accent: #f6f5eb;
 }
 
 .mode-tritanopia.dark {
@@ -142,13 +110,13 @@ Terracotta
 }
 
 .mode-achromatopsia.dark {
-    --primary-bg: #000000;
-    --primary-bg-cards: #1a1a1a;
-    --primary-border: #ffffff;
-    --primary-text: #ffffff;
-    --secondary-text: #cccccc;
-    --primary-accent: #ffffff;
-    --secondary-accent: #ffffff;
+    --primary-bg: #0d0d0d;
+    --primary-bg-cards: #363833;
+    --primary-border: #8b9184;
+    --primary-text: #ece0dc;
+    --secondary-text: #fdf9f5;
+    --primary-accent: #cda4aa;
+    --secondary-accent: #feeeeef;
 }
 
 body {
