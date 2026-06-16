@@ -83,6 +83,14 @@ export default function Instellingen() {
         );
     };
 
+    const selectAllDistricts = () => {
+        setSelectedDistrictIds(allDistricts.map((d) => d.id));
+    };
+
+    const deselectAllDistricts = () => {
+        setSelectedDistrictIds([]);
+    };
+
     const handleSave = async () => {
         setLoading(true);
         setStatus({ type: '', message: '' });
@@ -217,8 +225,30 @@ export default function Instellingen() {
                         <p className="text-xs text-secondary-text mb-4">
                             Selecteer de wijken waarvan je wijknieuws wilt ontvangen. Zonder geselecteerde wijken zie je geen wijknieuws in je feed of notificaties.
                         </p>
-                        <div className="mb-4 px-4 py-3 rounded-xl bg-primary-bg border border-primary-border text-sm text-primary-text">
-                            <strong>{selectedDistrictIds.length}</strong> van {allDistricts.length} wijken geselecteerd
+                        <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-3 rounded-xl bg-primary-bg border border-primary-border text-sm text-primary-text">
+                            <span>
+                                <strong>{selectedDistrictIds.length}</strong> van {allDistricts.length} wijken geselecteerd
+                            </span>
+                            {!pageLoading && allDistricts.length > 0 && (
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={selectAllDistricts}
+                                        disabled={selectedDistrictIds.length === allDistricts.length}
+                                        className="px-3 py-1.5 rounded-lg text-xs font-bold border border-primary-border text-primary-text hover:border-primary-accent transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                                    >
+                                        Alles selecteren
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={deselectAllDistricts}
+                                        disabled={selectedDistrictIds.length === 0}
+                                        className="px-3 py-1.5 rounded-lg text-xs font-bold border border-primary-border text-primary-text hover:border-primary-accent transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                                    >
+                                        Alles deselecteren
+                                    </button>
+                                </div>
+                            )}
                         </div>
                         {pageLoading ? (
                             <div className="flex justify-center py-8">
