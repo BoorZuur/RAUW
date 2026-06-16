@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import ReportCard from "../components/H_SignalCard.jsx";
 import HM_Nav from "../components/HM_Nav.jsx";
+import IncidentMap from "../components/IncidentMap.jsx";
 import "./Handhaver_styling.css"
 
 function CommandCenter() {
@@ -270,11 +271,12 @@ function CommandCenter() {
 
                 <div className="dashboard-workspace">
 
-                    {/*🌟: replace with working map*/}
-                    <div className="map-panel">
-                        <div className="map-placeholder">
-                            <p>[ Map Component Placeholder ]</p>
-                        </div>
+                    {/* Map Component */}
+                    <div className="map-panel rounded-2xl overflow-hidden shadow-sm relative z-0">
+                        <IncidentMap 
+                            issues={issues} 
+                            onSelectIssue={handleSelectIssue} 
+                        />
                     </div>
 
                     <aside className="incident-panel relative">
