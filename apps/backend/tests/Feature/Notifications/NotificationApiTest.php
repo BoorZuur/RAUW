@@ -18,8 +18,8 @@ class NotificationApiTest extends TestCase
         $user = User::factory()->create(['is_active' => true]);
         $otherUser = User::factory()->create(['is_active' => true]);
 
-        $own = DomainNotification::factory()->forUser($user)->create();
-        DomainNotification::factory()->forUser($otherUser)->create();
+        $own = DomainNotification::factory()->forUser($user)->statusChange()->create();
+        DomainNotification::factory()->forUser($otherUser)->statusChange()->create();
 
         $response = $this->actingAs($user, 'sanctum')->getJson('/api/notifications');
 
@@ -50,8 +50,8 @@ class NotificationApiTest extends TestCase
     {
         $user = User::factory()->create(['is_active' => true]);
 
-        DomainNotification::factory()->forUser($user)->unread()->count(2)->create();
-        DomainNotification::factory()->forUser($user)->read()->create();
+        DomainNotification::factory()->forUser($user)->statusChange()->unread()->count(2)->create();
+        DomainNotification::factory()->forUser($user)->statusChange()->read()->create();
 
         $this->actingAs($user, 'sanctum')
             ->getJson('/api/notifications/unread-count')
@@ -62,7 +62,7 @@ class NotificationApiTest extends TestCase
     public function test_mark_single_notification_read_is_idempotent(): void
     {
         $user = User::factory()->create(['is_active' => true]);
-        $notification = DomainNotification::factory()->forUser($user)->unread()->create();
+        $notification = DomainNotification::factory()->forUser($user)->statusChange()->unread()->create();
 
         $this->actingAs($user, 'sanctum')
             ->patchJson("/api/notifications/{$notification->id}", ['is_read' => true])
@@ -79,7 +79,7 @@ class NotificationApiTest extends TestCase
     {
         $user = User::factory()->create(['is_active' => true]);
         $otherUser = User::factory()->create(['is_active' => true]);
-        $foreign = DomainNotification::factory()->forUser($otherUser)->create();
+        $foreign = DomainNotification::factory()->forUser($otherUser)->statusChange()->create();
 
         $this->actingAs($user, 'sanctum')
             ->patchJson("/api/notifications/{$foreign->id}", ['is_read' => true])
@@ -91,8 +91,8 @@ class NotificationApiTest extends TestCase
         $user = User::factory()->create(['is_active' => true]);
         $otherUser = User::factory()->create(['is_active' => true]);
 
-        $own = DomainNotification::factory()->forUser($user)->unread()->create();
-        $foreign = DomainNotification::factory()->forUser($otherUser)->unread()->create();
+        $own = DomainNotification::factory()->forUser($user)->statusChange()->unread()->create();
+        $foreign = DomainNotification::factory()->forUser($otherUser)->statusChange()->unread()->create();
 
         $this->actingAs($user, 'sanctum')
             ->patchJson('/api/notifications/bulk-read', ['ids' => [$own->id, $foreign->id]])
@@ -122,10 +122,10 @@ class NotificationApiTest extends TestCase
     {
         $user = User::factory()->create(['is_active' => true]);
 
-        DomainNotification::factory()->forUser($user)->create([
+        DomainNotification::factory()->forUser($user)->statusChange()->create([
             'created_at' => now()->subDays(2),
         ]);
-        $recent = DomainNotification::factory()->forUser($user)->create([
+        $recent = DomainNotification::factory()->forUser($user)->statusChange()->create([
             'created_at' => now()->subHour(),
         ]);
 
@@ -156,8 +156,8 @@ class NotificationApiTest extends TestCase
     {
         $user = User::factory()->create(['is_active' => true]);
 
-        $unread = DomainNotification::factory()->forUser($user)->unread()->create();
-        DomainNotification::factory()->forUser($user)->read()->create();
+        $unread = DomainNotification::factory()->forUser($user)->statusChange()->unread()->create();
+        DomainNotification::factory()->forUser($user)->statusChange()->read()->create();
 
         $this->actingAs($user, 'sanctum')
             ->getJson('/api/notifications?is_read=0')
@@ -170,7 +170,7 @@ class NotificationApiTest extends TestCase
     {
         $user = User::factory()->create(['is_active' => true]);
 
-        DomainNotification::factory()->forUser($user)->count(3)->create();
+        DomainNotification::factory()->forUser($user)->statusChange()->count(3)->create();
 
         $this->actingAs($user, 'sanctum')
             ->getJson('/api/notifications?per_page=2&page=1')
@@ -185,8 +185,8 @@ class NotificationApiTest extends TestCase
         $user = User::factory()->create(['is_active' => true]);
         $otherUser = User::factory()->create(['is_active' => true]);
 
-        DomainNotification::factory()->forUser($user)->unread()->count(2)->create();
-        $foreignUnread = DomainNotification::factory()->forUser($otherUser)->unread()->create();
+        DomainNotification::factory()->forUser($user)->statusChange()->unread()->count(2)->create();
+        $foreignUnread = DomainNotification::factory()->forUser($otherUser)->statusChange()->unread()->create();
 
         $this->actingAs($user, 'sanctum')
             ->postJson('/api/notifications/mark-all-read')

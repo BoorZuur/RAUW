@@ -165,7 +165,7 @@ export default function StoryDetailModal({ issue, onClose, onAddComment }) {
                                     {/* Avatar */}
                                     <div className="w-8 h-8 rounded-full bg-stone-800 flex items-center justify-center shrink-0 mt-1 border border-primary-border">
                     <span className="text-[10px] font-black text-primary-accent">
-                        {(comment.user?.name || 'U').charAt(0).toUpperCase()}
+                        {(comment.author?.display_name || 'U').charAt(0).toUpperCase()}
                     </span>
                                     </div>
 
@@ -173,7 +173,7 @@ export default function StoryDetailModal({ issue, onClose, onAddComment }) {
                                     <div className="flex-1 bg-primary-bg p-3 rounded-2xl rounded-tl-none border border-primary-border shadow-sm w-fit max-w-[90%]">
                                         <div className="flex flex-wrap items-baseline gap-2">
                         <span className="font-bold text-[13px] text-white">
-                            {comment.user?.name || 'Buurtbewoner'}
+                            {comment.author?.display_name || 'Buurtbewoner'}
                         </span>
                                             <p className="text-[13px] text-stone-200 leading-relaxed whitespace-pre-wrap break-words">
                                                 {comment.content || comment.body || comment.text || "Geen inhoud"}

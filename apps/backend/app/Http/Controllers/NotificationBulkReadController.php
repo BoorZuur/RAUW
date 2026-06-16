@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Notifications\BulkReadNotificationsRequest;
-use App\Models\DomainNotification;
 use App\Models\User;
+use App\Support\Notifications\NotificationRecipientQuery;
 use Illuminate\Http\JsonResponse;
 
 class NotificationBulkReadController extends Controller
@@ -15,8 +15,7 @@ class NotificationBulkReadController extends Controller
         $user = $request->user();
         $ids = $request->validated('ids');
 
-        $updated = DomainNotification::query()
-            ->forUser($user)
+        $updated = NotificationRecipientQuery::visibleForUser($user)
             ->whereIn('id', $ids)
             ->where('is_read', false)
             ->update(['is_read' => true]);

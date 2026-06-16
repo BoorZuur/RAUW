@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Bell, Loader2, User, Trash2, Palette } from 'lucide-react';
+import { ArrowLeft, Bell, Loader2, User, Trash2, Palette, MapPin } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useTheme } from '../ThemeContext.jsx';
@@ -23,15 +23,49 @@ export default function Instellingen() {
     const navigate = useNavigate();
     const { isDark } = useTheme();
     const [loading, setLoading] = useState(false);
+    const [pageLoading, setPageLoading] = useState(true);
     const [status, setStatus] = useState({ type: '', message: '' });
     const [colorMode, setColorMode] = useState(localStorage.getItem('color_mode') || 'default');
+    const [allDistricts, setAllDistricts] = useState([]);
+    const [selectedDistrictIds, setSelectedDistrictIds] = useState([]);
 
     const [settings, setSettings] = useState({
-        username: 'Buurtgenoot',
-        status_updates: true,
-        weekly_update: false,
-        new_alerts: false
+        username: '',
+        notify_status_changes: true,
+        notify_district_news: true,
     });
+
+    useEffect(() => {
+        const loadSettings = async () => {
+            try {
+                const [meRes, settingsRes, districtsRes] = await Promise.all([
+                    apiClient.get('/auth/me'),
+                    apiClient.get('/user/settings'),
+                    apiClient.get('/districts'),
+                ]);
+
+                const profile = meRes.data?.profile || meRes.data;
+                const prefs = settingsRes.data?.data || settingsRes.data;
+                const districtsData = districtsRes.data?.data || districtsRes.data || [];
+
+                setSettings({
+                    username: profile?.username || '',
+                    notify_status_changes: prefs?.notify_status_changes ?? true,
+                    notify_district_news: prefs?.notify_district_news ?? true,
+                });
+                setSelectedDistrictIds((profile?.districts || []).map((d) => d.id));
+                setAllDistricts(
+                    (Array.isArray(districtsData) ? districtsData : []).filter((d) => d.is_active !== false)
+                );
+            } catch (err) {
+                setStatus({ type: 'error', message: 'Instellingen laden mislukt.' });
+            } finally {
+                setPageLoading(false);
+            }
+        };
+
+        loadSettings();
+    }, []);
 
     useEffect(() => {
         const root = document.documentElement;
@@ -43,10 +77,23 @@ export default function Instellingen() {
         localStorage.setItem('color_mode', colorMode);
     }, [colorMode]);
 
+    const toggleDistrict = (id) => {
+        setSelectedDistrictIds((prev) =>
+            prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]
+        );
+    };
+
     const handleSave = async () => {
         setLoading(true);
+        setStatus({ type: '', message: '' });
         try {
-            await apiClient.post('/user/settings', { ...settings, colorMode });
+            await Promise.all([
+                apiClient.patch('/auth/me/feed-districts', { district_ids: selectedDistrictIds }),
+                apiClient.patch('/user/settings', {
+                    notify_status_changes: settings.notify_status_changes,
+                    notify_district_news: settings.notify_district_news,
+                }),
+            ]);
             setStatus({ type: 'success', message: 'Instellingen succesvol opgeslagen.' });
         } catch (err) {
             setStatus({ type: 'error', message: 'Opslaan mislukt.' });
@@ -161,6 +208,42 @@ export default function Instellingen() {
                         </select>
                     </section>
 
+                    {/* Wijken */}
+                    <section className="p-8 bg-primary-bg-cards border border-primary-border rounded-2xl">
+                        <div className="flex items-center gap-3 mb-6 text-primary-accent">
+                            <MapPin size={20} />
+                            <h2 className="text-sm font-black uppercase tracking-widest text-primary-text">Wijken</h2>
+                        </div>
+                        <p className="text-xs text-secondary-text mb-4">
+                            Selecteer de wijken waarvan je wijknieuws wilt ontvangen. Zonder geselecteerde wijken zie je geen wijknieuws in je feed of notificaties.
+                        </p>
+                        <div className="mb-4 px-4 py-3 rounded-xl bg-primary-bg border border-primary-border text-sm text-primary-text">
+                            <strong>{selectedDistrictIds.length}</strong> van {allDistricts.length} wijken geselecteerd
+                        </div>
+                        {pageLoading ? (
+                            <div className="flex justify-center py-8">
+                                <Loader2 className="animate-spin text-primary-accent" size={24} />
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-64 overflow-y-auto custom-scrollbar">
+                                {allDistricts.map((district) => (
+                                    <button
+                                        key={district.id}
+                                        type="button"
+                                        onClick={() => toggleDistrict(district.id)}
+                                        className={`px-3 py-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                                            selectedDistrictIds.includes(district.id)
+                                                ? 'bg-primary-accent text-primary-bg border-primary-accent'
+                                                : 'bg-primary-bg text-primary-text border-primary-border hover:border-primary-accent'
+                                        }`}
+                                    >
+                                        {district.name}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+
                     {/* Notificaties */}
                     <section className="p-8 bg-primary-bg-cards border border-primary-border rounded-2xl">
                         <div className="flex items-center gap-3 mb-8 text-primary-accent">
@@ -168,16 +251,28 @@ export default function Instellingen() {
                             <h2 className="text-sm font-black uppercase tracking-widest text-primary-text">Notificaties</h2>
                         </div>
                         <div className="space-y-8">
-                            {[{key: 'status_updates', label: 'Statuswijzigingen', desc: 'Updates van BOA acties'},
-                                {key: 'weekly_update', label: 'Wekelijkse update', desc: 'Veiligheidssamenvatting'},
-                                {key: 'new_alerts', label: 'Nieuwe signalen', desc: 'Directe buurtmeldingen'}].map(item => (
+                            {[
+                                {
+                                    key: 'notify_status_changes',
+                                    label: 'Statuswijzigingen',
+                                    desc: 'Meldingen over updates van handhavers op jouw meldingen',
+                                },
+                                {
+                                    key: 'notify_district_news',
+                                    label: 'Wijknieuws',
+                                    desc: 'Berichten van handhavers in de wijken die je volgt.',
+                                },
+                            ].map((item) => (
                                 <div key={item.key} className="flex justify-between items-center">
                                     <div>
                                         <p className="text-sm font-bold text-primary-text">{item.label}</p>
                                         <p className="text-xs text-secondary-text">{item.desc}</p>
                                     </div>
-                                    <button onClick={() => setSettings(prev => ({...prev, [item.key]: !prev[item.key]}))}
-                                            className={`w-14 h-7 rounded-full border-2 transition-all relative cursor-pointer ${settings[item.key] ? 'bg-primary-accent border-primary-accent' : 'bg-primary-border border-primary-border'}`}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSettings((prev) => ({ ...prev, [item.key]: !prev[item.key] }))}
+                                        className={`w-14 h-7 rounded-full border-2 transition-all relative cursor-pointer ${settings[item.key] ? 'bg-primary-accent border-primary-accent' : 'bg-primary-border border-primary-border'}`}
+                                    >
                                         <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full border border-neutral-300 transition-transform ${settings[item.key] ? 'translate-x-7' : 'translate-x-0'}`} />
                                     </button>
                                 </div>

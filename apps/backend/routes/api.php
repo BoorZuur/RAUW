@@ -46,6 +46,7 @@ use App\Http\Controllers\NotificationBulkReadController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationMarkAllReadController;
 use App\Http\Controllers\NotificationUnreadCountController;
+use App\Http\Controllers\User\UserSettingsController;
 use App\Http\Controllers\OfficerMeNotificationBulkReadController;
 use App\Http\Controllers\OfficerMeNotificationController;
 use App\Http\Controllers\OfficerMeNotificationMarkAllReadController;
@@ -234,6 +235,8 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     Route::get('officers/me/feedback', [OfficerMeFeedbackController::class, 'index'])->name('officers.me.feedback.index');
 
     // User notifications. Active users only; officers and managers receive 403.
+    Route::get('user/settings', [UserSettingsController::class, 'show'])->name('user.settings.show');
+    Route::patch('user/settings', [UserSettingsController::class, 'update'])->name('user.settings.update');
     Route::get('notifications/unread-count', [NotificationUnreadCountController::class, 'show'])->name('notifications.unread-count');
     Route::patch('notifications/bulk-read', [NotificationBulkReadController::class, 'update'])->name('notifications.bulk-read');
     Route::post('notifications/mark-all-read', [NotificationMarkAllReadController::class, 'store'])->name('notifications.mark-all-read');

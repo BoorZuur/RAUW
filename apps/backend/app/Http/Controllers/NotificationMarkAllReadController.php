@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Notifications\MarkAllNotificationsReadRequest;
-use App\Models\DomainNotification;
 use App\Models\User;
+use App\Support\Notifications\NotificationRecipientQuery;
 use Illuminate\Http\JsonResponse;
 
 class NotificationMarkAllReadController extends Controller
@@ -14,8 +14,7 @@ class NotificationMarkAllReadController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        $updated = DomainNotification::query()
-            ->forUser($user)
+        $updated = NotificationRecipientQuery::visibleForUser($user)
             ->unread()
             ->update(['is_read' => true]);
 
