@@ -124,6 +124,15 @@ class IssueController extends Controller
                 },
             )
             ->when(
+                $request->wantsExcludeMine(),
+                function ($query) use ($request): void {
+                    /** @var User $actor */
+                    $actor = $request->user();
+
+                    $query->where('user_id', '!=', $actor->getKey());
+                },
+            )
+            ->when(
                 $request->filled('visibility'),
                 fn ($query) => $query->where('visibility', $request->enum('visibility')),
             )

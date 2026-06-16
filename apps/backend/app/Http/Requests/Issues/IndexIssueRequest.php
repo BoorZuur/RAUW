@@ -44,11 +44,16 @@ class IndexIssueRequest extends FormRequest
      * assigned districts; main managers: city-wide).
      * Filters are optional and composable: `district_id`, `department`,
      * `category_id`, `status`, `assigned_officer_id`, `unassigned`, `mine`,
-     * `participating`, `followed`, `include_duplicates`, and `visibility` may
-     * be combined to narrow the scoped result set (AND semantics). The `mine`
-     * filter (`mine=1` or equivalent truthy query values) restricts active
-     * users to issues they own (`issues.user_id`), including owned duplicate
-     * children; officers and managers cannot use `mine` and receive 422. The
+     * `participating`, `followed`, `include_duplicates`, `exclude_mine`, and
+     * `visibility` may be combined to narrow the scoped result set (AND
+     * semantics). The `mine` filter (`mine=1` or equivalent truthy query
+     * values) restricts active users to issues they own (`issues.user_id`),
+     * including owned duplicate children; officers and managers cannot use
+     * `mine` and receive 422. The `exclude_mine` filter (`exclude_mine=1`)
+     * excludes issues owned by the authenticated user (including owned
+     * duplicate children); officers and managers cannot use `exclude_mine`
+     * and receive 422. `exclude_mine` is mutually exclusive with `mine`
+     * (422 when combined) but may be combined with `followed`. The
      * `participating` filter (`participating=1`) restricts active users to
      * owned duplicate children where they still participate on the canonical
      * parent; officers and managers cannot use `participating` and receive
@@ -86,6 +91,7 @@ class IndexIssueRequest extends FormRequest
             'assigned_officer_id' => ['sometimes', 'integer', Rule::exists('officers', 'id')],
             'unassigned' => ['sometimes', Rule::in(['1', 'true', true, 1])],
             'mine' => ['sometimes', Rule::in(['1', 'true', true, 1])],
+            'exclude_mine' => ['sometimes', Rule::in(['1', 'true', true, 1])],
             'participating' => ['sometimes', Rule::in(['1', 'true', true, 1])],
             'followed' => ['sometimes', Rule::in(['1', 'true', true, 1])],
             'include_duplicates' => ['sometimes', Rule::in(['1', 'true', true, 1])],
@@ -105,6 +111,18 @@ class IndexIssueRequest extends FormRequest
         }
 
         return in_array($this->input('mine'), ['1', 'true', true, 1], true);
+    }
+
+    /**
+     * Whether the client requested to exclude issues owned by the authenticated user.
+     */
+    public function wantsExcludeMine(): bool
+    {
+        if (! $this->filled('exclude_mine')) {
+            return false;
+        }
+
+        return in_array($this->input('exclude_mine'), ['1', 'true', true, 1], true);
     }
 
     /**
@@ -157,10 +175,11 @@ class IndexIssueRequest extends FormRequest
     }
 
     /**
-     * Reject role-incompatible list filters: `mine`, `participating`, and
-     * `followed` for officers/managers; `visibility`, `assigned_officer_id`,
-     * `unassigned`, and `include_duplicates` for users; pairwise mutually
-     * exclusive `mine`, `participating`, and `followed`; and mutually exclusive
+     * Reject role-incompatible list filters: `mine`, `exclude_mine`,
+     * `participating`, and `followed` for officers/managers; `visibility`,
+     * `assigned_officer_id`, `unassigned`, and `include_duplicates` for users;
+     * pairwise mutually exclusive `mine`, `participating`, and `followed`;
+     * mutually exclusive `mine` and `exclude_mine`; and mutually exclusive
      * assignee filters.
      */
     public function withValidator(Validator $validator): void
@@ -173,6 +192,13 @@ class IndexIssueRequest extends FormRequest
                 $validator->errors()->add(
                     'mine',
                     'The mine filter is only available to users.',
+                );
+            }
+
+            if ($this->wantsExcludeMine() && $isOfficerOrManager) {
+                $validator->errors()->add(
+                    'exclude_mine',
+                    'The exclude mine filter is only available to users.',
                 );
             }
 
@@ -218,6 +244,18 @@ class IndexIssueRequest extends FormRequest
                 $validator->errors()->add(
                     'mine',
                     'The mine filter cannot be used together with the followed filter.',
+                );
+            }
+
+            if ($this->wantsMine() && $this->wantsExcludeMine()) {
+                $validator->errors()->add(
+                    'mine',
+                    'The mine filter cannot be used together with the exclude mine filter.',
+                );
+
+                $validator->errors()->add(
+                    'exclude_mine',
+                    'The exclude mine filter cannot be used together with the mine filter.',
                 );
             }
 

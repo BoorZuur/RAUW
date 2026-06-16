@@ -32,6 +32,7 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 const VIEW_OPTIONS = [
     { label: 'Alle meldingen', value: 'all' },
+    { label: 'Zonder eigen verhalen', value: 'exclude_mine', requiresAuth: true },
     { label: 'Mijn verhalen', value: 'mine', requiresAuth: true },
     { label: 'Nieuw', value: 'open' },
     { label: 'In behandeling', value: 'in_behandeling' },
@@ -42,6 +43,7 @@ const VIEW_OPTIONS = [
 
 function viewToApiParams(view) {
     if (view === 'all') return {};
+    if (view === 'exclude_mine') return { excludeMine: true };
     if (view === 'mine') return { mine: true };
     if (view === 'followed') return { followed: true };
     return { status: view };

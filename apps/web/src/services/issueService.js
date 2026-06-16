@@ -97,7 +97,7 @@ export async function getIssue(issueId) {
  * Fetches all issues for the map, applying server-side filters and paginating
  * through every page (per_page=100, max allowed by IndexIssueRequest).
  */
-export async function listIssuesForMap({ districtId, status, mine, followed } = {}) {
+export async function listIssuesForMap({ districtId, status, mine, followed, excludeMine } = {}) {
     const params = { per_page: 100 };
 
     if (districtId != null && districtId !== '' && districtId !== 'all') {
@@ -111,6 +111,9 @@ export async function listIssuesForMap({ districtId, status, mine, followed } = 
     }
     if (followed) {
         params.followed = 1;
+    }
+    if (excludeMine) {
+        params.exclude_mine = 1;
     }
 
     let allIssues = [];

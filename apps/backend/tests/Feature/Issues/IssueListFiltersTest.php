@@ -168,4 +168,87 @@ class IssueListFiltersTest extends TestCase
         $response->assertUnprocessable()
             ->assertJsonValidationErrors(['mine', 'participating']);
     }
+
+    public function test_exclude_mine_returns_only_others_issues(): void
+    {
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+        $category = Category::factory()->withDepartments()->create();
+        $district = District::factory()->create();
+
+        $ownIssue = Issue::factory()->withStatus(IssueStatus::Open)->create([
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'district_id' => $district->id,
+        ]);
+
+        $othersIssue = Issue::factory()->withStatus(IssueStatus::Open)->create([
+            'user_id' => $other->id,
+            'category_id' => $category->id,
+            'district_id' => $district->id,
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders($user))
+            ->getJson('/api/issues?exclude_mine=1');
+
+        $response->assertOk();
+
+        $ids = collect($response->json('data'))->pluck('id')->all();
+
+        $this->assertNotContains($ownIssue->id, $ids);
+        $this->assertContains($othersIssue->id, $ids);
+    }
+
+    public function test_exclude_mine_also_excludes_owned_duplicate_children(): void
+    {
+        $user = User::factory()->create();
+        $owner = User::factory()->create();
+        $category = Category::factory()->withDepartments()->create();
+        $district = District::factory()->create();
+
+        $canonical = Issue::factory()->withStatus(IssueStatus::Open)->create([
+            'user_id' => $owner->id,
+            'category_id' => $category->id,
+            'district_id' => $district->id,
+        ]);
+
+        $ownChild = Issue::factory()->asDuplicateOf($canonical)->create([
+            'user_id' => $user->id,
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders($user))
+            ->getJson('/api/issues?exclude_mine=1');
+
+        $response->assertOk();
+
+        $ids = collect($response->json('data'))->pluck('id')->all();
+
+        $this->assertNotContains($ownChild->id, $ids);
+        $this->assertContains($canonical->id, $ids);
+    }
+
+    public function test_exclude_mine_and_mine_are_mutually_exclusive(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->withHeaders($this->authHeaders($user))
+            ->getJson('/api/issues?exclude_mine=1&mine=1');
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['exclude_mine', 'mine']);
+    }
+
+    public function test_officer_cannot_use_exclude_mine_filter(): void
+    {
+        $district = District::factory()->create();
+        $officer = Officer::factory()->withDistricts([$district])->create([
+            'hub_active_until' => now()->addHour(),
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders($officer))
+            ->getJson('/api/issues?exclude_mine=1');
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['exclude_mine']);
+    }
 }
