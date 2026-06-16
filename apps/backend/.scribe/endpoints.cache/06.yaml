@@ -741,7 +741,7 @@ endpoints:
         name: is_active
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -754,7 +754,7 @@ endpoints:
       center_lat: -89
       center_lng: -179
       radius_meters: 4
-      is_active: false
+      is_active: true
     fileParameters: []
     responses: []
     responseFields: []

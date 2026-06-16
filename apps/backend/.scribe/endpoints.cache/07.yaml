@@ -83,7 +83,7 @@ endpoints:
         name: status
         description: ''
         required: false
-        example: opgelost
+        example: in_behandeling
         type: string
         enumValues:
           - open
@@ -124,7 +124,7 @@ endpoints:
         name: mine
         description: ''
         required: false
-        example: '1'
+        example: 'true'
         type: string
         enumValues:
           - '1'
@@ -203,10 +203,10 @@ endpoints:
       district_id: 16
       department: architecto
       category_id: 16
-      status: opgelost
+      status: in_behandeling
       assigned_officer_id: 16
       unassigned: '1'
-      mine: '1'
+      mine: 'true'
       participating: 'true'
       include_duplicates: '1'
       visibility: visible
@@ -601,14 +601,14 @@ endpoints:
         name: issue_id
         description: 'The ID of the issue.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      issue_id: 1
+      issue_id: 16
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
@@ -686,14 +686,14 @@ endpoints:
         name: issue_id
         description: 'The ID of the issue.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      issue_id: 1
+      issue_id: 16
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
@@ -750,14 +750,14 @@ endpoints:
         name: issue_id
         description: 'The ID of the issue.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      issue_id: 1
+      issue_id: 16
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
@@ -838,14 +838,14 @@ endpoints:
         name: id
         description: 'The ID of the issue.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      id: 1
+      id: 16
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters: []
@@ -907,14 +907,14 @@ endpoints:
         name: id
         description: 'The ID of the issue.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      id: 1
+      id: 16
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
@@ -1088,14 +1088,14 @@ endpoints:
         name: issue_id
         description: 'The ID of the issue.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      issue_id: 1
+      issue_id: 16
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
@@ -1156,14 +1156,14 @@ endpoints:
         name: id
         description: 'The ID of the issue.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      id: 1
+      id: 16
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
@@ -1172,14 +1172,14 @@ endpoints:
         name: leave_participation
         description: ''
         required: false
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanBodyParameters:
-      leave_participation: true
+      leave_participation: false
     fileParameters: []
     responses: []
     responseFields: []

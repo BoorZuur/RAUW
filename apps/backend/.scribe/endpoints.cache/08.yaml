@@ -28,14 +28,14 @@ endpoints:
         name: issue_id
         description: 'The ID of the issue.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      issue_id: 1
+      issue_id: 16
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
@@ -87,14 +87,14 @@ endpoints:
         name: issue_id
         description: 'The ID of the issue.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      issue_id: 1
+      issue_id: 16
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters: []
@@ -139,14 +139,14 @@ endpoints:
         name: issue_id
         description: 'The ID of the issue.'
         required: true
-        example: 1
+        example: 16
         type: integer
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      issue_id: 1
+      issue_id: 16
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
