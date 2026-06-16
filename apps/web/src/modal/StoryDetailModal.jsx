@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import AttachmentImage from '../components/AttachmentImage';
+
+const apiClient = axios.create({
+    baseURL: 'http://localhost:8001/api',
+    headers: { 'Accept': 'application/json' }
+});
 export default function StoryDetailModal({ issue, onClose, onAddComment }) {
     const [commentText, setCommentText] = useState('');
     const [localComments, setLocalComments] = useState(issue.comments || []);

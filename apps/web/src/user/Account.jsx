@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Settings, User, Loader2 } from 'lucide-react';
+import { Settings, User, Loader2, LogOut } from 'lucide-react';
 import axios from 'axios';
 import U_Nav from '../components/U_Nav';
 import Footer from "../components/Footer.jsx";
 import USignalCard from '../components/U_SignalCard';
-import StoryDetailModal from '../modal/StoryDetailModal.jsx';
+import AccountDetailModal from '../modal/AccountDetailModal.jsx';
 
 const apiClient = axios.create({
     baseURL: 'http://localhost:8001/api',
@@ -78,13 +78,13 @@ export default function Dashboard() {
 
         } catch (err) {
             console.error('Kon issue details niet ophalen:', err);
-            setSelectedReport(issue); // VERANDERING: setSelectedReport
+            setSelectedReport(issue);
         }
     };
 
     const handleAddComment = async (issueId, commentText) => {
         try {
-            const response = await apiClient.post(`/issues/${issueId}/comments`, { // URL aangepast
+            const response = await apiClient.post(`/issues/${issueId}/comments`, {
                 content: commentText
             });
             const newComment = response.data.data || response.data;
@@ -114,6 +114,32 @@ export default function Dashboard() {
     if (loading) return <div className="flex h-screen items-center justify-center bg-primary-bg"><Loader2 className="w-8 h-8 animate-spin text-primary-accent" /></div>;
     if (error) return <div className="text-center p-10 text-red-500 bg-primary-bg h-screen">{error}</div>;
 
+    const handleLogout = () => {
+        localStorage.removeItem('auth_token');
+        navigate('/login');
+    };
+
+    const handleDeleteIssue = async (issueId) => {
+        try {
+            await apiClient.delete(`/issues/${issueId}`);
+            setReports(prev => prev.filter(r => r.id !== issueId));
+            setSelectedReport(null);
+        } catch (err) {
+            alert('Kon het issue niet verwijderen.');
+        }
+    };
+
+    const handleUpdateIssue = async (issueId, updatedData) => {
+        try {
+            await apiClient.put(`/issues/${issueId}`, updatedData);
+            setReports(prev => prev.map(r => r.id === issueId ? { ...r, ...updatedData } : r));
+            alert("Succesvol bijgewerkt!");
+        } catch (err) {
+            console.error("Update mislukt:", err);
+            alert("Kon het issue niet bijwerken.");
+        }
+    };
+
     return (
         <div className="min-h-screen flex flex-col bg-primary-bg text-primary-text transition-colors duration-300 overflow-x-hidden">
             <div className="fixed top-0 w-full z-50">
@@ -133,7 +159,8 @@ export default function Dashboard() {
                         </div>
                         <div className="w-px h-6 bg-primary-text/20 group-hover:bg-primary-accent/40 transition-colors"></div>
                         <div className="flex flex-col items-center group-hover:scale-105 transition-transform duration-300 delay-150">
-                            <svg className="w-10 h-10 stroke-current text-primary-text group-hover:text-primary-accent transition-colors duration-500" viewBox="0 0 24 24" fill="none" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 11.08 12 19 9 16" /><path d="M22 4L12 14.01l-3-3" className="opacity-40" /><circle cx="12" cy="12" r="10" strokeDasharray="3 3" className="opacity-50" /></svg>
+                            <svg className="w-10 h-10 stroke-current text-primary-text group-hover:text-primary-accent transition-colors duration-500"
+                                 viewBox="0 0 24 24" fill="none" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 11.08 12 19 9 16" /><path d="M22 4L12 14.01l-3-3" className="opacity-40" /><circle cx="12" cy="12" r="10" strokeDasharray="3 3" className="opacity-50" /></svg>
                         </div>
                     </div>
                     <div className="w-6 h-px bg-primary-text/30 group-hover:bg-primary-accent transition-colors duration-300"></div>
@@ -142,11 +169,30 @@ export default function Dashboard() {
                 <main className="z-10 grow w-full max-w-4xl mx-auto px-6 mt-8 space-y-8 pb-12">
                     <section className="flex items-center justify-between p-4 bg-primary-bg-cards border border-primary-border rounded-2xl shadow-sm">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 bg-primary-bg border border-primary-border rounded-full"><User className="w-5 h-5 text-primary-text"/></div>
+                            <div className="p-2 bg-primary-bg border border-primary-border rounded-full">
+                                <User className="w-5 h-5 text-primary-text"/>
+                            </div>
                             <span className="font-bold text-primary-text">{user?.username}</span>
                         </div>
-                        <button onClick={() => navigate('/instellingen')} className="p-2.5 rounded-xl border border-primary-border bg-primary-bg hover:border-primary-accent text-primary-text transition-all cursor-pointer"><Settings className="w-5 h-5" /></button>
+
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => navigate('/instellingen')}
+                                className="p-2.5 rounded-xl border border-primary-border bg-primary-bg hover:border-primary-accent text-primary-text transition-all cursor-pointer"
+                            >
+                                <Settings className="w-5 h-5" />
+                            </button>
+
+                            <button
+                                onClick={handleLogout}
+                                className="p-2.5 rounded-xl border border-primary-border bg-primary-bg hover:bg-red-500/10 hover:border-red-500/50 text-primary-text hover:text-red-500 transition-all cursor-pointer"
+                                title="Uitloggen"
+                            >
+                                <LogOut className="w-5 h-5" />
+                            </button>
+                        </div>
                     </section>
+
                     <section className="bg-primary-bg-cards p-8 rounded-2xl border border-primary-border shadow-sm">
                         <h1 className="text-4xl font-extrabold text-primary-text mb-4">{getGreeting()}, {user?.username}!</h1>
                         <p className="text-secondary-text">Hopelijk bent u weer klaar om de straat op te gaan!</p>
@@ -159,7 +205,6 @@ export default function Dashboard() {
                         </nav>
                         <div className="space-y-3">
                             {filteredReports.map(report => (
-                                // Vervang dit in je dashboard:
                                 <USignalCard
                                     key={report.id}
                                     issue={report}
@@ -184,7 +229,13 @@ export default function Dashboard() {
             </div>
             <div className="z-10 bg-primary-bg"><Footer/></div>
             {selectedReport && (
-                <StoryDetailModal issue={selectedReport} onClose={() => setSelectedReport(null)} onAddComment={handleAddComment} />
+                <AccountDetailModal
+                    issue={selectedReport}
+                    onClose={() => setSelectedReport(null)}
+                    onAddComment={handleAddComment}
+                    onDeleteIssue={handleDeleteIssue}
+                    onUpdateIssue={handleUpdateIssue}
+                />
             )}
         </div>
     );
