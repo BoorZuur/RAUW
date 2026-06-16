@@ -1,0 +1,26 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Http\Requests\Notifications\BulkReadNotificationsRequest;
+use App\Models\DomainNotification;
+use App\Models\User;
+use Illuminate\Http\JsonResponse;
+
+class NotificationBulkReadController extends Controller
+{
+    public function update(BulkReadNotificationsRequest $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $ids = $request->validated('ids');
+
+        $updated = DomainNotification::query()
+            ->forUser($user)
+            ->whereIn('id', $ids)
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
+
+        return response()->json(['updated' => $updated]);
+    }
+}

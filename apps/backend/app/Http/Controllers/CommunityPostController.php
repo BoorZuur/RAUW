@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Visibility;
 use App\Http\Requests\CommunityPosts\DeleteCommunityPostRequest;
 use App\Http\Requests\CommunityPosts\IndexCommunityPostRequest;
 use App\Http\Requests\CommunityPosts\StoreCommunityPostRequest;
@@ -11,8 +12,10 @@ use App\Http\Resources\CommunityPostResource;
 use App\Models\CommunityPost;
 use App\Support\CommunityPostFeedQuery;
 use App\Support\CommunityPostVisibilityQuery;
+use App\Support\Notifications\NotifyNewCommunityPost;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 
 class CommunityPostController extends Controller
 {
@@ -65,7 +68,7 @@ class CommunityPostController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreCommunityPostRequest $request)
+    public function store(StoreCommunityPostRequest $request, NotifyNewCommunityPost $notifyNewCommunityPost)
     {
         /** @var \App\Models\Officer $officer */
         $officer = $request->user();
@@ -77,7 +80,15 @@ class CommunityPostController extends Controller
             ], Response::HTTP_FORBIDDEN);
         }
 
-        $post = $officer->communityPosts()->create($request->validated());
+        $post = DB::transaction(function () use ($officer, $request, $notifyNewCommunityPost) {
+            $post = $officer->communityPosts()->create($request->validated());
+
+            if ($post->visibility === Visibility::Visible) {
+                $notifyNewCommunityPost->notify($post, $officer);
+            }
+
+            return $post;
+        });
 
         $post->load(['officer', 'district', 'attachments'])->loadCount('savedByUsers as saved_count');
 
