@@ -20,7 +20,8 @@ export async function listNotifications({ page, perPage, isRead, since } = {}) {
     const params = {};
     if (page != null) params.page = page;
     if (perPage != null) params.per_page = perPage;
-    if (isRead != null) params.is_read = isRead;
+    // Laravel boolean validation accepts 0/1 in query strings, not "false"/"true"
+    if (isRead != null) params.is_read = isRead ? 1 : 0;
     if (since != null) params.since = since;
 
     const response = await apiClient.get('/notifications', { params });
