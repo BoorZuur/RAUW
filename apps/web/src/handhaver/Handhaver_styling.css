@@ -297,6 +297,7 @@ Can still make this into a single class to prevent repeating things*/
     border: 1px solid var(--border-color);
     border-radius: 12px;
     background-color: var(--card-bg);
+    color: var(--text-dark);
     font-size: 14px;
     box-sizing: border-box;
     outline: none;
