@@ -255,11 +255,13 @@ export default function Dashboard() {
                         </nav>
                         <div className="space-y-3">
                             {activeTab === FOLLOWED_TAB && filteredReports.length === 0 ? (
-                                <div className="text-center py-12 px-6 bg-primary-bg-cards border border-primary-border rounded-2xl">
-                                    <p className="font-headline font-black text-lg text-primary-text mb-2">Je volgt nog geen verhalen</p>
-                                    <p className="text-sm text-secondary-text max-w-md mx-auto">
-                                        Volg verhalen via de feed met de knop <span className="font-bold text-primary-text">Volgen</span>, of koppel je melding aan een bestaand verhaal tijdens het melden.
-                                    </p>
+                                <div className="py-12 px-6 bg-primary-bg-cards border border-primary-border rounded-2xl flex justify-center">
+                                    <div className="max-w-md text-center">
+                                        <p className="font-headline font-black text-lg text-primary-text mb-2">Je volgt nog geen verhalen</p>
+                                        <p className="text-sm text-secondary-text">
+                                            Volg verhalen via de feed met de knop <span className="font-bold text-primary-text">Volgen</span>, of koppel je melding aan een bestaand verhaal tijdens het melden.
+                                        </p>
+                                    </div>
                                 </div>
                             ) : (
                                 filteredReports.map((report) => (
