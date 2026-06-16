@@ -93,6 +93,48 @@ export async function getIssue(issueId) {
     return unwrapData(response);
 }
 
+/**
+ * Fetches all issues for the map, applying server-side filters and paginating
+ * through every page (per_page=100, max allowed by IndexIssueRequest).
+ */
+export async function listIssuesForMap({ districtId, status, mine, followed } = {}) {
+    const params = { per_page: 100 };
+
+    if (districtId != null && districtId !== '' && districtId !== 'all') {
+        params.district_id = districtId;
+    }
+    if (status) {
+        params.status = status;
+    }
+    if (mine) {
+        params.mine = 1;
+    }
+    if (followed) {
+        params.followed = 1;
+    }
+
+    let allIssues = [];
+    let page = 1;
+    let lastPage = 1;
+
+    do {
+        const response = await apiClient.get('/issues', { params: { ...params, page } });
+        const data = response.data.data ?? response.data;
+        const items = Array.isArray(data) ? data : [];
+        allIssues = allIssues.concat(items);
+
+        const meta = response.data.meta;
+        if (meta?.last_page != null) {
+            lastPage = meta.last_page;
+        } else {
+            lastPage = items.length < params.per_page ? page : page + 1;
+        }
+        page += 1;
+    } while (page <= lastPage);
+
+    return allIssues;
+}
+
 export async function deleteIssue(issueId, { leaveParticipation } = {}) {
     const config = {};
 
