@@ -25,8 +25,9 @@ export async function fetchChats(issueId) {
     return unwrapList(response);
 }
 
-export async function openChat(issueId, userId) {
-    const response = await apiClient.patch(`/issues/${issueId}/chats/open`, { user_id: userId });
+export async function openChat(issueId, payload) {
+    const data = typeof payload === 'object' ? payload : { user_id: payload };
+    const response = await apiClient.patch(`/issues/${issueId}/chats/open`, data);
     return unwrapData(response);
 }
 

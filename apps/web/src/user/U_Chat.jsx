@@ -191,8 +191,7 @@ export default function UserChatPage() {
                                     })}
                                 </div>
 
-                                {/* Input field */}
-                                {activeChat && activeChat.is_open && (
+                                {activeChat && activeChat.status === 'open' && (
                                     <div className="p-4 border-t border-primary-border bg-primary-bg-cards shrink-0">
                                         <div className="flex gap-3 bg-primary-bg border border-primary-border rounded-full px-5 py-2 items-center">
                                             <input
@@ -208,7 +207,7 @@ export default function UserChatPage() {
                                         </div>
                                     </div>
                                 )}
-                                {activeChat && !activeChat.is_open && (
+                                {activeChat && activeChat.status !== 'open' && (
                                     <div className="p-4 border-t border-primary-border bg-primary-bg-cards shrink-0 text-center text-sm text-secondary-text">
                                         Dit gesprek is gesloten.
                                     </div>

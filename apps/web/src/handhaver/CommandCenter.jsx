@@ -556,24 +556,21 @@ function CommandCenter() {
                                                                     </p>
                                                                     {p.is_anonymous && <p className="text-xs text-stone-500">Anoniem</p>}
                                                                 </div>
-                                                                {p.user?.id ? (
-                                                                    <button 
-                                                                        onClick={async () => {
-                                                                            try {
-                                                                                await openChat(selectedIssue.id, p.user.id);
-                                                                                navigate('/handhaverchat', { state: { selectedIssueId: selectedIssue.id } });
-                                                                            } catch (error) {
-                                                                                console.error('Failed to open chat:', error);
-                                                                                alert('Kon gesprek niet starten.');
-                                                                            }
-                                                                        }}
-                                                                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition-colors"
-                                                                    >
-                                                                        Start Gesprek
-                                                                    </button>
-                                                                ) : (
-                                                                    <span className="text-xs text-stone-400 italic">Chat niet mogelijk (Anoniem)</span>
-                                                                )}
+                                                                <button 
+                                                                    onClick={async () => {
+                                                                        try {
+                                                                            const payload = p.user?.id ? { user_id: p.user.id } : { participant_id: p.id };
+                                                                            await openChat(selectedIssue.id, payload);
+                                                                            navigate('/handhaverchat', { state: { selectedIssueId: selectedIssue.id } });
+                                                                        } catch (error) {
+                                                                            console.error('Failed to open chat:', error);
+                                                                            alert('Kon gesprek niet starten.');
+                                                                        }
+                                                                    }}
+                                                                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition-colors"
+                                                                >
+                                                                    Start Gesprek
+                                                                </button>
                                                             </div>
                                                         ))}
                                                     </div>

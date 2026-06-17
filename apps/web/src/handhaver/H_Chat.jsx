@@ -92,12 +92,15 @@ export default function H_ChatPage() {
     const handleToggleChat = async () => {
         if (!selectedIssue || !activeChat) return;
         try {
-            if (activeChat.is_open) {
+            if (activeChat.status === 'open') {
                 const closed = await closeChat(selectedIssue.id, activeChat.id);
                 setActiveChat(closed);
             } else {
                 // Reopen the chat
-                const reopened = await openChat(selectedIssue.id, activeChat.user_id);
+                const payload = activeChat.user_id 
+                    ? { user_id: activeChat.user_id } 
+                    : { chat_id: activeChat.id };
+                const reopened = await openChat(selectedIssue.id, payload);
                 setActiveChat(reopened);
             }
             refresh();
@@ -128,8 +131,8 @@ export default function H_ChatPage() {
                             onClick={handleToggleChat}
                             className="flex items-center gap-2 bg-primary-bg-cards border border-primary-border hover:border-primary-accent transition-all px-5 py-2.5 rounded-xl text-sm font-semibold"
                         >
-                            {activeChat.is_open ? <Lock size={16}/> : <Unlock size={16}/>}
-                            {activeChat.is_open ? 'Gesprek Sluiten' : 'Gesprek Heropenen'}
+                            {activeChat.status === 'open' ? <Lock size={16}/> : <Unlock size={16}/>}
+                            {activeChat.status === 'open' ? 'Gesprek Sluiten' : 'Gesprek Heropenen'}
                         </button>
                     )}
                 </header>
@@ -180,8 +183,8 @@ export default function H_ChatPage() {
                                             <p className="text-xs text-secondary-text">Melding #{selectedIssue.id}</p>
                                         </div>
                                         <div>
-                                            <span className={`text-[10px] font-bold text-white px-2 py-0.5 rounded-full uppercase ${activeChat.is_open ? 'bg-secondary-accent' : 'bg-red-500'}`}>
-                                                {activeChat.is_open ? 'Open' : 'Gesloten'}
+                                            <span className={`text-[10px] font-bold text-white px-2 py-0.5 rounded-full uppercase ${activeChat.status === 'open' ? 'bg-secondary-accent' : 'bg-red-500'}`}>
+                                                {activeChat.status === 'open' ? 'Open' : 'Gesloten'}
                                             </span>
                                         </div>
                                     </div>
@@ -204,7 +207,7 @@ export default function H_ChatPage() {
                                         ))}
                                     </div>
 
-                                    {activeChat.is_open ? (
+                                    {activeChat.status === 'open' ? (
                                         <div className="p-6 border-t border-primary-border bg-primary-bg shrink-0">
                                             <div className="flex gap-4 items-center">
                                                 <input 
