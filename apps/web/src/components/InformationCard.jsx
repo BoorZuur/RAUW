@@ -1,19 +1,20 @@
 import React from 'react';
 
-export default function InformationCard({titel, aantal, kleur = 'text-stone-900', icon}) {
+export default function InformationCard({ titel, aantal, kleur = 'text-primary-text', icon }) {
     return (
-        <div
-            style={{fontFamily: "'Open Sans', sans-serif"}}
-            className="bg-white rounded-2xl p-4 border border-stone-200/90 shadow-sm min-w-[150px] max-w-[240px] flex-1 antialiased transition-all"
-        >
-            <div className="flex justify-between items-start mb-1.5">
-                <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider truncate pr-2">
+        <div className="bg-primary-bg-cards rounded-2xl p-4 border border-primary-border shadow-sm w-full sm:max-w-60 flex-1 font-label antialiased transition-all select-none flex flex-col justify-between min-h-[102px]">
+            <div className="flex justify-between items-start gap-2 mb-2">
+                <span className="text-[10px] font-bold text-secondary-text uppercase tracking-wider truncate min-w-0" title={titel}>
                     {titel}
                 </span>
-                {icon && <div className="text-stone-400 bg-stone-50 p-1 rounded-lg flex-shrink-0">{icon}</div>}
+                {icon && (
+                    <div className="text-secondary-text bg-primary-bg p-1 rounded-lg shrink-0 border border-primary-border/40">
+                        {icon}
+                    </div>
+                )}
             </div>
 
-            <div className={`text-3xl font-bold tracking-tight ${kleur}`}>
+            <div className={`text-2xl sm:text-3xl font-bold tracking-tight truncate ${kleur}`} title={aantal}>
                 {aantal}
             </div>
         </div>

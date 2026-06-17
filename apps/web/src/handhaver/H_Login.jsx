@@ -73,6 +73,7 @@ export default function Login() {
     return (
         <div className="min-h-screen w-full flex flex-col md:flex-row bg-primary-bg text-primary-text antialiased">
 
+            {/* Desktop Linkerzijde (Verborgen op mobiel) */}
             <div className="hidden md:flex md:w-5/12 lg:w-1/2 relative flex-col justify-center items-center p-12 bg-no-repeat bg-cover bg-center" style={{ backgroundImage: `linear-gradient(to bottom, rgba(18, 24, 32, 0.85), rgba(18, 24, 32, 0.95)), url('${BOAachtergrond}')` }}>
                 <img src={RauwLogoImg} alt="RAUW Rotterdam" className="absolute top-12 left-12 w-20 h-20 object-contain" />
                 <div className="max-w-md text-center text-white">
@@ -85,15 +86,21 @@ export default function Login() {
                 </div>
             </div>
 
+            {/* Rechterzijde / Mobiele Formulier Container */}
             <div className="flex-1 flex flex-col justify-center px-6 py-12 sm:px-16 lg:px-24 xl:px-36 bg-primary-bg overflow-y-auto">
                 <div className="w-full max-w-sm mx-auto">
+
+                    {/* Mobiel Logo: Alleen zichtbaar op schermen kleiner dan md */}
+                    <div className="flex md:hidden justify-center mb-6">
+                        <img src={RauwLogoImg} alt="RAUW Rotterdam" className="w-20 h-20 object-contain" />
+                    </div>
 
                     <div className="mb-8 text-center md:text-left">
                         <h2 className="text-3xl font-black tracking-tight mb-2">
                             Welkom terug
                         </h2>
                         <p className="text-sm text-secondary-text">
-                            Laat je stem horen in je buurt.
+                            Centraal dashboard voor handhaving en toezicht.
                         </p>
                     </div>
 
@@ -128,13 +135,13 @@ export default function Login() {
                         ))}
                         <button
                             type="submit"
-                            className="w-full h-12 mt-4 bg-primary-text text-primary-bg hover:bg-primary-accent font-black uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-[0.98]"
+                            className="w-full h-12 mt-4 bg-primary-text text-primary-bg hover:bg-primary-accent font-black uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-[0.98] cursor-pointer"
                         >
                             Inloggen
                         </button>
                     </form>
 
-                    <p className="mt-6 p-4 text-sm text-center text-secondary-text">
+                    <p className="mt-6 p-2 text-sm text-center text-secondary-text">
                         Nog geen account?{' '}
                         <button onClick={() => navigate('/registreerhandhaver')}
                                 className="text-primary-text font-bold hover:underline cursor-pointer">
