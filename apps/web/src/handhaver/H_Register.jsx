@@ -26,7 +26,7 @@ export default function Register() {
         const token = localStorage.getItem('auth_token');
 
         // Afdelingen ophalen
-        axios.get('http://localhost:8001/api/departments', {
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/departments`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -71,7 +71,7 @@ export default function Register() {
 
         try {
             // Nu sturen we exact mee wat de RegisterOfficerRequest klasse in PHP verwacht!
-            const response = await axios.post('http://localhost:8001/api/auth/register/officer', {
+            const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/register/officer`, {
                 username,
                 email,
                 password,

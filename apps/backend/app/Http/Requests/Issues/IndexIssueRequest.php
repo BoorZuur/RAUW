@@ -80,8 +80,10 @@ class IndexIssueRequest extends FormRequest
      * `department`
      * filter accepts a real department code and
      * is applied against the issue departments relationship with any-match
-     * semantics. Pagination is bounded so `per_page` can never exceed a safe
-     * maximum.
+     * semantics. The `search` filter matches issue title or content (partial,
+     * case-sensitive LIKE). The `date_from` and `date_to` filters bound
+     * `created_at` inclusively (start/end of day). Pagination is bounded so
+     * `per_page` can never exceed a safe maximum.
      */
     protected function prepareForValidation(): void
     {
@@ -110,6 +112,9 @@ class IndexIssueRequest extends FormRequest
             'category_id' => ['sometimes', 'integer', Rule::exists('categories', 'id')],
             'status' => ['sometimes', 'array'],
             'status.*' => [Rule::enum(IssueStatus::class)],
+            'search' => ['sometimes', 'string', 'max:255'],
+            'date_from' => ['sometimes', 'date', 'before_or_equal:date_to'],
+            'date_to' => ['sometimes', 'date', 'after_or_equal:date_from'],
             'assigned_officer_id' => ['sometimes', 'integer', Rule::exists('officers', 'id')],
             'unassigned' => ['sometimes', Rule::in(['1', 'true', true, 1])],
             'mine' => ['sometimes', Rule::in(['1', 'true', true, 1])],

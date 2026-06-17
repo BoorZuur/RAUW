@@ -8,7 +8,8 @@ export default function ReportCard({
                                        time,
                                        reporter,
                                        tags = [],
-                                       priority = 'red'
+                                       priority = 'red',
+                                       onClick
                                    }) {
 
     const priorityStyles = {
@@ -30,7 +31,8 @@ export default function ReportCard({
 
         <div
             style={{fontFamily: "'Open Sans', sans-serif"}}
-            className="bg-white rounded-2xl p-4 border border-stone-200/90 shadow-sm max-w-md w-full antialiased text-stone-700 tracking-normal transition-all"
+            className="bg-white rounded-2xl p-4 border border-stone-200/90 shadow-sm max-w-md w-full antialiased text-stone-700 tracking-normal transition-all cursor-pointer hover:shadow-md"
+            onClick={onClick}
         >
 
             {/* Titel & Status Badge */}

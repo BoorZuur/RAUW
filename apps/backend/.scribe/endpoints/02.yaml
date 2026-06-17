@@ -90,7 +90,7 @@ endpoints:
         name: submitted_from
         description: 'Must be a valid date.'
         required: false
-        example: '2026-06-16T07:54:53'
+        example: '2026-06-15T13:01:50'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -101,7 +101,7 @@ endpoints:
         name: submitted_to
         description: 'Must be a valid date. Must be a date after or equal to <code>submitted_from</code>.'
         required: false
-        example: '2052-07-09'
+        example: '2052-07-08'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -109,8 +109,8 @@ endpoints:
         deprecated: false
     cleanBodyParameters:
       issue_id: 16
-      submitted_from: '2026-06-16T07:54:53'
-      submitted_to: '2052-07-09'
+      submitted_from: '2026-06-15T13:01:50'
+      submitted_to: '2052-07-08'
     fileParameters: []
     responses:
       -
@@ -122,748 +122,6 @@ endpoints:
           content-type: application/json
           access-control-allow-origin: 'http://localhost:5173'
         description: null
-    responseFields: []
-    auth:
-      - headers
-      - Authorization
-      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
-    controller: null
-    method: null
-    route: null
-  -
-    custom: []
-    httpMethods:
-      - GET
-    uri: api/notifications/unread-count
-    metadata:
-      custom: []
-      groupName: Endpoints
-      groupDescription: ''
-      subgroup: ''
-      subgroupDescription: ''
-      title: ''
-      description: ''
-      authenticated: true
-      deprecated: false
-    headers:
-      Authorization: 'Bearer {token}'
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters: []
-    cleanUrlParameters: []
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters:
-      page:
-        custom: []
-        name: page
-        description: 'Must be at least 1.'
-        required: false
-        example: 16
-        type: integer
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      per_page:
-        custom: []
-        name: per_page
-        description: 'Must be at least 1. Must not be greater than 100.'
-        required: false
-        example: 22
-        type: integer
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      is_read:
-        custom: []
-        name: is_read
-        description: ''
-        required: false
-        example: false
-        type: boolean
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      type:
-        custom: []
-        name: type
-        description: ''
-        required: false
-        example: new_issue
-        type: string
-        enumValues:
-          - status_change
-          - new_message
-          - new_issue
-          - chat_opened
-          - chat_closed
-          - new_comment
-          - resolution_posted
-          - feedback_received
-          - new_community_post
-          - issue_hidden
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      since:
-        custom: []
-        name: since
-        description: 'Must be a valid date.'
-        required: false
-        example: '2026-06-16T07:54:53'
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-    cleanBodyParameters:
-      page: 16
-      per_page: 22
-      is_read: false
-      type: new_issue
-      since: '2026-06-16T07:54:53'
-    fileParameters: []
-    responses:
-      -
-        custom: []
-        status: 401
-        content: '{"message":"Unauthenticated."}'
-        headers:
-          cache-control: 'no-cache, private'
-          content-type: application/json
-          access-control-allow-origin: 'http://localhost:5173'
-        description: null
-    responseFields: []
-    auth:
-      - headers
-      - Authorization
-      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
-    controller: null
-    method: null
-    route: null
-  -
-    custom: []
-    httpMethods:
-      - PATCH
-    uri: api/notifications/bulk-read
-    metadata:
-      custom: []
-      groupName: Endpoints
-      groupDescription: ''
-      subgroup: ''
-      subgroupDescription: ''
-      title: ''
-      description: ''
-      authenticated: true
-      deprecated: false
-    headers:
-      Authorization: 'Bearer {token}'
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters: []
-    cleanUrlParameters: []
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters:
-      ids:
-        custom: []
-        name: ids
-        description: ''
-        required: false
-        example:
-          - 16
-        type: 'integer[]'
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-    cleanBodyParameters:
-      ids:
-        - 16
-    fileParameters: []
-    responses: []
-    responseFields: []
-    auth:
-      - headers
-      - Authorization
-      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
-    controller: null
-    method: null
-    route: null
-  -
-    custom: []
-    httpMethods:
-      - POST
-    uri: api/notifications/mark-all-read
-    metadata:
-      custom: []
-      groupName: Endpoints
-      groupDescription: ''
-      subgroup: ''
-      subgroupDescription: ''
-      title: ''
-      description: ''
-      authenticated: true
-      deprecated: false
-    headers:
-      Authorization: 'Bearer {token}'
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters: []
-    cleanUrlParameters: []
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters: []
-    cleanBodyParameters: []
-    fileParameters: []
-    responses: []
-    responseFields: []
-    auth:
-      - headers
-      - Authorization
-      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
-    controller: null
-    method: null
-    route: null
-  -
-    custom: []
-    httpMethods:
-      - GET
-    uri: api/notifications
-    metadata:
-      custom: []
-      groupName: Endpoints
-      groupDescription: ''
-      subgroup: ''
-      subgroupDescription: ''
-      title: ''
-      description: ''
-      authenticated: true
-      deprecated: false
-    headers:
-      Authorization: 'Bearer {token}'
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters: []
-    cleanUrlParameters: []
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters:
-      page:
-        custom: []
-        name: page
-        description: 'Must be at least 1.'
-        required: false
-        example: 16
-        type: integer
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      per_page:
-        custom: []
-        name: per_page
-        description: 'Must be at least 1. Must not be greater than 100.'
-        required: false
-        example: 22
-        type: integer
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      is_read:
-        custom: []
-        name: is_read
-        description: ''
-        required: false
-        example: false
-        type: boolean
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      type:
-        custom: []
-        name: type
-        description: ''
-        required: false
-        example: status_change
-        type: string
-        enumValues:
-          - status_change
-          - new_message
-          - new_issue
-          - chat_opened
-          - chat_closed
-          - new_comment
-          - resolution_posted
-          - feedback_received
-          - new_community_post
-          - issue_hidden
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      since:
-        custom: []
-        name: since
-        description: 'Must be a valid date.'
-        required: false
-        example: '2026-06-16T07:54:53'
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-    cleanBodyParameters:
-      page: 16
-      per_page: 22
-      is_read: false
-      type: status_change
-      since: '2026-06-16T07:54:53'
-    fileParameters: []
-    responses:
-      -
-        custom: []
-        status: 401
-        content: '{"message":"Unauthenticated."}'
-        headers:
-          cache-control: 'no-cache, private'
-          content-type: application/json
-          access-control-allow-origin: 'http://localhost:5173'
-        description: null
-    responseFields: []
-    auth:
-      - headers
-      - Authorization
-      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
-    controller: null
-    method: null
-    route: null
-  -
-    custom: []
-    httpMethods:
-      - PATCH
-    uri: 'api/notifications/{id}'
-    metadata:
-      custom: []
-      groupName: Endpoints
-      groupDescription: ''
-      subgroup: ''
-      subgroupDescription: ''
-      title: ''
-      description: ''
-      authenticated: true
-      deprecated: false
-    headers:
-      Authorization: 'Bearer {token}'
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters:
-      id:
-        custom: []
-        name: id
-        description: 'The ID of the notification.'
-        required: true
-        example: 16
-        type: integer
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-    cleanUrlParameters:
-      id: 16
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters:
-      is_read:
-        custom: []
-        name: is_read
-        description: 'Must be accepted.'
-        required: true
-        example: true
-        type: boolean
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-    cleanBodyParameters:
-      is_read: true
-    fileParameters: []
-    responses: []
-    responseFields: []
-    auth:
-      - headers
-      - Authorization
-      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
-    controller: null
-    method: null
-    route: null
-  -
-    custom: []
-    httpMethods:
-      - GET
-    uri: api/officers/me/notifications/unread-count
-    metadata:
-      custom: []
-      groupName: Endpoints
-      groupDescription: ''
-      subgroup: ''
-      subgroupDescription: ''
-      title: ''
-      description: ''
-      authenticated: true
-      deprecated: false
-    headers:
-      Authorization: 'Bearer {token}'
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters: []
-    cleanUrlParameters: []
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters:
-      page:
-        custom: []
-        name: page
-        description: 'Must be at least 1.'
-        required: false
-        example: 16
-        type: integer
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      per_page:
-        custom: []
-        name: per_page
-        description: 'Must be at least 1. Must not be greater than 100.'
-        required: false
-        example: 22
-        type: integer
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      is_read:
-        custom: []
-        name: is_read
-        description: ''
-        required: false
-        example: false
-        type: boolean
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      type:
-        custom: []
-        name: type
-        description: ''
-        required: false
-        example: feedback_received
-        type: string
-        enumValues:
-          - status_change
-          - new_message
-          - new_issue
-          - chat_opened
-          - chat_closed
-          - new_comment
-          - resolution_posted
-          - feedback_received
-          - new_community_post
-          - issue_hidden
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      since:
-        custom: []
-        name: since
-        description: 'Must be a valid date.'
-        required: false
-        example: '2026-06-16T07:54:53'
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-    cleanBodyParameters:
-      page: 16
-      per_page: 22
-      is_read: false
-      type: feedback_received
-      since: '2026-06-16T07:54:53'
-    fileParameters: []
-    responses:
-      -
-        custom: []
-        status: 401
-        content: '{"message":"Unauthenticated."}'
-        headers:
-          cache-control: 'no-cache, private'
-          content-type: application/json
-          access-control-allow-origin: 'http://localhost:5173'
-        description: null
-    responseFields: []
-    auth:
-      - headers
-      - Authorization
-      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
-    controller: null
-    method: null
-    route: null
-  -
-    custom: []
-    httpMethods:
-      - PATCH
-    uri: api/officers/me/notifications/bulk-read
-    metadata:
-      custom: []
-      groupName: Endpoints
-      groupDescription: ''
-      subgroup: ''
-      subgroupDescription: ''
-      title: ''
-      description: ''
-      authenticated: true
-      deprecated: false
-    headers:
-      Authorization: 'Bearer {token}'
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters: []
-    cleanUrlParameters: []
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters:
-      ids:
-        custom: []
-        name: ids
-        description: ''
-        required: false
-        example:
-          - 16
-        type: 'integer[]'
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-    cleanBodyParameters:
-      ids:
-        - 16
-    fileParameters: []
-    responses: []
-    responseFields: []
-    auth:
-      - headers
-      - Authorization
-      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
-    controller: null
-    method: null
-    route: null
-  -
-    custom: []
-    httpMethods:
-      - POST
-    uri: api/officers/me/notifications/mark-all-read
-    metadata:
-      custom: []
-      groupName: Endpoints
-      groupDescription: ''
-      subgroup: ''
-      subgroupDescription: ''
-      title: ''
-      description: ''
-      authenticated: true
-      deprecated: false
-    headers:
-      Authorization: 'Bearer {token}'
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters: []
-    cleanUrlParameters: []
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters: []
-    cleanBodyParameters: []
-    fileParameters: []
-    responses: []
-    responseFields: []
-    auth:
-      - headers
-      - Authorization
-      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
-    controller: null
-    method: null
-    route: null
-  -
-    custom: []
-    httpMethods:
-      - GET
-    uri: api/officers/me/notifications
-    metadata:
-      custom: []
-      groupName: Endpoints
-      groupDescription: ''
-      subgroup: ''
-      subgroupDescription: ''
-      title: ''
-      description: ''
-      authenticated: true
-      deprecated: false
-    headers:
-      Authorization: 'Bearer {token}'
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters: []
-    cleanUrlParameters: []
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters:
-      page:
-        custom: []
-        name: page
-        description: 'Must be at least 1.'
-        required: false
-        example: 16
-        type: integer
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      per_page:
-        custom: []
-        name: per_page
-        description: 'Must be at least 1. Must not be greater than 100.'
-        required: false
-        example: 22
-        type: integer
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      is_read:
-        custom: []
-        name: is_read
-        description: ''
-        required: false
-        example: false
-        type: boolean
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      type:
-        custom: []
-        name: type
-        description: ''
-        required: false
-        example: new_message
-        type: string
-        enumValues:
-          - status_change
-          - new_message
-          - new_issue
-          - chat_opened
-          - chat_closed
-          - new_comment
-          - resolution_posted
-          - feedback_received
-          - new_community_post
-          - issue_hidden
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      since:
-        custom: []
-        name: since
-        description: 'Must be a valid date.'
-        required: false
-        example: '2026-06-16T07:54:53'
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-    cleanBodyParameters:
-      page: 16
-      per_page: 22
-      is_read: false
-      type: new_message
-      since: '2026-06-16T07:54:53'
-    fileParameters: []
-    responses:
-      -
-        custom: []
-        status: 401
-        content: '{"message":"Unauthenticated."}'
-        headers:
-          cache-control: 'no-cache, private'
-          content-type: application/json
-          access-control-allow-origin: 'http://localhost:5173'
-        description: null
-    responseFields: []
-    auth:
-      - headers
-      - Authorization
-      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
-    controller: null
-    method: null
-    route: null
-  -
-    custom: []
-    httpMethods:
-      - PATCH
-    uri: 'api/officers/me/notifications/{id}'
-    metadata:
-      custom: []
-      groupName: Endpoints
-      groupDescription: ''
-      subgroup: ''
-      subgroupDescription: ''
-      title: ''
-      description: ''
-      authenticated: true
-      deprecated: false
-    headers:
-      Authorization: 'Bearer {token}'
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters:
-      id:
-        custom: []
-        name: id
-        description: 'The ID of the notification.'
-        required: true
-        example: 16
-        type: integer
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-    cleanUrlParameters:
-      id: 16
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters:
-      is_read:
-        custom: []
-        name: is_read
-        description: 'Must be accepted.'
-        required: true
-        example: true
-        type: boolean
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-    cleanBodyParameters:
-      is_read: true
-    fileParameters: []
-    responses: []
     responseFields: []
     auth:
       - headers
@@ -969,7 +227,7 @@ endpoints:
         name: is_satisfied
         description: ''
         required: true
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -987,7 +245,7 @@ endpoints:
         nullable: true
         deprecated: false
     cleanBodyParameters:
-      is_satisfied: false
+      is_satisfied: true
       comment: b
     fileParameters: []
     responses: []
@@ -1052,7 +310,7 @@ endpoints:
         name: is_satisfied
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -1070,7 +328,7 @@ endpoints:
         nullable: true
         deprecated: false
     cleanBodyParameters:
-      is_satisfied: false
+      is_satisfied: true
       comment: b
     fileParameters: []
     responses: []
@@ -1181,7 +439,7 @@ endpoints:
         name: saved_only
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -1189,7 +447,7 @@ endpoints:
         deprecated: false
     cleanBodyParameters:
       district_id: 16
-      saved_only: false
+      saved_only: true
     fileParameters: []
     responses:
       -
@@ -1271,7 +529,7 @@ endpoints:
         name: visibility
         description: ''
         required: true
-        example: hidden
+        example: visible
         type: string
         enumValues:
           - visible
@@ -1283,7 +541,7 @@ endpoints:
       district_id: 16
       title: 'n'
       content: g
-      visibility: hidden
+      visibility: visible
     fileParameters: []
     responses: []
     responseFields: []

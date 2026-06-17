@@ -110,6 +110,24 @@ class IssueController extends Controller
                 ),
             )
             ->when(
+                $request->filled('search'),
+                function ($query) use ($request): void {
+                    $search = $request->input('search');
+                    $query->where(function ($q) use ($search): void {
+                        $q->where('title', 'like', '%'.$search.'%')
+                          ->orWhere('content', 'like', '%'.$search.'%');
+                    });
+                },
+            )
+            ->when(
+                $request->filled('date_from'),
+                fn ($query) => $query->where('created_at', '>=', $request->date('date_from')->startOfDay()),
+            )
+            ->when(
+                $request->filled('date_to'),
+                fn ($query) => $query->where('created_at', '<=', $request->date('date_to')->endOfDay()),
+            )
+            ->when(
                 $request->filled('assigned_officer_id'),
                 fn ($query) => $query->where('assigned_officer_id', $request->integer('assigned_officer_id')),
             )
