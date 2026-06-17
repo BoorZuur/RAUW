@@ -2,6 +2,18 @@
 
 Use this Postman collection to test the backend-only authentication API against a local RAUW backend or another backend URL.
 
+## Related documentation
+
+| Document | Purpose |
+|----------|---------|
+| [API guides](../api/README.md) | Narrative API index and domain guides |
+| [API policies](../api-policy.md) | Auth tiers, errors, inactive accounts |
+| [OpenAPI](../openapi.yaml) | Canonical machine-readable API contract |
+| [Manual checklists](../api/manual-checklists.md) | Step-by-step verification scenarios |
+| [Issue chat](../api/issue-chat.md) | Issue Chat folder context and web `/chat` UI |
+| [Local development](../local-development.md) | Prerequisites, ports, seed accounts |
+| [Testing](../TESTING.md) | Automated tests and pre-PR checklist |
+
 ## Files
 
 - `rauw-backend.postman_collection.json` — importable Postman Collection v2.1 file.

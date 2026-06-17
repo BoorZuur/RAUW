@@ -1,0 +1,119 @@
+OWASP Top 10 (backend)
+
+A01 Broken Access Control
+- Globale middleware blokkeert inactieve accounts op de meeste routes; gevoelige paden hebben een beperkte whitelist.
+- Issue-leesrechten via visibility-scoping; onbevoegde toegang geeft vaak 404 i.p.v. 403 om bestaan niet te lekken.
+- FormRequest-authorize op mutaties (issues, attachments, categories, districts) en officer Tier B/C voor workflow-routes.
+
+A02 Cryptographic Failures
+- Wachtwoorden worden via Laravel gehasht; tokens worden niet als platte tekst teruggegeven.
+- Productie-deployment vereist APP_DEBUG=false zodat stacktraces niet naar clients lekken.
+
+A03 Injection
+- Database-toegang loopt via Eloquent/query builder met parameter binding.
+- Invoer wordt per endpoint gevalideerd in FormRequests (types, enums, exists-regels).
+
+A04 Insecure Design
+- Issue-prioriteit wordt server-side afgeleid van categorie; clients mogen priority niet meesturen.
+- Registratie gebruikt generieke foutmeldingen om e-mail-enumeratie te beperken.
+- Inactieve accounts mogen profiel beperkt bijwerken (username/wachtwoord), niet alle velden.
+
+A05 Security Misconfiguration
+- Expliciete CORS-configuratie met alleen toegestane frontend-origins (geen wildcard).
+- Sanctum token-expiratie via SANCTUM_TOKEN_EXPIRATION (standaard 7 dagen).
+- Logout verwijdert alleen het huidige bearer-token; end-shift of hub-herindeling door een manager kan alle tokens van een officer intrekken.
+
+A06 Vulnerable and Outdated Components
+-
+
+A07 Identification and Authentication Failures
+- Login weigert inactieve accounts met dezelfde generieke fout als ongeldige credentials.
+- Bearer tokens verlopen; logout invalideert alleen het huidige token.
+- Rate limiting op gevoelige route-groepen (auth en beschermde API).
+
+A08 Software and Data Integrity Failures
+- Gevoelige modelvelden (bijv. created_by_manager_id, is_main_manager) niet vrij invulbaar via mass assignment.
+- Department-koppelingen vereisen actieve departments bij toewijzing en registratie.
+- Unieke database-index op issues.anonymous_alias met begrensde retry bij collision.
+
+A09 Security Logging and Monitoring Failures
+- Officer login/start-shift coördinaten worden vastgelegd op officer_sessions voor audit.
+- API-fouten in productie geven generieke berichten; technische details horen in serverlogs.
+
+A10 Server-Side Request Forgery (SSRF)
+- 
+
+
+Side note:
+
+Doordat de manager kant van de applicatie is geschrapt is de BOA register blootgesteld en kan iedereen dus een BOA account aanmaken. In productie zou dit afgeschermd zijn achter een uitnodiging van een manger o.i.d.
+
+Hetzelfde geld voor het zelf toewijzen van hubs en afdelingen voor BOA's, dit zou normaal gesproken gedaan worden door een manager.
+
+
+
+
+
+2) Installatie-instructies (backend)
+1. Ga naar de backend-map:
+   - cd apps/backend
+2. Installeer dependencies:
+   - composer install
+3. Maak een lokale omgeving:
+   - kopieer .env.example naar .env
+4. Stel minimaal deze variabelen goed in:
+   - APP_KEY (genereer met php artisan key:generate)
+   - DB_CONNECTION en bijbehorende DB_* variabelen
+   - SANCTUM_TOKEN_EXPIRATION=10080
+   - FRONTEND_URL en FRONTEND_URL_PRODUCTION (voor CORS)
+5. Zet database klaar:
+   - php artisan migrate:fresh --seed
+6. Start de backend lokaal:
+   - php artisan serve --host=127.0.0.1 --port=8001
+
+3) Deployment-instructies (backend)
+1. Installeer productie-dependencies:
+   - composer install --no-dev --optimize-autoloader
+2. Zet productieconfiguratie correct:
+   - APP_ENV=production
+   - APP_DEBUG=false
+   - APP_URL juist ingesteld
+   - geldige DB-credentials
+   - correcte SANCTUM- en CORS-variabelen
+3. Voer migraties uit:
+   - php artisan migrate --force
+4. Optimaliseer caches:
+   - php artisan config:cache
+   - php artisan route:cache
+   - php artisan view:cache
+5. Controleer storage/symlink en rechten:
+   - php artisan storage:link (indien nodig)
+6. Controleer operationele processen:
+   - queue workers en scheduler actief (indien gebruikt)
+
+
+
+4) Belangrijke backend edge cases
+- Inactieve accounts: kunnen op kritieke routes geblokkeerd worden terwijl beperkte self-service of auth-afhandeling beschikbaar blijft.
+- Issue-zichtbaarheid: voor onbevoegde gebruikers wordt in sommige paden bewust 404 gebruikt in plaats van 403 om bestaan van records niet te lekken.
+- Prioriteit op issues: wordt server-side afgeleid vanuit categorie/logica en is niet vrij te sturen door clients.
+- Attachments: downloads en mutaties vallen onder autorisatieregels; bestanden zijn niet bedoeld als publiek toegankelijke assets.
+- Unieke en gevoelige velden: uniciteit en validatie worden op backend- en databaseniveau afgedwongen om race conditions en inconsistente data te beperken.
+- Mass assignment: systeemvelden blijven beschermd; alleen gecontroleerde velden mogen vanuit requests worden gezet.
+- Officer Tier B/C: officers mogen veel issue-routes lezen zonder actieve dienst (Tier B); workflow-schrijfacties vereisen een actieve gedeelde shift via hub_active_until (Tier C, 403 hub_active_required).
+- GPS-vertrouwen: login/start-shift-coördinaten zijn client-gerapporteerd; geen per-request geofence; login buiten hub-radius wist een bestaande actieve shift niet.
+- Logout: verwijdert alleen het huidige bearer-token; manager end-shift of hub-herindeling kan wél alle tokens van een officer intrekken.
+- Duplicate issues: duplicate children worden op canonical routes opgelost; mark-duplicate vereist voor officers district-toegang op zowel child als canonical; zelfde eigenaar merge/hard-delete, verschillende eigenaren hidden re-parent.
+- Issue-deelnemers: join/leave alleen op canonical issues; legacy owner-fallback wanneer participant_count = 0; duplicate-child route-ids geven 422.
+- Anonieme meldingen: anonymous_alias wordt server-side gegenereerd; user_id blijft behouden voor eigenaarschap en autorisatie.
+- Afdelingen op issues: worden afgeleid van categorie en nooit vanuit de client geaccepteerd bij create/update.
+- District-scoping: officers en gewone managers zien alleen issues in toegewezen wijken; main managers city-wide; lege district-toewijzing → lege lijsten; issue zonder district_id → geen toegang voor officer/manager.
+- Hub-districtgrenzen: bij gezet hub_id mogen self-service district_ids alleen actieve wijken binnen die hub bevatten (422 op district_ids.*).
+- Gebruikers feed-wijken: community posts en opgeslagen posts zijn beperkt tot geabonneerde actieve feed-districts; PATCH me/feed-districts is geblokkeerd voor inactieve accounts.
+- Attachment-id probing: attachment hoort niet bij issue in route → 404 (ook bij delete/download), zodat ids niet over issues heen uitproberen kan.
+- Officer workflow locks: assignee-checks, statusovergangen, assignability en resolution-limieten draaien op een vergrendelde issue-row (lockForUpdate); resolution-bijlagen hebben een cumulatief plafond binnen die transactie.
+- Issue chat: 1:1 per canonical issue + user; alleen toegewezen officer opent/sluit; managers uitgesloten; unassign sluit open chats; status gesloten sluit chats met systeembericht.
+- Feedback: alleen op gesloten issues; schrijven binnen 7 dagen na sluiten; bewerken/verwijderen binnen 24 uur na submitted_at; dubbele feedback per reviewer → 409.
+- Manager/officer route binding: verkeerd manager-type (main vs gewoon) of officer buiten manager-hub → 404 i.p.v. 403 om bestaan niet te lekken.
+- Zelf-toewijzing officer: 409 issue_already_assigned wanneer een andere officer al eigenaar is; idempotent wanneer al aan jezelf toegewezen; niet mogelijk bij opgelost/gesloten status.
+- Notificaties: notification_id moet bij de ingelogde actor horen, anders 404.

@@ -8,6 +8,8 @@ import { useNavigate } from "react-router-dom";
 import { fetchParticipants } from "../services/issueParticipantService";
 import { openChat } from "../services/issueChatService";
 import "./Handhaver_styling.css"
+import "../components/MapComponent.jsx"
+import NativeLeafletMap from "../components/MapComponent.jsx";
 
 function CommandCenter() {
     const navigate = useNavigate();

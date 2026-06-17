@@ -1,27 +1,33 @@
 # Local Setup and Development
 
-This repository is split into separate apps:
+This repository contains two applications:
 
-- `apps/backend` — Laravel backend
-- `apps/web` — Vite React web app
-- `apps/mobile` — Expo React Native mobile app
+- `apps/backend` — Laravel API
+- `apps/web` — Vite + React web client
 
 There is no workspace runner at the repository root. Install dependencies and run commands from each app folder.
 
+> **Mobile app:** There is no `apps/mobile` directory in this repository. Any older references to Expo or React Native do not apply.
+
+## Related documentation
+
+| Document | Purpose |
+|----------|---------|
+| [Testing](TESTING.md) | Test, lint, and validation commands |
+| [Deployment](DEPLOYMENT.md) | Deploying backend and web |
+| [API guides](api/README.md) | Narrative API documentation |
+| [Backend app](../apps/backend/README.md) | API setup and architecture |
+| [Web app](../apps/web/README.md) | Frontend portals and routes |
+
 ## Prerequisites
 
-- PHP 8.3+
+- PHP **8.3+**
 - Composer
 - Node.js and npm
-- Expo tooling for mobile development, usually through `npx expo ...`
 
 ## First-Time Setup
 
-Start from the repository root:
-
-```bash
-cd C:\Users\henk-\Development\RAUW
-```
+Start from the repository root.
 
 ### Backend
 
@@ -35,7 +41,7 @@ composer i
 If this is a fresh local Laravel setup, create your environment file and generate an app key:
 
 ```bash
-copy .env.example .env
+cp .env.example .env
 php artisan key:generate
 ```
 
@@ -45,32 +51,34 @@ Install backend Node dependencies when you need to build or run Vite assets for 
 npm i
 ```
 
+Run migrations and seed local fixtures:
+
+```bash
+php artisan migrate:fresh --seed
+```
+
 ### Web App
 
 ```bash
-cd C:\Users\henk-\Development\RAUW\apps\web
+cd apps/web
 npm i
+cp .env.example .env
 ```
 
-### Mobile App
-
-```bash
-cd C:\Users\henk-\Development\RAUW\apps\mobile
-npm i
-```
+Ensure `VITE_API_BASE_URL=http://127.0.0.1:8001` in `apps/web/.env` so the client talks to the local API.
 
 ## Running Locally
 
-Open a separate terminal for each app you want to run.
+Open a separate terminal for each long-running process.
 
 ### Backend API
 
 ```bash
-cd C:\Users\henk-\Development\RAUW\apps\backend
+cd apps/backend
 php -S 127.0.0.1:8001 -t public
 ```
 
-This serves the Laravel backend from the `public` directory at:
+The API is available at:
 
 ```text
 http://127.0.0.1:8001
@@ -79,31 +87,18 @@ http://127.0.0.1:8001
 If you are working on Laravel Vite assets, run Vite in another backend terminal:
 
 ```bash
-cd C:\Users\henk-\Development\RAUW\apps\backend
+cd apps/backend
 npm run dev
 ```
 
 ### Web App
 
 ```bash
-cd C:\Users\henk-\Development\RAUW\apps\web
+cd apps/web
 npm run dev
 ```
 
-### Mobile App
-
-```bash
-cd C:\Users\henk-\Development\RAUW\apps\mobile
-npm run start
-```
-
-Common mobile targets:
-
-```bash
-npm run android
-npm run ios
-npm run web
-```
+Vite prints the local URL (typically `http://localhost:5173`).
 
 ## When to Use `composer i` vs `npm i`
 
@@ -115,7 +110,7 @@ Use `composer i` in `apps/backend` when:
 
 Use `npm i` in an app folder when:
 
-- Setting up `apps/web`, `apps/mobile`, or backend Vite assets for the first time.
+- Setting up `apps/web` or backend Vite assets for the first time.
 - That app's `package.json` or lockfile changes.
 - Node dependencies are missing from that app's `node_modules`.
 
@@ -129,15 +124,14 @@ Because each app has its own dependency files, run `npm i` inside the specific a
    - Backend PHP changes: `cd apps/backend && composer i`
    - Backend Vite changes: `cd apps/backend && npm i`
    - Web changes: `cd apps/web && npm i`
-   - Mobile changes: `cd apps/mobile && npm i`
 4. Start the backend if your work needs the API:
 
    ```bash
-   cd C:\Users\henk-\Development\RAUW\apps\backend
+   cd apps/backend
    php -S 127.0.0.1:8001 -t public
    ```
 
-5. Start the app you are actively developing from its own folder.
+5. Start the web app from `apps/web` when working on the client.
 6. Keep each long-running process in its own terminal.
 
 ## Useful Commands
@@ -145,7 +139,7 @@ Because each app has its own dependency files, run `npm i` inside the specific a
 ### Backend
 
 ```bash
-cd C:\Users\henk-\Development\RAUW\apps\backend
+cd apps/backend
 php artisan migrate:fresh --seed
 php artisan test
 npm run build
@@ -156,17 +150,10 @@ After the department schema squash, use `migrate:fresh --seed` rather than incre
 ### Web
 
 ```bash
-cd C:\Users\henk-\Development\RAUW\apps\web
+cd apps/web
 npm run build
 npm run lint
 npm run preview
-```
-
-### Mobile
-
-```bash
-cd C:\Users\henk-\Development\RAUW\apps\mobile
-npm run lint
 ```
 
 ## Backend Department Fixtures
