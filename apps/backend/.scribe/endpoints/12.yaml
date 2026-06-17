@@ -131,8 +131,20 @@ endpoints:
         exampleWasSpecified: false
         nullable: false
         deprecated: false
+      is_anonymous:
+        custom: []
+        name: is_anonymous
+        description: ''
+        required: false
+        example: true
+        type: boolean
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
     cleanBodyParameters:
       content: b
+      is_anonymous: true
     fileParameters: []
     responses: []
     responseFields: []
@@ -326,7 +338,7 @@ endpoints:
         name: visibility
         description: ''
         required: true
-        example: hidden
+        example: visible
         type: string
         enumValues:
           - visible
@@ -335,7 +347,7 @@ endpoints:
         nullable: false
         deprecated: false
     cleanBodyParameters:
-      visibility: hidden
+      visibility: visible
     fileParameters: []
     responses: []
     responseFields: []

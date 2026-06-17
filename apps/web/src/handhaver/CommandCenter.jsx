@@ -4,9 +4,16 @@ import axios from 'axios';
 import ReportCard from "../components/H_SignalCard.jsx";
 import HM_Nav from "../components/HM_Nav.jsx";
 import IncidentMap from "../components/IncidentMap.jsx";
-import { Search, TriangleAlert, Siren} from 'lucide-react';
+import { useNavigate } from "react-router-dom";
+import { fetchParticipants } from "../services/issueParticipantService";
+import { openChat } from "../services/issueChatService";
+// import "./Handhaver_styling.css"
+import "../components/MapComponent.jsx"
+import NativeLeafletMap from "../components/MapComponent.jsx";
+import { Search, TriangleAlert, Siren } from 'lucide-react';
 
 export default function CommandCenter() {
+    const navigate = useNavigate();
     const [issues, setIssues] = useState([]);
     const [loading, setLoading] = useState(true);
     const [categories, setCategories] = useState([]);
@@ -14,12 +21,15 @@ export default function CommandCenter() {
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("");
+    const [assignedToMe, setAssignedToMe] = useState(false);
     const [selectedIssue, setSelectedIssue] = useState(null);
     const [officer, setOfficer] = useState(null);
 
     // Modal States
-    const [activeTab, setActiveTab] = useState('details'); // 'details', 'updates', 'resolution'
+    const [activeTab, setActiveTab] = useState('details'); // 'details', 'updates', 'resolution', 'communicatie'
     const [officerUpdates, setOfficerUpdates] = useState([]);
+    const [issueParticipants, setIssueParticipants] = useState([]);
+    const [loadingParticipants, setLoadingParticipants] = useState(false);
     const [officerResolution, setOfficerResolution] = useState(null);
     const [updateTitle, setUpdateTitle] = useState("");
     const [updateText, setUpdateText] = useState("");
@@ -60,14 +70,15 @@ export default function CommandCenter() {
         fetchBaseData();
     }, []);
 
-    const fetchIssues = async () => {
-        setLoading(true);
+    const fetchIssues = async (isPolling = false) => {
+        if (!isPolling) setLoading(true);
         try {
             const token = localStorage.getItem('auth_token');
             const params = new URLSearchParams();
             if (debouncedSearch) params.append('search', debouncedSearch);
             if (statusFilter) params.append('status', statusFilter);
             if (categoryFilter) params.append('category_id', categoryFilter);
+            if (assignedToMe && officer) params.append('assigned_officer_id', officer.id);
 
             const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/issues?${params.toString()}`, {
                 headers: {'Authorization': `Bearer ${token}`}
@@ -78,13 +89,31 @@ export default function CommandCenter() {
         } catch (error) {
             console.error("Error fetching issues:", error);
         } finally {
-            setLoading(false);
+            if (!isPolling) setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchIssues();
-    }, [debouncedSearch, statusFilter, categoryFilter]);
+        fetchIssues(false);
+        
+        const intervalId = setInterval(() => {
+            fetchIssues(true);
+        }, 15000);
+
+        return () => clearInterval(intervalId);
+    }, [debouncedSearch, statusFilter, categoryFilter, assignedToMe, officer]);
+
+    // Sync selectedIssue with fresh issues data
+    useEffect(() => {
+        if (selectedIssue && issues.length > 0) {
+            const stillExists = issues.find(i => i.id === selectedIssue.id);
+            if (!stillExists) {
+                setSelectedIssue(null);
+            } else if (JSON.stringify(stillExists) !== JSON.stringify(selectedIssue)) {
+                setSelectedIssue(stillExists);
+            }
+        }
+    }, [issues, selectedIssue]);
 
     const fetchIssueDetails = async (issueId) => {
         try {
@@ -112,18 +141,26 @@ export default function CommandCenter() {
         fetchIssueDetails(issue.id);
     };
 
+    useEffect(() => {
+        if (activeTab === 'communicatie' && selectedIssue) {
+            setLoadingParticipants(true);
+            fetchParticipants(selectedIssue.id)
+                .then(data => setIssueParticipants(data))
+                .catch(err => console.error(err))
+                .finally(() => setLoadingParticipants(false));
+        }
+    }, [activeTab, selectedIssue]);
+
     const handleAssignSelf = async (issueId) => {
         try {
             const token = localStorage.getItem('auth_token');
             await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/issues/${issueId}/assign-self`, {}, {
                 headers: {'Authorization': `Bearer ${token}`}
             });
-            alert("Succesvol toegewezen!");
             fetchIssues();
             setSelectedIssue(null);
         } catch (error) {
             console.error("Error assigning:", error);
-            alert("Fout bij toewijzen.");
         }
     };
 
@@ -133,12 +170,10 @@ export default function CommandCenter() {
             await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/issues/${issueId}/unassign-self`, {}, {
                 headers: {'Authorization': `Bearer ${token}`}
             });
-            alert("Taak succesvol teruggegeven!");
             fetchIssues();
             setSelectedIssue(null);
         } catch (error) {
             console.error("Error unassigning:", error);
-            alert("Fout bij teruggeven taak.");
         }
     };
 
@@ -150,12 +185,10 @@ export default function CommandCenter() {
             }, {
                 headers: {'Authorization': `Bearer ${token}`}
             });
-            alert(`Status succesvol gewijzigd naar ${newStatus}!`);
             fetchIssues();
             setSelectedIssue(null);
         } catch (error) {
             console.error("Error updating status:", error);
-            alert("Fout bij wijzigen status.");
         }
     };
 
@@ -180,10 +213,8 @@ export default function CommandCenter() {
             setUpdateText("");
             setUpdateFiles(null);
             fetchIssueDetails(selectedIssue.id);
-            alert("Update toegevoegd!");
         } catch (error) {
             console.error("Error submitting update:", error);
-            alert("Fout bij toevoegen update.");
         } finally {
             setIsSubmitting(false);
         }
@@ -207,10 +238,10 @@ export default function CommandCenter() {
                 }
             });
             fetchIssueDetails(selectedIssue.id);
-            alert("Resolutie succesvol ingediend!");
+            // Optionally, also re-fetch the entire issues list so that the queue's status label updates to 'opgelost'
+            fetchIssues();
         } catch (error) {
             console.error("Error submitting resolution:", error);
-            alert("Fout bij indienen resolutie.");
         } finally {
             setIsSubmitting(false);
         }
@@ -291,6 +322,17 @@ export default function CommandCenter() {
                                     <option key={c.id} value={c.id}>{c.name}</option>
                                 ))}
                             </select>
+                            <button
+                                onClick={() => setAssignedToMe(!assignedToMe)}
+                                className={`flex items-center justify-center py-3 px-4 rounded-xl border text-sm font-semibold transition-colors whitespace-nowrap ${
+                                    assignedToMe 
+                                        ? 'bg-primary-accent border-primary-accent text-white' 
+                                        : 'bg-primary-bg-cards border-primary-border text-primary-text hover:bg-primary-border/50'
+                                }`}
+                                title="Toon alleen meldingen die aan mij zijn toegewezen"
+                            >
+                                Mijn Taken
+                            </button>
                         </div>
                     </section>
 
@@ -394,6 +436,12 @@ export default function CommandCenter() {
                                             className={`font-semibold pb-2 border-b-2 text-sm transition-colors whitespace-nowrap ${activeTab === 'resolution' ? 'border-primary-accent text-primary-text' : 'border-transparent text-secondary-text hover:text-primary-text'}`}
                                         >
                                             Resolutie
+                                        </button>
+                                        <button
+                                            onClick={() => setActiveTab('communicatie')}
+                                            className={`font-semibold pb-2 border-b-2 text-sm transition-colors whitespace-nowrap ${activeTab === 'communicatie' ? 'border-primary-accent text-primary-text' : 'border-transparent text-secondary-text hover:text-primary-text'}`}
+                                        >
+                                            Communicatie
                                         </button>
                                     </div>
                                 </div>
@@ -578,6 +626,56 @@ export default function CommandCenter() {
                                             )}
                                         </div>
                                     )}
+
+                                    {activeTab === 'communicatie' && (
+                                        <div className="space-y-6">
+                                            <h4 className="font-bold font-headline text-primary-text mb-3 uppercase text-xs tracking-wider">Gesprek Starten</h4>
+                                            {selectedIssue.assigned_officer_id !== officer?.id ? (
+                                                <div className="bg-orange-50 p-4 rounded-xl border border-orange-200 text-orange-800 text-sm">
+                                                    Je kunt alleen een gesprek starten voor een melding die aan jou is toegewezen. Neem deze taak eerst aan.
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <p className="text-sm text-secondary-text mb-4 font-body">
+                                                        Kies een deelnemer uit de onderstaande lijst om een 1-op-1 gesprek te openen in de chat interface.
+                                                    </p>
+                                                    {loadingParticipants ? (
+                                                        <p className="text-sm text-secondary-text font-body">Deelnemers laden...</p>
+                                                    ) : issueParticipants.length === 0 ? (
+                                                        <p className="text-sm text-secondary-text font-body">Geen deelnemers gevonden voor deze melding.</p>
+                                                    ) : (
+                                                        <div className="divide-y divide-primary-border border border-primary-border rounded-xl overflow-hidden bg-primary-bg-cards shadow-sm">
+                                                            {issueParticipants.map(p => (
+                                                                <div key={p.id} className="p-4 flex items-center justify-between hover:bg-primary-bg transition-colors">
+                                                                    <div>
+                                                                        <p className="text-sm font-bold text-primary-text font-headline">
+                                                                            {p.user?.username || p.user?.display_name || `Deelnemer #${p.id}`}
+                                                                        </p>
+                                                                        {p.is_anonymous && <p className="text-xs text-secondary-text mt-0.5">Anoniem</p>}
+                                                                    </div>
+                                                                    <button 
+                                                                        onClick={async () => {
+                                                                            try {
+                                                                                const payload = p.user?.id ? { user_id: p.user.id } : { participant_id: p.id };
+                                                                                const chat = await openChat(selectedIssue.id, payload);
+                                                                                navigate('/handhaverchat', { state: { selectedIssueId: selectedIssue.id, selectedChatId: chat.id } });
+                                                                            } catch (error) {
+                                                                                console.error('Failed to open chat:', error);
+                                                                                alert('Kon gesprek niet starten.');
+                                                                            }
+                                                                        }}
+                                                                        className="bg-primary-accent hover:opacity-90 text-white text-xs font-bold py-2 px-4 rounded-lg transition-colors"
+                                                                    >
+                                                                        Start Gesprek
+                                                                    </button>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div
@@ -597,16 +695,6 @@ export default function CommandCenter() {
                                             >
                                                 Taak teruggeven
                                             </button>
-                                            {selectedIssue.status === 'in_behandeling' && (
-                                                <button
-                                                    onClick={() => handleChangeStatus(selectedIssue.id, 'opgelost')}
-                                                    disabled={!officerResolution}
-                                                    title={!officerResolution ? "Voeg eerst een resolutie toe" : ""}
-                                                    className={`font-bold py-2.5 px-6 rounded-lg transition-colors text-sm text-center order-2 ${!officerResolution ? 'bg-primary-border text-secondary-text opacity-40 cursor-not-allowed' : 'bg-secondary-accent text-white hover:opacity-90'}`}
-                                                >
-                                                    Markeer als Opgelost
-                                                </button>
-                                            )}
                                             {selectedIssue.status === 'opgelost' && (
                                                 <button
                                                     onClick={() => handleChangeStatus(selectedIssue.id, 'gesloten')}

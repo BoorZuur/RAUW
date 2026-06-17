@@ -100,6 +100,9 @@ shift is currently active.</a>
                                 <a href="#authentication-PATCHapi-auth-me-districts">Sync the authenticated actor's own district assignments and return the
 refreshed canonical auth profile payload.</a>
                             </li>
+                                                                                <li class="tocify-item level-2" data-unique="authentication-PATCHapi-auth-me-hub">
+                                <a href="#authentication-PATCHapi-auth-me-hub">Set the authenticated officer's hub and clear their district assignments.</a>
+                            </li>
                                                                                 <li class="tocify-item level-2" data-unique="authentication-PATCHapi-auth-me">
                                 <a href="#authentication-PATCHapi-auth-me">Update the authenticated actor's own identity fields and return the
 refreshed canonical auth profile payload.</a>
@@ -153,6 +156,42 @@ refreshed canonical auth profile payload.</a>
                             </li>
                                                                                 <li class="tocify-item level-2" data-unique="endpoints-GETapi-officers-me-feedback">
                                 <a href="#endpoints-GETapi-officers-me-feedback">GET api/officers/me/feedback</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="endpoints-GETapi-user-settings">
+                                <a href="#endpoints-GETapi-user-settings">GET api/user/settings</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="endpoints-PATCHapi-user-settings">
+                                <a href="#endpoints-PATCHapi-user-settings">PATCH api/user/settings</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="endpoints-GETapi-notifications-unread-count">
+                                <a href="#endpoints-GETapi-notifications-unread-count">GET api/notifications/unread-count</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="endpoints-PATCHapi-notifications-bulk-read">
+                                <a href="#endpoints-PATCHapi-notifications-bulk-read">PATCH api/notifications/bulk-read</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="endpoints-POSTapi-notifications-mark-all-read">
+                                <a href="#endpoints-POSTapi-notifications-mark-all-read">POST api/notifications/mark-all-read</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="endpoints-GETapi-notifications">
+                                <a href="#endpoints-GETapi-notifications">GET api/notifications</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="endpoints-PATCHapi-notifications--id-">
+                                <a href="#endpoints-PATCHapi-notifications--id-">PATCH api/notifications/{id}</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="endpoints-GETapi-officers-me-notifications-unread-count">
+                                <a href="#endpoints-GETapi-officers-me-notifications-unread-count">GET api/officers/me/notifications/unread-count</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="endpoints-PATCHapi-officers-me-notifications-bulk-read">
+                                <a href="#endpoints-PATCHapi-officers-me-notifications-bulk-read">PATCH api/officers/me/notifications/bulk-read</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="endpoints-POSTapi-officers-me-notifications-mark-all-read">
+                                <a href="#endpoints-POSTapi-officers-me-notifications-mark-all-read">POST api/officers/me/notifications/mark-all-read</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="endpoints-GETapi-officers-me-notifications">
+                                <a href="#endpoints-GETapi-officers-me-notifications">GET api/officers/me/notifications</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="endpoints-PATCHapi-officers-me-notifications--id-">
+                                <a href="#endpoints-PATCHapi-officers-me-notifications--id-">PATCH api/officers/me/notifications/{id}</a>
                             </li>
                                                                                 <li class="tocify-item level-2" data-unique="endpoints-GETapi-issues--issue_id--feedback">
                                 <a href="#endpoints-GETapi-issues--issue_id--feedback">GET api/issues/{issue_id}/feedback</a>
@@ -511,7 +550,7 @@ manager and return the officer's refreshed profile payload.</a>
     </ul>
 
     <ul class="toc-footer" id="last-updated">
-        <li>Last updated: June 15, 2026</li>
+        <li>Last updated: June 17, 2026</li>
     </ul>
 </div>
 
@@ -1807,6 +1846,155 @@ You can check the Dev Tools console for debugging information.</code></pre>
         </div>
         </form>
 
+                    <h2 id="authentication-PATCHapi-auth-me-hub">Set the authenticated officer&#039;s hub and clear their district assignments.</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+<p>Authorization is enforced by {@see UpdateOwnHubRequest}, which restricts
+this action to an authenticated, active officer. Changing the hub invalidates
+existing district pivots, which are cleared wholesale.</p>
+
+<span id="example-requests-PATCHapi-auth-me-hub">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request PATCH \
+    "http://localhost/api/auth/me/hub" \
+    --header "Authorization: Bearer {token}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json" \
+    --data "{
+    \"hub_id\": 16
+}"
+</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/auth/me/hub"
+);
+
+const headers = {
+    "Authorization": "Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "hub_id": 16
+};
+
+fetch(url, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify(body),
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-PATCHapi-auth-me-hub">
+</span>
+<span id="execution-results-PATCHapi-auth-me-hub" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-PATCHapi-auth-me-hub"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-PATCHapi-auth-me-hub"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-PATCHapi-auth-me-hub" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-PATCHapi-auth-me-hub">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-PATCHapi-auth-me-hub" data-method="PATCH"
+      data-path="api/auth/me/hub"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('PATCHapi-auth-me-hub', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-PATCHapi-auth-me-hub"
+                    onclick="tryItOut('PATCHapi-auth-me-hub');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-PATCHapi-auth-me-hub"
+                    onclick="cancelTryOut('PATCHapi-auth-me-hub');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-PATCHapi-auth-me-hub"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-purple">PATCH</small>
+            <b><code>api/auth/me/hub</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="PATCHapi-auth-me-hub"
+               value="Bearer {token}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer {token}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="PATCHapi-auth-me-hub"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="PATCHapi-auth-me-hub"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+        <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>hub_id</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="hub_id"                data-endpoint="PATCHapi-auth-me-hub"
+               value="16"
+               data-component="body">
+    <br>
+<p>Must match an existing stored value. Example: <code>16</code></p>
+        </div>
+        </form>
+
                     <h2 id="authentication-PATCHapi-auth-me">Update the authenticated actor&#039;s own identity fields and return the
 refreshed canonical auth profile payload.</h2>
 
@@ -2212,8 +2400,8 @@ access-control-allow-origin: http://localhost:5173
             &quot;name&quot;: &quot;BOA / Jeugd&quot;,
             &quot;is_active&quot;: true,
             &quot;categories_count&quot;: 22,
-            &quot;created_at&quot;: &quot;2026-06-15T13:00:15.000000Z&quot;,
-            &quot;updated_at&quot;: &quot;2026-06-15T13:00:15.000000Z&quot;
+            &quot;created_at&quot;: &quot;2026-06-17T12:51:35.000000Z&quot;,
+            &quot;updated_at&quot;: &quot;2026-06-17T12:51:35.000000Z&quot;
         },
         {
             &quot;id&quot;: 1,
@@ -2221,8 +2409,8 @@ access-control-allow-origin: http://localhost:5173
             &quot;name&quot;: &quot;Wijkbeheer&quot;,
             &quot;is_active&quot;: true,
             &quot;categories_count&quot;: 0,
-            &quot;created_at&quot;: &quot;2026-06-15T13:00:15.000000Z&quot;,
-            &quot;updated_at&quot;: &quot;2026-06-15T13:00:15.000000Z&quot;
+            &quot;created_at&quot;: &quot;2026-06-17T12:51:35.000000Z&quot;,
+            &quot;updated_at&quot;: &quot;2026-06-17T12:51:35.000000Z&quot;
         }
     ]
 }</code>
@@ -2373,8 +2561,8 @@ access-control-allow-origin: http://localhost:5173
     &quot;name&quot;: &quot;Wijkbeheer&quot;,
     &quot;is_active&quot;: true,
     &quot;categories_count&quot;: 0,
-    &quot;created_at&quot;: &quot;2026-06-15T13:00:15.000000Z&quot;,
-    &quot;updated_at&quot;: &quot;2026-06-15T13:00:15.000000Z&quot;
+    &quot;created_at&quot;: &quot;2026-06-17T12:51:35.000000Z&quot;,
+    &quot;updated_at&quot;: &quot;2026-06-17T12:51:35.000000Z&quot;
 }</code>
  </pre>
     </span>
@@ -3036,7 +3224,7 @@ when <code>department_ids</code> is included in the payload.</p>
         16
     ],
     \"priority\": 22,
-    \"is_active\": false
+    \"is_active\": true
 }"
 </code></pre></div>
 
@@ -3059,7 +3247,7 @@ let body = {
         16
     ],
     "priority": 22,
-    "is_active": false
+    "is_active": true
 };
 
 fetch(url, {
@@ -3255,7 +3443,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
             <code>false</code>
         </label>
     <br>
-<p>Example: <code>false</code></p>
+<p>Example: <code>true</code></p>
         </div>
         </form>
 
@@ -3425,7 +3613,7 @@ StoreDepartmentRequest. Only validated attributes are persisted; the
     --data "{
     \"code\": \"b\",
     \"name\": \"n\",
-    \"is_active\": true
+    \"is_active\": false
 }"
 </code></pre></div>
 
@@ -3444,7 +3632,7 @@ const headers = {
 let body = {
     "code": "b",
     "name": "n",
-    "is_active": true
+    "is_active": false
 };
 
 fetch(url, {
@@ -3585,7 +3773,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
             <code>false</code>
         </label>
     <br>
-<p>Example: <code>true</code></p>
+<p>Example: <code>false</code></p>
         </div>
         </form>
 
@@ -4178,8 +4366,8 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --header "Accept: application/json" \
     --data "{
     \"issue_id\": 16,
-    \"submitted_from\": \"2026-06-15T13:01:50\",
-    \"submitted_to\": \"2052-07-08\"
+    \"submitted_from\": \"2026-06-17T12:51:39\",
+    \"submitted_to\": \"2052-07-10\"
 }"
 </code></pre></div>
 
@@ -4197,8 +4385,8 @@ const headers = {
 
 let body = {
     "issue_id": 16,
-    "submitted_from": "2026-06-15T13:01:50",
-    "submitted_to": "2052-07-08"
+    "submitted_from": "2026-06-17T12:51:39",
+    "submitted_to": "2052-07-10"
 };
 
 fetch(url, {
@@ -4330,10 +4518,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="submitted_from"                data-endpoint="GETapi-officers-me-feedback"
-               value="2026-06-15T13:01:50"
+               value="2026-06-17T12:51:39"
                data-component="body">
     <br>
-<p>Must be a valid date. Example: <code>2026-06-15T13:01:50</code></p>
+<p>Must be a valid date. Example: <code>2026-06-17T12:51:39</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>submitted_to</code></b>&nbsp;&nbsp;
@@ -4342,10 +4530,2155 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="submitted_to"                data-endpoint="GETapi-officers-me-feedback"
-               value="2052-07-08"
+               value="2052-07-10"
                data-component="body">
     <br>
-<p>Must be a valid date. Must be a date after or equal to <code>submitted_from</code>. Example: <code>2052-07-08</code></p>
+<p>Must be a valid date. Must be a date after or equal to <code>submitted_from</code>. Example: <code>2052-07-10</code></p>
+        </div>
+        </form>
+
+                    <h2 id="endpoints-GETapi-user-settings">GET api/user/settings</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-GETapi-user-settings">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request GET \
+    --get "http://localhost/api/user/settings" \
+    --header "Authorization: Bearer {token}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json"</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/user/settings"
+);
+
+const headers = {
+    "Authorization": "Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+
+fetch(url, {
+    method: "GET",
+    headers,
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-GETapi-user-settings">
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <details class="annotation">
+            <summary style="cursor: pointer;">
+                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
+            </summary>
+            <pre><code class="language-http">cache-control: no-cache, private
+content-type: application/json
+access-control-allow-origin: http://localhost:5173
+ </code></pre></details>         <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;message&quot;: &quot;Unauthenticated.&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-GETapi-user-settings" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-GETapi-user-settings"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-GETapi-user-settings"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-GETapi-user-settings" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-GETapi-user-settings">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-GETapi-user-settings" data-method="GET"
+      data-path="api/user/settings"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('GETapi-user-settings', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-GETapi-user-settings"
+                    onclick="tryItOut('GETapi-user-settings');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-GETapi-user-settings"
+                    onclick="cancelTryOut('GETapi-user-settings');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-GETapi-user-settings"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-green">GET</small>
+            <b><code>api/user/settings</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="GETapi-user-settings"
+               value="Bearer {token}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer {token}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="GETapi-user-settings"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="GETapi-user-settings"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                        </form>
+
+                    <h2 id="endpoints-PATCHapi-user-settings">PATCH api/user/settings</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-PATCHapi-user-settings">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request PATCH \
+    "http://localhost/api/user/settings" \
+    --header "Authorization: Bearer {token}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json" \
+    --data "{
+    \"notify_status_changes\": false,
+    \"notify_district_news\": true
+}"
+</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/user/settings"
+);
+
+const headers = {
+    "Authorization": "Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "notify_status_changes": false,
+    "notify_district_news": true
+};
+
+fetch(url, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify(body),
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-PATCHapi-user-settings">
+</span>
+<span id="execution-results-PATCHapi-user-settings" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-PATCHapi-user-settings"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-PATCHapi-user-settings"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-PATCHapi-user-settings" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-PATCHapi-user-settings">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-PATCHapi-user-settings" data-method="PATCH"
+      data-path="api/user/settings"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('PATCHapi-user-settings', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-PATCHapi-user-settings"
+                    onclick="tryItOut('PATCHapi-user-settings');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-PATCHapi-user-settings"
+                    onclick="cancelTryOut('PATCHapi-user-settings');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-PATCHapi-user-settings"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-purple">PATCH</small>
+            <b><code>api/user/settings</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="PATCHapi-user-settings"
+               value="Bearer {token}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer {token}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="PATCHapi-user-settings"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="PATCHapi-user-settings"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+        <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>notify_status_changes</code></b>&nbsp;&nbsp;
+<small>boolean</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <label data-endpoint="PATCHapi-user-settings" style="display: none">
+            <input type="radio" name="notify_status_changes"
+                   value="true"
+                   data-endpoint="PATCHapi-user-settings"
+                   data-component="body"             >
+            <code>true</code>
+        </label>
+        <label data-endpoint="PATCHapi-user-settings" style="display: none">
+            <input type="radio" name="notify_status_changes"
+                   value="false"
+                   data-endpoint="PATCHapi-user-settings"
+                   data-component="body"             >
+            <code>false</code>
+        </label>
+    <br>
+<p>Example: <code>false</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>notify_district_news</code></b>&nbsp;&nbsp;
+<small>boolean</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <label data-endpoint="PATCHapi-user-settings" style="display: none">
+            <input type="radio" name="notify_district_news"
+                   value="true"
+                   data-endpoint="PATCHapi-user-settings"
+                   data-component="body"             >
+            <code>true</code>
+        </label>
+        <label data-endpoint="PATCHapi-user-settings" style="display: none">
+            <input type="radio" name="notify_district_news"
+                   value="false"
+                   data-endpoint="PATCHapi-user-settings"
+                   data-component="body"             >
+            <code>false</code>
+        </label>
+    <br>
+<p>Example: <code>true</code></p>
+        </div>
+        </form>
+
+                    <h2 id="endpoints-GETapi-notifications-unread-count">GET api/notifications/unread-count</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-GETapi-notifications-unread-count">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request GET \
+    --get "http://localhost/api/notifications/unread-count" \
+    --header "Authorization: Bearer {token}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json" \
+    --data "{
+    \"page\": 16,
+    \"per_page\": 22,
+    \"is_read\": false,
+    \"type\": \"new_comment\",
+    \"since\": \"2026-06-17T12:51:39\"
+}"
+</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/notifications/unread-count"
+);
+
+const headers = {
+    "Authorization": "Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "page": 16,
+    "per_page": 22,
+    "is_read": false,
+    "type": "new_comment",
+    "since": "2026-06-17T12:51:39"
+};
+
+fetch(url, {
+    method: "GET",
+    headers,
+    body: JSON.stringify(body),
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-GETapi-notifications-unread-count">
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <details class="annotation">
+            <summary style="cursor: pointer;">
+                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
+            </summary>
+            <pre><code class="language-http">cache-control: no-cache, private
+content-type: application/json
+access-control-allow-origin: http://localhost:5173
+ </code></pre></details>         <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;message&quot;: &quot;Unauthenticated.&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-GETapi-notifications-unread-count" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-GETapi-notifications-unread-count"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-GETapi-notifications-unread-count"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-GETapi-notifications-unread-count" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-GETapi-notifications-unread-count">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-GETapi-notifications-unread-count" data-method="GET"
+      data-path="api/notifications/unread-count"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('GETapi-notifications-unread-count', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-GETapi-notifications-unread-count"
+                    onclick="tryItOut('GETapi-notifications-unread-count');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-GETapi-notifications-unread-count"
+                    onclick="cancelTryOut('GETapi-notifications-unread-count');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-GETapi-notifications-unread-count"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-green">GET</small>
+            <b><code>api/notifications/unread-count</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="GETapi-notifications-unread-count"
+               value="Bearer {token}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer {token}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="GETapi-notifications-unread-count"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="GETapi-notifications-unread-count"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+        <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>page</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="page"                data-endpoint="GETapi-notifications-unread-count"
+               value="16"
+               data-component="body">
+    <br>
+<p>Must be at least 1. Example: <code>16</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>per_page</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="per_page"                data-endpoint="GETapi-notifications-unread-count"
+               value="22"
+               data-component="body">
+    <br>
+<p>Must be at least 1. Must not be greater than 100. Example: <code>22</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>is_read</code></b>&nbsp;&nbsp;
+<small>boolean</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <label data-endpoint="GETapi-notifications-unread-count" style="display: none">
+            <input type="radio" name="is_read"
+                   value="true"
+                   data-endpoint="GETapi-notifications-unread-count"
+                   data-component="body"             >
+            <code>true</code>
+        </label>
+        <label data-endpoint="GETapi-notifications-unread-count" style="display: none">
+            <input type="radio" name="is_read"
+                   value="false"
+                   data-endpoint="GETapi-notifications-unread-count"
+                   data-component="body"             >
+            <code>false</code>
+        </label>
+    <br>
+<p>Example: <code>false</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>type</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="type"                data-endpoint="GETapi-notifications-unread-count"
+               value="new_comment"
+               data-component="body">
+    <br>
+<p>Example: <code>new_comment</code></p>
+Must be one of:
+<ul style="list-style-type: square;"><li><code>status_change</code></li> <li><code>new_message</code></li> <li><code>new_issue</code></li> <li><code>chat_opened</code></li> <li><code>chat_closed</code></li> <li><code>new_comment</code></li> <li><code>resolution_posted</code></li> <li><code>feedback_received</code></li> <li><code>new_community_post</code></li> <li><code>issue_hidden</code></li></ul>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>since</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="since"                data-endpoint="GETapi-notifications-unread-count"
+               value="2026-06-17T12:51:39"
+               data-component="body">
+    <br>
+<p>Must be a valid date. Example: <code>2026-06-17T12:51:39</code></p>
+        </div>
+        </form>
+
+                    <h2 id="endpoints-PATCHapi-notifications-bulk-read">PATCH api/notifications/bulk-read</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-PATCHapi-notifications-bulk-read">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request PATCH \
+    "http://localhost/api/notifications/bulk-read" \
+    --header "Authorization: Bearer {token}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json" \
+    --data "{
+    \"ids\": [
+        16
+    ]
+}"
+</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/notifications/bulk-read"
+);
+
+const headers = {
+    "Authorization": "Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "ids": [
+        16
+    ]
+};
+
+fetch(url, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify(body),
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-PATCHapi-notifications-bulk-read">
+</span>
+<span id="execution-results-PATCHapi-notifications-bulk-read" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-PATCHapi-notifications-bulk-read"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-PATCHapi-notifications-bulk-read"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-PATCHapi-notifications-bulk-read" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-PATCHapi-notifications-bulk-read">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-PATCHapi-notifications-bulk-read" data-method="PATCH"
+      data-path="api/notifications/bulk-read"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('PATCHapi-notifications-bulk-read', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-PATCHapi-notifications-bulk-read"
+                    onclick="tryItOut('PATCHapi-notifications-bulk-read');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-PATCHapi-notifications-bulk-read"
+                    onclick="cancelTryOut('PATCHapi-notifications-bulk-read');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-PATCHapi-notifications-bulk-read"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-purple">PATCH</small>
+            <b><code>api/notifications/bulk-read</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="PATCHapi-notifications-bulk-read"
+               value="Bearer {token}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer {token}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="PATCHapi-notifications-bulk-read"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="PATCHapi-notifications-bulk-read"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+        <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>ids</code></b>&nbsp;&nbsp;
+<small>integer[]</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="ids[0]"                data-endpoint="PATCHapi-notifications-bulk-read"
+               data-component="body">
+        <input type="number" style="display: none"
+               name="ids[1]"                data-endpoint="PATCHapi-notifications-bulk-read"
+               data-component="body">
+    <br>
+
+        </div>
+        </form>
+
+                    <h2 id="endpoints-POSTapi-notifications-mark-all-read">POST api/notifications/mark-all-read</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-POSTapi-notifications-mark-all-read">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request POST \
+    "http://localhost/api/notifications/mark-all-read" \
+    --header "Authorization: Bearer {token}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json"</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/notifications/mark-all-read"
+);
+
+const headers = {
+    "Authorization": "Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+
+fetch(url, {
+    method: "POST",
+    headers,
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-POSTapi-notifications-mark-all-read">
+</span>
+<span id="execution-results-POSTapi-notifications-mark-all-read" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-POSTapi-notifications-mark-all-read"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-POSTapi-notifications-mark-all-read"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-POSTapi-notifications-mark-all-read" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-POSTapi-notifications-mark-all-read">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-POSTapi-notifications-mark-all-read" data-method="POST"
+      data-path="api/notifications/mark-all-read"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('POSTapi-notifications-mark-all-read', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-POSTapi-notifications-mark-all-read"
+                    onclick="tryItOut('POSTapi-notifications-mark-all-read');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-POSTapi-notifications-mark-all-read"
+                    onclick="cancelTryOut('POSTapi-notifications-mark-all-read');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-POSTapi-notifications-mark-all-read"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-black">POST</small>
+            <b><code>api/notifications/mark-all-read</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="POSTapi-notifications-mark-all-read"
+               value="Bearer {token}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer {token}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="POSTapi-notifications-mark-all-read"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="POSTapi-notifications-mark-all-read"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                        </form>
+
+                    <h2 id="endpoints-GETapi-notifications">GET api/notifications</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-GETapi-notifications">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request GET \
+    --get "http://localhost/api/notifications" \
+    --header "Authorization: Bearer {token}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json" \
+    --data "{
+    \"page\": 16,
+    \"per_page\": 22,
+    \"is_read\": false,
+    \"type\": \"resolution_posted\",
+    \"since\": \"2026-06-17T12:51:39\"
+}"
+</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/notifications"
+);
+
+const headers = {
+    "Authorization": "Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "page": 16,
+    "per_page": 22,
+    "is_read": false,
+    "type": "resolution_posted",
+    "since": "2026-06-17T12:51:39"
+};
+
+fetch(url, {
+    method: "GET",
+    headers,
+    body: JSON.stringify(body),
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-GETapi-notifications">
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <details class="annotation">
+            <summary style="cursor: pointer;">
+                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
+            </summary>
+            <pre><code class="language-http">cache-control: no-cache, private
+content-type: application/json
+access-control-allow-origin: http://localhost:5173
+ </code></pre></details>         <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;message&quot;: &quot;Unauthenticated.&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-GETapi-notifications" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-GETapi-notifications"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-GETapi-notifications"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-GETapi-notifications" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-GETapi-notifications">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-GETapi-notifications" data-method="GET"
+      data-path="api/notifications"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('GETapi-notifications', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-GETapi-notifications"
+                    onclick="tryItOut('GETapi-notifications');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-GETapi-notifications"
+                    onclick="cancelTryOut('GETapi-notifications');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-GETapi-notifications"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-green">GET</small>
+            <b><code>api/notifications</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="GETapi-notifications"
+               value="Bearer {token}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer {token}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="GETapi-notifications"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="GETapi-notifications"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+        <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>page</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="page"                data-endpoint="GETapi-notifications"
+               value="16"
+               data-component="body">
+    <br>
+<p>Must be at least 1. Example: <code>16</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>per_page</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="per_page"                data-endpoint="GETapi-notifications"
+               value="22"
+               data-component="body">
+    <br>
+<p>Must be at least 1. Must not be greater than 100. Example: <code>22</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>is_read</code></b>&nbsp;&nbsp;
+<small>boolean</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <label data-endpoint="GETapi-notifications" style="display: none">
+            <input type="radio" name="is_read"
+                   value="true"
+                   data-endpoint="GETapi-notifications"
+                   data-component="body"             >
+            <code>true</code>
+        </label>
+        <label data-endpoint="GETapi-notifications" style="display: none">
+            <input type="radio" name="is_read"
+                   value="false"
+                   data-endpoint="GETapi-notifications"
+                   data-component="body"             >
+            <code>false</code>
+        </label>
+    <br>
+<p>Example: <code>false</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>type</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="type"                data-endpoint="GETapi-notifications"
+               value="resolution_posted"
+               data-component="body">
+    <br>
+<p>Example: <code>resolution_posted</code></p>
+Must be one of:
+<ul style="list-style-type: square;"><li><code>status_change</code></li> <li><code>new_message</code></li> <li><code>new_issue</code></li> <li><code>chat_opened</code></li> <li><code>chat_closed</code></li> <li><code>new_comment</code></li> <li><code>resolution_posted</code></li> <li><code>feedback_received</code></li> <li><code>new_community_post</code></li> <li><code>issue_hidden</code></li></ul>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>since</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="since"                data-endpoint="GETapi-notifications"
+               value="2026-06-17T12:51:39"
+               data-component="body">
+    <br>
+<p>Must be a valid date. Example: <code>2026-06-17T12:51:39</code></p>
+        </div>
+        </form>
+
+                    <h2 id="endpoints-PATCHapi-notifications--id-">PATCH api/notifications/{id}</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-PATCHapi-notifications--id-">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request PATCH \
+    "http://localhost/api/notifications/16" \
+    --header "Authorization: Bearer {token}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json" \
+    --data "{
+    \"is_read\": true
+}"
+</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/notifications/16"
+);
+
+const headers = {
+    "Authorization": "Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "is_read": true
+};
+
+fetch(url, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify(body),
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-PATCHapi-notifications--id-">
+</span>
+<span id="execution-results-PATCHapi-notifications--id-" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-PATCHapi-notifications--id-"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-PATCHapi-notifications--id-"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-PATCHapi-notifications--id-" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-PATCHapi-notifications--id-">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-PATCHapi-notifications--id-" data-method="PATCH"
+      data-path="api/notifications/{id}"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('PATCHapi-notifications--id-', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-PATCHapi-notifications--id-"
+                    onclick="tryItOut('PATCHapi-notifications--id-');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-PATCHapi-notifications--id-"
+                    onclick="cancelTryOut('PATCHapi-notifications--id-');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-PATCHapi-notifications--id-"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-purple">PATCH</small>
+            <b><code>api/notifications/{id}</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="PATCHapi-notifications--id-"
+               value="Bearer {token}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer {token}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="PATCHapi-notifications--id-"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="PATCHapi-notifications--id-"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                        <h4 class="fancy-heading-panel"><b>URL Parameters</b></h4>
+                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>id</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="id"                data-endpoint="PATCHapi-notifications--id-"
+               value="16"
+               data-component="url">
+    <br>
+<p>The ID of the notification. Example: <code>16</code></p>
+            </div>
+                            <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+        <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>is_read</code></b>&nbsp;&nbsp;
+<small>boolean</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <label data-endpoint="PATCHapi-notifications--id-" style="display: none">
+            <input type="radio" name="is_read"
+                   value="true"
+                   data-endpoint="PATCHapi-notifications--id-"
+                   data-component="body"             >
+            <code>true</code>
+        </label>
+        <label data-endpoint="PATCHapi-notifications--id-" style="display: none">
+            <input type="radio" name="is_read"
+                   value="false"
+                   data-endpoint="PATCHapi-notifications--id-"
+                   data-component="body"             >
+            <code>false</code>
+        </label>
+    <br>
+<p>Must be accepted. Example: <code>true</code></p>
+        </div>
+        </form>
+
+                    <h2 id="endpoints-GETapi-officers-me-notifications-unread-count">GET api/officers/me/notifications/unread-count</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-GETapi-officers-me-notifications-unread-count">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request GET \
+    --get "http://localhost/api/officers/me/notifications/unread-count" \
+    --header "Authorization: Bearer {token}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json" \
+    --data "{
+    \"page\": 16,
+    \"per_page\": 22,
+    \"is_read\": false,
+    \"type\": \"chat_closed\",
+    \"since\": \"2026-06-17T12:51:39\"
+}"
+</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/officers/me/notifications/unread-count"
+);
+
+const headers = {
+    "Authorization": "Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "page": 16,
+    "per_page": 22,
+    "is_read": false,
+    "type": "chat_closed",
+    "since": "2026-06-17T12:51:39"
+};
+
+fetch(url, {
+    method: "GET",
+    headers,
+    body: JSON.stringify(body),
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-GETapi-officers-me-notifications-unread-count">
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <details class="annotation">
+            <summary style="cursor: pointer;">
+                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
+            </summary>
+            <pre><code class="language-http">cache-control: no-cache, private
+content-type: application/json
+access-control-allow-origin: http://localhost:5173
+ </code></pre></details>         <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;message&quot;: &quot;Unauthenticated.&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-GETapi-officers-me-notifications-unread-count" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-GETapi-officers-me-notifications-unread-count"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-GETapi-officers-me-notifications-unread-count"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-GETapi-officers-me-notifications-unread-count" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-GETapi-officers-me-notifications-unread-count">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-GETapi-officers-me-notifications-unread-count" data-method="GET"
+      data-path="api/officers/me/notifications/unread-count"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('GETapi-officers-me-notifications-unread-count', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-GETapi-officers-me-notifications-unread-count"
+                    onclick="tryItOut('GETapi-officers-me-notifications-unread-count');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-GETapi-officers-me-notifications-unread-count"
+                    onclick="cancelTryOut('GETapi-officers-me-notifications-unread-count');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-GETapi-officers-me-notifications-unread-count"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-green">GET</small>
+            <b><code>api/officers/me/notifications/unread-count</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="GETapi-officers-me-notifications-unread-count"
+               value="Bearer {token}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer {token}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="GETapi-officers-me-notifications-unread-count"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="GETapi-officers-me-notifications-unread-count"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+        <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>page</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="page"                data-endpoint="GETapi-officers-me-notifications-unread-count"
+               value="16"
+               data-component="body">
+    <br>
+<p>Must be at least 1. Example: <code>16</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>per_page</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="per_page"                data-endpoint="GETapi-officers-me-notifications-unread-count"
+               value="22"
+               data-component="body">
+    <br>
+<p>Must be at least 1. Must not be greater than 100. Example: <code>22</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>is_read</code></b>&nbsp;&nbsp;
+<small>boolean</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <label data-endpoint="GETapi-officers-me-notifications-unread-count" style="display: none">
+            <input type="radio" name="is_read"
+                   value="true"
+                   data-endpoint="GETapi-officers-me-notifications-unread-count"
+                   data-component="body"             >
+            <code>true</code>
+        </label>
+        <label data-endpoint="GETapi-officers-me-notifications-unread-count" style="display: none">
+            <input type="radio" name="is_read"
+                   value="false"
+                   data-endpoint="GETapi-officers-me-notifications-unread-count"
+                   data-component="body"             >
+            <code>false</code>
+        </label>
+    <br>
+<p>Example: <code>false</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>type</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="type"                data-endpoint="GETapi-officers-me-notifications-unread-count"
+               value="chat_closed"
+               data-component="body">
+    <br>
+<p>Example: <code>chat_closed</code></p>
+Must be one of:
+<ul style="list-style-type: square;"><li><code>status_change</code></li> <li><code>new_message</code></li> <li><code>new_issue</code></li> <li><code>chat_opened</code></li> <li><code>chat_closed</code></li> <li><code>new_comment</code></li> <li><code>resolution_posted</code></li> <li><code>feedback_received</code></li> <li><code>new_community_post</code></li> <li><code>issue_hidden</code></li></ul>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>since</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="since"                data-endpoint="GETapi-officers-me-notifications-unread-count"
+               value="2026-06-17T12:51:39"
+               data-component="body">
+    <br>
+<p>Must be a valid date. Example: <code>2026-06-17T12:51:39</code></p>
+        </div>
+        </form>
+
+                    <h2 id="endpoints-PATCHapi-officers-me-notifications-bulk-read">PATCH api/officers/me/notifications/bulk-read</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-PATCHapi-officers-me-notifications-bulk-read">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request PATCH \
+    "http://localhost/api/officers/me/notifications/bulk-read" \
+    --header "Authorization: Bearer {token}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json" \
+    --data "{
+    \"ids\": [
+        16
+    ]
+}"
+</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/officers/me/notifications/bulk-read"
+);
+
+const headers = {
+    "Authorization": "Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "ids": [
+        16
+    ]
+};
+
+fetch(url, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify(body),
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-PATCHapi-officers-me-notifications-bulk-read">
+</span>
+<span id="execution-results-PATCHapi-officers-me-notifications-bulk-read" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-PATCHapi-officers-me-notifications-bulk-read"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-PATCHapi-officers-me-notifications-bulk-read"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-PATCHapi-officers-me-notifications-bulk-read" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-PATCHapi-officers-me-notifications-bulk-read">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-PATCHapi-officers-me-notifications-bulk-read" data-method="PATCH"
+      data-path="api/officers/me/notifications/bulk-read"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('PATCHapi-officers-me-notifications-bulk-read', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-PATCHapi-officers-me-notifications-bulk-read"
+                    onclick="tryItOut('PATCHapi-officers-me-notifications-bulk-read');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-PATCHapi-officers-me-notifications-bulk-read"
+                    onclick="cancelTryOut('PATCHapi-officers-me-notifications-bulk-read');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-PATCHapi-officers-me-notifications-bulk-read"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-purple">PATCH</small>
+            <b><code>api/officers/me/notifications/bulk-read</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="PATCHapi-officers-me-notifications-bulk-read"
+               value="Bearer {token}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer {token}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="PATCHapi-officers-me-notifications-bulk-read"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="PATCHapi-officers-me-notifications-bulk-read"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+        <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>ids</code></b>&nbsp;&nbsp;
+<small>integer[]</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="ids[0]"                data-endpoint="PATCHapi-officers-me-notifications-bulk-read"
+               data-component="body">
+        <input type="number" style="display: none"
+               name="ids[1]"                data-endpoint="PATCHapi-officers-me-notifications-bulk-read"
+               data-component="body">
+    <br>
+
+        </div>
+        </form>
+
+                    <h2 id="endpoints-POSTapi-officers-me-notifications-mark-all-read">POST api/officers/me/notifications/mark-all-read</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-POSTapi-officers-me-notifications-mark-all-read">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request POST \
+    "http://localhost/api/officers/me/notifications/mark-all-read" \
+    --header "Authorization: Bearer {token}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json"</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/officers/me/notifications/mark-all-read"
+);
+
+const headers = {
+    "Authorization": "Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+
+fetch(url, {
+    method: "POST",
+    headers,
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-POSTapi-officers-me-notifications-mark-all-read">
+</span>
+<span id="execution-results-POSTapi-officers-me-notifications-mark-all-read" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-POSTapi-officers-me-notifications-mark-all-read"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-POSTapi-officers-me-notifications-mark-all-read"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-POSTapi-officers-me-notifications-mark-all-read" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-POSTapi-officers-me-notifications-mark-all-read">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-POSTapi-officers-me-notifications-mark-all-read" data-method="POST"
+      data-path="api/officers/me/notifications/mark-all-read"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('POSTapi-officers-me-notifications-mark-all-read', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-POSTapi-officers-me-notifications-mark-all-read"
+                    onclick="tryItOut('POSTapi-officers-me-notifications-mark-all-read');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-POSTapi-officers-me-notifications-mark-all-read"
+                    onclick="cancelTryOut('POSTapi-officers-me-notifications-mark-all-read');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-POSTapi-officers-me-notifications-mark-all-read"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-black">POST</small>
+            <b><code>api/officers/me/notifications/mark-all-read</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="POSTapi-officers-me-notifications-mark-all-read"
+               value="Bearer {token}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer {token}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="POSTapi-officers-me-notifications-mark-all-read"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="POSTapi-officers-me-notifications-mark-all-read"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                        </form>
+
+                    <h2 id="endpoints-GETapi-officers-me-notifications">GET api/officers/me/notifications</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-GETapi-officers-me-notifications">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request GET \
+    --get "http://localhost/api/officers/me/notifications" \
+    --header "Authorization: Bearer {token}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json" \
+    --data "{
+    \"page\": 16,
+    \"per_page\": 22,
+    \"is_read\": true,
+    \"type\": \"issue_hidden\",
+    \"since\": \"2026-06-17T12:51:39\"
+}"
+</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/officers/me/notifications"
+);
+
+const headers = {
+    "Authorization": "Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "page": 16,
+    "per_page": 22,
+    "is_read": true,
+    "type": "issue_hidden",
+    "since": "2026-06-17T12:51:39"
+};
+
+fetch(url, {
+    method: "GET",
+    headers,
+    body: JSON.stringify(body),
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-GETapi-officers-me-notifications">
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <details class="annotation">
+            <summary style="cursor: pointer;">
+                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
+            </summary>
+            <pre><code class="language-http">cache-control: no-cache, private
+content-type: application/json
+access-control-allow-origin: http://localhost:5173
+ </code></pre></details>         <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;message&quot;: &quot;Unauthenticated.&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-GETapi-officers-me-notifications" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-GETapi-officers-me-notifications"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-GETapi-officers-me-notifications"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-GETapi-officers-me-notifications" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-GETapi-officers-me-notifications">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-GETapi-officers-me-notifications" data-method="GET"
+      data-path="api/officers/me/notifications"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('GETapi-officers-me-notifications', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-GETapi-officers-me-notifications"
+                    onclick="tryItOut('GETapi-officers-me-notifications');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-GETapi-officers-me-notifications"
+                    onclick="cancelTryOut('GETapi-officers-me-notifications');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-GETapi-officers-me-notifications"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-green">GET</small>
+            <b><code>api/officers/me/notifications</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="GETapi-officers-me-notifications"
+               value="Bearer {token}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer {token}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="GETapi-officers-me-notifications"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="GETapi-officers-me-notifications"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+        <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>page</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="page"                data-endpoint="GETapi-officers-me-notifications"
+               value="16"
+               data-component="body">
+    <br>
+<p>Must be at least 1. Example: <code>16</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>per_page</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="per_page"                data-endpoint="GETapi-officers-me-notifications"
+               value="22"
+               data-component="body">
+    <br>
+<p>Must be at least 1. Must not be greater than 100. Example: <code>22</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>is_read</code></b>&nbsp;&nbsp;
+<small>boolean</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <label data-endpoint="GETapi-officers-me-notifications" style="display: none">
+            <input type="radio" name="is_read"
+                   value="true"
+                   data-endpoint="GETapi-officers-me-notifications"
+                   data-component="body"             >
+            <code>true</code>
+        </label>
+        <label data-endpoint="GETapi-officers-me-notifications" style="display: none">
+            <input type="radio" name="is_read"
+                   value="false"
+                   data-endpoint="GETapi-officers-me-notifications"
+                   data-component="body"             >
+            <code>false</code>
+        </label>
+    <br>
+<p>Example: <code>true</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>type</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="type"                data-endpoint="GETapi-officers-me-notifications"
+               value="issue_hidden"
+               data-component="body">
+    <br>
+<p>Example: <code>issue_hidden</code></p>
+Must be one of:
+<ul style="list-style-type: square;"><li><code>status_change</code></li> <li><code>new_message</code></li> <li><code>new_issue</code></li> <li><code>chat_opened</code></li> <li><code>chat_closed</code></li> <li><code>new_comment</code></li> <li><code>resolution_posted</code></li> <li><code>feedback_received</code></li> <li><code>new_community_post</code></li> <li><code>issue_hidden</code></li></ul>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>since</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="since"                data-endpoint="GETapi-officers-me-notifications"
+               value="2026-06-17T12:51:39"
+               data-component="body">
+    <br>
+<p>Must be a valid date. Example: <code>2026-06-17T12:51:39</code></p>
+        </div>
+        </form>
+
+                    <h2 id="endpoints-PATCHapi-officers-me-notifications--id-">PATCH api/officers/me/notifications/{id}</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-PATCHapi-officers-me-notifications--id-">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request PATCH \
+    "http://localhost/api/officers/me/notifications/16" \
+    --header "Authorization: Bearer {token}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json" \
+    --data "{
+    \"is_read\": false
+}"
+</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost/api/officers/me/notifications/16"
+);
+
+const headers = {
+    "Authorization": "Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "is_read": false
+};
+
+fetch(url, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify(body),
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-PATCHapi-officers-me-notifications--id-">
+</span>
+<span id="execution-results-PATCHapi-officers-me-notifications--id-" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-PATCHapi-officers-me-notifications--id-"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-PATCHapi-officers-me-notifications--id-"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-PATCHapi-officers-me-notifications--id-" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-PATCHapi-officers-me-notifications--id-">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-PATCHapi-officers-me-notifications--id-" data-method="PATCH"
+      data-path="api/officers/me/notifications/{id}"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('PATCHapi-officers-me-notifications--id-', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-PATCHapi-officers-me-notifications--id-"
+                    onclick="tryItOut('PATCHapi-officers-me-notifications--id-');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-PATCHapi-officers-me-notifications--id-"
+                    onclick="cancelTryOut('PATCHapi-officers-me-notifications--id-');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-PATCHapi-officers-me-notifications--id-"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-purple">PATCH</small>
+            <b><code>api/officers/me/notifications/{id}</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="PATCHapi-officers-me-notifications--id-"
+               value="Bearer {token}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer {token}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="PATCHapi-officers-me-notifications--id-"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="PATCHapi-officers-me-notifications--id-"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                        <h4 class="fancy-heading-panel"><b>URL Parameters</b></h4>
+                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>id</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="id"                data-endpoint="PATCHapi-officers-me-notifications--id-"
+               value="16"
+               data-component="url">
+    <br>
+<p>The ID of the notification. Example: <code>16</code></p>
+            </div>
+                            <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+        <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>is_read</code></b>&nbsp;&nbsp;
+<small>boolean</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <label data-endpoint="PATCHapi-officers-me-notifications--id-" style="display: none">
+            <input type="radio" name="is_read"
+                   value="true"
+                   data-endpoint="PATCHapi-officers-me-notifications--id-"
+                   data-component="body"             >
+            <code>true</code>
+        </label>
+        <label data-endpoint="PATCHapi-officers-me-notifications--id-" style="display: none">
+            <input type="radio" name="is_read"
+                   value="false"
+                   data-endpoint="PATCHapi-officers-me-notifications--id-"
+                   data-component="body"             >
+            <code>false</code>
+        </label>
+    <br>
+<p>Must be accepted. Example: <code>false</code></p>
         </div>
         </form>
 
@@ -4523,7 +6856,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"is_satisfied\": true,
+    \"is_satisfied\": false,
     \"comment\": \"b\"
 }"
 </code></pre></div>
@@ -4541,7 +6874,7 @@ const headers = {
 };
 
 let body = {
-    "is_satisfied": true,
+    "is_satisfied": false,
     "comment": "b"
 };
 
@@ -4672,7 +7005,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
             <code>false</code>
         </label>
     <br>
-<p>Example: <code>true</code></p>
+<p>Example: <code>false</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>comment</code></b>&nbsp;&nbsp;
@@ -6079,7 +8412,7 @@ Must be one of:
     --header "Authorization: Bearer {token}" \
     --header "Content-Type: multipart/form-data" \
     --header "Accept: application/json" \
-    --form "attachments[]=@C:\Users\marti\AppData\Local\Temp\php2D2C.tmp" </code></pre></div>
+    --form "attachments[]=@C:\Users\marti\AppData\Local\Temp\phpFEF3.tmp" </code></pre></div>
 
 
 <div class="javascript-example">
@@ -6986,7 +9319,7 @@ StoreHubRequest.</p>
     \"postal_code\": \"gzmiyv\",
     \"latitude\": -89,
     \"longitude\": -179,
-    \"is_active\": true,
+    \"is_active\": false,
     \"radius_meters\": 19
 }"
 </code></pre></div>
@@ -7009,7 +9342,7 @@ let body = {
     "postal_code": "gzmiyv",
     "latitude": -89,
     "longitude": -179,
-    "is_active": true,
+    "is_active": false,
     "radius_meters": 19
 };
 
@@ -7187,7 +9520,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
             <code>false</code>
         </label>
     <br>
-<p>Example: <code>true</code></p>
+<p>Example: <code>false</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>radius_meters</code></b>&nbsp;&nbsp;
@@ -7383,7 +9716,7 @@ UpdateHubRequest.</p>
     \"postal_code\": \"gzmiyv\",
     \"latitude\": -89,
     \"longitude\": -179,
-    \"is_active\": false,
+    \"is_active\": true,
     \"radius_meters\": 19
 }"
 </code></pre></div>
@@ -7406,7 +9739,7 @@ let body = {
     "postal_code": "gzmiyv",
     "latitude": -89,
     "longitude": -179,
-    "is_active": false,
+    "is_active": true,
     "radius_meters": 19
 };
 
@@ -7601,7 +9934,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
             <code>false</code>
         </label>
     <br>
-<p>Example: <code>false</code></p>
+<p>Example: <code>true</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>radius_meters</code></b>&nbsp;&nbsp;
@@ -8325,7 +10658,7 @@ updates leave untouched fields intact.</p>
     \"center_lat\": -89,
     \"center_lng\": -179,
     \"radius_meters\": 4,
-    \"is_active\": true
+    \"is_active\": false
 }"
 </code></pre></div>
 
@@ -8348,7 +10681,7 @@ let body = {
     "center_lat": -89,
     "center_lng": -179,
     "radius_meters": 4,
-    "is_active": true
+    "is_active": false
 };
 
 fetch(url, {
@@ -8554,7 +10887,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
             <code>false</code>
         </label>
     <br>
-<p>Example: <code>true</code></p>
+<p>Example: <code>false</code></p>
         </div>
         </form>
 
@@ -8734,7 +11067,7 @@ shape used elsewhere, while this upload endpoint contractually returns
     --header "Authorization: Bearer {token}" \
     --header "Content-Type: multipart/form-data" \
     --header "Accept: application/json" \
-    --form "files[]=@C:\Users\marti\AppData\Local\Temp\php2CAD.tmp" </code></pre></div>
+    --form "files[]=@C:\Users\marti\AppData\Local\Temp\phpFE65.tmp" </code></pre></div>
 
 
 <div class="javascript-example">
@@ -9420,7 +11753,8 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"user_id\": 16
+    \"user_id\": 16,
+    \"participant_id\": 16
 }"
 </code></pre></div>
 
@@ -9437,7 +11771,8 @@ const headers = {
 };
 
 let body = {
-    "user_id": 16
+    "user_id": 16,
+    "participant_id": 16
 };
 
 fetch(url, {
@@ -9550,14 +11885,26 @@ You can check the Dev Tools console for debugging information.</code></pre>
         <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>user_id</code></b>&nbsp;&nbsp;
 <small>integer</small>&nbsp;
- &nbsp;
+<i>optional</i> &nbsp;
  &nbsp;
                 <input type="number" style="display: none"
                step="any"               name="user_id"                data-endpoint="PATCHapi-issues--issue_id--chats-open"
                value="16"
                data-component="body">
     <br>
-<p>Must match an existing stored value. Example: <code>16</code></p>
+<p>This field is required when <code>participant_id</code> is not present. Must match an existing stored value. Example: <code>16</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>participant_id</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="participant_id"                data-endpoint="PATCHapi-issues--issue_id--chats-open"
+               value="16"
+               data-component="body">
+    <br>
+<p>This field is required when <code>user_id</code> is not present. Must match an existing stored value. Example: <code>16</code></p>
         </div>
         </form>
 
@@ -9933,7 +12280,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --header "Content-Type: multipart/form-data" \
     --header "Accept: application/json" \
     --form "content=b"\
-    --form "files[]=@C:\Users\marti\AppData\Local\Temp\php2CCD.tmp" </code></pre></div>
+    --form "files[]=@C:\Users\marti\AppData\Local\Temp\phpFE85.tmp" </code></pre></div>
 
 
 <div class="javascript-example">
@@ -10655,7 +13002,8 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"content\": \"b\"
+    \"content\": \"b\",
+    \"is_anonymous\": true
 }"
 </code></pre></div>
 
@@ -10672,7 +13020,8 @@ const headers = {
 };
 
 let body = {
-    "content": "b"
+    "content": "b",
+    "is_anonymous": true
 };
 
 fetch(url, {
@@ -10793,6 +13142,28 @@ You can check the Dev Tools console for debugging information.</code></pre>
                data-component="body">
     <br>
 <p>Must not be greater than 2000 characters. Example: <code>b</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>is_anonymous</code></b>&nbsp;&nbsp;
+<small>boolean</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <label data-endpoint="POSTapi-issues--issue_id--comments" style="display: none">
+            <input type="radio" name="is_anonymous"
+                   value="true"
+                   data-endpoint="POSTapi-issues--issue_id--comments"
+                   data-component="body"             >
+            <code>true</code>
+        </label>
+        <label data-endpoint="POSTapi-issues--issue_id--comments" style="display: none">
+            <input type="radio" name="is_anonymous"
+                   value="false"
+                   data-endpoint="POSTapi-issues--issue_id--comments"
+                   data-component="body"             >
+            <code>false</code>
+        </label>
+    <br>
+<p>Example: <code>true</code></p>
         </div>
         </form>
 
@@ -11138,7 +13509,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"visibility\": \"hidden\"
+    \"visibility\": \"visible\"
 }"
 </code></pre></div>
 
@@ -11155,7 +13526,7 @@ const headers = {
 };
 
 let body = {
-    "visibility": "hidden"
+    "visibility": "visible"
 };
 
 fetch(url, {
@@ -11284,10 +13655,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="visibility"                data-endpoint="PATCHapi-issues--issue_id--comments--comment_id--visibility"
-               value="hidden"
+               value="visible"
                data-component="body">
     <br>
-<p>Example: <code>hidden</code></p>
+<p>Example: <code>visible</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>visible</code></li> <li><code>hidden</code></li></ul>
         </div>
@@ -11816,13 +14187,13 @@ canonicals they participate on; officers and ordinary managers see issues
 in assigned districts (including hidden); main managers see all issues
 city-wide. Duplicate child rows are excluded by default per actor
 (<code>IssueListScope</code>); users may use <code>participating=1</code> for owned children
-with canonical participation, and officers/managers may use
-<code>include_duplicates=1</code> to include children. A single Eloquent query
-applies the optional <code>district_id</code>, <code>department</code>, <code>category_id</code>, <code>status</code>,
-<code>assigned_officer_id</code>, <code>unassigned</code>, <code>mine</code>, <code>participating</code>,
-<code>include_duplicates</code>, and <code>visibility</code> filters conditionally and
-cumulatively (AND with visibility), so any subset (or all) of the
-filters may be combined to narrow the result set.
+with canonical participation, <code>followed=1</code> for followed canonical issues,
+and officers/managers may use <code>include_duplicates=1</code> to include children.
+A single Eloquent query applies the optional <code>district_id</code>, <code>department</code>,
+<code>category_id</code>, <code>status</code>, <code>assigned_officer_id</code>, <code>unassigned</code>, <code>mine</code>,
+<code>participating</code>, <code>followed</code>, <code>include_duplicates</code>, and <code>visibility</code>
+filters conditionally and cumulatively (AND with visibility), so any
+subset (or all) of the filters may be combined to narrow the result set.
 The <code>department</code> filter is resolved through the issue departments
 relationship with any-match semantics. Results are eager loaded (including
 <code>officer_resolution</code> with officer and attachments when a report exists;
@@ -11840,16 +14211,25 @@ then <code>id</code>, and paginated with a safe default <code>per_page</code>.</
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"district_id\": 16,
+    \"district_id\": [
+        16
+    ],
     \"department\": \"architecto\",
     \"category_id\": 16,
-    \"status\": \"in_behandeling\",
+    \"status\": [
+        \"in_behandeling\"
+    ],
+    \"search\": \"n\",
+    \"date_from\": \"2022-07-12\",
+    \"date_to\": \"2052-07-10\",
     \"assigned_officer_id\": 16,
-    \"unassigned\": \"1\",
-    \"mine\": \"1\",
-    \"participating\": \"true\",
+    \"unassigned\": \"true\",
+    \"mine\": \"true\",
+    \"exclude_mine\": \"1\",
+    \"participating\": \"1\",
+    \"followed\": \"1\",
     \"include_duplicates\": \"1\",
-    \"visibility\": \"hidden\",
+    \"visibility\": \"visible\",
     \"page\": 22,
     \"per_page\": 7
 }"
@@ -11868,16 +14248,25 @@ const headers = {
 };
 
 let body = {
-    "district_id": 16,
+    "district_id": [
+        16
+    ],
     "department": "architecto",
     "category_id": 16,
-    "status": "in_behandeling",
+    "status": [
+        "in_behandeling"
+    ],
+    "search": "n",
+    "date_from": "2022-07-12",
+    "date_to": "2052-07-10",
     "assigned_officer_id": 16,
-    "unassigned": "1",
-    "mine": "1",
-    "participating": "true",
+    "unassigned": "true",
+    "mine": "true",
+    "exclude_mine": "1",
+    "participating": "1",
+    "followed": "1",
     "include_duplicates": "1",
-    "visibility": "hidden",
+    "visibility": "visible",
     "page": 22,
     "per_page": 7
 };
@@ -11994,15 +14383,17 @@ You can check the Dev Tools console for debugging information.</code></pre>
                                 <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
         <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>district_id</code></b>&nbsp;&nbsp;
-<small>integer</small>&nbsp;
+<small>integer[]</small>&nbsp;
 <i>optional</i> &nbsp;
  &nbsp;
                 <input type="number" style="display: none"
-               step="any"               name="district_id"                data-endpoint="GETapi-issues"
-               value="16"
+               step="any"               name="district_id[0]"                data-endpoint="GETapi-issues"
+               data-component="body">
+        <input type="number" style="display: none"
+               name="district_id[1]"                data-endpoint="GETapi-issues"
                data-component="body">
     <br>
-<p>Must match an existing stored value. Example: <code>16</code></p>
+<p>Must match an existing stored value.</p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>department</code></b>&nbsp;&nbsp;
@@ -12030,17 +14421,55 @@ You can check the Dev Tools console for debugging information.</code></pre>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>status</code></b>&nbsp;&nbsp;
+<small>string[]</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="status[0]"                data-endpoint="GETapi-issues"
+               data-component="body">
+        <input type="text" style="display: none"
+               name="status[1]"                data-endpoint="GETapi-issues"
+               data-component="body">
+    <br>
+
+Must be one of:
+<ul style="list-style-type: square;"><li><code>open</code></li> <li><code>in_behandeling</code></li> <li><code>opgelost</code></li> <li><code>gesloten</code></li></ul>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>search</code></b>&nbsp;&nbsp;
 <small>string</small>&nbsp;
 <i>optional</i> &nbsp;
  &nbsp;
                 <input type="text" style="display: none"
-                              name="status"                data-endpoint="GETapi-issues"
-               value="in_behandeling"
+                              name="search"                data-endpoint="GETapi-issues"
+               value="n"
                data-component="body">
     <br>
-<p>Example: <code>in_behandeling</code></p>
-Must be one of:
-<ul style="list-style-type: square;"><li><code>open</code></li> <li><code>in_behandeling</code></li> <li><code>opgelost</code></li> <li><code>gesloten</code></li></ul>
+<p>Must not be greater than 255 characters. Example: <code>n</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>date_from</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="date_from"                data-endpoint="GETapi-issues"
+               value="2022-07-12"
+               data-component="body">
+    <br>
+<p>Must be a valid date. Must be a date before or equal to <code>date_to</code>. Example: <code>2022-07-12</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>date_to</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="date_to"                data-endpoint="GETapi-issues"
+               value="2052-07-10"
+               data-component="body">
+    <br>
+<p>Must be a valid date. Must be a date after or equal to <code>date_from</code>. Example: <code>2052-07-10</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>assigned_officer_id</code></b>&nbsp;&nbsp;
@@ -12061,10 +14490,10 @@ Must be one of:
  &nbsp;
                 <input type="text" style="display: none"
                               name="unassigned"                data-endpoint="GETapi-issues"
-               value="1"
+               value="true"
                data-component="body">
     <br>
-<p>Example: <code>1</code></p>
+<p>Example: <code>true</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>1</code></li> <li><code>true</code></li> <li><code>1</code></li> <li><code>1</code></li></ul>
         </div>
@@ -12075,6 +14504,20 @@ Must be one of:
  &nbsp;
                 <input type="text" style="display: none"
                               name="mine"                data-endpoint="GETapi-issues"
+               value="true"
+               data-component="body">
+    <br>
+<p>Example: <code>true</code></p>
+Must be one of:
+<ul style="list-style-type: square;"><li><code>1</code></li> <li><code>true</code></li> <li><code>1</code></li> <li><code>1</code></li></ul>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>exclude_mine</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="exclude_mine"                data-endpoint="GETapi-issues"
                value="1"
                data-component="body">
     <br>
@@ -12089,10 +14532,24 @@ Must be one of:
  &nbsp;
                 <input type="text" style="display: none"
                               name="participating"                data-endpoint="GETapi-issues"
-               value="true"
+               value="1"
                data-component="body">
     <br>
-<p>Example: <code>true</code></p>
+<p>Example: <code>1</code></p>
+Must be one of:
+<ul style="list-style-type: square;"><li><code>1</code></li> <li><code>true</code></li> <li><code>1</code></li> <li><code>1</code></li></ul>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>followed</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="followed"                data-endpoint="GETapi-issues"
+               value="1"
+               data-component="body">
+    <br>
+<p>Example: <code>1</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>1</code></li> <li><code>true</code></li> <li><code>1</code></li> <li><code>1</code></li></ul>
         </div>
@@ -12117,10 +14574,10 @@ Must be one of:
  &nbsp;
                 <input type="text" style="display: none"
                               name="visibility"                data-endpoint="GETapi-issues"
-               value="hidden"
+               value="visible"
                data-component="body">
     <br>
-<p>Example: <code>hidden</code></p>
+<p>Example: <code>visible</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>visible</code></li> <li><code>hidden</code></li></ul>
         </div>
@@ -13788,7 +16245,7 @@ actor cannot view return 404. Only the visibility field is updated.</p>
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"visibility\": \"hidden\"
+    \"visibility\": \"visible\"
 }"
 </code></pre></div>
 
@@ -13805,7 +16262,7 @@ const headers = {
 };
 
 let body = {
-    "visibility": "hidden"
+    "visibility": "visible"
 };
 
 fetch(url, {
@@ -13922,10 +16379,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="visibility"                data-endpoint="PATCHapi-issues--issue_id--visibility"
-               value="hidden"
+               value="visible"
                data-component="body">
     <br>
-<p>Example: <code>hidden</code></p>
+<p>Example: <code>visible</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>visible</code></li> <li><code>hidden</code></li></ul>
         </div>
@@ -13956,7 +16413,7 @@ delete: rows are removed outright and attachment FK cascades apply.</p>
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"leave_participation\": false
+    \"leave_participation\": true
 }"
 </code></pre></div>
 
@@ -13973,7 +16430,7 @@ const headers = {
 };
 
 let body = {
-    "leave_participation": false
+    "leave_participation": true
 };
 
 fetch(url, {
@@ -14103,7 +16560,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
             <code>false</code>
         </label>
     <br>
-<p>Example: <code>false</code></p>
+<p>Example: <code>true</code></p>
         </div>
         </form>
 
@@ -17107,7 +19564,7 @@ first transition to opgelost.</p>
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"status\": \"gesloten\",
+    \"status\": \"in_behandeling\",
     \"note\": \"b\"
 }"
 </code></pre></div>
@@ -17125,7 +19582,7 @@ const headers = {
 };
 
 let body = {
-    "status": "gesloten",
+    "status": "in_behandeling",
     "note": "b"
 };
 
@@ -17243,10 +19700,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="status"                data-endpoint="PATCHapi-issues--issue_id--status"
-               value="gesloten"
+               value="in_behandeling"
                data-component="body">
     <br>
-<p>Example: <code>gesloten</code></p>
+<p>Example: <code>in_behandeling</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>open</code></li> <li><code>in_behandeling</code></li> <li><code>opgelost</code></li> <li><code>gesloten</code></li></ul>
         </div>
@@ -17439,7 +19896,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --header "Accept: application/json" \
     --form "title=b"\
     --form "content=n"\
-    --form "files[]=@C:\Users\marti\AppData\Local\Temp\php2C5B.tmp" </code></pre></div>
+    --form "files[]=@C:\Users\marti\AppData\Local\Temp\phpFE13.tmp" </code></pre></div>
 
 
 <div class="javascript-example">
@@ -17626,7 +20083,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --form "title=b"\
     --form "content=n"\
     --form "remove_attachment_ids[]=16"\
-    --form "files[]=@C:\Users\marti\AppData\Local\Temp\php2C6C.tmp" </code></pre></div>
+    --form "files[]=@C:\Users\marti\AppData\Local\Temp\phpFE23.tmp" </code></pre></div>
 
 
 <div class="javascript-example">
@@ -18347,7 +20804,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --header "Accept: application/json" \
     --form "title=b"\
     --form "content=n"\
-    --form "files[]=@C:\Users\marti\AppData\Local\Temp\php2C8C.tmp" </code></pre></div>
+    --form "files[]=@C:\Users\marti\AppData\Local\Temp\phpFE44.tmp" </code></pre></div>
 
 
 <div class="javascript-example">
@@ -18534,7 +20991,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --form "title=b"\
     --form "content=n"\
     --form "remove_attachment_ids[]=16"\
-    --form "files[]=@C:\Users\marti\AppData\Local\Temp\php2C8D.tmp" </code></pre></div>
+    --form "files[]=@C:\Users\marti\AppData\Local\Temp\phpFE45.tmp" </code></pre></div>
 
 
 <div class="javascript-example">
@@ -19073,7 +21530,7 @@ Results are ordered newest-first by <code>shift_start</code> then <code>id</code
     --data "{
     \"officer_id\": 16,
     \"hub_id\": 16,
-    \"is_hub_active\": \"0\",
+    \"is_hub_active\": \"\",
     \"page\": 22,
     \"per_page\": 7
 }"
@@ -19094,7 +21551,7 @@ const headers = {
 let body = {
     "officer_id": 16,
     "hub_id": 16,
-    "is_hub_active": "0",
+    "is_hub_active": "",
     "page": 22,
     "per_page": 7
 };
@@ -19240,10 +21697,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="is_hub_active"                data-endpoint="GETapi-officer-sessions"
-               value="0"
+               value=""
                data-component="body">
     <br>
-<p>Example: <code>0</code></p>
+
 Must be one of:
 <ul style="list-style-type: square;"><li><code>0</code></li> <li><code>false</code></li> <li><code></code></li> <li><code>0</code></li> <li><code>1</code></li> <li><code>true</code></li> <li><code>1</code></li> <li><code>1</code></li></ul>
         </div>

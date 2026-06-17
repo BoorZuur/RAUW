@@ -561,6 +561,56 @@ endpoints:
     custom: []
     httpMethods:
       - PATCH
+    uri: api/auth/me/hub
+    metadata:
+      custom: []
+      groupName: Authentication
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: "Set the authenticated officer's hub and clear their district assignments."
+      description: |-
+        Authorization is enforced by {@see UpdateOwnHubRequest}, which restricts
+        this action to an authenticated, active officer. Changing the hub invalidates
+        existing district pivots, which are cleared wholesale.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer {token}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      hub_id:
+        custom: []
+        name: hub_id
+        description: 'Must match an existing stored value.'
+        required: true
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      hub_id: 16
+    fileParameters: []
+    responses: []
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - PATCH
     uri: api/auth/me
     metadata:
       custom: []
