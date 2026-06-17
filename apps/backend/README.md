@@ -72,7 +72,8 @@ See [docs/TESTING.md](../../docs/TESTING.md) for the full testing guide.
 | [docs/openapi.yaml](../../docs/openapi.yaml) | **Canonical** machine-readable API contract |
 | [docs/openapi/schemas.yaml](../../docs/openapi/schemas.yaml) | Shared OpenAPI component schemas |
 | [docs/api-policy.md](../../docs/api-policy.md) | Cross-cutting policies (tiers, errors, GPS trust) |
-| [docs/DBML.txt](../../docs/DBML.txt) | Database ERD (dbdiagram.io) |
+| [docs/DATABASE.md](../../docs/DATABASE.md) | Database ERD diagram and DBML index |
+| [docs/DBML.txt](../../docs/DBML.txt) | Editable DBML source (dbdiagram.io) |
 | [docs/postman/](../../docs/postman/README.md) | Postman collection and local environment |
 
 Scribe (`GET /docs.openapi` after `php artisan scribe:generate`) is an optional local mirror — treat OpenAPI and narrative docs as primary.

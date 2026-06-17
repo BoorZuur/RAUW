@@ -67,7 +67,7 @@ Set `VITE_API_BASE_URL=http://127.0.0.1:8001` in `apps/web/.env` (see `apps/web/
 | [API policies](docs/api-policy.md) | Auth, tiers, errors, inactive accounts |
 | [OpenAPI](docs/openapi.yaml) | Canonical machine-readable API contract (WIJK title in spec) |
 | [OpenAPI schemas](docs/openapi/schemas.yaml) | Shared request/response models |
-| [Database schema](docs/DBML.txt) | Domain ERD for dbdiagram.io (Dutch field notes) |
+| [Database schema](docs/DATABASE.md) | Domain ERD diagram and DBML source |
 | [Postman](docs/postman/README.md) | Collection and local environment |
 
 ## Tech stack

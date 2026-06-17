@@ -18,7 +18,8 @@ Narrative reference for the **Rotterdams Actie Uit de Wijken (RAUW)** backend JS
 | Document | Role |
 |----------|------|
 | [`docs/openapi.yaml`](../openapi.yaml) + [`docs/openapi/schemas.yaml`](../openapi/schemas.yaml) | **Canonical API contract** — paths, request/response shapes, operation descriptions. |
-| [`docs/DBML.txt`](../DBML.txt) | **Canonical database ERD** (dbdiagram.io; Dutch table notes). |
+| [`docs/DATABASE.md`](../DATABASE.md) | **Database ERD** — diagram and links to DBML source. |
+| [`docs/DBML.txt`](../DBML.txt) | Editable DBML for dbdiagram.io (Dutch table notes). |
 | [`docs/api-policy.md`](../api-policy.md) | Cross-cutting policies: inactive accounts, officer Tier B/C, structured error `code` values, GPS trust, issue chat rules. |
 | [`docs/postman/`](../postman/README.md) | Importable Postman collection and local environment for manual testing. |
 
