@@ -3,11 +3,12 @@
 namespace App\Http\Resources;
 
 use App\Enums\ActorType;
-use App\Models\Issue;
 use App\Models\IssueComment;
 use App\Models\Manager;
 use App\Models\Officer;
 use App\Models\User;
+use App\Support\Issues\IssueCommentAnonymity;
+use App\Support\Issues\IssueCommentPolicyFlags;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -32,15 +33,20 @@ class IssueCommentResource extends JsonResource
     {
         /** @var IssueComment $comment */
         $comment = $this->resource;
+        $policyFlags = IssueCommentPolicyFlags::for($comment, $request->user());
+        $anonymity = new IssueCommentAnonymity;
 
         return [
             'id' => $comment->id,
             'issue_id' => $comment->issue_id,
             'author_type' => $comment->author_type->value,
             'content' => $comment->content,
+            'is_anonymous' => (bool) $comment->is_anonymous,
             'is_flagged' => (bool) $comment->is_flagged,
             'visibility' => $comment->visibility->value,
-            'author' => $this->compactAuthor($comment),
+            'author' => $this->compactAuthor($comment, $anonymity),
+            'can_update' => $policyFlags['can_update'],
+            'can_delete' => $policyFlags['can_delete'],
             'created_at' => $comment->created_at,
             'updated_at' => $comment->updated_at,
         ];
@@ -49,26 +55,20 @@ class IssueCommentResource extends JsonResource
     /**
      * Return an author summary based on author_type.
      *
-     * User comments on anonymous issues by the issue owner expose only the
-     * stable alias and never the user's identity. Officer and manager comments
-     * always expose real identity. All viewers see the same redacted shape.
+     * User comments with is_anonymous expose only the stable alias and never
+     * the user's identity. Officer and manager comments always expose real
+     * identity. All viewers see the same redacted shape.
      *
-     * Eager-load issue for user-authored redaction; user, officer, or manager
-     * for full author details.
+     * Eager-load issue (canonical) for user-authored redaction; user, officer,
+     * or manager for full author details.
      *
      * @return array<string, mixed>
      */
-    protected function compactAuthor(IssueComment $comment): array
+    protected function compactAuthor(IssueComment $comment, IssueCommentAnonymity $anonymity): array
     {
         if ($comment->author_type === ActorType::User) {
-            if ($this->shouldRedactAsAnonymous($comment)) {
-                /** @var Issue $issue */
-                $issue = $comment->getRelation('issue');
-
-                return [
-                    'is_anonymous' => true,
-                    'display_name' => $issue->anonymous_alias,
-                ];
+            if ($anonymity->shouldRedact($comment)) {
+                return $anonymity->resolveDisplayName($comment);
             }
 
             if ($comment->relationLoaded('user')) {
@@ -130,28 +130,5 @@ class IssueCommentResource extends JsonResource
         }
 
         return [];
-    }
-
-    /**
-     * Whether a user-authored comment should expose the issue alias instead of identity.
-     */
-    protected function shouldRedactAsAnonymous(IssueComment $comment): bool
-    {
-        if ($comment->author_type !== ActorType::User) {
-            return false;
-        }
-
-        if (! $comment->relationLoaded('issue')) {
-            return false;
-        }
-
-        $issue = $comment->getRelation('issue');
-
-        if (! $issue instanceof Issue) {
-            return false;
-        }
-
-        return (bool) $issue->is_anonymous === true
-            && $comment->user_id === $issue->user_id;
     }
 }
