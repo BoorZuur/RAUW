@@ -5,6 +5,8 @@ import ReportCard from "../components/H_SignalCard.jsx";
 import HM_Nav from "../components/HM_Nav.jsx";
 import IncidentMap from "../components/IncidentMap.jsx";
 import "./Handhaver_styling.css"
+import "../components/MapComponent.jsx"
+import NativeLeafletMap from "../components/MapComponent.jsx";
 
 function CommandCenter() {
     const [issues, setIssues] = useState([]);
