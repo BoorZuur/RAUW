@@ -117,9 +117,9 @@ export default function UserChatPage() {
                     <div className="w-6 h-px bg-primary-text/30 group-hover:bg-primary-accent transition-colors duration-300"></div>
                 </div>
 
-                <main className="w-full max-w-5xl mx-auto pt-26 px-6 pb-12 flex h-[calc(100vh-64px)] gap-6">
+                <main className="w-full max-w-5xl mx-auto pt-20 md:pt-26 px-4 md:px-6 pb-6 md:pb-12 flex h-[calc(100vh-64px)] md:gap-6">
                     {/* ZIJBALK: Chatlijst */}
-                    <aside className="w-80 shrink-0 bg-primary-bg-cards border border-primary-border rounded-3xl flex flex-col overflow-hidden h-full">
+                    <aside className={`w-full md:w-80 shrink-0 bg-primary-bg-cards border border-primary-border rounded-3xl flex-col overflow-hidden h-full ${selectedIssue ? 'hidden md:flex' : 'flex'}`}>
                         <div className="p-6 border-b border-primary-border">
                             <h2 className="font-headline font-bold text-lg">Mijn gesprekken</h2>
                         </div>
@@ -150,12 +150,15 @@ export default function UserChatPage() {
                     </aside>
 
                     {/* HOOFD CHAT VENSTER */}
-                    <section className="flex-1 bg-primary-bg-cards border border-primary-border rounded-3xl shadow-sm flex flex-col overflow-hidden h-full">
+                    <section className={`flex-1 bg-primary-bg-cards border border-primary-border rounded-3xl shadow-sm flex-col overflow-hidden h-full ${!selectedIssue ? 'hidden md:flex' : 'flex'}`}>
                         {selectedIssue ? (
                             <>
-                                <header className="p-6 border-b border-primary-border flex items-center justify-between shrink-0">
-                                    <div className="flex items-center gap-3">
-                                        <div className="bg-primary-accent/10 p-2 rounded-full text-primary-accent">
+                                <header className="p-4 md:p-6 border-b border-primary-border flex items-center justify-between shrink-0">
+                                    <div className="flex items-center gap-2 md:gap-3">
+                                        <button className="md:hidden p-2 -ml-2 text-secondary-text hover:text-primary-text" onClick={() => setSelectedIssue(null)}>
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                                        </button>
+                                        <div className="bg-primary-accent/10 p-2 rounded-full text-primary-accent hidden sm:flex">
                                             <ShieldCheck size={20} />
                                         </div>
                                         <div>
@@ -223,9 +226,9 @@ export default function UserChatPage() {
                                 </div>
 
                                 {activeChat && activeChat.status === 'open' && (
-                                    <div className="p-4 border-t border-primary-border bg-primary-bg-cards flex flex-col gap-2 shrink-0">
+                                    <div className="p-3 md:p-4 border-t border-primary-border bg-primary-bg-cards flex flex-col gap-2 shrink-0">
                                         {selectedFiles && selectedFiles.length > 0 && (
-                                            <div className="flex items-center gap-2 flex-wrap mb-2">
+                                            <div className="flex items-center gap-2 flex-wrap mb-1 md:mb-2">
                                                 {Array.from(selectedFiles).map((file, idx) => (
                                                     <div key={idx} className="bg-primary-bg border border-primary-border text-primary-text text-xs px-3 py-1.5 rounded-full flex items-center gap-2">
                                                         <span className="truncate max-w-[150px]">{file.name}</span>
@@ -233,12 +236,12 @@ export default function UserChatPage() {
                                                             const dt = new DataTransfer();
                                                             Array.from(selectedFiles).filter((_, i) => i !== idx).forEach(f => dt.items.add(f));
                                                             setSelectedFiles(dt.files.length > 0 ? dt.files : null);
-                                                        }} className="hover:text-red-500"><X size={12} /></button>
+                                                        }} className="hover:text-red-500"><X size={12}/></button>
                                                     </div>
                                                 ))}
                                             </div>
                                         )}
-                                        <div className="flex gap-3 bg-primary-bg border border-primary-border rounded-full px-5 py-2 items-center">
+                                        <div className="flex gap-2 md:gap-3 bg-primary-bg border border-primary-border rounded-full px-4 md:px-5 py-2 items-center">
                                             <label className="cursor-pointer text-secondary-text hover:text-primary-accent transition-colors">
                                                 <Paperclip size={20} />
                                                 <input type="file" multiple className="hidden" onChange={e => setSelectedFiles(e.target.files)} />
@@ -247,10 +250,10 @@ export default function UserChatPage() {
                                                 value={inputValue}
                                                 onChange={(e) => setInputValue(e.target.value)}
                                                 onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                                                className="flex-1 bg-transparent py-2 text-sm focus:outline-none placeholder:text-secondary-text"
+                                                className="flex-1 bg-transparent py-1 md:py-2 text-sm focus:outline-none placeholder:text-secondary-text min-w-0"
                                                 placeholder="Typ uw bericht..."
                                             />
-                                            <button onClick={handleSendMessage} className="text-primary-accent hover:opacity-80 transition-opacity">
+                                            <button onClick={handleSendMessage} className="text-primary-accent hover:opacity-80 transition-opacity shrink-0">
                                                 <Send size={20} />
                                             </button>
                                         </div>

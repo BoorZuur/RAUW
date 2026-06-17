@@ -150,31 +150,20 @@ export default function H_ChatPage() {
     );
 
     return (
-        <div className="min-h-screen flex bg-primary-bg text-primary-text transition-colors duration-200">
-            <div className="shrink-0 w-64 border-r border-primary-border">
-                <HM_Nav />
-            </div>
+        <div className="h-[100dvh] overflow-hidden flex flex-col md:flex-row bg-primary-bg text-primary-text transition-colors duration-200">
+            <HM_Nav />
 
-            <main className="flex-1 p-8 flex flex-col min-h-screen">
-                <header className="flex justify-between items-center mb-8 shrink-0">
+            <main className="flex-1 p-4 md:p-8 flex flex-col h-full overflow-hidden w-full">
+                <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 md:mb-8 shrink-0 gap-4">
                     <div>
-                        <h1 className="text-4xl font-bold">Communicatie</h1>
-                        <p className="text-secondary-text text-sm mt-1">Beheer hier alle lopende gesprekken met melders</p>
+                        <h1 className="text-2xl md:text-4xl font-bold">Communicatie</h1>
+                        <p className="text-secondary-text text-xs md:text-sm mt-1">Beheer hier alle lopende gesprekken met melders</p>
                     </div>
-                    {activeChat && (
-                        <button
-                            onClick={handleToggleChat}
-                            className="flex items-center gap-2 bg-primary-bg-cards border border-primary-border hover:border-primary-accent transition-all px-5 py-2.5 rounded-xl text-sm font-semibold"
-                        >
-                            {activeChat.status === 'open' ? <Lock size={16} /> : <Unlock size={16} />}
-                            {activeChat.status === 'open' ? 'Gesprek Sluiten' : 'Gesprek Heropenen'}
-                        </button>
-                    )}
                 </header>
 
-                <div className="flex-1 bg-primary-bg-cards rounded-4xl flex border border-primary-border shadow-lg overflow-hidden h-[calc(100vh-160px)]">
+                <div className="flex-1 min-h-0 bg-primary-bg-cards md:rounded-4xl flex border border-primary-border shadow-lg overflow-hidden">
                     {/* Zijbalk met Meldingen */}
-                    <aside className="w-80 border-r border-primary-border flex flex-col shrink-0">
+                    <aside className={`w-full md:w-80 border-r border-primary-border flex-col shrink-0 ${selectedIssue ? 'hidden md:flex' : 'flex'}`}>
                         <div className="p-5 border-b border-primary-border">
                             <div className="relative">
                                 <Search className="absolute left-3 top-3 text-secondary-text" size={16} />
@@ -209,12 +198,15 @@ export default function H_ChatPage() {
                     </aside>
 
                     {/* Chatvenster of Deelnemerslijst */}
-                    <section className="flex-1 flex flex-col h-full">
+                    <section className={`flex-1 flex-col h-full ${!selectedIssue ? 'hidden md:flex' : 'flex'}`}>
                         {selectedIssue ? (
                             activeChat ? (
                                 <>
                                     <div className="p-4 border-b border-primary-border bg-primary-bg-cards flex justify-between items-center shrink-0">
-                                        <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-2 md:gap-4">
+                                            <button className="md:hidden p-2 -ml-2 text-secondary-text hover:text-primary-text" onClick={() => setSelectedIssue(null)}>
+                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                                            </button>
                                             <div>
                                                 <p className="font-bold">Gesprek met melder</p>
                                                 <p className="text-xs text-secondary-text">Melding #{selectedIssue.id}</p>
@@ -236,8 +228,15 @@ export default function H_ChatPage() {
                                                 </select>
                                             )}
                                         </div>
-                                        <div>
-                                            <span className={`text-[10px] font-bold text-white px-2 py-0.5 rounded-full uppercase ${activeChat.status === 'open' ? 'bg-secondary-accent' : 'bg-red-500'}`}>
+                                        <div className="flex items-center gap-2 md:gap-3">
+                                            <button
+                                                onClick={handleToggleChat}
+                                                className="flex items-center justify-center gap-1.5 md:gap-2 bg-primary-bg border border-primary-border hover:border-primary-accent transition-all px-3 md:px-4 py-1.5 md:py-2 rounded-full text-xs font-bold shrink-0"
+                                            >
+                                                {activeChat.status === 'open' ? <Lock size={14} /> : <Unlock size={14} />}
+                                                <span className="hidden sm:inline">{activeChat.status === 'open' ? 'Sluiten' : 'Heropenen'}</span>
+                                            </button>
+                                            <span className={`text-[10px] font-bold text-white px-2.5 md:px-3 py-1 rounded-full uppercase shrink-0 ${activeChat.status === 'open' ? 'bg-secondary-accent' : 'bg-red-500'}`}>
                                                 {activeChat.status === 'open' ? 'Open' : 'Gesloten'}
                                             </span>
                                         </div>
@@ -279,24 +278,24 @@ export default function H_ChatPage() {
                                         })}
                                     </div>
 
-                                    {activeChat.status === 'open' ? (
-                                        <div className="p-4 border-t border-primary-border bg-primary-bg flex flex-col gap-2 shrink-0">
+                                    {activeChat && activeChat.status === 'open' && (
+                                        <div className="p-3 md:p-4 border-t border-primary-border bg-primary-bg flex flex-col gap-2 shrink-0">
                                             {selectedFiles && selectedFiles.length > 0 && (
-                                                <div className="flex items-center gap-2 flex-wrap">
+                                                <div className="flex items-center gap-2 flex-wrap mb-1 md:mb-2">
                                                     {Array.from(selectedFiles).map((file, idx) => (
-                                                        <div key={idx} className="bg-primary-border text-primary-text text-xs px-3 py-1.5 rounded-full flex items-center gap-2">
+                                                        <div key={idx} className="bg-primary-bg-cards border border-primary-border text-primary-text text-xs px-3 py-1.5 rounded-full flex items-center gap-2">
                                                             <span className="truncate max-w-[150px]">{file.name}</span>
                                                             <button onClick={() => {
                                                                 const dt = new DataTransfer();
                                                                 Array.from(selectedFiles).filter((_, i) => i !== idx).forEach(f => dt.items.add(f));
                                                                 setSelectedFiles(dt.files.length > 0 ? dt.files : null);
-                                                            }} className="hover:text-red-500"><X size={12} /></button>
+                                                            }} className="hover:text-red-500"><X size={12}/></button>
                                                         </div>
                                                     ))}
                                                 </div>
                                             )}
-                                            <div className="flex gap-4 items-center">
-                                                <label className="cursor-pointer p-3 bg-primary-bg-cards border border-primary-border hover:bg-primary-border transition-colors rounded-full text-secondary-text">
+                                            <div className="flex gap-2 md:gap-3 bg-primary-bg-cards border border-primary-border rounded-full px-4 md:px-5 py-2 items-center shadow-sm">
+                                                <label className="cursor-pointer text-secondary-text hover:text-primary-accent transition-colors">
                                                     <Paperclip size={20} />
                                                     <input type="file" multiple className="hidden" onChange={e => setSelectedFiles(e.target.files)} />
                                                 </label>
@@ -304,15 +303,16 @@ export default function H_ChatPage() {
                                                     value={inputValue}
                                                     onChange={e => setInputValue(e.target.value)}
                                                     onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
-                                                    className="flex-1 bg-primary-bg-cards border border-primary-border focus:border-primary-accent rounded-full px-6 py-3.5 focus:outline-none"
-                                                    placeholder="Typ een antwoord..."
+                                                    className="flex-1 bg-transparent py-1 md:py-2 text-sm focus:outline-none placeholder:text-secondary-text min-w-0" 
+                                                    placeholder="Typ uw antwoord..." 
                                                 />
-                                                <button onClick={handleSendMessage} className="bg-primary-accent text-white p-4 rounded-full hover:opacity-90 transition-all">
-                                                    <Send size={18} />
+                                                <button onClick={handleSendMessage} className="text-primary-accent hover:opacity-80 transition-opacity shrink-0">
+                                                    <Send size={20}/>
                                                 </button>
                                             </div>
                                         </div>
-                                    ) : (
+                                    )}
+                                    {(!activeChat || activeChat.status !== 'open') && (
                                         <div className="p-6 border-t border-primary-border bg-primary-bg text-center text-sm text-secondary-text shrink-0">
                                             Dit gesprek is gesloten.
                                         </div>
