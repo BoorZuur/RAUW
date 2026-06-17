@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Send, User, ShieldCheck, MessageCircle, MoreVertical } from 'lucide-react';
+import { Send, User, ShieldCheck, MessageCircle, MoreVertical, Paperclip, Check, CheckCheck, X } from 'lucide-react';
 import Nav from '../components/U_Nav.jsx';
 import Footer from "../components/Footer.jsx";
+import AuthAttachment from '../components/AuthAttachment.jsx';
 import { getMyIssues, getParticipatingIssues } from '../services/issueService';
 import { fetchChats, sendMessage, markMessagesRead } from '../services/issueChatService';
 import useIssueChatPolling from '../hooks/useIssueChatPolling';
@@ -11,9 +12,10 @@ export default function UserChatPage() {
     const [selectedIssue, setSelectedIssue] = useState(null);
     const [activeChat, setActiveChat] = useState(null);
     const [inputValue, setInputValue] = useState('');
+    const [selectedFiles, setSelectedFiles] = useState(null);
 
     const { messages, isLoading, refresh } = useIssueChatPolling(
-        selectedIssue?.id, 
+        selectedIssue?.id,
         activeChat?.id
     );
 
@@ -43,22 +45,30 @@ export default function UserChatPage() {
     }, []);
 
     useEffect(() => {
+        let isMounted = true;
         async function loadChat() {
             if (!selectedIssue) {
-                setActiveChat(null);
+                if (isMounted) setActiveChat(null);
                 return;
             }
             try {
                 const chats = await fetchChats(selectedIssue.id);
-                // The user only sees their own chat with an officer. 
-                // There's at most 1 chat for them per issue in this design.
-                setActiveChat(chats.length > 0 ? chats[0] : null);
+                if (isMounted) {
+                    const newChat = chats.length > 0 ? chats[0] : null;
+                    setActiveChat(prev => JSON.stringify(prev) !== JSON.stringify(newChat) ? newChat : prev);
+                }
             } catch (err) {
                 console.error("Failed to fetch chat", err);
-                setActiveChat(null);
+                if (isMounted) setActiveChat(null);
             }
         }
         loadChat();
+
+        const interval = setInterval(loadChat, 10000);
+        return () => {
+            isMounted = false;
+            clearInterval(interval);
+        };
     }, [selectedIssue]);
 
     useEffect(() => {
@@ -72,10 +82,11 @@ export default function UserChatPage() {
     }, [messages, selectedIssue, activeChat]);
 
     const handleSendMessage = async () => {
-        if (!inputValue.trim() || !selectedIssue || !activeChat) return;
+        if ((!inputValue.trim() && (!selectedFiles || selectedFiles.length === 0)) || !selectedIssue || !activeChat) return;
         try {
-            await sendMessage(selectedIssue.id, activeChat.id, inputValue);
+            await sendMessage(selectedIssue.id, activeChat.id, inputValue, selectedFiles);
             setInputValue('');
+            setSelectedFiles(null);
             refresh();
         } catch (err) {
             console.error("Failed to send message", err);
@@ -84,7 +95,7 @@ export default function UserChatPage() {
 
     return (
         <div className="min-h-screen flex flex-col bg-primary-bg text-primary-text transition-colors duration-300 overflow-x-hidden">
-            <div className="z-50"><Nav/></div>
+            <div className="z-50"><Nav /></div>
             <div className="grow flex w-full pt-16">
                 {/* Linker paneel */}
                 <div className="group hidden lg:flex w-1/12 xl:w-2/12 flex-col justify-between p-6 select-none opacity-35 hover:opacity-100 transition-all duration-500 ease-in-out cursor-default relative">
@@ -117,8 +128,8 @@ export default function UserChatPage() {
                                 <div className="p-4 text-sm text-secondary-text text-center">Geen meldingen gevonden.</div>
                             ) : (
                                 issues.map((issue) => (
-                                    <div 
-                                        key={issue.id} 
+                                    <div
+                                        key={issue.id}
                                         onClick={() => setSelectedIssue(issue)}
                                         className={`p-4 cursor-pointer border-b border-primary-border hover:bg-primary-bg transition-colors ${selectedIssue?.id === issue.id ? 'bg-primary-bg' : ''}`}
                                     >
@@ -127,8 +138,9 @@ export default function UserChatPage() {
                                                 <MessageCircle size={18} />
                                             </div>
                                             <div className="flex-1 overflow-hidden">
-                                                <p className="font-bold text-sm truncate">Melding #{issue.id}</p>
-                                                <p className="text-xs text-secondary-text truncate">{issue.category?.name || 'Onbekende categorie'}</p>
+                                                <p className="font-bold text-sm truncate">Melding #{issue.id} - {issue.title}</p>
+                                                <p className="text-xs text-secondary-text truncate mb-1">{issue.category?.name || 'Onbekende categorie'}</p>
+                                                {issue.description && <p className="text-xs text-secondary-text opacity-80 line-clamp-2">{issue.description}</p>}
                                             </div>
                                         </div>
                                     </div>
@@ -172,19 +184,38 @@ export default function UserChatPage() {
                                                     <ShieldCheck size={16} className="text-primary-accent" />
                                                 </div>
                                                 <div className="flex flex-col items-start">
+                                                    <span className="text-xs text-secondary-text mb-1 ml-2">{msg.sender?.display_name || 'Handhaver'}</span>
                                                     <div className="bg-primary-border px-5 py-3 rounded-2xl rounded-bl-none text-primary-text text-sm max-w-[85%] shadow-sm">
-                                                        {msg.content}
+                                                        {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
+                                                        {msg.attachments && msg.attachments.length > 0 && (
+                                                            <div className="mt-2 flex flex-col gap-2">
+                                                                {msg.attachments.map(att => (
+                                                                    <AuthAttachment key={att.id} attachment={att} />
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                    <span className="text-[10px] text-secondary-text mt-1 ml-2">{new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                                    <span className="text-[10px] text-secondary-text mt-1 ml-2">{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                                 </div>
                                             </div>
                                         ) : (
                                             <div key={msg.id} className="flex justify-end items-end gap-3">
                                                 <div className="flex flex-col items-end">
+                                                    <span className="text-xs text-secondary-text mb-1 mr-2">{msg.sender?.display_name || 'Jij'}</span>
                                                     <div className="bg-primary-accent px-5 py-3 rounded-2xl rounded-br-none text-white text-sm max-w-[85%] shadow-sm">
-                                                        {msg.content}
+                                                        {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
+                                                        {msg.attachments && msg.attachments.length > 0 && (
+                                                            <div className="mt-2 flex flex-col gap-2">
+                                                                {msg.attachments.map(att => (
+                                                                    <AuthAttachment key={att.id} attachment={att} />
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                    <span className="text-[10px] text-secondary-text mt-1 mr-2">{new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                                    <div className="flex items-center gap-1 mt-1 mr-2">
+                                                        <span className="text-[10px] text-secondary-text">{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                        {msg.is_read ? <CheckCheck size={12} className="text-primary-accent" /> : <Check size={12} className="text-secondary-text" />}
+                                                    </div>
                                                 </div>
                                             </div>
                                         );
@@ -192,8 +223,26 @@ export default function UserChatPage() {
                                 </div>
 
                                 {activeChat && activeChat.status === 'open' && (
-                                    <div className="p-4 border-t border-primary-border bg-primary-bg-cards shrink-0">
+                                    <div className="p-4 border-t border-primary-border bg-primary-bg-cards flex flex-col gap-2 shrink-0">
+                                        {selectedFiles && selectedFiles.length > 0 && (
+                                            <div className="flex items-center gap-2 flex-wrap mb-2">
+                                                {Array.from(selectedFiles).map((file, idx) => (
+                                                    <div key={idx} className="bg-primary-bg border border-primary-border text-primary-text text-xs px-3 py-1.5 rounded-full flex items-center gap-2">
+                                                        <span className="truncate max-w-[150px]">{file.name}</span>
+                                                        <button onClick={() => {
+                                                            const dt = new DataTransfer();
+                                                            Array.from(selectedFiles).filter((_, i) => i !== idx).forEach(f => dt.items.add(f));
+                                                            setSelectedFiles(dt.files.length > 0 ? dt.files : null);
+                                                        }} className="hover:text-red-500"><X size={12} /></button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                         <div className="flex gap-3 bg-primary-bg border border-primary-border rounded-full px-5 py-2 items-center">
+                                            <label className="cursor-pointer text-secondary-text hover:text-primary-accent transition-colors">
+                                                <Paperclip size={20} />
+                                                <input type="file" multiple className="hidden" onChange={e => setSelectedFiles(e.target.files)} />
+                                            </label>
                                             <input
                                                 value={inputValue}
                                                 onChange={(e) => setInputValue(e.target.value)}

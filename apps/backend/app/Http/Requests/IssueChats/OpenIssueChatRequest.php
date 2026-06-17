@@ -24,8 +24,9 @@ class OpenIssueChatRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'user_id' => ['required_without:participant_id', 'integer', 'exists:users,id'],
-            'participant_id' => ['required_without:user_id', 'integer', 'exists:issue_participants,id'],
+            'user_id' => ['required_without_all:participant_id,chat_id', 'integer', 'exists:users,id'],
+            'participant_id' => ['required_without_all:user_id,chat_id', 'integer', 'exists:issue_participants,id'],
+            'chat_id' => ['required_without_all:user_id,participant_id', 'integer', 'exists:issue_chats,id'],
         ];
     }
 }

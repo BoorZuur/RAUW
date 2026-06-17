@@ -70,8 +70,8 @@ export default function CommandCenter() {
         fetchBaseData();
     }, []);
 
-    const fetchIssues = async () => {
-        setLoading(true);
+    const fetchIssues = async (isPolling = false) => {
+        if (!isPolling) setLoading(true);
         try {
             const token = localStorage.getItem('auth_token');
             const params = new URLSearchParams();
@@ -89,13 +89,31 @@ export default function CommandCenter() {
         } catch (error) {
             console.error("Error fetching issues:", error);
         } finally {
-            setLoading(false);
+            if (!isPolling) setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchIssues();
+        fetchIssues(false);
+        
+        const intervalId = setInterval(() => {
+            fetchIssues(true);
+        }, 15000);
+
+        return () => clearInterval(intervalId);
     }, [debouncedSearch, statusFilter, categoryFilter, assignedToMe, officer]);
+
+    // Sync selectedIssue with fresh issues data
+    useEffect(() => {
+        if (selectedIssue && issues.length > 0) {
+            const stillExists = issues.find(i => i.id === selectedIssue.id);
+            if (!stillExists) {
+                setSelectedIssue(null);
+            } else if (JSON.stringify(stillExists) !== JSON.stringify(selectedIssue)) {
+                setSelectedIssue(stillExists);
+            }
+        }
+    }, [issues, selectedIssue]);
 
     const fetchIssueDetails = async (issueId) => {
         try {
@@ -639,8 +657,8 @@ export default function CommandCenter() {
                                                                         onClick={async () => {
                                                                             try {
                                                                                 const payload = p.user?.id ? { user_id: p.user.id } : { participant_id: p.id };
-                                                                                await openChat(selectedIssue.id, payload);
-                                                                                navigate('/handhaverchat', { state: { selectedIssueId: selectedIssue.id } });
+                                                                                const chat = await openChat(selectedIssue.id, payload);
+                                                                                navigate('/handhaverchat', { state: { selectedIssueId: selectedIssue.id, selectedChatId: chat.id } });
                                                                             } catch (error) {
                                                                                 console.error('Failed to open chat:', error);
                                                                                 alert('Kon gesprek niet starten.');

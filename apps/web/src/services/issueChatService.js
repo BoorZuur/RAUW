@@ -41,9 +41,33 @@ export async function fetchChatMessages(issueId, chatId) {
     return unwrapList(response);
 }
 
-export async function sendMessage(issueId, chatId, content) {
-    const response = await apiClient.post(`/issues/${issueId}/chats/${chatId}/messages`, { content });
+export async function sendMessage(issueId, chatId, content, files = []) {
+    if (!files || files.length === 0) {
+        const response = await apiClient.post(`/issues/${issueId}/chats/${chatId}/messages`, { content });
+        return unwrapData(response);
+    }
+
+    const formData = new FormData();
+    if (content) {
+        formData.append('content', content);
+    }
+    Array.from(files).forEach((file) => {
+        formData.append('files[]', file);
+    });
+
+    const response = await apiClient.post(`/issues/${issueId}/chats/${chatId}/messages`, formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    });
     return unwrapData(response);
+}
+
+export async function downloadProtectedFile(url) {
+    const response = await apiClient.get(url, {
+        responseType: 'blob',
+    });
+    return URL.createObjectURL(response.data);
 }
 
 export async function markMessagesRead(issueId, chatId) {

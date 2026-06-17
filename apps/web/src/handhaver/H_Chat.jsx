@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import axios from 'axios';
-import { Send, Lock, Unlock, Search, MessageCircle } from 'lucide-react';
+import { Send, Lock, Unlock, Search, MessageCircle, Paperclip, Check, CheckCheck, X } from 'lucide-react';
 import HM_Nav from '../components/HM_Nav.jsx';
+import AuthAttachment from '../components/AuthAttachment.jsx';
 import { listIssuesForMap } from '../services/issueService';
 import { fetchChats, openChat, closeChat, sendMessage, markMessagesRead } from '../services/issueChatService';
 import useIssueChatPolling from '../hooks/useIssueChatPolling';
@@ -13,13 +14,15 @@ export default function H_ChatPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedIssue, setSelectedIssue] = useState(null);
     const [officer, setOfficer] = useState(null);
-    
+
     const [activeChat, setActiveChat] = useState(null);
-    
+    const [allChatsForIssue, setAllChatsForIssue] = useState([]);
+
     const [inputValue, setInputValue] = useState('');
+    const [selectedFiles, setSelectedFiles] = useState(null);
 
     const { messages, isLoading, refresh } = useIssueChatPolling(
-        selectedIssue?.id, 
+        selectedIssue?.id,
         activeChat?.id
     );
 
@@ -36,7 +39,7 @@ export default function H_ChatPage() {
                 const data = await listIssuesForMap();
                 const assignedIssues = data.filter(issue => issue.assigned_officer_id === officerProfile.id);
                 setIssues(assignedIssues);
-                
+
                 if (location.state?.selectedIssueId) {
                     const preselected = assignedIssues.find(i => i.id === location.state.selectedIssueId);
                     if (preselected) setSelectedIssue(preselected);
@@ -49,25 +52,56 @@ export default function H_ChatPage() {
     }, [location.state]);
 
     useEffect(() => {
+        let isMounted = true;
         async function loadChatDetails() {
             if (!selectedIssue) {
-                setActiveChat(null);
+                if (isMounted) {
+                    setActiveChat(null);
+                    setAllChatsForIssue([]);
+                }
                 return;
             }
             try {
                 const chats = await fetchChats(selectedIssue.id);
-                if (chats.length > 0) {
-                    setActiveChat(chats[0]);
-                } else {
-                    setActiveChat(null);
+                if (isMounted) {
+                    setAllChatsForIssue(prev => JSON.stringify(prev) !== JSON.stringify(chats) ? chats : prev);
+
+                    if (chats.length > 0) {
+                        setActiveChat(prev => {
+                            if (!prev) {
+                                if (location.state?.selectedChatId) {
+                                    const target = chats.find(c => c.id === location.state.selectedChatId);
+                                    if (target) return target;
+                                }
+                                return chats[0];
+                            } else {
+                                const target = chats.find(c => c.id === prev.id);
+                                if (target && JSON.stringify(target) !== JSON.stringify(prev)) {
+                                    return target;
+                                }
+                                return prev;
+                            }
+                        });
+                    } else {
+                        setActiveChat(null);
+                    }
                 }
             } catch (err) {
                 console.error("Failed to fetch chat details", err);
-                setActiveChat(null);
+                if (isMounted) {
+                    setActiveChat(null);
+                    setAllChatsForIssue([]);
+                }
             }
         }
         loadChatDetails();
-    }, [selectedIssue]);
+
+        const interval = setInterval(loadChatDetails, 10000);
+        return () => {
+            isMounted = false;
+            clearInterval(interval);
+        };
+    }, [selectedIssue, location.state]);
 
     useEffect(() => {
         if (selectedIssue && activeChat && messages.length > 0) {
@@ -79,10 +113,11 @@ export default function H_ChatPage() {
     }, [messages, selectedIssue, activeChat]);
 
     const handleSendMessage = async () => {
-        if (!inputValue.trim() || !selectedIssue || !activeChat) return;
+        if ((!inputValue.trim() && (!selectedFiles || selectedFiles.length === 0)) || !selectedIssue || !activeChat) return;
         try {
-            await sendMessage(selectedIssue.id, activeChat.id, inputValue);
+            await sendMessage(selectedIssue.id, activeChat.id, inputValue, selectedFiles);
             setInputValue('');
+            setSelectedFiles(null);
             refresh();
         } catch (err) {
             console.error("Failed to send message", err);
@@ -97,8 +132,8 @@ export default function H_ChatPage() {
                 setActiveChat(closed);
             } else {
                 // Reopen the chat
-                const payload = activeChat.user_id 
-                    ? { user_id: activeChat.user_id } 
+                const payload = activeChat.user_id
+                    ? { user_id: activeChat.user_id }
                     : { chat_id: activeChat.id };
                 const reopened = await openChat(selectedIssue.id, payload);
                 setActiveChat(reopened);
@@ -109,8 +144,8 @@ export default function H_ChatPage() {
         }
     };
 
-    const filteredIssues = issues.filter(i => 
-        i.id.toString().includes(searchQuery) || 
+    const filteredIssues = issues.filter(i =>
+        i.id.toString().includes(searchQuery) ||
         (i.category?.name || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
 
@@ -127,11 +162,11 @@ export default function H_ChatPage() {
                         <p className="text-secondary-text text-sm mt-1">Beheer hier alle lopende gesprekken met melders</p>
                     </div>
                     {activeChat && (
-                        <button 
+                        <button
                             onClick={handleToggleChat}
                             className="flex items-center gap-2 bg-primary-bg-cards border border-primary-border hover:border-primary-accent transition-all px-5 py-2.5 rounded-xl text-sm font-semibold"
                         >
-                            {activeChat.status === 'open' ? <Lock size={16}/> : <Unlock size={16}/>}
+                            {activeChat.status === 'open' ? <Lock size={16} /> : <Unlock size={16} />}
                             {activeChat.status === 'open' ? 'Gesprek Sluiten' : 'Gesprek Heropenen'}
                         </button>
                     )}
@@ -143,25 +178,26 @@ export default function H_ChatPage() {
                         <div className="p-5 border-b border-primary-border">
                             <div className="relative">
                                 <Search className="absolute left-3 top-3 text-secondary-text" size={16} />
-                                <input 
+                                <input
                                     value={searchQuery}
                                     onChange={e => setSearchQuery(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2.5 bg-primary-bg border border-primary-border rounded-xl text-sm focus:outline-none focus:border-primary-accent" 
-                                    placeholder="Zoek meldingen..." 
+                                    className="w-full pl-10 pr-4 py-2.5 bg-primary-bg border border-primary-border rounded-xl text-sm focus:outline-none focus:border-primary-accent"
+                                    placeholder="Zoek meldingen..."
                                 />
                             </div>
                         </div>
                         <div className="flex-1 overflow-y-auto">
                             {filteredIssues.map(issue => (
-                                <div 
-                                    key={issue.id} 
+                                <div
+                                    key={issue.id}
                                     onClick={() => setSelectedIssue(issue)}
                                     className={`p-5 cursor-pointer hover:bg-primary-border border-b border-primary-border transition-all ${selectedIssue?.id === issue.id ? 'bg-primary-border/50' : ''}`}
                                 >
                                     <div className="flex justify-between items-start mb-1">
-                                        <p className="font-bold">Melding #{issue.id}</p>
+                                        <p className="font-bold">Melding #{issue.id} - {issue.title}</p>
                                     </div>
-                                    <p className="text-xs text-secondary-text truncate">{issue.category?.name || 'Onbekende categorie'}</p>
+                                    <p className="text-xs text-secondary-text truncate mb-1">{issue.category?.name || 'Onbekende categorie'}</p>
+                                    {issue.description && <p className="text-xs text-secondary-text opacity-80 line-clamp-2">{issue.description}</p>}
                                 </div>
                             ))}
                             {filteredIssues.length === 0 && (
@@ -178,9 +214,27 @@ export default function H_ChatPage() {
                             activeChat ? (
                                 <>
                                     <div className="p-4 border-b border-primary-border bg-primary-bg-cards flex justify-between items-center shrink-0">
-                                        <div>
-                                            <p className="font-bold">Gesprek met melder</p>
-                                            <p className="text-xs text-secondary-text">Melding #{selectedIssue.id}</p>
+                                        <div className="flex items-center gap-4">
+                                            <div>
+                                                <p className="font-bold">Gesprek met melder</p>
+                                                <p className="text-xs text-secondary-text">Melding #{selectedIssue.id}</p>
+                                            </div>
+                                            {allChatsForIssue.length > 1 && (
+                                                <select
+                                                    className="ml-4 border border-primary-border rounded-lg text-sm bg-primary-bg text-primary-text px-3 py-1.5 focus:outline-none focus:border-primary-accent"
+                                                    value={activeChat?.id || ''}
+                                                    onChange={e => {
+                                                        const target = allChatsForIssue.find(c => c.id === parseInt(e.target.value, 10));
+                                                        if (target) setActiveChat(target);
+                                                    }}
+                                                >
+                                                    {allChatsForIssue.map((chat, idx) => (
+                                                        <option key={chat.id} value={chat.id}>
+                                                            Deelnemer {chat.user?.username || chat.user?.display_name || `(Chat #${chat.id})`}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            )}
                                         </div>
                                         <div>
                                             <span className={`text-[10px] font-bold text-white px-2 py-0.5 rounded-full uppercase ${activeChat.status === 'open' ? 'bg-secondary-accent' : 'bg-red-500'}`}>
@@ -195,30 +249,66 @@ export default function H_ChatPage() {
                                         {messages.length === 0 && !isLoading && (
                                             <div className="text-center text-sm text-secondary-text mt-10">Geen berichten. Verstuur het eerste bericht!</div>
                                         )}
-                                        {messages.map(m => (
-                                            <div key={m.id} className={`flex ${m.sender_type === 'officer' ? 'justify-end' : 'justify-start'}`}>
-                                                <div className="flex flex-col items-end">
-                                                    <div className={`max-w-[85%] p-4 rounded-2xl ${m.sender_type === 'officer' ? 'bg-primary-accent text-white rounded-br-none' : 'bg-primary-bg border border-primary-border rounded-bl-none'}`}>
-                                                        <p className="text-sm">{m.content}</p>
+                                        {messages.map(m => {
+                                            const isOfficer = m.sender_type === 'officer';
+                                            return (
+                                                <div key={m.id} className={`flex ${isOfficer ? 'justify-end' : 'justify-start'}`}>
+                                                    <div className={`flex flex-col ${isOfficer ? 'items-end' : 'items-start'}`}>
+                                                        <span className="text-xs text-secondary-text mb-1 ml-1 mr-1">
+                                                            {isOfficer ? (m.sender?.display_name || 'Jij') : (m.sender?.display_name || 'Melder')}
+                                                        </span>
+                                                        <div className={`max-w-[85%] p-4 rounded-2xl ${isOfficer ? 'bg-primary-accent text-white rounded-br-none' : 'bg-primary-bg border border-primary-border rounded-bl-none'}`}>
+                                                            {m.content && <p className="text-sm whitespace-pre-wrap">{m.content}</p>}
+                                                            {m.attachments && m.attachments.length > 0 && (
+                                                                <div className="mt-2 flex flex-col gap-2">
+                                                                    {m.attachments.map(att => (
+                                                                        <AuthAttachment key={att.id} attachment={att} />
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex items-center gap-1 mt-1">
+                                                            <span className="text-[10px] text-secondary-text">{new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                            {isOfficer && (
+                                                                m.is_read ? <CheckCheck size={12} className="text-primary-accent" /> : <Check size={12} className="text-secondary-text" />
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                    <span className="text-[10px] text-secondary-text mt-1">{new Date(m.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
 
                                     {activeChat.status === 'open' ? (
-                                        <div className="p-6 border-t border-primary-border bg-primary-bg shrink-0">
+                                        <div className="p-4 border-t border-primary-border bg-primary-bg flex flex-col gap-2 shrink-0">
+                                            {selectedFiles && selectedFiles.length > 0 && (
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    {Array.from(selectedFiles).map((file, idx) => (
+                                                        <div key={idx} className="bg-primary-border text-primary-text text-xs px-3 py-1.5 rounded-full flex items-center gap-2">
+                                                            <span className="truncate max-w-[150px]">{file.name}</span>
+                                                            <button onClick={() => {
+                                                                const dt = new DataTransfer();
+                                                                Array.from(selectedFiles).filter((_, i) => i !== idx).forEach(f => dt.items.add(f));
+                                                                setSelectedFiles(dt.files.length > 0 ? dt.files : null);
+                                                            }} className="hover:text-red-500"><X size={12} /></button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
                                             <div className="flex gap-4 items-center">
-                                                <input 
+                                                <label className="cursor-pointer p-3 bg-primary-bg-cards border border-primary-border hover:bg-primary-border transition-colors rounded-full text-secondary-text">
+                                                    <Paperclip size={20} />
+                                                    <input type="file" multiple className="hidden" onChange={e => setSelectedFiles(e.target.files)} />
+                                                </label>
+                                                <input
                                                     value={inputValue}
                                                     onChange={e => setInputValue(e.target.value)}
                                                     onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
-                                                    className="flex-1 bg-primary-bg-cards border border-primary-border focus:border-primary-accent rounded-full px-6 py-3.5 focus:outline-none" 
-                                                    placeholder="Typ een antwoord..." 
+                                                    className="flex-1 bg-primary-bg-cards border border-primary-border focus:border-primary-accent rounded-full px-6 py-3.5 focus:outline-none"
+                                                    placeholder="Typ een antwoord..."
                                                 />
                                                 <button onClick={handleSendMessage} className="bg-primary-accent text-white p-4 rounded-full hover:opacity-90 transition-all">
-                                                    <Send size={18}/>
+                                                    <Send size={18} />
                                                 </button>
                                             </div>
                                         </div>

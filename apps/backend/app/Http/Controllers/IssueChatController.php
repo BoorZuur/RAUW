@@ -101,11 +101,14 @@ class IssueChatController extends Controller
 
         OfficerIssueDistrictAccess::assertOfficerInIssueDistrict($officer, $canonical);
 
-        $userId = $request->validated('user_id');
-
-        if ($request->has('participant_id')) {
+        if ($request->has('chat_id')) {
+            $existingChat = IssueChat::query()->where('issue_id', $canonical->getKey())->findOrFail($request->validated('chat_id'));
+            $userId = $existingChat->user_id;
+        } elseif ($request->has('participant_id')) {
             $participant = \App\Models\IssueParticipant::query()->findOrFail($request->validated('participant_id'));
             $userId = $participant->user_id;
+        } else {
+            $userId = $request->validated('user_id');
         }
 
         $partnerUser = User::query()->findOrFail($userId);
