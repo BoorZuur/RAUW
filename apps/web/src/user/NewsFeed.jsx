@@ -7,7 +7,7 @@ import Footer from '../components/Footer.jsx';
 import { useTheme } from '../ThemeContext.jsx';
 
 const apiClient = axios.create({
-    baseURL: 'http://localhost:8001/api',
+    baseURL: `${import.meta.env.VITE_API_BASE_URL}/api`,
     headers: { 'Accept': 'application/json' }
 });
 
