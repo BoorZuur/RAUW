@@ -42,7 +42,7 @@ export default function DuplicateSuggestionModal({
     return (
         <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="bg-primary-bg-cards p-6 sm:p-8 rounded-3xl border-2 border-primary-border shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col">
-                <h3 className="text-xl font-black uppercase mb-2">Lijkt op een bestaende melding</h3>
+                <h3 className="text-xl font-black uppercase mb-2">Lijkt op een bestaande melding</h3>
                 <p className="text-sm text-secondary-text mb-6">
                     Er zijn vergelijkbare meldingen in de buurt. Koppel je melding aan een bestaand
                     verhaal om updates te volgen, of meld toch een nieuwe melding.
