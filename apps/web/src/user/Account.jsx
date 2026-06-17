@@ -9,7 +9,7 @@ import AccountDetailModal from '../modal/AccountDetailModal.jsx';
 import { getMyIssues, getFollowedIssues, deleteIssue } from '../services/issueService';
 
 const apiClient = axios.create({
-    baseURL: 'http://localhost:8001/api',
+    baseURL: `${import.meta.env.VITE_API_BASE_URL}/api`,
     headers: { 'Accept': 'application/json' }
 });
 

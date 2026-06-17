@@ -10,7 +10,7 @@ import { checkSimilarIssues, createIssue, uploadIssueAttachments } from '../serv
 import { getIssueErrorMessage } from '../utils/issueErrorMessages.js';
 
 const apiClient = axios.create({
-    baseURL: 'http://localhost:8001',
+    baseURL: import.meta.env.VITE_API_BASE_URL,
     headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
