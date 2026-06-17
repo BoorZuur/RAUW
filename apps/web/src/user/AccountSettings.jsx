@@ -168,7 +168,7 @@ export default function Instellingen() {
                     )}
                 </section>
 
-                <button onClick={handleSave} className="w-full h-12 mt-4 bg-primary-text hover:bg-primary-accent text-white font-medium rounded-xl transition-all shadow-md active:scale-[0.98]">
+                <button onClick={handleSave} className="w-full h-12 mt-4 bg-primary-text hover:bg-primary-accent font-medium rounded-xl transition-all shadow-md active:scale-[0.98]">
                     {loading ? <Loader2 className="animate-spin" /> : 'Wijzigingen opslaan'}
                 </button>
 

@@ -50,13 +50,11 @@
 }
 
 .mode-deuteranopia {
-    --primary-bg: #edede3;
-    --primary-bg-cards: #aba998;
-    --primary-border: #fbfbe0;
-    --primary-text: #4e4638;
-    --secondary-text: #3a372d;
-    --primary-accent: #7a6e57;
-    --secondary-accent: #70624e;
+    --primary-bg: #f4f4eb;
+    --primary-bg-cards: #ffffff;
+    --primary-border: #aba998;
+    --primary-text: #363026;
+    --secondary-text: #595345;
 }
 
 .mode-tritanopia {
@@ -91,11 +89,11 @@
 
 .mode-deuteranopia.dark {
     --primary-bg: #0d0d0c;
-    --primary-bg-cards: #3a372d;
-    --primary-border: #959175;
-    --primary-text: #e2e1d5;
-    --secondary-text: #fbfbe0;
-    --primary-accent: #b4aba0;
+    --primary-bg-cards: #1a1b16;
+    --primary-border: #3a372d;
+    --primary-text: #eae9e0;
+    --secondary-text: #aba998;
+    --primary-accent: #c5bcaf;
     --secondary-accent: #f6f5eb;
 }
 
