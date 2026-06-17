@@ -1,14 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import {Link, useLocation} from 'react-router-dom';
-import {navLinks} from '../config/navConfig.js';
+import { Link, useLocation } from 'react-router-dom';
+import { navLinks } from '../config/navConfig.js';
 import axios from 'axios';
-import "./HM_styling.css";
+import { useTheme } from '../ThemeContext.jsx';
+import { LogOut, Sun, Moon, Play, CheckCircle, Menu, X } from 'lucide-react';
+import RauwLogoImg from "../assets/LogoRAUW.png";
 
-export default function HM_Nav({role = 'handhaver'}) {
+export default function HM_Nav({ role = 'handhaver' }) {
     const location = useLocation();
+    const { isDark, toggleTheme } = useTheme();
     const [isHubActive, setIsHubActive] = useState(false);
     const [startingShift, setStartingShift] = useState(false);
     const [shiftError, setShiftError] = useState("");
+
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    useEffect(() => {
+        setIsMobileMenuOpen(false);
+    }, [location]);
+
+    useEffect(() => {
+        document.documentElement.classList.toggle('dark', isDark);
+    }, [isDark]);
 
     useEffect(() => {
         if (role === 'handhaver') {
@@ -16,7 +29,7 @@ export default function HM_Nav({role = 'handhaver'}) {
                 try {
                     const token = localStorage.getItem('auth_token');
                     if (!token) return;
-                    
+
                     const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/auth/me`, {
                         headers: { Authorization: `Bearer ${token}` }
                     });
@@ -33,13 +46,11 @@ export default function HM_Nav({role = 'handhaver'}) {
     const handleStartShift = () => {
         setStartingShift(true);
         setShiftError("");
-        
         if (!navigator.geolocation) {
             setShiftError("Geolocatie wordt niet ondersteund");
             setStartingShift(false);
             return;
         }
-
         navigator.geolocation.getCurrentPosition(
             async (position) => {
                 try {
@@ -52,15 +63,13 @@ export default function HM_Nav({role = 'handhaver'}) {
                     });
                     setIsHubActive(true);
                 } catch (err) {
-                    console.error(err);
                     setShiftError(err.response?.data?.message || "Kan shift niet starten");
                     setTimeout(() => setShiftError(""), 5000);
                 } finally {
                     setStartingShift(false);
                 }
             },
-            (err) => {
-                console.error(err);
+            () => {
                 setShiftError("Locatietoegang geweigerd");
                 setStartingShift(false);
                 setTimeout(() => setShiftError(""), 5000);
@@ -68,86 +77,153 @@ export default function HM_Nav({role = 'handhaver'}) {
         );
     };
 
-    // Filter de links zodat alleen de links voor de huidige rol getoond worden
     const filteredLinks = navLinks.filter(link => link.roles.includes(role));
 
     return (
-        <section className="sidebar">
-            <div className="logo-container">
-                <div className="logo-icon">
-                    <svg viewBox="0 0 24 24" width="24" height="24">
-                        <path fill="currentColor"
-                              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm0-12c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"/>
-                    </svg>
-                </div>
-                <div className="logo-text">
-                    <h2>RAUW</h2>
-                    <p>{role === 'manager' ? 'MANAGEMENT' : 'BOA COMMAND'}</p>
-                </div>
-            </div>
-            <nav className="nav-menu">
-                {filteredLinks.map((link) => {
-                    const isActive = location.pathname === link.to;
-                    return (
-                        <Link
-                            key={link.id}
-                            to={link.to}
-                            className={`nav-item ${isActive ? 'active' : ''}`}
-                        >
-                            <svg className="nav-icon" viewBox="0 0 24 24">
-                                <path fill="currentColor" d={link.iconPath}/>
-                            </svg>
-                            <span>{link.title}</span>
-                            {isActive && <span className="dot-indicator"></span>}
-                        </Link>
-                    );
-                })}
-            </nav>
-
-            <hr/>
-            <div className="sidebar-footer">
-                <div className="toggle-container">
-                    <span className="toggle-label">Dagmodus</span>
-                    <label className="switch">
-                        <input type="checkbox" id="mode-toggle"/>
-                        <span className="slider"></span>
-                    </label>
-                </div>
-
-                {role === 'handhaver' && (
-                    <div className="px-3">
-                        {shiftError && <p className="text-red-500 text-xs mb-2 text-center">{shiftError}</p>}
-                        {isHubActive ? (
-                            <div className="flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-emerald-50 text-emerald-700 font-bold text-sm border border-emerald-200">
-                                <span className="relative flex h-3 w-3">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-                                </span>
-                                Shift Actief
-                            </div>
-                        ) : (
-                            <button 
-                                onClick={handleStartShift} 
-                                disabled={startingShift}
-                                className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-colors disabled:opacity-50"
-                            >
-                                <svg viewBox="0 0 24 24" width="16" height="16">
-                                    <path fill="currentColor" d="M8 5v14l11-7z"/>
-                                </svg>
-                                {startingShift ? "Starten..." : "Start Shift"}
-                            </button>
-                        )}
+        <>
+            <header className="md:hidden sticky top-0 w-full h-16 bg-primary-bg-cards border-b border-primary-border flex items-center justify-between px-4 z-50 shadow-sm font-label">
+                <div className="flex items-center gap-3">
+                    <img src={RauwLogoImg} alt="RAUW Logo" translate="no" className="h-9 w-auto object-contain"/>
+                    <div>
+                        <h2 className="font-bold text-sm leading-none text-primary-text">RAUW</h2>
+                        <p className="text-[8px] text-secondary-text tracking-wider uppercase font-bold mt-0.5">
+                            {role === 'manager' ? 'Management' : 'Handhaving'}
+                        </p>
                     </div>
-                )}
+                </div>
 
-                <Link to="/handhaver_login" className="nav-item logout-btn">
-                    <svg className="nav-icon" viewBox="0 0 24 24">
-                        <path fill="currentColor"
-                              d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
-                    </svg>
-                    <span>Uitloggen</span>
-                </Link>
-            </div>
-        </section>
+                <button
+                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                    className="p-2 text-primary-text hover:bg-primary-bg border border-transparent hover:border-primary-border rounded-xl transition-colors cursor-pointer"
+                    aria-label="Menu handhaving openen"
+                >
+                    {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+                </button>
+            </header>
+
+            {isMobileMenuOpen && (
+                <div className="md:hidden fixed inset-x-0 bottom-0 top-16 bg-primary-bg-cards/95 backdrop-blur-md z-40 flex flex-col justify-between p-6 overflow-y-auto font-label border-t border-primary-border animate-fade-in">
+                    <nav className="space-y-1.5">
+                        {filteredLinks.map((link) => {
+                            const isActive = location.pathname === link.to;
+                            const Icon = link.icon;
+                            return (
+                                <Link
+                                    key={link.id}
+                                    to={link.to}
+                                    className={`flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all ${
+                                        isActive
+                                            ? 'bg-primary-accent text-white shadow-md'
+                                            : 'text-secondary-text hover:bg-primary-bg hover:text-primary-text'
+                                    }`}
+                                >
+                                    <Icon className="w-5 h-5" strokeWidth={2} />
+                                    <span className="font-semibold text-sm">{link.title}</span>
+                                </Link>
+                            );
+                        })}
+                    </nav>
+
+                    <div className="space-y-5 pt-6 border-t border-primary-border/60 mt-6">
+                        {/* Dag / Nacht switch */}
+                        <div className="flex bg-primary-bg p-1 rounded-xl border border-primary-border">
+                            <button onClick={toggleTheme} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${!isDark ? 'bg-primary-bg-cards shadow-sm text-primary-text' : 'text-secondary-text'}`}>
+                                <Sun size={14} /> Dag
+                            </button>
+                            <button onClick={toggleTheme} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${isDark ? 'bg-primary-bg-cards shadow-sm text-primary-text' : 'text-secondary-text'}`}>
+                                <Moon size={14} /> Nacht
+                            </button>
+                        </div>
+
+                        {role === 'handhaver' && (
+                            <div className="relative">
+                                {isHubActive ? (
+                                    <div className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-secondary-accent/10 border border-secondary-accent/20 text-secondary-accent text-xs font-bold">
+                                        <CheckCircle size={16} /> Shift Actief
+                                    </div>
+                                ) : (
+                                    <button onClick={handleStartShift} disabled={startingShift} className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl bg-primary-accent text-white font-black uppercase tracking-wider text-xs hover:brightness-105 transition-all shadow-sm">
+                                        <Play size={14} fill="currentColor" /> {startingShift ? "Starten..." : "Start Mijn Shift"}
+                                    </button>
+                                )}
+                                {shiftError && <p className="text-red-500 text-[10px] mt-2 text-center">{shiftError}</p>}
+                            </div>
+                        )}
+
+                        {/* Uitloggen */}
+                        <Link to="/handhaver_login" className="flex items-center justify-center gap-3 text-secondary-text hover:text-red-500 bg-primary-bg/50 border border-primary-border/40 py-3 rounded-xl transition-colors w-full">
+                            <LogOut size={16} />
+                            <span className="font-bold text-xs uppercase tracking-wider">Uitloggen</span>
+                        </Link>
+                    </div>
+                </div>
+            )}
+
+            <section className="hidden md:flex h-screen w-72 bg-primary-bg-cards border-r border-primary-border flex-col py-6 sticky top-0 shadow-xl z-20 transition-colors duration-300 font-label shrink-0">
+                <div className="px-8 mb-10">
+                    <div className="flex items-center gap-3">
+                        <div className="cursor-pointer shrink-0 transition-transform hover:scale-102">
+                            <img src={RauwLogoImg} alt="RAUW Logo" translate="no" className="h-12 w-auto object-contain"/>
+                        </div>
+                        <div>
+                            <h2 className="font-bold text-lg leading-tight tracking-tight text-primary-text">RAUW</h2>
+                            <p className="text-[9px] text-secondary-text tracking-[0.2em] uppercase font-bold">{role === 'manager' ? 'Management' : 'Handhaving'}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <nav className="flex-1 px-4 space-y-1">
+                    {filteredLinks.map((link) => {
+                        const isActive = location.pathname === link.to;
+                        const Icon = link.icon;
+                        return (
+                            <Link
+                                key={link.id}
+                                to={link.to}
+                                className={`group flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-300 ${
+                                    isActive
+                                        ? 'bg-primary-accent text-white shadow-md'
+                                        : 'text-secondary-text hover:bg-primary-border/50 hover:text-primary-text'
+                                }`}
+                            >
+                                <Icon className="w-5 h-5" strokeWidth={2} />
+                                <span className="font-medium text-sm">{link.title}</span>
+                            </Link>
+                        );
+                    })}
+                </nav>
+
+                <div className="px-6 space-y-6">
+                    <div className="flex items-center justify-between bg-primary-bg p-2 rounded-xl border border-primary-border">
+                        <button onClick={toggleTheme} className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${!isDark ? 'bg-primary-border shadow-sm text-primary-text' : 'text-secondary-text'}`}>
+                            <Sun size={14} /> Dag
+                        </button>
+                        <button onClick={toggleTheme} className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${isDark ? 'bg-primary-border shadow-sm text-primary-text' : 'text-secondary-text'}`}>
+                            <Moon size={14} /> Nacht
+                        </button>
+                    </div>
+
+                    {role === 'handhaver' && (
+                        <div className="relative">
+                            {isHubActive ? (
+                                <div className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-secondary-accent/10 border border-secondary-accent/20 text-secondary-accent text-xs font-bold">
+                                    <CheckCircle size={16} /> Shift Actief
+                                </div>
+                            ) : (
+                                <button onClick={handleStartShift} disabled={startingShift} className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-primary-accent text-white font-bold text-sm hover:brightness-110 transition-all cursor-pointer">
+                                    <Play size={16} fill="currentColor" /> {startingShift ? "Starten..." : "Start Shift"}
+                                </button>
+                            )}
+                            {shiftError && <p className="text-red-500 text-[10px] mt-2 text-center">{shiftError}</p>}
+                        </div>
+                    )}
+
+                    <Link to="/handhaver_login" className="flex items-center gap-3 text-secondary-text hover:text-red-500 transition-colors w-full px-2 py-1">
+                        <LogOut size={18} />
+                        <span className="font-semibold text-sm">Uitloggen</span>
+                    </Link>
+                </div>
+            </section>
+        </>
     );
 }
