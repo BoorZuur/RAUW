@@ -4,7 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
 
 const getDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371e3; // Straal van de aarde in meters
+    const R = 6371e3;
     const φ1 = lat1 * Math.PI / 180;
     const φ2 = lat2 * Math.PI / 180;
     const Δφ = (lat2 - lat1) * Math.PI / 180;
@@ -29,7 +29,11 @@ export default function NativeLeafletMap({ position, setPosition, setFormData, d
                 maxBounds: rotterdamBounds,
                 maxBoundsViscosity: 1.0,
                 minZoom: 11,
-                maxZoom: 18
+                maxZoom: 18,
+
+                scrollWheelZoom: false,
+                tap: L.Browser.mobile ? false : true,
+                bounceAtZoomLimits: false
             }).setView([51.9225, 4.47917], 13);
 
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
@@ -38,7 +42,6 @@ export default function NativeLeafletMap({ position, setPosition, setFormData, d
 
             leafletMap.current.on('click', async (e) => {
                 const { lat, lng } = e.latlng;
-
                 let insideKnownDistrict = false;
 
                 if (districts && districts.length > 0) {
@@ -86,5 +89,10 @@ export default function NativeLeafletMap({ position, setPosition, setFormData, d
         }
     }, [position]);
 
-    return <div ref={mapRef} className="h-full w-full" />;
+    return (
+        <div
+            ref={mapRef}
+            className="h-80 md:h-full w-full rounded-2xl border border-primary-border shadow-sm overflow-hidden z-10"
+        />
+    );
 }

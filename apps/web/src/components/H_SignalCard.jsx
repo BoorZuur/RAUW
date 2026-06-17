@@ -1,4 +1,5 @@
 import React from 'react';
+import {Pin, User, Clock} from "lucide-react";
 
 export default function ReportCard({
                                        title,
@@ -29,10 +30,9 @@ export default function ReportCard({
 
     return (
         <div
-            className="bg-primary-bg-cards rounded-2xl p-4 border border-primary-border shadow-sm max-w-md w-full antialiased text-primary-text font-label tracking-normal transition-all cursor-pointer hover:shadow-md"
+            className="bg-primary-bg-cards rounded-2xl p-4 border border-primary-border shadow-sm max-w-md w-full antialiased text-primary-text font-label tracking-normal transition-all cursor-pointer hover:shadow-md select-none"
             onClick={onClick}
         >
-            {/* Titel & Status Badge */}
             <div className="flex items-start justify-between gap-4 mb-2.5">
                 <div className="flex items-center gap-2.5 min-w-0">
                     <span className={`w-2.5 h-5 rounded-full shrink-0 ${leftDotStyle}`}/>
@@ -45,21 +45,22 @@ export default function ReportCard({
                 </span>
             </div>
 
-            {/* Beschrijving */}
             <div className="mb-4">
-                <p className="text-secondary-text text-sm leading-relaxed font-normal whitespace-pre-line">
+                <p className="text-secondary-text text-sm leading-relaxed font-normal whitespace-pre-line line-clamp-3 md:line-clamp-none">
                     {description}
                 </p>
             </div>
 
-            {/* metadata & tags */}
-            <div className="pt-3 border-t border-primary-border flex flex-col gap-2">
+            <div className="pt-3 border-t border-primary-border flex flex-col gap-2.5">
                 <div className="flex items-center gap-1 text-[11px] text-secondary-text font-semibold min-w-0">
-                    <span className="text-primary-border">📍</span>
+                    <span className="text-primary-border shrink-0">
+                        <Pin />
+                    </span>
                     <span className="truncate">{location}</span>
                 </div>
 
-                <div className="flex items-end justify-between gap-4 text-[11px]">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[11px] pt-0.5">
+
                     <div className="flex flex-wrap gap-1 min-w-0">
                         {tags.length > 0 ? (
                             tags.map((tag, index) => (
@@ -72,17 +73,20 @@ export default function ReportCard({
                         )}
                     </div>
 
-                    <div className="flex items-center gap-2.5 text-secondary-text font-medium shrink-0">
-                        <div className="flex items-center gap-1">
-                            <span>👤</span>
-                            <span className="whitespace-nowrap">{reporter}</span>
+                    <div className="flex items-center justify-between sm:justify-end gap-2.5 text-secondary-text font-medium w-full sm:w-auto border-t border-primary-border/30 pt-2 sm:pt-0 sm:border-none">
+                        <div className="flex items-center gap-1 min-w-0">
+                            <User className="w-5 h-5 text-primary-text shrink-0"/>
+                            <span className="truncate max-w-[120px] sm:max-w-[none]">{reporter}</span>
                         </div>
-                        <span className="text-primary-border">•</span>
-                        <div className="flex items-center gap-1 bg-primary-bg px-1.5 py-0.5 rounded-md font-bold text-primary-text">
-                            <span>🕒</span>
-                            <span>{time}</span>
+                        <span className="text-primary-border shrink-0">•</span>
+                        <div className="flex items-center gap-1 bg-primary-bg px-1.5 py-0.5 rounded-md font-bold text-primary-text shrink-0">
+                            <span className="shrink-0">
+                                <Clock />
+                            </span>
+                            <span className="whitespace-nowrap">{time}</span>
                         </div>
                     </div>
+
                 </div>
             </div>
         </div>

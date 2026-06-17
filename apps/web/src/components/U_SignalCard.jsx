@@ -17,27 +17,41 @@ export default function USignalCard({ issue, onClick }) {
     const statusDetails = getStatusDetails(status);
 
     return (
-        <button onClick={onClick} className="w-full text-left flex items-center justify-between p-3 mb-3 last:mb-0 bg-primary-bg-cards border border-primary-border rounded-xl shadow-sm hover:border-primary-accent hover:shadow-md active:scale-[0.995] transition-all cursor-pointer antialiased focus:outline-none focus:ring-2 focus:ring-primary-accent/20">
-            <div className="flex items-center gap-4 min-w-0">
+        <div
+            onClick={onClick}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === 'Enter' && onClick && onClick()}
+            className="w-full text-left flex items-center justify-between p-2.5 sm:p-3 mb-3 last:mb-0 bg-primary-bg-cards border border-primary-border rounded-xl shadow-sm hover:border-primary-accent hover:shadow-md active:scale-[0.995] transition-all cursor-pointer antialiased focus:outline-none focus:ring-2 focus:ring-primary-accent/20 select-none"
+        >
+
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+
                 <div className="w-12 h-12 rounded-lg bg-primary-bg border border-primary-border overflow-hidden flex-shrink-0">
                     {attachments.length > 0 ? (
                         <AttachmentImage attachment={attachments[0]} className="w-full h-full object-cover" />
-                    ) : <div className="w-full h-full flex items-center justify-center text-[8px] text-secondary-text">N/A</div>}
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[8px] text-secondary-text font-bold">N/A</div>
+                    )}
                 </div>
-                <div className="flex flex-col gap-1 min-w-0 pr-2">
-                    <h4 className="font-headline font-black text-[15px] text-primary-text tracking-tight leading-snug truncate">{title}</h4>
-                    <div className="flex items-center gap-1.5 text-xs text-secondary-text font-label font-medium">
+
+                <div className="flex flex-col gap-0.5 min-w-0 pr-2">
+                    <span className="block font-headline font-black text-sm sm:text-[15px] text-primary-text tracking-tight leading-snug truncate">
+                        {title}
+                    </span>
+                    <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-secondary-text font-label font-medium min-w-0">
                         <span className="truncate">{address || 'Rotterdam'}</span>
-                        <span>•</span>
+                        <span className="text-secondary-text/60">•</span>
                         <span className="shrink-0">{formattedDate}</span>
                     </div>
                 </div>
             </div>
-            <div className="shrink-0 pl-2">
-                <span className={`px-3 py-1 text-[10px] font-label font-black uppercase tracking-wider rounded-full shadow-sm ${statusDetails.className}`}>
+
+            <div className="shrink-0 pl-1">
+                <span className={`px-2.5 py-0.5 sm:px-3 sm:py-1 text-[9px] sm:text-[10px] font-label font-black uppercase tracking-wider rounded-full shadow-sm ${statusDetails.className}`}>
                     {statusDetails.label}
                 </span>
             </div>
-        </button>
+        </div>
     );
 }

@@ -4,9 +4,9 @@ import axios from 'axios';
 import ReportCard from "../components/H_SignalCard.jsx";
 import HM_Nav from "../components/HM_Nav.jsx";
 import IncidentMap from "../components/IncidentMap.jsx";
-import "./Handhaver_styling.css"
+import { Search, TriangleAlert, Siren} from 'lucide-react';
 
-function CommandCenter() {
+export default function CommandCenter() {
     const [issues, setIssues] = useState([]);
     const [loading, setLoading] = useState(true);
     const [categories, setCategories] = useState([]);
@@ -44,10 +44,10 @@ function CommandCenter() {
                 const token = localStorage.getItem('auth_token');
                 const [catRes, meRes] = await Promise.all([
                     axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/categories`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
+                        headers: {'Authorization': `Bearer ${token}`}
                     }),
                     axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/auth/me`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
+                        headers: {'Authorization': `Bearer ${token}`}
                     })
                 ]);
                 const catData = catRes.data.data || catRes.data;
@@ -70,9 +70,9 @@ function CommandCenter() {
             if (categoryFilter) params.append('category_id', categoryFilter);
 
             const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/issues?${params.toString()}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: {'Authorization': `Bearer ${token}`}
             });
-            
+
             const issuesData = response.data.data || response.data;
             setIssues(Array.isArray(issuesData) ? issuesData : []);
         } catch (error) {
@@ -90,8 +90,8 @@ function CommandCenter() {
         try {
             const token = localStorage.getItem('auth_token');
             const [updRes, resRes] = await Promise.all([
-                axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/issues/${issueId}/officer-updates`, { headers: { 'Authorization': `Bearer ${token}` } }),
-                axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/issues/${issueId}/officer-resolution`, { headers: { 'Authorization': `Bearer ${token}` } }).catch(() => ({ data: null }))
+                axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/issues/${issueId}/officer-updates`, {headers: {'Authorization': `Bearer ${token}`}}),
+                axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/issues/${issueId}/officer-resolution`, {headers: {'Authorization': `Bearer ${token}`}}).catch(() => ({data: null}))
             ]);
             setOfficerUpdates(updRes.data?.data || []);
             setOfficerResolution(resRes.data?.data || resRes.data || null);
@@ -116,7 +116,7 @@ function CommandCenter() {
         try {
             const token = localStorage.getItem('auth_token');
             await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/issues/${issueId}/assign-self`, {}, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: {'Authorization': `Bearer ${token}`}
             });
             alert("Succesvol toegewezen!");
             fetchIssues();
@@ -131,7 +131,7 @@ function CommandCenter() {
         try {
             const token = localStorage.getItem('auth_token');
             await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/issues/${issueId}/unassign-self`, {}, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: {'Authorization': `Bearer ${token}`}
             });
             alert("Taak succesvol teruggegeven!");
             fetchIssues();
@@ -148,7 +148,7 @@ function CommandCenter() {
             await axios.patch(`${import.meta.env.VITE_API_BASE_URL}/api/issues/${issueId}/status`, {
                 status: newStatus
             }, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: {'Authorization': `Bearer ${token}`}
             });
             alert(`Status succesvol gewijzigd naar ${newStatus}!`);
             fetchIssues();
@@ -171,7 +171,7 @@ function CommandCenter() {
                 Array.from(updateFiles).forEach(file => formData.append('files[]', file));
             }
             await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/issues/${selectedIssue.id}/officer-updates`, formData, {
-                headers: { 
+                headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'multipart/form-data'
                 }
@@ -201,7 +201,7 @@ function CommandCenter() {
                 Array.from(resolutionFiles).forEach(file => formData.append('files[]', file));
             }
             await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/issues/${selectedIssue.id}/officer-resolution`, formData, {
-                headers: { 
+                headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'multipart/form-data'
                 }
@@ -221,72 +221,103 @@ function CommandCenter() {
 
 
     return (
-        <div className="app-layout">
-            <HM_Nav></HM_Nav>
-            <main className="main-content dashboard-container relative">
+        <>
+            <div
+                className="flex flex-col md:flex-row min-h-screen bg-primary-bg font-label antialiased text-primary-text">
+                <HM_Nav></HM_Nav>
 
-                <section className="metrics-row">
-                    <div className="metric-card">
-                        <div className="metric-info">
-                            <span className="metric-title">ACTIEVE WIJKUITDAGINGEN</span>
-                            <span className="metric-value">{activeIssuesCount}</span>
+                <main className="flex-1 p-4 md:p-8 flex flex-col gap-5 relative overflow-x-hidden w-full">
+
+                    <section className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+                        <div
+                            className="bg-primary-bg-cards border border-primary-border rounded-2xl p-5 md:p-6 flex justify-between items-center shadow-sm">
+                            <div className="flex flex-col gap-2 md:gap-3">
+                                <span
+                                    className="text-[10px] md:text-[11px] font-bold text-secondary-text uppercase tracking-wider">ACTIEVE WIJKUITDAGINGEN</span>
+                                <span
+                                    className="text-3xl md:text-4xl font-bold font-headline text-primary-text leading-none">{activeIssuesCount}</span>
+                            </div>
+                            <div
+                                className="w-12 h-12 rounded-xl flex items-center justify-center bg-primary-bg border border-primary-border text-xl shrink-0">
+                                <TriangleAlert />
+                            </div>
                         </div>
-                        <div className="metric-icon warning">⚠️</div>
-                    </div>
 
-                    <div className="metric-card" style={{ borderColor: '#fecaca' }}>
-                        <div className="metric-info">
-                            <span className="metric-title" style={{ color: '#dc2626' }}>URGENTE MELDINGEN</span>
-                            <span className="metric-value" style={{ color: '#dc2626' }}>{urgentIssuesCount}</span>
+                        <div
+                            className="bg-primary-bg-cards border rounded-2xl p-5 md:p-6 flex justify-between items-center shadow-sm"
+                            style={{borderColor: '#fecaca'}}>
+                            <div className="flex flex-col gap-2 md:gap-3">
+                                <span className="text-[10px] md:text-[11px] font-bold uppercase tracking-wider"
+                                      style={{color: '#dc2626'}}>URGENTE MELDINGEN</span>
+                                <span className="text-3xl md:text-4xl font-bold font-headline leading-none"
+                                      style={{color: '#dc2626'}}>{urgentIssuesCount}</span>
+                            </div>
+                            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-primary-bg border border-primary-border text-xl shrink-0">
+                                <Siren />
+                            </div>
                         </div>
-                        <div className="metric-icon" style={{ backgroundColor: '#fef2f2', color: '#dc2626' }}>🚨</div>
-                    </div>
-                </section>
+                    </section>
 
-                <section className="filter-bar">
-                    <div className="search-wrapper">
-                        <span className="search-icon">🔍</span>
-                        <input 
-                            type="text" 
-                            placeholder="Zoek meldingen..." 
-                            className="search-input" 
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
-                    <select className="filter-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                        <option value="">Alle Statussen</option>
-                        <option value="open">Open</option>
-                        <option value="in_behandeling">In behandeling</option>
-                        <option value="opgelost">Afgehandeld</option>
-                        <option value="gesloten">Gesloten</option>
-                    </select>
-                    <select className="filter-select" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-                        <option value="">Alle Categorieën</option>
-                        {categories.map(c => (
-                            <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                    </select>
-                </section>
+                    <section className="flex flex-col sm:flex-row gap-3 w-full">
+                        <div className="relative flex-1 w-full">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-primary-text opacity-50 pointer-events-none" />
+                            <input
+                                type="text"
+                                placeholder="Zoek meldingen..."
+                                className="w-full py-3 pl-10 pr-3 border border-primary-border rounded-xl bg-primary-bg-cards text-primary-text text-sm outline-none focus:border-primary-accent"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+                        <div className="flex gap-2 w-full sm:w-auto">
+                            <select
+                                className="flex-1 sm:flex-initial py-3 px-4 border border-primary-border rounded-xl bg-primary-bg-cards text-primary-text text-sm cursor-pointer min-w-30 focus:outline-none focus:border-primary-accent"
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                            >
+                                <option value="">Alle Statussen</option>
+                                <option value="open">Open</option>
+                                <option value="in_behandeling">In behandeling</option>
+                                <option value="opgelost">Afgehandeld</option>
+                                <option value="gesloten">Gesloten</option>
+                            </select>
+                            <select
+                                className="flex-1 sm:flex-initial py-3 px-4 border border-primary-border rounded-xl bg-primary-bg-cards text-primary-text text-sm cursor-pointer min-w-30 focus:outline-none focus:border-primary-accent"
+                                value={categoryFilter}
+                                onChange={(e) => setCategoryFilter(e.target.value)}
+                            >
+                                <option value="">Alle Categorieën</option>
+                                {categories.map(c => (
+                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </section>
 
-                <div className="dashboard-workspace">
+                    <div className="flex flex-col lg:flex-row gap-6 flex-1 items-start w-full">
 
-                    {/* Map Component */}
-                    <div className="map-panel rounded-2xl overflow-hidden shadow-sm relative z-0">
-                        <IncidentMap 
-                            issues={issues} 
-                            onSelectIssue={handleSelectIssue} 
-                        />
-                    </div>
+                        <div
+                            className="w-full lg:flex-7 h-87.5 sm:h-112.5 lg:h-150 rounded-2xl overflow-hidden border border-primary-border shadow-sm relative z-0 bg-primary-bg-cards">
+                            <IncidentMap
+                                issues={issues}
+                                onSelectIssue={handleSelectIssue}
+                            />
+                        </div>
 
-                    <aside className="incident-panel relative">
-                        <h3 className="queue-title">Incidentenwachtrij <span className="queue-count">({issues.length})</span></h3>
-                        <div className="incident-queue-list">
-                                <div className="grid gap-4">
+                        <aside
+                            className="w-full lg:flex-3 flex flex-col gap-4 items-start h-100 lg:h-150 relative bg-primary-bg-cards border border-primary-border rounded-2xl p-4 shadow-sm">
+                            <h3 className="text-base font-bold text-primary-text w-full text-left font-headline">
+                                Incidentenwachtrij <span
+                                className="text-secondary-text font-medium font-label">({issues.length})</span>
+                            </h3>
+                            <div className="flex flex-col gap-3 w-full flex-1 overflow-y-auto pr-1 custom-scrollbar">
+                                <div className="grid gap-3 w-full">
                                     {loading ? (
-                                        <p className="text-stone-500">Actuele meldingen laden...</p>
+                                        <p className="text-secondary-text text-sm font-body">Actuele meldingen
+                                            laden...</p>
                                     ) : issues.length === 0 ? (
-                                        <p className="text-stone-500">Geen meldingen gevonden.</p>
+                                        <p className="text-secondary-text text-sm font-body">Geen meldingen
+                                            gevonden.</p>
                                     ) : (
                                         issues.map((issue) => {
                                             let statusText = issue.status;
@@ -295,8 +326,11 @@ function CommandCenter() {
                                             if (issue.status === 'opgelost') statusText = 'Afgehandeld';
                                             if (issue.status === 'gesloten') statusText = 'Gesloten';
 
-                                            const timeStr = issue.created_at ? new Date(issue.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
-                                            
+                                            const timeStr = issue.created_at ? new Date(issue.created_at).toLocaleTimeString([], {
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            }) : '';
+
                                             return (
                                                 <ReportCard
                                                     key={issue.id}
@@ -314,247 +348,285 @@ function CommandCenter() {
                                         })
                                     )}
                                 </div>
-                        </div>
-                    </aside>
-
-                </div>
-
-                {selectedIssue && (
-                    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                        <div className="bg-white rounded-2xl max-w-2xl w-full shadow-xl flex flex-col" style={{ maxHeight: '90vh' }}>
-                            <div className="p-6 border-b border-stone-200">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div>
-                                        <h2 className="text-2xl font-bold text-stone-900">{selectedIssue.title}</h2>
-                                        <p className="text-stone-500 text-sm">{selectedIssue.address || selectedIssue.district?.name} • Gemeld door {selectedIssue.author?.display_name || "Anoniem"}</p>
-                                    </div>
-                                    <button onClick={() => setSelectedIssue(null)} className="text-stone-400 hover:text-stone-600">
-                                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                    </button>
-                                </div>
-                                <div className="flex gap-4">
-                                    <button 
-                                        onClick={() => setActiveTab('details')}
-                                        className={`font-semibold pb-2 border-b-2 transition-colors ${activeTab === 'details' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-stone-500 hover:text-stone-700'}`}
-                                    >
-                                        Details
-                                    </button>
-                                    <button 
-                                        onClick={() => setActiveTab('updates')}
-                                        className={`font-semibold pb-2 border-b-2 transition-colors ${activeTab === 'updates' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-stone-500 hover:text-stone-700'}`}
-                                    >
-                                        Updates ({officerUpdates.length})
-                                    </button>
-                                    <button 
-                                        onClick={() => setActiveTab('resolution')}
-                                        className={`font-semibold pb-2 border-b-2 transition-colors ${activeTab === 'resolution' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-stone-500 hover:text-stone-700'}`}
-                                    >
-                                        Resolutie
-                                    </button>
-                                </div>
                             </div>
-                            
-                            <div className="p-6 overflow-y-auto flex-1 bg-stone-50">
-                                {activeTab === 'details' && (
-                                    <div className="space-y-4">
-                                        <div>
-                                            <h4 className="font-bold text-stone-900 mb-1">Beschrijving</h4>
-                                            <p className="text-stone-700 whitespace-pre-line bg-white p-4 rounded-xl border border-stone-200">{selectedIssue.content}</p>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="bg-white p-4 rounded-xl border border-stone-200">
-                                                <span className="text-xs font-bold text-stone-400 uppercase">Status</span>
-                                                <p className="text-stone-900 font-semibold">{selectedIssue.status}</p>
-                                            </div>
-                                            <div className="bg-white p-4 rounded-xl border border-stone-200">
-                                                <span className="text-xs font-bold text-stone-400 uppercase">Categorie</span>
-                                                <p className="text-stone-900 font-semibold">{selectedIssue.category?.name || "Geen"}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
+                        </aside>
 
-                                {activeTab === 'updates' && (
-                                    <div className="space-y-6">
-                                        {officerUpdates.length > 0 ? (
-                                            <div className="space-y-4">
-                                                {officerUpdates.map(update => (
-                                                    <div key={update.id} className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
-                                                        <div className="flex justify-between items-center mb-2">
-                                                            <span className="font-bold text-stone-900">{update.officer?.username || "Handhaver"}</span>
-                                                            <span className="text-xs text-stone-500">{new Date(update.created_at).toLocaleString()}</span>
-                                                        </div>
-                                                        {update.title && <h5 className="font-bold text-stone-800 mb-1">{update.title}</h5>}
-                                                        <p className="text-stone-700">{update.content}</p>
-                                                        {update.attachments && update.attachments.length > 0 && (
-                                                            <div className="mt-3 flex gap-2 flex-wrap">
-                                                                {update.attachments.map(att => (
-                                                                    <div key={att.id} className="text-xs bg-stone-100 text-stone-600 px-2 py-1 rounded border border-stone-200 flex items-center gap-1">
-                                                                        📎 {att.original_name}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <p className="text-stone-500 text-center py-4">Nog geen updates geplaatst.</p>
-                                        )}
-
-                                        {selectedIssue.assigned_officer_id === officer?.id && selectedIssue.status === 'in_behandeling' && (
-                                            <form onSubmit={handleSubmitUpdate} className="bg-white p-4 rounded-xl border border-emerald-100 shadow-sm mt-6">
-                                                <h4 className="font-bold text-stone-900 mb-3">Nieuwe Update Plaatsen</h4>
-                                                <input 
-                                                    type="text" 
-                                                    className="w-full border border-stone-200 rounded-lg p-3 text-sm mb-3 focus:outline-none focus:border-emerald-500 font-semibold text-[var(--text-dark)]"
-                                                    placeholder="Titel (bijv: Voortgang...)"
-                                                    value={updateTitle}
-                                                    onChange={e => setUpdateTitle(e.target.value)}
-                                                    required
-                                                />
-                                                <textarea 
-                                                    className="w-full border border-stone-200 rounded-lg p-3 text-sm mb-3 focus:outline-none focus:border-emerald-500 text-[var(--text-dark)]"
-                                                    rows="3"
-                                                    placeholder="Beschrijf de voortgang..."
-                                                    value={updateText}
-                                                    onChange={e => setUpdateText(e.target.value)}
-                                                    required
-                                                ></textarea>
-                                                <div className="flex justify-between items-center">
-                                                    <input 
-                                                        type="file" 
-                                                        multiple 
-                                                        className="text-sm text-stone-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-stone-100 file:text-stone-700 hover:file:bg-stone-200 cursor-pointer"
-                                                        onChange={e => setUpdateFiles(e.target.files)}
-                                                    />
-                                                    <button 
-                                                        type="submit" 
-                                                        disabled={isSubmitting}
-                                                        className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200 font-bold py-2 px-4 rounded-lg transition-colors text-sm"
-                                                    >
-                                                        {isSubmitting ? "Bezig..." : "Update Toevoegen"}
-                                                    </button>
-                                                </div>
-                                            </form>
-                                        )}
-                                    </div>
-                                )}
-
-                                {activeTab === 'resolution' && (
-                                    <div className="space-y-6">
-                                        {officerResolution ? (
-                                            <div className="bg-white p-5 rounded-xl border border-emerald-200 shadow-sm">
-                                                <div className="flex justify-between items-center mb-4">
-                                                    <h3 className="font-bold text-lg text-emerald-900">{officerResolution.title}</h3>
-                                                    <span className="text-xs text-stone-500">{new Date(officerResolution.created_at).toLocaleString()}</span>
-                                                </div>
-                                                <p className="text-stone-700 whitespace-pre-line">{officerResolution.content}</p>
-                                                {officerResolution.attachments && officerResolution.attachments.length > 0 && (
-                                                    <div className="mt-4 pt-4 border-t border-stone-100 flex gap-2 flex-wrap">
-                                                        {officerResolution.attachments.map(att => (
-                                                            <div key={att.id} className="text-sm bg-stone-100 text-stone-700 px-3 py-1.5 rounded-lg border border-stone-200 flex items-center gap-2">
-                                                                📎 {att.original_name}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ) : selectedIssue.assigned_officer_id === officer?.id && selectedIssue.status === 'in_behandeling' ? (
-                                            <form onSubmit={handleSubmitResolution} className="bg-white p-5 rounded-xl border border-stone-200 shadow-sm">
-                                                <p className="text-sm text-stone-500 mb-4">Je kunt de resolutie slechts één keer indienen. Zorg dat het rapport compleet is.</p>
-                                                <input 
-                                                    type="text" 
-                                                    className="w-full border border-stone-200 rounded-lg p-3 text-sm mb-3 focus:outline-none focus:border-emerald-500 font-semibold text-[var(--text-dark)]"
-                                                    placeholder="Titel (bijv: Probleem Opgelost)"
-                                                    value={resolutionTitle}
-                                                    onChange={e => setResolutionTitle(e.target.value)}
-                                                    required
-                                                />
-                                                <textarea 
-                                                    className="w-full border border-stone-200 rounded-lg p-3 text-sm mb-3 focus:outline-none focus:border-emerald-500 text-[var(--text-dark)]"
-                                                    rows="5"
-                                                    placeholder="Uitgebreide resolutie of bevindingen..."
-                                                    value={resolutionText}
-                                                    onChange={e => setResolutionText(e.target.value)}
-                                                    required
-                                                ></textarea>
-                                                <div className="flex justify-between items-center mt-2">
-                                                    <input 
-                                                        type="file" 
-                                                        multiple 
-                                                        className="text-sm text-stone-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-stone-100 file:text-stone-700 hover:file:bg-stone-200 cursor-pointer"
-                                                        onChange={e => setResolutionFiles(e.target.files)}
-                                                    />
-                                                    <button 
-                                                        type="submit" 
-                                                        disabled={isSubmitting}
-                                                        className="bg-emerald-600 text-white hover:bg-emerald-700 font-bold py-2 px-6 rounded-lg transition-colors"
-                                                    >
-                                                        {isSubmitting ? "Bezig..." : "Resolutie Indienen"}
-                                                    </button>
-                                                </div>
-                                            </form>
-                                        ) : (
-                                            <div className="bg-white p-8 rounded-xl border border-stone-200 text-center text-stone-500">
-                                                <svg className="w-12 h-12 mx-auto mb-3 text-stone-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                </svg>
-                                                <p>Nog geen resolutie beschikbaar.</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                            
-                            <div className="p-4 border-t border-stone-200 bg-white rounded-b-2xl flex justify-end gap-3 items-center">
-                                {selectedIssue.assigned_officer_id !== officer?.id ? (
-                                    <button 
-                                        onClick={() => handleAssignSelf(selectedIssue.id)}
-                                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-6 rounded-lg transition-colors"
-                                    >
-                                        Zelf toewijzen
-                                    </button>
-                                ) : (
-                                    <>
-                                        <button 
-                                            onClick={() => handleUnassignSelf(selectedIssue.id)}
-                                            className="text-stone-500 hover:text-stone-800 font-semibold py-2 px-4 transition-colors"
-                                        >
-                                            Taak teruggeven
-                                        </button>
-                                        {selectedIssue.status === 'in_behandeling' && (
-                                            <button 
-                                                onClick={() => handleChangeStatus(selectedIssue.id, 'opgelost')}
-                                                disabled={!officerResolution}
-                                                title={!officerResolution ? "Voeg eerst een resolutie toe" : ""}
-                                                className={`font-bold py-2 px-6 rounded-lg transition-colors ${!officerResolution ? 'bg-stone-300 text-stone-500 cursor-not-allowed' : 'bg-stone-800 hover:bg-stone-900 text-white'}`}
-                                            >
-                                                Markeer als Opgelost
-                                            </button>
-                                        )}
-                                        {selectedIssue.status === 'opgelost' && (
-                                            <button 
-                                                onClick={() => handleChangeStatus(selectedIssue.id, 'gesloten')}
-                                                className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg transition-colors"
-                                            >
-                                                Markeer als Gesloten
-                                            </button>
-                                        )}
-                                        {selectedIssue.status === 'gesloten' && (
-                                            <span className="text-stone-400 font-bold px-4">Issue is gesloten</span>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-                        </div>
                     </div>
-                )}
-            </main>
-        </div>
+
+                    {selectedIssue && (
+                        <div
+                            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm">
+                            <div
+                                className="bg-primary-bg-cards border border-primary-border rounded-t-2xl sm:rounded-2xl max-w-2xl w-full shadow-xl flex flex-col overflow-hidden h-[85vh] sm:h-auto"
+                                style={{maxHeight: '90vh'}}>
+                                <div className="p-5 md:p-6 border-b border-primary-border">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div>
+                                            <h2 className="text-xl md:text-2xl font-bold font-headline text-primary-text wrap-break-word line-clamp-2">{selectedIssue.title}</h2>
+                                            <p className="text-secondary-text text-xs md:text-sm mt-1">{selectedIssue.address || selectedIssue.district?.name} •
+                                                Gemeld door {selectedIssue.author?.display_name || "Anoniem"}</p>
+                                        </div>
+                                        <button onClick={() => setSelectedIssue(null)}
+                                                className="text-secondary-text hover:text-primary-text p-1.5 rounded-lg transition-colors shrink-0 ml-2">
+                                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24"
+                                                 stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                                      d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <div
+                                        className="flex gap-4 overflow-x-auto no-scrollbar border-b border-transparent">
+                                        <button
+                                            onClick={() => setActiveTab('details')}
+                                            className={`font-semibold pb-2 border-b-2 text-sm transition-colors whitespace-nowrap ${activeTab === 'details' ? 'border-primary-accent text-primary-text' : 'border-transparent text-secondary-text hover:text-primary-text'}`}
+                                        >
+                                            Details
+                                        </button>
+                                        <button
+                                            onClick={() => setActiveTab('updates')}
+                                            className={`font-semibold pb-2 border-b-2 text-sm transition-colors whitespace-nowrap ${activeTab === 'updates' ? 'border-primary-accent text-primary-text' : 'border-transparent text-secondary-text hover:text-primary-text'}`}
+                                        >
+                                            Updates ({officerUpdates.length})
+                                        </button>
+                                        <button
+                                            onClick={() => setActiveTab('resolution')}
+                                            className={`font-semibold pb-2 border-b-2 text-sm transition-colors whitespace-nowrap ${activeTab === 'resolution' ? 'border-primary-accent text-primary-text' : 'border-transparent text-secondary-text hover:text-primary-text'}`}
+                                        >
+                                            Resolutie
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="p-5 md:p-6 overflow-y-auto flex-1 bg-primary-bg custom-scrollbar">
+                                    {activeTab === 'details' && (
+                                        <div className="space-y-4">
+                                            <div>
+                                                <h4 className="font-bold font-headline text-primary-text mb-1.5 uppercase text-xs tracking-wider">Beschrijving</h4>
+                                                <p className="text-primary-text font-body text-sm whitespace-pre-line bg-primary-bg-cards p-4 rounded-xl border border-primary-border shadow-inner">{selectedIssue.content}</p>
+                                            </div>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                <div
+                                                    className="bg-primary-bg-cards p-4 rounded-xl border border-primary-border">
+                                                    <span
+                                                        className="text-xs font-bold text-secondary-text uppercase tracking-wide">Status</span>
+                                                    <p className="text-primary-text font-semibold mt-0.5 text-sm">{selectedIssue.status}</p>
+                                                </div>
+                                                <div
+                                                    className="bg-primary-bg-cards p-4 rounded-xl border border-primary-border">
+                                                    <span
+                                                        className="text-xs font-bold text-secondary-text uppercase tracking-wide">Categorie</span>
+                                                    <p className="text-primary-text font-semibold mt-0.5 text-sm">{selectedIssue.category?.name || "Geen"}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {activeTab === 'updates' && (
+                                        <div className="space-y-6">
+                                            {officerUpdates.length > 0 ? (
+                                                <div className="space-y-4">
+                                                    {officerUpdates.map(update => (
+                                                        <div key={update.id}
+                                                             className="bg-primary-bg-cards p-4 rounded-xl border border-primary-border shadow-sm">
+                                                            <div
+                                                                className="flex justify-between items-center mb-2 text-xs gap-2">
+                                                                <span
+                                                                    className="font-bold text-primary-text truncate">{update.officer?.username || "Handhaver"}</span>
+                                                                <span
+                                                                    className="text-secondary-text shrink-0">{new Date(update.created_at).toLocaleString()}</span>
+                                                            </div>
+                                                            {update.title &&
+                                                                <h5 className="font-bold font-headline text-primary-text mb-1 text-sm">{update.title}</h5>}
+                                                            <p className="text-primary-text font-body text-sm">{update.content}</p>
+                                                            {update.attachments && update.attachments.length > 0 && (
+                                                                <div className="mt-3 flex gap-2 flex-wrap">
+                                                                    {update.attachments.map(att => (
+                                                                        <div key={att.id}
+                                                                             className="text-xs bg-primary-bg text-secondary-text px-2 py-1 rounded border border-primary-border flex items-center gap-1 max-w-full truncate">
+                                                                            📎 <span
+                                                                            className="truncate">{att.original_name}</span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <p className="text-secondary-text text-center py-4 font-body text-sm">Nog
+                                                    geen updates geplaatst.</p>
+                                            )}
+
+                                            {selectedIssue.assigned_officer_id === officer?.id && selectedIssue.status === 'in_behandeling' && (
+                                                <form onSubmit={handleSubmitUpdate}
+                                                      className="bg-primary-bg-cards p-4 rounded-xl border border-primary-border shadow-sm mt-6">
+                                                    <h4 className="font-bold font-headline text-primary-text mb-3 uppercase text-xs tracking-wider">Nieuwe
+                                                        Update Plaatsen</h4>
+                                                    <input
+                                                        type="text"
+                                                        className="w-full bg-primary-bg border border-primary-border rounded-lg p-3 text-sm mb-3 focus:outline-none focus:border-primary-accent font-semibold text-primary-text"
+                                                        placeholder="Titel (bijv: Voortgang...)"
+                                                        value={updateTitle}
+                                                        onChange={e => setUpdateTitle(e.target.value)}
+                                                        required
+                                                    />
+                                                    <textarea
+                                                        className="w-full bg-primary-bg border border-primary-border rounded-lg p-3 text-sm mb-3 focus:outline-none focus:border-primary-accent text-primary-text font-body"
+                                                        rows="3"
+                                                        placeholder="Beschrijf de voortgang..."
+                                                        value={updateText}
+                                                        onChange={e => setUpdateText(e.target.value)}
+                                                        required
+                                                    ></textarea>
+                                                    <div
+                                                        className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                                                        <input
+                                                            type="file"
+                                                            multiple
+                                                            className="text-xs text-secondary-text file:mr-4 file:py-2 file:px-4 file:rounded-full file:border file:border-primary-border file:text-xs file:font-semibold file:bg-primary-bg file:text-primary-text hover:file:bg-primary-border cursor-pointer transition-colors max-w-full"
+                                                            onChange={e => setUpdateFiles(e.target.files)}
+                                                        />
+                                                        <button
+                                                            type="submit"
+                                                            disabled={isSubmitting}
+                                                            className="bg-secondary-accent text-white hover:opacity-90 font-bold py-2.5 px-4 rounded-lg transition-colors text-sm w-full sm:w-auto disabled:opacity-50"
+                                                        >
+                                                            {isSubmitting ? "Bezig..." : "Update Toevoegen"}
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {activeTab === 'resolution' && (
+                                        <div className="space-y-6">
+                                            {officerResolution ? (
+                                                <div
+                                                    className="bg-primary-bg-cards p-4 md:p-5 rounded-xl border border-primary-border shadow-sm">
+                                                    <div
+                                                        className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 border-b border-primary-border pb-2 gap-1">
+                                                        <h3 className="font-bold font-headline text-base text-primary-text break-words">{officerResolution.title}</h3>
+                                                        <span
+                                                            className="text-xs text-secondary-text shrink-0">{new Date(officerResolution.created_at).toLocaleString()}</span>
+                                                    </div>
+                                                    <p className="text-primary-text font-body text-sm whitespace-pre-line">{officerResolution.content}</p>
+                                                    {officerResolution.attachments && officerResolution.attachments.length > 0 && (
+                                                        <div
+                                                            className="mt-4 pt-4 border-t border-primary-border flex gap-2 flex-wrap">
+                                                            {officerResolution.attachments.map(att => (
+                                                                <div key={att.id}
+                                                                     className="text-sm bg-primary-bg text-primary-text px-3 py-1.5 rounded-lg border border-primary-border flex items-center gap-2 max-w-full truncate">
+                                                                    📎 <span
+                                                                    className="truncate">{att.original_name}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : selectedIssue.assigned_officer_id === officer?.id && selectedIssue.status === 'in_behandeling' ? (
+                                                <form onSubmit={handleSubmitResolution}
+                                                      className="bg-primary-bg-cards p-4 md:p-5 rounded-xl border border-primary-border shadow-sm">
+                                                    <p className="text-xs text-secondary-text mb-4 font-body">Je kunt de
+                                                        resolutie slechts één keer indienen. Zorg dat het rapport
+                                                        compleet is.</p>
+                                                    <input
+                                                        type="text"
+                                                        className="w-full bg-primary-bg border border-primary-border rounded-lg p-3 text-sm mb-3 focus:outline-none focus:border-primary-accent font-semibold text-primary-text"
+                                                        placeholder="Titel (bijv: Probleem Opgelost)"
+                                                        value={resolutionTitle}
+                                                        onChange={e => setResolutionTitle(e.target.value)}
+                                                        required
+                                                    />
+                                                    <textarea
+                                                        className="w-full bg-primary-bg border border-primary-border rounded-lg p-3 text-sm mb-3 focus:outline-none focus:border-primary-accent text-primary-text font-body"
+                                                        rows="5"
+                                                        placeholder="Uitgebreide resolutie of bevindingen..."
+                                                        value={resolutionText}
+                                                        onChange={e => setResolutionText(e.target.value)}
+                                                        required
+                                                    ></textarea>
+                                                    <div
+                                                        className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 mt-2">
+                                                        <input
+                                                            type="file"
+                                                            multiple
+                                                            className="text-xs text-secondary-text file:mr-4 file:py-2 file:px-4 file:rounded-full file:border file:border-primary-border file:text-xs file:font-semibold file:bg-primary-bg file:text-primary-text hover:file:bg-primary-border cursor-pointer transition-colors max-w-full"
+                                                            onChange={e => setResolutionFiles(e.target.files)}
+                                                        />
+                                                        <button
+                                                            type="submit"
+                                                            disabled={isSubmitting}
+                                                            className="bg-secondary-accent text-white hover:opacity-90 font-bold py-2.5 px-6 rounded-lg transition-colors w-full sm:w-auto disabled:opacity-50"
+                                                        >
+                                                            {isSubmitting ? "Bezig..." : "Resolutie Indienen"}
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                            ) : (
+                                                <div
+                                                    className="bg-primary-bg-cards p-8 rounded-xl border border-primary-border text-center text-secondary-text flex flex-col items-center justify-center gap-2">
+                                                    <svg className="w-12 h-12 text-secondary-text opacity-50"
+                                                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round"
+                                                              strokeWidth={1}
+                                                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                                    </svg>
+                                                    <p className="font-body text-sm">Nog geen resolutie beschikbaar.</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div
+                                    className="p-4 border-t border-primary-border bg-primary-bg-cards flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 items-stretch sm:items-center pb-8 sm:pb-4">
+                                    {selectedIssue.assigned_officer_id !== officer?.id ? (
+                                        <button
+                                            onClick={() => handleAssignSelf(selectedIssue.id)}
+                                            className="bg-primary-accent text-white font-bold py-2.5 px-6 rounded-lg hover:opacity-90 transition-colors text-sm text-center"
+                                        >
+                                            Zelf toewijzen
+                                        </button>
+                                    ) : (
+                                        <>
+                                            <button
+                                                onClick={() => handleUnassignSelf(selectedIssue.id)}
+                                                className="text-secondary-text hover:text-primary-text font-semibold py-2.5 px-4 transition-colors text-sm text-center order-3 sm:order-1"
+                                            >
+                                                Taak teruggeven
+                                            </button>
+                                            {selectedIssue.status === 'in_behandeling' && (
+                                                <button
+                                                    onClick={() => handleChangeStatus(selectedIssue.id, 'opgelost')}
+                                                    disabled={!officerResolution}
+                                                    title={!officerResolution ? "Voeg eerst een resolutie toe" : ""}
+                                                    className={`font-bold py-2.5 px-6 rounded-lg transition-colors text-sm text-center order-2 ${!officerResolution ? 'bg-primary-border text-secondary-text opacity-40 cursor-not-allowed' : 'bg-secondary-accent text-white hover:opacity-90'}`}
+                                                >
+                                                    Markeer als Opgelost
+                                                </button>
+                                            )}
+                                            {selectedIssue.status === 'opgelost' && (
+                                                <button
+                                                    onClick={() => handleChangeStatus(selectedIssue.id, 'gesloten')}
+                                                    className="bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 px-6 rounded-lg transition-colors text-sm text-center order-2"
+                                                >
+                                                    Markeer als Gesloten
+                                                </button>
+                                            )}
+                                            {selectedIssue.status === 'gesloten' && (
+                                                <span
+                                                    className="text-secondary-text font-bold px-4 text-sm text-center py-2 order-2">Issue is gesloten</span>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </main>
+            </div>
+        </>
     );
 }
-
-export default CommandCenter;

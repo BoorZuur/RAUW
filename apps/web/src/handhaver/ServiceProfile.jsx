@@ -56,67 +56,82 @@ export default function ServiceProfile() {
     const recentActivity = [...myIssues].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at)).slice(0, 5);
 
     return (
-        <div className="flex min-h-screen bg-primary-bg">
+        <div className="flex flex-col md:flex-row min-h-screen bg-primary-bg font-label antialiased text-primary-text">
             <HM_Nav/>
-            <main className="flex-1 p-8">
+
+            <main className="flex-1 p-4 sm:p-6 md:p-8 w-full max-w-7xl mx-auto flex flex-col gap-6 md:gap-8">
 
                 <header
-                    className="bg-primary-bg-cards border border-primary-border p-6 rounded-2xl mb-8 flex items-center gap-6">
-                    <div className="p-4 bg-primary-bg rounded-xl border border-primary-border text-primary-text">
-                        <ShieldUser />
+                    className="bg-primary-bg-cards border border-primary-border p-5 sm:p-6 rounded-2xl flex flex-col sm:flex-row items-center text-center sm:text-left gap-4 sm:gap-6 shadow-sm">
+                    <div
+                        className="p-4 bg-primary-bg rounded-xl border border-primary-border text-primary-text shrink-0">
+                        <ShieldUser className="w-6 h-6"/>
                     </div>
-                    <div>
-                        <h2 className="text-2xl font-bold text-primary-text">{officer?.username || "Laden..."}</h2>
-                        <p className="text-secondary-text">{officer?.email || ""}</p>
+                    <div className="min-w-0 w-full">
+                        <h2 className="text-xl sm:text-2xl font-bold font-headline text-primary-text truncate">
+                            {officer?.username || "Laden..."}
+                        </h2>
+                        <p className="text-sm text-secondary-text truncate">
+                            {officer?.email || ""}
+                        </p>
                         <span
-                            className="inline-block mt-2 px-3 py-1 bg-primary-accent/10 text-primary-accent text-xs font-bold rounded-lg">Buitengewoon Opsporingsambtenaar</span>
+                            className="inline-block mt-2 px-3 py-1 bg-primary-accent/10 text-primary-accent text-xs font-bold rounded-lg uppercase tracking-wider">
+                        Buitengewoon Opsporingsambtenaar
+                    </span>
                     </div>
                 </header>
 
-                <section className="mb-8">
-                    <h3 className="text-lg font-bold text-primary-text mb-4">Dienststatistieken</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <section>
+                    <h3 className="text-base sm:text-lg font-bold font-headline text-primary-text mb-4">Dienststatistieken</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         <ShiftStatCard titel="Totaal Toegewezen" aantal={totalAssigned} iconBgColor="bg-primary-bg">
-                            <Eye className="w-6 h-6" />
+                            <Eye className="w-6 h-6"/>
                         </ShiftStatCard>
                         <ShiftStatCard titel="Updates Geplaatst" aantal={0} iconBgColor="bg-primary-bg">
-                            <MessageCircleQuestionMark className="w-6 h-6" />
+                            <MessageCircleQuestionMark className="w-6 h-6"/>
                         </ShiftStatCard>
                         <ShiftStatCard titel="Actieve Surveillances" aantal={0} iconBgColor="bg-primary-bg">
-                            <ShieldAlert className="w-6 h-6" />
+                            <ShieldAlert className="w-6 h-6"/>
                         </ShiftStatCard>
                         <ShiftStatCard titel="Afgehandeld" aantal={resolvedCount} iconBgColor="bg-primary-bg">
-                            <ChartColumn className="w-6 h-6" />
+                            <ChartColumn className="w-6 h-6"/>
                         </ShiftStatCard>
                         <ShiftStatCard titel="In Behandeling" aantal={inProgressCount} iconBgColor="bg-primary-bg">
-                            <CircleCheck className="w-6 h-6" />
+                            <CircleCheck className="w-6 h-6"/>
                         </ShiftStatCard>
                         <ShiftStatCard titel="Deze Maand" aantal={thisMonthCount} iconBgColor="bg-primary-bg">
-                            <Calendar className="w-6 h-6" />
+                            <Calendar className="w-6 h-6"/>
                         </ShiftStatCard>
                     </div>
                 </section>
 
-                <section>
-                    <h3 className="text-lg font-bold text-primary-text mb-4">Recente Activiteit</h3>
-                    <div className="bg-primary-bg-cards border border-primary-border rounded-2xl p-6">
+                <section className="flex-1">
+                    <h3 className="text-base sm:text-lg font-bold font-headline text-primary-text mb-4">Recente
+                        Activiteit</h3>
+                    <div className="bg-primary-bg-cards border border-primary-border rounded-2xl p-5 sm:p-6 shadow-sm">
                         {loading ? (
-                            <p className="text-secondary-text text-sm">Laden...</p>
+                            <p className="text-secondary-text text-sm font-body">Laden...</p>
                         ) : recentActivity.length === 0 ? (
-                            <p className="text-secondary-text text-sm">Nog geen toegewezen incidenten</p>
+                            <p className="text-secondary-text text-sm font-body">Nog geen toegewezen incidenten</p>
                         ) : (
                             <ul className="space-y-4">
                                 {recentActivity.map(issue => (
                                     <li key={issue.id}
                                         className="border-b border-primary-border pb-4 last:border-0 last:pb-0">
-                                        <div className="flex justify-between items-center mb-1">
+                                        <div className="flex justify-between items-start gap-4 mb-1">
                                             <strong
-                                                className="text-primary-text">{issue.title || 'Onbekend incident'}</strong>
-                                            <span className="text-xs text-secondary-text">
+                                                className="text-sm sm:text-base font-semibold text-primary-text break-words min-w-0 flex-1">
+                                                {issue.title || 'Onbekend incident'}
+                                            </strong>
+                                            <span
+                                                className="text-xs text-secondary-text shrink-0 whitespace-nowrap pt-0.5">
                                             {issue.updated_at ? new Date(issue.updated_at).toLocaleDateString() : ''}
                                         </span>
                                         </div>
-                                        <p className="text-sm text-secondary-text capitalize">Status: {issue.status.replace('_', ' ')}</p>
+                                        <p className="text-xs sm:text-sm text-secondary-text capitalize font-body">
+                                            Status: <span
+                                            className="font-medium text-primary-text">{issue.status.replace('_', ' ')}</span>
+                                        </p>
                                     </li>
                                 ))}
                             </ul>

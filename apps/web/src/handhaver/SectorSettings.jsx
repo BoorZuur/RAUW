@@ -23,29 +23,29 @@ export default function SectorSettings() {
         const fetchData = async () => {
             try {
                 const token = localStorage.getItem('auth_token');
-                
+
                 // Fetch all hubs
                 const hubsRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/hubs`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: {'Authorization': `Bearer ${token}`}
                 });
                 const hubsData = hubsRes.data.data || hubsRes.data;
                 setAllHubs(Array.isArray(hubsData) ? hubsData : []);
 
                 // Fetch all districts
                 const distRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/districts`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: {'Authorization': `Bearer ${token}`}
                 });
                 const districtsData = distRes.data.data || distRes.data;
                 setAllDistricts(Array.isArray(districtsData) ? districtsData : []);
 
                 // Fetch my profile to get assigned districts
                 const meRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/auth/me`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: {'Authorization': `Bearer ${token}`}
                 });
                 const profile = meRes.data?.profile || meRes.data;
                 const myDistricts = profile.districts || [];
                 const officerHubId = profile.hub_id;
-                
+
                 setSelectedHubId(officerHubId);
                 setInitialHubId(officerHubId);
                 const districtIds = myDistricts.map(d => d.id);
@@ -82,7 +82,7 @@ export default function SectorSettings() {
     };
 
     const toggleDistrict = (id) => {
-        setSelectedDistricts(prev => 
+        setSelectedDistricts(prev =>
             prev.includes(id) ? prev.filter(d => d !== id) : [...prev, id]
         );
     };
@@ -92,12 +92,12 @@ export default function SectorSettings() {
         setMessage("");
         try {
             const token = localStorage.getItem('auth_token');
-            
+
             if (selectedHubId !== initialHubId) {
                 await axios.patch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/me/hub`, {
                     hub_id: selectedHubId
                 }, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: {'Authorization': `Bearer ${token}`}
                 });
                 setInitialHubId(selectedHubId);
             }
@@ -105,7 +105,7 @@ export default function SectorSettings() {
             await axios.patch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/me/districts`, {
                 district_ids: selectedDistricts
             }, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: {'Authorization': `Bearer ${token}`}
             });
             setInitialDistricts(selectedDistricts);
             setMessage("Instellingen succesvol opgeslagen!");
@@ -118,35 +118,49 @@ export default function SectorSettings() {
         }
     };
 
-    const isDirty = 
-        selectedHubId !== initialHubId || 
+    const isDirty =
+        selectedHubId !== initialHubId ||
         [...selectedDistricts].sort().join(',') !== [...initialDistricts].sort().join(',');
 
     const blocker = useBlocker(
-        ({ currentLocation, nextLocation }) =>
+        ({currentLocation, nextLocation}) =>
             isDirty && currentLocation.pathname !== nextLocation.pathname
     );
 
     return (
         <>
-            <div className="flex min-h-screen bg-primary-bg">
+            <div
+                className="flex flex-col md:flex-row min-h-screen bg-primary-bg font-label antialiased text-primary-text">
                 <HM_Nav></HM_Nav>
-                <main className="flex-1 p-8">
-                    <header className="flex justify-between items-center mb-8">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-primary-bg-cards rounded-xl border border-primary-border text-primary-text">
-                                <Settings className="w-6 h-6" />
+
+                <main className="flex-1 p-4 sm:p-6 md:p-8 w-full max-w-7xl mx-auto flex flex-col gap-6">
+
+                    <header
+                        className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-2 border-b border-primary-border/50 sm:border-none">
+                        <div className="flex items-center gap-4 w-full sm:w-auto">
+                            <div
+                                className="p-3 bg-primary-bg-cards rounded-xl border border-primary-border text-primary-text shrink-0">
+                                <Settings className="w-6 h-6"/>
                             </div>
-                            <div>
-                                <h1 className="text-2xl font-bold text-primary-text">Sector Instellingen</h1>
-                                <p className="text-secondary-text">Selecteer jouw zorgwijken in Rotterdam</p>
-                                {message && <p className="text-sm mt-1 text-emerald-600 font-medium">{message}</p>}
+                            <div className="min-w-0">
+                                <h1 className="text-xl sm:text-2xl font-bold font-headline text-primary-text truncate">Sector
+                                    Instellingen</h1>
+                                <p className="text-secondary-text text-sm truncate">Selecteer jouw zorgwijken in
+                                    Rotterdam</p>
+                                {message &&
+                                    <p className="text-xs sm:text-sm mt-1 text-emerald-600 font-medium animate-fade-in">{message}</p>}
                             </div>
                         </div>
-                        <button className="flex items-center gap-2 px-6 py-2 bg-primary-accent text-white rounded-xl font-bold relative" onClick={handleSave} disabled={saving}>
+
+                        <button
+                            className="flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 sm:py-2 bg-primary-accent text-white rounded-xl font-black uppercase tracking-wider text-sm relative transition-all shadow-md active:scale-[0.98] cursor-pointer"
+                            onClick={handleSave}
+                            disabled={saving}
+                        >
                             {isDirty && !saving && (
                                 <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                <span
+                                    className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                                 <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
                             </span>
                             )}
@@ -154,20 +168,22 @@ export default function SectorSettings() {
                         </button>
                     </header>
 
-                    <div className="bg-primary-bg-cards border border-primary-border p-4 rounded-xl mb-6 flex items-center gap-3">
-                        {/* Icoon vervangen door de Pin component */}
-                        <Pin className="w-5 h-5 text-primary-text" />
-
-                        <p className="text-primary-text">
-                            <strong id="selected-count">{selectedDistricts.length}</strong> van {allDistricts.length || 74} Rotterdamse wijken geselecteerd
+                    <div
+                        className="bg-primary-bg-cards border border-primary-border p-4 rounded-xl flex items-center gap-3 shadow-sm">
+                        <Pin className="w-5 h-5 text-primary-text shrink-0"/>
+                        <p className="text-primary-text text-sm sm:text-base">
+                            <strong id="selected-count" className="font-bold">{selectedDistricts.length}</strong>
+                            van {allDistricts.length || 74} Rotterdamse wijken geselecteerd
                         </p>
                     </div>
 
-                    <section className="bg-primary-bg-cards border border-primary-border p-6 rounded-2xl mb-6">
-                        <h2 className="font-bold text-primary-text mb-2">Jouw Hub</h2>
-                        <p className="text-secondary-text text-sm mb-3">Kies de hoofdlocatie van waaruit je werkt.</p>
+                    <section
+                        className="bg-primary-bg-cards border border-primary-border p-5 sm:p-6 rounded-2xl shadow-sm">
+                        <h2 className="font-bold font-headline text-primary-text mb-1">Jouw Hub</h2>
+                        <p className="text-secondary-text text-xs sm:text-sm mb-3">Kies de hoofdlocatie van waaruit je
+                            werkt.</p>
                         <select
-                            className="w-full border border-primary-border rounded-lg p-3 text-primary-text bg-primary-bg focus:outline-none focus:border-primary-accent"
+                            className="w-full border border-primary-border rounded-lg p-3 text-sm text-primary-text bg-primary-bg focus:outline-none focus:border-primary-accent cursor-pointer appearance-none"
                             value={selectedHubId || ''}
                             onChange={handleHubChange}
                         >
@@ -178,20 +194,26 @@ export default function SectorSettings() {
                         </select>
                     </section>
 
-                    <section className="bg-primary-bg-cards border border-primary-border p-6 rounded-2xl">
-                        <h2 className="font-bold text-primary-text mb-2">Alle Wijken Rotterdam</h2>
-                        <p className="text-secondary-text text-sm mb-4">Klik op een wijk om deze toe te voegen of te verwijderen</p>
+                    <section
+                        className="bg-primary-bg-cards border border-primary-border p-5 sm:p-6 rounded-2xl shadow-sm flex-1">
+                        <h2 className="font-bold font-headline text-primary-text mb-1">Alle Wijken Rotterdam</h2>
+                        <p className="text-secondary-text text-xs sm:text-sm mb-4">Klik op een wijk om deze toe te
+                            voegen of te verwijderen</p>
 
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                             {loading ? (
-                                <p className="text-primary-text">Gegevens laden...</p>
+                                <p className="text-secondary-text text-sm font-body">Gegevens laden...</p>
                             ) : (
                                 allDistricts
                                     .filter(d => selectedHubId ? d.hub_id === selectedHubId : true)
                                     .map(district => (
                                         <button
                                             key={district.id}
-                                            className={`p-3 rounded-lg border text-sm font-semibold transition-all ${selectedDistricts.includes(district.id) ? 'bg-primary-accent text-white border-primary-accent' : 'bg-primary-bg border-primary-border text-primary-text'}`}
+                                            className={`p-3 rounded-lg border text-xs sm:text-sm font-semibold transition-all text-left sm:text-center break-words cursor-pointer ${
+                                                selectedDistricts.includes(district.id)
+                                                    ? 'bg-primary-accent text-white border-primary-accent shadow-sm'
+                                                    : 'bg-primary-bg border-primary-border text-primary-text hover:bg-primary-bg-cards'
+                                            }`}
                                             onClick={() => toggleDistrict(district.id)}
                                         >
                                             {district.name}
@@ -204,30 +226,45 @@ export default function SectorSettings() {
             </div>
 
             {showHubModal && (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50">
-                    <div className="bg-primary-bg-cards p-6 rounded-lg shadow-xl max-w-md w-full mx-4 border border-primary-border">
-                        <h2 className="text-lg font-bold text-primary-text mb-4">Hub Wijzigen</h2>
-                        <p className="text-secondary-text mb-6">
-                            Weet je zeker dat je van hub wilt wisselen? Dit beëindigt direct je huidige shift en wist je momenteel geselecteerde wijken.
+                <div
+                    className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+                    <div
+                        className="bg-primary-bg-cards p-6 rounded-t-2xl sm:rounded-2xl shadow-xl max-w-md w-full border border-primary-border pb-8 sm:pb-6">
+                        <h2 className="text-lg font-bold font-headline text-primary-text mb-2">Hub Wijzigen</h2>
+                        <p className="text-sm text-secondary-text mb-6">
+                            Weet je zeker dat je van hub wilt wisselen? Dit beëindigt direct je huidige shift en wist je
+                            momenteel geselecteerde wijken.
                         </p>
-                        <div className="flex justify-end gap-3">
-                            <button onClick={cancelHubChange} className="px-4 py-2 text-secondary-text font-medium hover:bg-primary-border rounded-lg">Annuleren</button>
-                            <button onClick={confirmHubChange} className="px-4 py-2 bg-primary-accent text-white font-medium rounded-lg">Bevestigen</button>
+                        <div className="flex flex-col sm:flex-row justify-end gap-2">
+                            <button onClick={cancelHubChange}
+                                    className="w-full sm:w-auto order-2 sm:order-1 px-4 py-2.5 text-sm text-secondary-text font-semibold hover:bg-primary-bg rounded-lg transition-colors">Annuleren
+                            </button>
+                            <button onClick={confirmHubChange}
+                                    className="w-full sm:w-auto order-1 sm:order-2 px-5 py-2.5 text-sm bg-primary-accent text-white font-bold rounded-lg transition-colors">Bevestigen
+                            </button>
                         </div>
                     </div>
                 </div>
             )}
 
             {blocker.state === "blocked" && (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50">
-                    <div className="bg-primary-bg-cards p-6 rounded-lg shadow-xl max-w-md w-full mx-4 border border-primary-border">
-                        <h2 className="text-lg font-bold text-primary-text mb-4">Onopgeslagen Wijzigingen</h2>
-                        <p className="text-secondary-text mb-6">
-                            Je hebt wijzigingen gemaakt die nog niet zijn opgeslagen. Weet je zeker dat je deze pagina wilt verlaten?
+                <div
+                    className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+                    <div
+                        className="bg-primary-bg-cards p-6 rounded-t-2xl sm:rounded-2xl shadow-xl max-w-md w-full border border-primary-border pb-8 sm:pb-6">
+                        <h2 className="text-lg font-bold font-headline text-primary-text mb-2">Onopgeslagen
+                            Wijzigingen</h2>
+                        <p className="text-sm text-secondary-text mb-6">
+                            Je hebt wijzigingen gemaakt die nog niet zijn opgeslagen. Weet je zeker dat je deze pagina
+                            wilt verlaten?
                         </p>
-                        <div className="flex justify-end gap-3">
-                            <button onClick={() => blocker.proceed()} className="px-4 py-2 text-red-500 font-medium hover:bg-primary-border rounded-lg">Verlaten</button>
-                            <button onClick={() => blocker.reset()} className="px-4 py-2 bg-primary-accent text-white font-medium rounded-lg">Blijven</button>
+                        <div className="flex flex-col sm:flex-row justify-end gap-2">
+                            <button onClick={() => blocker.proceed()}
+                                    className="w-full sm:w-auto order-2 sm:order-1 px-4 py-2.5 text-sm text-red-500 font-semibold hover:bg-red-500/10 rounded-lg transition-colors">Verlaten
+                            </button>
+                            <button onClick={() => blocker.reset()}
+                                    className="w-full sm:w-auto order-1 sm:order-2 px-5 py-2.5 text-sm bg-primary-accent text-white font-bold rounded-lg transition-colors">Blijven
+                            </button>
                         </div>
                     </div>
                 </div>

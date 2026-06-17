@@ -4,7 +4,7 @@ import InformationCard from "../components/InformationCard.jsx";
 import HM_Nav from "../components/HM_Nav.jsx";
 import { ChartColumn, ChartNoAxesCombined, Calendar} from 'lucide-react';
 
-function H_ReportsOverview() {
+export default function H_ReportsOverview() {
     const [issues, setIssues] = useState([]);
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState('month'); // 'month' or 'year'
@@ -95,53 +95,72 @@ function H_ReportsOverview() {
     }
 
     return (
-        <div className="flex min-h-screen bg-primary-bg">
+        <div className="flex flex-col md:flex-row min-h-screen bg-primary-bg font-label antialiased text-primary-text">
             <HM_Nav/>
-            <main className="flex-1 p-8">
-                <header className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+            <main className="flex-1 p-4 sm:p-6 md:p-8 w-full max-w-7xl mx-auto">
+
+                <header
+                    className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 md:mb-8 gap-4 pb-4 border-b border-primary-border/40 lg:border-none">
                     <div className="flex gap-4 items-center">
                         <div
-                            className="p-3 bg-primary-bg-cards rounded-xl text-2xl border border-primary-border shadow-sm">
-                            <ChartColumn />
+                            className="p-3 bg-primary-bg-cards rounded-xl text-2xl border border-primary-border shadow-sm shrink-0">
+                            <ChartColumn/>
                         </div>
                         <div>
-                            <h1 className="text-3xl font-bold text-primary-text">Statistiek Rapporten</h1>
-                            <p className="text-secondary-text">Overzicht van incidenten en prestaties</p>
+                            <h1 className="text-2xl sm:text-3xl font-bold font-headline text-primary-text">Statistiek
+                                Rapporten</h1>
+                            <p className="text-secondary-text text-xs sm:text-sm">Overzicht van incidenten en
+                                prestaties</p>
                         </div>
                     </div>
 
-                    <div className="flex bg-primary-bg-cards p-1 rounded-xl border border-primary-border">
+                    <div
+                        className="flex w-full lg:w-auto bg-primary-bg-cards p-1 rounded-xl border border-primary-border">
                         <button
-                            className={`px-6 py-2 rounded-lg font-bold transition-all ${viewMode === 'month' ? 'bg-primary-accent text-white' : 'text-primary-text'}`}
+                            className={`flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-lg text-sm sm:text-base font-bold transition-all cursor-pointer ${viewMode === 'month' ? 'bg-primary-accent text-white shadow-sm' : 'text-primary-text hover:bg-primary-bg/50'}`}
                             onClick={() => setViewMode('month')}
                         >
-                            <Calendar />Maand
+                            <Calendar className="w-4 h-4 shrink-0"/>
+                            <span>Maand</span>
                         </button>
                         <button
-                            className={`px-6 py-2 rounded-lg font-bold transition-all ${viewMode === 'year' ? 'bg-primary-accent text-white' : 'text-primary-text'}`}
+                            className={`flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-lg text-sm sm:text-base font-bold transition-all cursor-pointer ${viewMode === 'year' ? 'bg-primary-accent text-white shadow-sm' : 'text-primary-text hover:bg-primary-bg/50'}`}
                             onClick={() => setViewMode('year')}
                         >
-                            <ChartNoAxesCombined />Jaar
+                            <ChartNoAxesCombined className="w-4 h-4 shrink-0"/>
+                            <span>Jaar</span>
                         </button>
                     </div>
                 </header>
 
-                <div className="flex justify-center items-center gap-6 my-8">
+                <div className="flex justify-center items-center gap-4 sm:gap-6 my-6 md:my-8 select-none">
                     <button
-                        className="text-primary-text hover:text-primary-accent text-3xl font-bold px-4 transition-colors"
-                        onClick={handlePrev}>‹
+                        className="text-secondary-text hover:text-primary-accent text-4xl font-light h-10 w-10 flex items-center justify-center rounded-full hover:bg-primary-bg-cards transition-colors cursor-pointer"
+                        onClick={handlePrev}
+                    >
+                        ‹
                     </button>
-                    <span className="capitalize text-primary-text font-bold text-xl">{displayDate}</span>
+                    <span
+                        className="capitalize text-primary-text font-bold text-lg sm:text-xl min-w-[140px] text-center">
+                    {displayDate}
+                </span>
                     <button
-                        className="text-primary-text hover:text-primary-accent text-3xl font-bold px-4 transition-colors"
-                        onClick={handleNext}>›
+                        className="text-secondary-text hover:text-primary-accent text-4xl font-light h-10 w-10 flex items-center justify-center rounded-full hover:bg-primary-bg-cards transition-colors cursor-pointer"
+                        onClick={handleNext}
+                    >
+                        ›
                     </button>
                 </div>
 
-                {loading && <p className="text-secondary-text text-sm">Rapporten laden...</p>}
+                {loading && (
+                    <div className="w-full text-center py-4 animate-pulse">
+                        <p className="text-secondary-text text-sm">Rapporten laden...</p>
+                    </div>
+                )}
 
-                <section className={loading ? 'opacity-50 pointer-events-none' : ''}>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 w-full">
+                <section
+                    className={`transition-opacity duration-200 ${loading ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 w-full">
                         <InformationCard
                             titel="Totaal Meldingen"
                             aantal={totalIssues.toString()}
@@ -173,5 +192,3 @@ function H_ReportsOverview() {
         </div>
     );
 }
-
-export default H_ReportsOverview;

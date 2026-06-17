@@ -5,6 +5,7 @@ export default function MainStoryCard({ issue, onClick }) {
     const { title, content, address, created_at, attachments = [], participant_count, followers, status, category } = issue || {};
 
     const totalFollowers = typeof participant_count === 'number' ? participant_count : (Array.isArray(followers) ? followers.length : 0);
+
     const getStatusDetails = (s) => {
         switch (s?.toLowerCase()) {
             case 'open': case 'nieuw': return { label: 'Nieuw', className: 'bg-primary-accent text-white' };
@@ -14,31 +15,49 @@ export default function MainStoryCard({ issue, onClick }) {
             default: return { label: s || 'Open', className: 'bg-primary-accent text-white' };
         }
     };
+
     const statusDetails = getStatusDetails(status);
     const formattedDate = created_at ? new Date(created_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
 
     return (
-        <button onClick={onClick} className="w-full text-left bg-primary-bg-cards border border-primary-border rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col sm:flex-row overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary-accent/20">
-            <div className="relative w-full sm:w-[35%] h-48 bg-primary-bg border-b sm:border-b-0 sm:border-r border-primary-border flex-shrink-0">
+        <div
+            onClick={onClick}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === 'Enter' && onClick && onClick()}
+            className="w-full text-left bg-primary-bg-cards border border-primary-border rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col sm:flex-row overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary-accent/20 cursor-pointer select-none"
+        >
+            <div className="relative w-full sm:w-[35%] h-48 sm:h-auto sm:min-h-full bg-primary-bg border-b sm:border-b-0 sm:border-r border-primary-border flex-shrink-0">
                 {attachments.length > 0 ? (
                     <AttachmentImage attachment={attachments[0]} className="w-full h-full object-cover" />
                 ) : (
-                    <div className="w-full h-full flex items-center justify-center text-secondary-text text-xs uppercase font-label">Geen beeld</div>
+                    <div className="w-full h-full min-h-48 flex items-center justify-center text-secondary-text text-xs uppercase font-label">
+                        Geen beeld
+                    </div>
                 )}
             </div>
-            <div className="p-6 flex flex-col justify-between flex-1 min-w-0">
+
+            <div className="p-4 sm:p-6 flex flex-col justify-between flex-1 min-w-0 gap-4">
                 <div>
-                    <div className="flex flex-col gap-2 mb-3">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-secondary-text truncate">{address || 'Rotterdam'}</div>
-                        <span className={`px-3 py-1 rounded-full text-[11px] font-black uppercase w-fit ${statusDetails.className}`}>{statusDetails.label}</span>
+                    <div className="flex flex-col gap-1.5 mb-2.5">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-secondary-text truncate">
+                            {address || 'Rotterdam'}
+                        </div>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase w-fit tracking-wide ${statusDetails.className}`}>
+                            {statusDetails.label}
+                        </span>
                     </div>
-                    <h3 className="font-headline font-extrabold text-xl text-primary-text line-clamp-2">{title}</h3>
+
+                    <span className="block font-headline font-extrabold text-lg sm:text-xl text-primary-text line-clamp-2 leading-snug">
+                        {title}
+                    </span>
                 </div>
-                <div className="flex items-center justify-between border-t border-primary-border pt-4 mt-4 text-xs font-label">
+
+                <div className="flex items-center justify-between border-t border-primary-border/60 pt-3 text-xs font-label">
                     <span className="font-bold text-primary-text">{totalFollowers} volgers</span>
-                    {formattedDate && <span className="text-secondary-text">{formattedDate}</span>}
+                    {formattedDate && <span className="text-secondary-text font-medium">{formattedDate}</span>}
                 </div>
             </div>
-        </button>
+        </div>
     );
 }
