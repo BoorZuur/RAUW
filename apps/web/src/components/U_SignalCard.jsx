@@ -1,8 +1,11 @@
 import React from 'react';
 import AttachmentImage from './AttachmentImage';
+import { getIssueDisplayTitle } from '../utils/issueParticipation';
 
-export default function USignalCard({ issue, onClick }) {
-    const { title, address, created_at, status, attachments = [] } = issue || {};
+export default function USignalCard({ issue, onClick, subtitle }) {
+    const { address, created_at, status } = issue || {};
+    const attachments = Array.isArray(issue?.attachments) ? issue.attachments : [];
+    const title = getIssueDisplayTitle(issue);
     const formattedDate = created_at ? new Date(created_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
 
     const getStatusDetails = (s) => {
@@ -26,6 +29,9 @@ export default function USignalCard({ issue, onClick }) {
                 </div>
                 <div className="flex flex-col gap-1 min-w-0 pr-2">
                     <h4 className="font-headline font-black text-[15px] text-primary-text tracking-tight leading-snug truncate">{title}</h4>
+                    {subtitle ? (
+                        <span className="text-[11px] font-label font-bold text-primary-accent/90 truncate">{subtitle}</span>
+                    ) : null}
                     <div className="flex items-center gap-1.5 text-xs text-secondary-text font-label font-medium">
                         <span className="truncate">{address || 'Rotterdam'}</span>
                         <span>•</span>

@@ -6,6 +6,7 @@ use App\Enums\IssueStatus;
 use App\Models\Category;
 use App\Models\District;
 use App\Models\Issue;
+use App\Models\IssueAttachment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -229,5 +230,51 @@ class IssueSimilarCheckTest extends TestCase
         $scores = collect($response->json('matches'))->pluck('score')->all();
         $this->assertGreaterThan($scores[1], $scores[0]);
         $this->assertGreaterThan($scores[2], $scores[1]);
+    }
+
+    public function test_includes_first_attachment_on_match(): void
+    {
+        $actor = User::factory()->create();
+        $owner = User::factory()->create();
+        $category = Category::factory()->withDepartments()->create();
+        $district = District::factory()->create();
+
+        $issue = Issue::factory()->create([
+            'user_id' => $owner->id,
+            'category_id' => $category->id,
+            'district_id' => $district->id,
+            'status' => IssueStatus::Open,
+            'postal_code' => '3011AA',
+            'latitude' => 51.9225,
+            'longitude' => 4.47917,
+        ]);
+
+        $attachment = IssueAttachment::factory()->create([
+            'issue_id' => $issue->id,
+            'original_name' => 'foto.jpg',
+            'file_type' => 'image/jpeg',
+        ]);
+
+        IssueAttachment::factory()->create([
+            'issue_id' => $issue->id,
+            'original_name' => 'extra.jpg',
+            'file_type' => 'image/jpeg',
+        ]);
+
+        $response = $this->withHeaders($this->authHeaders($actor))
+            ->postJson('/api/issues/similar-check', $this->similarCheckPayload($category, $district));
+
+        $response->assertOk();
+
+        $match = collect($response->json('matches'))->firstWhere('id', $issue->id);
+
+        $this->assertNotNull($match);
+        $this->assertCount(1, $match['attachments']);
+        $this->assertSame($attachment->id, $match['attachments'][0]['id']);
+        $this->assertSame('foto.jpg', $match['attachments'][0]['original_name']);
+        $this->assertStringContainsString(
+            "/api/issues/{$issue->id}/attachments/{$attachment->id}/download",
+            $match['attachments'][0]['download_url'],
+        );
     }
 }

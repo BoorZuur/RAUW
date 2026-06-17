@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Notifications\IndexNotificationRequest;
-use App\Models\DomainNotification;
 use App\Models\User;
+use App\Support\Notifications\NotificationRecipientQuery;
 use Illuminate\Http\JsonResponse;
 
 class NotificationUnreadCountController extends Controller
@@ -14,8 +14,7 @@ class NotificationUnreadCountController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        $count = DomainNotification::query()
-            ->forUser($user)
+        $count = NotificationRecipientQuery::visibleForUser($user)
             ->unread()
             ->count();
 
