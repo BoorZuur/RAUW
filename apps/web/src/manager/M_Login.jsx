@@ -15,7 +15,7 @@ export default function Login() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const response = await axios.post('http://localhost:8001/api/auth/login', { email, password });
+            const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/login`, { email, password });
             if (response.data.access_token) {
                 localStorage.setItem('auth_token', response.data.access_token);
             }

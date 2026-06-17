@@ -6,7 +6,7 @@ import RauwLogoImg from '../assets/LogoRAUW.png';
 import BgRotterdam2 from '../assets/AchtergrondRotterdam4.webp';
 
 const apiClient = axios.create({
-    baseURL: 'http://localhost:8001/api',
+    baseURL: `${import.meta.env.VITE_API_BASE_URL}/api`,
     headers: { 'Accept': 'application/json' }
 });
 

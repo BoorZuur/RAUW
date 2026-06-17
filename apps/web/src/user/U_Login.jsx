@@ -7,7 +7,7 @@ import BgRotterdam2 from '../assets/AchtergrondRotterdam4.webp';
 
 // We definiëren de client voor algemeen gebruik
 const apiClient = axios.create({
-    baseURL: 'http://localhost:8001/api',
+    baseURL: `${import.meta.env.VITE_API_BASE_URL}/api`,
     headers: { 'Accept': 'application/json' }
 });
 
