@@ -17,6 +17,8 @@ import CommandCenter from "./handhaver/CommandCenter.jsx";
 import SectorSettings from "./handhaver/SectorSettings.jsx";
 import H_ReportsOverview from "./handhaver/H_ReportsOverview.jsx";
 import H_Chat from "./handhaver/H_Chat.jsx";
+import ServiceProfile from "./handhaver/ServiceProfile.jsx";
+
 import HandhaverLogin from "./handhaver/H_Login.jsx";
 import HandhaverRegister from "./handhaver/H_Register.jsx";
 
@@ -60,6 +62,7 @@ function App() {
                 { path: "/rapport", element: <H_ReportsOverview /> },
                 { path: "/sectorinstellingen", element: <SectorSettings /> },
                 { path: "/handhaverchat", element: <H_Chat /> },
+                { path: "/dienstprofiel", element: <ServiceProfile /> },
             ]
         },
 
