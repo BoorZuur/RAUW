@@ -81,3 +81,4 @@ Scribe (`GET /docs.openapi` after `php artisan scribe:generate`) is an optional 
 
 - [docs/local-development.md](../../docs/local-development.md) — monorepo local setup
 - [docs/DEPLOYMENT.md](../../docs/DEPLOYMENT.md) — deployment overview
+- [docs/OWASP.md](../../docs/OWASP.md) — OWASP Top 10 coverage and security edge cases

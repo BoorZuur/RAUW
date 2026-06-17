@@ -7,11 +7,11 @@ High-level guide for deploying **RAUW** (**Rotterdams Actie Uit de Wijken**) to 
 | **Backend API** | Laravel PHP application (`apps/backend`) | VPS or managed PHP runtime (nginx/Apache + PHP-FPM) |
 | **Web client** | Static files from Vite build (`apps/web/dist/`) | Static file host, object storage + CDN, or same reverse proxy as `index.html` |
 
-This document describes a **generic** deployment shape. It does not prescribe a specific cloud vendor. For Dutch OWASP notes and a compact install/deploy summary, see [backend OWASP & deploy notes](backend-owasp-installatie-deployment.txt).
+This document describes a **generic** deployment shape. It does not prescribe a specific cloud vendor. For OWASP Top 10 coverage on the API, see [OWASP (backend)](OWASP.md).
 
 **Not in scope:** mobile apps, manager web UI (manager actors use the API only).
 
-**Local development port:** canonical API URL during development is `http://127.0.0.1:8001` via `php -S 127.0.0.1:8001 -t public` (see [local development](local-development.md)). The OWASP notes file mentions `php artisan serve --port=8001`; either works locally — prefer the built-in PHP server command above for consistency with Postman and web env examples.
+**Local development port:** canonical API URL during development is `http://127.0.0.1:8001` via `php -S 127.0.0.1:8001 -t public` (see [local development](local-development.md)).
 
 ## Architecture overview
 
@@ -202,7 +202,7 @@ Notification and mail behaviour in production should be validated explicitly; th
 
 ## Security checklist
 
-Distilled from [OWASP backend notes](backend-owasp-installatie-deployment.txt) and project policy:
+Distilled from [OWASP (backend)](OWASP.md) and project policy:
 
 - [ ] `APP_DEBUG=false` and `APP_ENV=production`
 - [ ] `APP_KEY` unique per environment; rotate if compromised
@@ -235,6 +235,6 @@ Production API errors return generic messages; technical detail belongs in serve
 | [API policies](api-policy.md) | Auth, tiers, errors |
 | [OpenAPI](openapi.yaml) | API contract |
 | [Postman](postman/README.md) | Manual API verification |
-| [Backend OWASP notes](backend-owasp-installatie-deployment.txt) | Dutch OWASP summary + install/deploy bullets |
+| [OWASP (backend)](OWASP.md) | OWASP Top 10 coverage and security edge cases |
 | [Backend app README](../apps/backend/README.md) | API service overview |
 | [Web app README](../apps/web/README.md) | Frontend routes and env |

@@ -60,6 +60,7 @@ Set `VITE_API_BASE_URL=http://127.0.0.1:8001` in `apps/web/.env` (see `apps/web/
 | [Local development](docs/local-development.md) | Prerequisites, ports, migrations, daily workflow |
 | [Testing](docs/TESTING.md) | Test, lint, and validation commands |
 | [Deployment](docs/DEPLOYMENT.md) | Deploying backend and web |
+| [OWASP (backend)](docs/OWASP.md) | OWASP Top 10 coverage and security edge cases |
 | [Backend app](apps/backend/README.md) | API service setup and architecture |
 | [Web app](apps/web/README.md) | Frontend portals, routes, dev setup |
 | [API guides](docs/api/README.md) | Narrative domain documentation |
@@ -67,7 +68,6 @@ Set `VITE_API_BASE_URL=http://127.0.0.1:8001` in `apps/web/.env` (see `apps/web/
 | [OpenAPI](docs/openapi.yaml) | Canonical machine-readable API contract (WIJK title in spec) |
 | [OpenAPI schemas](docs/openapi/schemas.yaml) | Shared request/response models |
 | [Database schema](docs/DBML.txt) | Domain ERD for dbdiagram.io (Dutch field notes) |
-| [Backend OWASP & deploy notes](docs/backend-owasp-installatie-deployment.txt) | Dutch install/deploy + OWASP summary |
 | [Postman](docs/postman/README.md) | Collection and local environment |
 
 ## Tech stack
