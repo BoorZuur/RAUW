@@ -28,6 +28,7 @@ class IssueCommentFactory extends Factory
             'user_id' => User::factory(),
             'officer_id' => null,
             'content' => fake()->paragraph(),
+            'is_anonymous' => false,
             'is_flagged' => false,
             'visibility' => Visibility::Visible,
         ];
@@ -40,6 +41,13 @@ class IssueCommentFactory extends Factory
             'manager_id' => Manager::factory(),
             'user_id' => null,
             'officer_id' => null,
+        ]);
+    }
+
+    public function anonymous(): static
+    {
+        return $this->state(fn (): array => [
+            'is_anonymous' => true,
         ]);
     }
 }

@@ -11,7 +11,7 @@ use App\Models\IssueComment;
 use App\Models\Manager;
 use App\Models\Officer;
 use App\Models\User;
-use App\Support\Issues\IssueAnonymousDisplayName;
+use App\Support\Issues\IssueCommentAnonymity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
@@ -21,6 +21,7 @@ class NotifyNewComment
         private readonly NotificationWriter $writer = new NotificationWriter,
         private readonly ResolveCanonicalIssueParticipants $participants = new ResolveCanonicalIssueParticipants,
         private readonly ResolveCanonicalIssue $resolveCanonicalIssue = new ResolveCanonicalIssue,
+        private readonly IssueCommentAnonymity $commentAnonymity = new IssueCommentAnonymity,
     ) {}
 
     public function notify(Issue $issue, IssueComment $comment, Model $author): void
@@ -30,7 +31,7 @@ class NotifyNewComment
         }
 
         $canonical = ($this->resolveCanonicalIssue)($issue);
-        [$actorType, $actorDisplayName] = $this->resolveActor($author, $canonical);
+        [$actorType, $actorDisplayName] = $this->resolveActor($author, $canonical, $comment);
         $copy = NotificationTemplates::newComment($canonical->title, $actorDisplayName);
 
         $inserts = $this->buildInserts($canonical, $comment, $actorType, $author, $copy);
@@ -42,13 +43,15 @@ class NotifyNewComment
     /**
      * @return array{0: ActorType, 1: string}
      */
-    private function resolveActor(Model $author, Issue $canonical): array
+    private function resolveActor(Model $author, Issue $canonical, IssueComment $comment): array
     {
         if ($author instanceof User) {
-            $derived = IssueAnonymousDisplayName::derive($author, $canonical);
+            if ((bool) $comment->is_anonymous === true) {
+                $comment->loadMissing('user');
+                $comment->setRelation('issue', $canonical);
+                $resolved = $this->commentAnonymity->resolveDisplayName($comment);
 
-            if ($derived['is_anonymous']) {
-                return [ActorType::User, $derived['display_name'] ?? 'Anoniem'];
+                return [ActorType::User, $resolved['display_name'] ?? 'Anoniem'];
             }
 
             return [ActorType::User, $author->username];

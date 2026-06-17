@@ -15,6 +15,9 @@ info:
     **Schemas:** Reusable models and error types live in `docs/openapi/schemas.yaml`.
 
     **Health:** `GET /up` is omitted; it is not part of the `/api` JSON contract.
+
+    **Scribe:** `GET /docs.openapi` (vendor-generated mirror) is omitted; this file
+    is the canonical API contract.
   version: '1.0.0'
 servers:
   - url: /
@@ -37,6 +40,8 @@ tags:
     description: 1:1 officer–user chats and messages on canonical issues.
   - name: Community Posts
     description: District community news feed, attachments, and user saves.
+  - name: User Settings
+    description: Notification preferences for authenticated users.
   - name: Notifications
     description: Poll-friendly domain notifications for users and officers (Tier B officer routes).
   - name: Categories
@@ -686,6 +691,72 @@ paths:
             application/json:
               schema:
                 $ref: 'openapi/schemas.yaml#/components/schemas/ValidationError'
+
+  /api/auth/me/hub:
+    patch:
+      tags: [ Officers ]
+      summary: Update my hub assignment (officers only)
+      description: >-
+        Self-service hub assignment endpoint for active officers. Sets
+        `hub_id` to an active hub and clears the officer's `district_officer`
+        pivot wholesale so district assignments can be re-established within the
+        new hub. Ends any open officer shift (`EndOfficerShift`) and returns the
+        refreshed officer auth profile. Users and managers receive **403**
+        (`This action is unauthorized.`). Inactive accounts receive **403**
+        (`This account is inactive.`) from global inactive-actor middleware.
+        Unknown or inactive hub IDs return **422** on `hub_id`.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'openapi/schemas.yaml#/components/schemas/HubAssignmentUpdate'
+            example:
+              hub_id: 3
+      responses:
+        '200':
+          description: Refreshed officer profile with cleared districts
+          content:
+            application/json:
+              schema:
+                $ref: 'openapi/schemas.yaml#/components/schemas/AuthCurrentProfileResponse'
+              example:
+                actor_type: officer
+                profile:
+                  id: 1
+                  username: demo-officer
+                  email: demo.officer@example.com
+                  badge_number: BOA-0001
+                  hub:
+                    id: 3
+                    name: Cluster Noord
+                  departments:
+                    - id: 1
+                      code: wijkbeheer
+                      name: Wijkbeheer
+                  districts: []
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: >-
+            Users and managers (Forbidden) or deactivated accounts (InactiveAccount).
+          content:
+            application/json:
+              schema:
+                $ref: 'openapi/schemas.yaml#/components/schemas/Error'
+              examples:
+                userForbidden:
+                  summary: User or manager actor
+                  value:
+                    message: This action is unauthorized.
+                inactiveAccount:
+                  summary: Inactive bearer token
+                  value:
+                    message: This account is inactive.
+        '422':
+          $ref: '#/components/responses/ValidationError'
 
   /api/auth/me/feed-districts:
     patch:
@@ -2198,8 +2269,10 @@ paths:
         assigned districts only, including hidden issues in those districts. Main
         managers (`is_main_manager = true`) receive all issues city-wide. Filters
         are optional and composable (AND with visibility): district_id,
-        department, category_id, status, assigned_officer_id, unassigned, mine, and visibility
-        may be combined in a single request to narrow the result set. Query param status
+        department, category_id, status, assigned_officer_id, unassigned, mine,
+        exclude_mine, participating, followed, include_duplicates, search,
+        date_from, date_to, and visibility may be combined in a single request to
+        narrow the result set. Query param status
         accepts any IssueStatus enum value (`open`, `in_behandeling`, `opgelost`, `gesloten`)
         and is available to all active actors; invalid values receive 422. Query param
         assigned_officer_id filters issues assigned to that officer; query param unassigned
@@ -2208,16 +2281,26 @@ paths:
         422. assigned_officer_id and unassigned are mutually exclusive (422 when both are set).
         Query param mine (`mine=1` or equivalent truthy values) restricts
         active users to issues they own (`issues.user_id`); officers and managers sending
-        mine receive 422. Query param participating (`participating=1`) restricts
-        active users to owned duplicate children where they still participate on the
-        canonical parent; officers and managers cannot use participating (422). `mine`
-        and `participating` are mutually exclusive (422). Query param
+        mine receive 422. Query param `exclude_mine` (`exclude_mine=1`) excludes issues
+        owned by the authenticated user (including owned duplicate children); officers
+        and managers cannot use exclude_mine (422). `exclude_mine` is mutually
+        exclusive with `mine` (422) but may be combined with `followed`. Query param
+        participating (`participating=1`) restricts active users to owned duplicate
+        children where they still participate on the canonical parent; officers and
+        managers cannot use participating (422). Query param `followed` (`followed=1`)
+        returns canonical issues the user participates on (excluding own reports);
+        owned duplicate children appear under `mine=1` only; officers and managers
+        cannot use followed (422). `mine`, `participating`, and `followed` are
+        pairwise mutually exclusive (422 when combined). Query param
         `include_duplicates` (`include_duplicates=1`) includes duplicate child rows
         for officers and managers; users cannot use include_duplicates (422). By
         default, user browse lists hide other users' duplicate children (canonical
         issues plus the actor's own children remain visible). Officer and manager
         browse lists exclude duplicate children unless `include_duplicates=1` is set.
-        Query param visibility (`visible` or `hidden`) narrows officer/manager
+        Query param `search` matches issue title or content (partial, case-sensitive
+        LIKE). Query params `date_from` and `date_to` bound `created_at` inclusively
+        (start/end of day); `date_from` must be on or before `date_to` when both are
+        sent. Query param visibility (`visible` or `hidden`) narrows officer/manager
         lists to that visibility value; when omitted officers and managers see all issues.
         Users sending visibility receive 422. Query param department accepts a department code from the departments
         table and matches through department_issue with any-match semantics, so a
@@ -2254,9 +2337,16 @@ paths:
             type: integer
         - name: district_id
           in: query
-          description: Optional composable district filter.
+          description: >-
+            Optional composable district filter. Single id or repeat
+            `district_id[]` for OR semantics within districts; composes with AND
+            across other filter types.
           schema:
-            type: integer
+            oneOf:
+              - type: integer
+              - type: array
+                items:
+                  type: integer
         - name: mine
           in: query
           description: >-
@@ -2264,6 +2354,30 @@ paths:
             `true`), returns only issues owned by the authenticated user (`issues.user_id`),
             including the user's own hidden issues. Composes with default user visibility
             scoping (AND). Officers and managers cannot use this filter (422).
+          schema:
+            type: string
+            enum: [ '1', 'true' ]
+            example: '1'
+        - name: exclude_mine
+          in: query
+          description: >-
+            Optional filter for active users only. When set to a truthy value (`1`,
+            `true`), excludes issues owned by the authenticated user (including owned
+            duplicate children). Composes with other filters (AND). Officers and
+            managers cannot use this filter (422). Mutually exclusive with mine (422);
+            may be combined with followed.
+          schema:
+            type: string
+            enum: [ '1', 'true' ]
+            example: '1'
+        - name: followed
+          in: query
+          description: >-
+            Optional filter for active users only. When set to a truthy value (`1`,
+            `true`), returns canonical issues the user participates on (excluding
+            own reports). Owned duplicate children appear under mine=1 only. Officers
+            and managers cannot use this filter (422). Mutually exclusive with mine
+            and participating (422).
           schema:
             type: string
             enum: [ '1', 'true' ]
@@ -2282,12 +2396,42 @@ paths:
         - name: status
           in: query
           description: >-
-            Optional composable status filter available to all active actors. Matches
-            issues where status equals the provided IssueStatus enum value.
+            Optional composable status filter available to all active actors. Single
+            value or repeat `status[]` for OR semantics within statuses; composes
+            with AND across other filter types.
+          schema:
+            oneOf:
+              - type: string
+                enum: [ open, in_behandeling, opgelost, gesloten ]
+              - type: array
+                items:
+                  type: string
+                  enum: [ open, in_behandeling, opgelost, gesloten ]
+            example: open
+        - name: search
+          in: query
+          description: >-
+            Optional partial match on issue title or content (case-sensitive LIKE).
+            Max 255 characters.
           schema:
             type: string
-            enum: [ open, in_behandeling, opgelost, gesloten ]
-            example: open
+            maxLength: 255
+        - name: date_from
+          in: query
+          description: >-
+            Optional lower bound on `created_at` (inclusive start of day). Must be
+            on or before `date_to` when both are sent.
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          description: >-
+            Optional upper bound on `created_at` (inclusive end of day). Must be on
+            or after `date_from` when both are sent.
+          schema:
+            type: string
+            format: date
         - name: assigned_officer_id
           in: query
           description: >-
@@ -3472,7 +3616,7 @@ paths:
         return **404** when not visible. **Tier B** browse: officers without an
         active shared shift may still call this endpoint. Returns **404** when no
         resolution exists yet. Distinct from user satisfaction feedback in
-        `issue_resolutions`.
+        `issue_feedback`.
       security:
         - bearerAuth: [ ]
       responses:
@@ -5249,6 +5393,63 @@ paths:
                     code: hub_active_required
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /api/user/settings:
+    get:
+      tags: [ User Settings ]
+      summary: Get notification preferences (user)
+      description: >-
+        Return the authenticated active user's notification preference flags
+        (`notify_status_changes`, `notify_district_news`). Officers and managers
+        receive **403** (`This action is unauthorized.`).
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: User notification settings
+          content:
+            application/json:
+              schema:
+                $ref: 'openapi/schemas.yaml#/components/schemas/UserSettings'
+              example:
+                notify_status_changes: true
+                notify_district_news: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    patch:
+      tags: [ User Settings ]
+      summary: Update notification preferences (user)
+      description: >-
+        Partial update of notification preference flags for the authenticated
+        active user. At least one field should be sent when patching. Officers and
+        managers receive **403** (`This action is unauthorized.`).
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'openapi/schemas.yaml#/components/schemas/UserSettingsUpdate'
+            example:
+              notify_status_changes: false
+              notify_district_news: true
+      responses:
+        '200':
+          description: Updated user notification settings
+          content:
+            application/json:
+              schema:
+                $ref: 'openapi/schemas.yaml#/components/schemas/UserSettings'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
   /api/notifications/unread-count:
     get:
       tags: [ Notifications ]

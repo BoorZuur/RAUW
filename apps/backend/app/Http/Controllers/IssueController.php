@@ -64,13 +64,13 @@ class IssueController extends Controller
      * in assigned districts (including hidden); main managers see all issues
      * city-wide. Duplicate child rows are excluded by default per actor
      * (`IssueListScope`); users may use `participating=1` for owned children
-     * with canonical participation, and officers/managers may use
-     * `include_duplicates=1` to include children. A single Eloquent query
-     * applies the optional `district_id`, `department`, `category_id`, `status`,
-     * `assigned_officer_id`, `unassigned`, `mine`, `participating`,
-     * `include_duplicates`, and `visibility` filters conditionally and
-     * cumulatively (AND with visibility), so any subset (or all) of the
-     * filters may be combined to narrow the result set.
+     * with canonical participation, `followed=1` for followed canonical issues,
+     * and officers/managers may use `include_duplicates=1` to include children.
+     * A single Eloquent query applies the optional `district_id`, `department`,
+     * `category_id`, `status`, `assigned_officer_id`, `unassigned`, `mine`,
+     * `participating`, `followed`, `include_duplicates`, and `visibility`
+     * filters conditionally and cumulatively (AND with visibility), so any
+     * subset (or all) of the filters may be combined to narrow the result set.
      * The `department` filter is resolved through the issue departments
      * relationship with any-match semantics. Results are eager loaded (including
      * `officer_resolution` with officer and attachments when a report exists;
@@ -88,8 +88,8 @@ class IssueController extends Controller
             $request,
         )
             ->when(
-                $request->filled('district_id'),
-                fn ($query) => $query->where('district_id', $request->integer('district_id')),
+                count($request->districtIds()) > 0,
+                fn ($query) => $query->whereIn('district_id', $request->districtIds()),
             )
             ->when(
                 $request->filled('department'),
@@ -103,8 +103,11 @@ class IssueController extends Controller
                 fn ($query) => $query->where('category_id', $request->integer('category_id')),
             )
             ->when(
-                $request->filled('status'),
-                fn ($query) => $query->where('status', $request->input('status')),
+                count($request->statuses()) > 0,
+                fn ($query) => $query->whereIn(
+                    'status',
+                    array_map(fn ($status) => $status->value, $request->statuses()),
+                ),
             )
             ->when(
                 $request->filled('search'),
@@ -142,6 +145,15 @@ class IssueController extends Controller
                 },
             )
             ->when(
+                $request->wantsExcludeMine(),
+                function ($query) use ($request): void {
+                    /** @var User $actor */
+                    $actor = $request->user();
+
+                    $query->where('user_id', '!=', $actor->getKey());
+                },
+            )
+            ->when(
                 $request->filled('visibility'),
                 fn ($query) => $query->where('visibility', $request->enum('visibility')),
             )
@@ -149,6 +161,15 @@ class IssueController extends Controller
             ->orderByDesc('id')
             ->paginate($request->perPage())
             ->withQueryString();
+
+        if ($request->wantsFollowed() && $request->user() instanceof User) {
+            /** @var User $actor */
+            $actor = $request->user();
+
+            $issues->getCollection()->each(
+                fn (Issue $issue) => $issue->loadActorParticipant($actor),
+            );
+        }
 
         return IssueResource::collection($issues);
     }

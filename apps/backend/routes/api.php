@@ -46,6 +46,7 @@ use App\Http\Controllers\NotificationBulkReadController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationMarkAllReadController;
 use App\Http\Controllers\NotificationUnreadCountController;
+use App\Http\Controllers\User\UserSettingsController;
 use App\Http\Controllers\OfficerMeNotificationBulkReadController;
 use App\Http\Controllers\OfficerMeNotificationController;
 use App\Http\Controllers\OfficerMeNotificationMarkAllReadController;
@@ -126,7 +127,7 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active'])->prefi
 // non-main managers, and inactive managers all receive a 403. The endpoint is
 // rate-limited to mitigate abuse. No login token is issued for the created
 // manager, who must authenticate via `POST /api/auth/login`.
-Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'throttle:30,1'])->group(function (): void {
+Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'throttle:120,1'])->group(function (): void {
     // Main-manager-protected main manager listing. Authorization is narrowed
     // inside IndexMainManagerRequest to an authenticated, active main manager
     // only; users, officers, non-main managers, and inactive managers all
@@ -237,6 +238,8 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     Route::get('officers/me/feedback', [OfficerMeFeedbackController::class, 'index'])->name('officers.me.feedback.index');
 
     // User notifications. Active users only; officers and managers receive 403.
+    Route::get('user/settings', [UserSettingsController::class, 'show'])->name('user.settings.show');
+    Route::patch('user/settings', [UserSettingsController::class, 'update'])->name('user.settings.update');
     Route::get('notifications/unread-count', [NotificationUnreadCountController::class, 'show'])->name('notifications.unread-count');
     Route::patch('notifications/bulk-read', [NotificationBulkReadController::class, 'update'])->name('notifications.bulk-read');
     Route::post('notifications/mark-all-read', [NotificationMarkAllReadController::class, 'store'])->name('notifications.mark-all-read');

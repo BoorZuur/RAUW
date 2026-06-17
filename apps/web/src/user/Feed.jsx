@@ -21,6 +21,23 @@ export default function Feed() {
     const [otherStories, setOtherStories] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedIssue, setSelectedIssue] = useState(null);
+    const [currentUserId, setCurrentUserId] = useState(null);
+
+    const patchIssueInLists = (updatedIssue) => {
+        const patch = {
+            participant_count: updatedIssue.participant_count,
+            is_participant: updatedIssue.is_participant,
+            default_comment_is_anonymous: updatedIssue.default_comment_is_anonymous,
+        };
+
+        setMainStory((prev) => (prev?.id === updatedIssue.id ? { ...prev, ...patch } : prev));
+        setOtherStories((prev) => prev.map((story) => (story.id === updatedIssue.id ? { ...story, ...patch } : story)));
+    };
+
+    const handleParticipationChange = (updatedIssue) => {
+        setSelectedIssue((prev) => (prev ? { ...prev, ...updatedIssue, comments: prev.comments } : updatedIssue));
+        patchIssueInLists(updatedIssue);
+    };
 
     const handleSelectIssue = async (issue) => {
         try {
@@ -51,20 +68,39 @@ export default function Feed() {
         }
     };
 
-    const handleAddComment = async (issueId, commentText) => {
+    const handleAddComment = async (issueId, commentText, isAnonymous = false) => {
         try {
             const response = await apiClient.post(`/api/issues/${issueId}/comments`, {
-                content: commentText
+                content: commentText,
+                is_anonymous: isAnonymous,
             });
             const newComment = response.data.data || response.data;
             setSelectedIssue(prev => ({
                 ...prev,
                 comments: [...(prev.comments || []), newComment]
             }));
+            return newComment;
         } catch (err) {
             console.error('Kon reactie niet plaatsen:', err.response?.data || err);
+            throw err;
         }
     };
+
+    useEffect(() => {
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+            return;
+        }
+
+        apiClient.get('/api/auth/me')
+            .then((res) => {
+                const profile = res.data?.profile || res.data;
+                setCurrentUserId(profile?.id ?? null);
+            })
+            .catch(() => {
+                setCurrentUserId(null);
+            });
+    }, []);
 
     useEffect(() => {
         apiClient.get('/api/issues')
@@ -253,6 +289,8 @@ export default function Feed() {
                     issue={selectedIssue}
                     onClose={() => setSelectedIssue(null)}
                     onAddComment={handleAddComment}
+                    currentUserId={currentUserId}
+                    onParticipationChange={handleParticipationChange}
                 />
             )}
         </div>

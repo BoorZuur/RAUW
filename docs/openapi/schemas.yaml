@@ -5,6 +5,8 @@ info:
   description: >-
     Component schemas externalized from docs/openapi.yaml. Referenced via
     `schemas.yaml#/components/schemas/{Name}` from the main spec.
+    Paths are intentionally empty; operations live in docs/openapi.yaml.
+paths: {}
 components:
   schemas:
     Error:
@@ -857,6 +859,34 @@ components:
             Existing active hub ID (`is_active=true`). Inactive or unknown hub
             IDs return **422**. Changing hub clears the actor's district pivot
             so assignments can be re-established within the new hub.
+
+    UserSettings:
+      type: object
+      description: >-
+        Notification preference flags for an authenticated user (`users` table).
+      required: [ notify_status_changes, notify_district_news ]
+      properties:
+        notify_status_changes:
+          type: boolean
+          description: >-
+            When true, the user receives notifications for issue status changes
+            on followed or owned issues.
+        notify_district_news:
+          type: boolean
+          description: >-
+            When true, the user receives notifications for new community posts in
+            feed districts.
+
+    UserSettingsUpdate:
+      type: object
+      description: >-
+        Partial update payload for `PATCH /api/user/settings`. At least one
+        field should be present.
+      properties:
+        notify_status_changes:
+          type: boolean
+        notify_district_news:
+          type: boolean
 
     District:
       type: object
@@ -1779,7 +1809,7 @@ components:
       description: >-
         Officer field report describing how an issue was handled. At most one
         per issue (`officer_issue_resolutions.issue_id` unique). Distinct from
-        user satisfaction feedback in `issue_resolutions`.
+        user satisfaction feedback in `issue_feedback`.
       properties:
         id:
           type: integer

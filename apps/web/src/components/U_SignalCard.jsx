@@ -1,8 +1,11 @@
 import React from 'react';
 import AttachmentImage from './AttachmentImage';
+import { getIssueDisplayTitle } from '../utils/issueParticipation';
 
-export default function USignalCard({ issue, onClick }) {
-    const { title, address, created_at, status, attachments = [] } = issue || {};
+export default function USignalCard({ issue, onClick, subtitle }) {
+    const { address, created_at, status } = issue || {};
+    const attachments = Array.isArray(issue?.attachments) ? issue.attachments : [];
+    const title = getIssueDisplayTitle(issue);
     const formattedDate = created_at ? new Date(created_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
 
     const getStatusDetails = (s) => {
@@ -34,11 +37,11 @@ export default function USignalCard({ issue, onClick }) {
                         <div className="w-full h-full flex items-center justify-center text-[8px] text-secondary-text font-bold">N/A</div>
                     )}
                 </div>
-
                 <div className="flex flex-col gap-0.5 min-w-0 pr-2">
-                    <span className="block font-headline font-black text-sm sm:text-[15px] text-primary-text tracking-tight leading-snug truncate">
-                        {title}
-                    </span>
+                    <h4 className="font-headline font-black text-sm sm:text-[15px] text-primary-text tracking-tight leading-snug truncate">{title}</h4>
+                    {subtitle ? (
+                        <span className="text-[11px] font-label font-bold text-primary-accent/90 truncate">{subtitle}</span>
+                    ) : null}
                     <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-secondary-text font-label font-medium min-w-0">
                         <span className="truncate">{address || 'Rotterdam'}</span>
                         <span className="text-secondary-text/60">•</span>

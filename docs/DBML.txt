@@ -21,6 +21,8 @@ Table users {
   is_active        tinyint(1)   [not null, default: 1]
   flag_count       int          [not null, default: 0, note: 'Opgehoogd bij flags die meetellen voor review']
   is_under_review  tinyint(1)   [not null, default: 0, note: 'Auto-true bij drempel, manager-queue']
+  notify_status_changes tinyint(1) [not null, default: 1, note: 'User notification pref; PATCH /api/user/settings']
+  notify_district_news  tinyint(1) [not null, default: 1, note: 'User notification pref; PATCH /api/user/settings']
   deleted_at       datetime     [note: 'Soft delete: gevuld = geanonimiseerd']
   created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
   updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
@@ -307,6 +309,7 @@ Table issue_comments {
   officer_id       int          [ref: > officers.id]
   manager_id       int          [ref: > managers.id]
   content          text         [not null, note: 'App validation max 2000 chars']
+  is_anonymous     tinyint(1)   [not null, default: 0, note: 'When true, redacted in API for non-owner viewers; backfilled for owner comments on anonymous issues']
   is_flagged       tinyint(1)   [not null, default: 0]
   visibility       varchar(20)  [not null, default: 'visible', note: 'visible | hidden']
   created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
@@ -450,7 +453,7 @@ Table officer_issue_resolutions {
   content          text         [not null]
   created_at       datetime
   updated_at       datetime
-  note: 'Officer field report on how an issue was handled. Not user satisfaction (see issue_resolutions).'
+  note: 'Officer field report on how an issue was handled. Not user satisfaction (see issue_feedback).'
 }
 
 Table officer_issue_resolution_attachments {

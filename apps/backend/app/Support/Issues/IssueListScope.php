@@ -14,6 +14,8 @@ class IssueListScope
     /**
      * Apply duplicate-related list filters for the authenticated actor.
      *
+     * When `followed=1`, narrows to canonical issues the actor participates on
+     * (excluding own reports). Owned duplicate children appear under `mine=1`.
      * When `participating=1`, narrows to owned duplicate children with active
      * canonical participation. Otherwise applies default duplicate exclusion
      * rules (users: hide others' children; officers/managers: hide children
@@ -21,6 +23,10 @@ class IssueListScope
      */
     public static function apply(Builder $query, Model $actor, IndexIssueRequest $request): Builder
     {
+        if ($request->wantsFollowed()) {
+            return self::applyFollowedFilter($query, $actor);
+        }
+
         if ($request->wantsParticipating()) {
             return self::applyParticipatingFilter($query, $actor);
         }
@@ -79,6 +85,32 @@ class IssueListScope
                     ->from('issue_participants')
                     ->whereColumn('issue_participants.issue_id', 'issues.duplicate_of_id')
                     ->where('issue_participants.user_id', $actor->getKey());
+            });
+    }
+
+    /**
+     * Restrict the list to canonical issues the actor follows.
+     *
+     * Returns canonical rows where the actor is an active participant, excluding
+     * issues they own (those appear under `mine=1`, including owned duplicate
+     * children).
+     */
+    public static function applyFollowedFilter(Builder $query, Model $actor): Builder
+    {
+        if (! $actor instanceof User) {
+            return $query->whereRaw('0 = 1');
+        }
+
+        $userId = $actor->getKey();
+
+        return $query
+            ->whereNull('duplicate_of_id')
+            ->where('user_id', '!=', $userId)
+            ->whereExists(function ($participantQuery) use ($userId): void {
+                $participantQuery->selectRaw('1')
+                    ->from('issue_participants')
+                    ->whereColumn('issue_participants.issue_id', 'issues.id')
+                    ->where('issue_participants.user_id', $userId);
             });
     }
 }

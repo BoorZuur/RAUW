@@ -18,9 +18,22 @@ class NotificationRecipientQuery
      */
     public static function forUser(User $user, array $filters = []): Builder
     {
-        return self::applyFilters(
+        $query = self::applyFilters(
             DomainNotification::query()->forUser($user),
             $filters,
+        );
+
+        return UserNotificationPreferenceFilter::apply($query, $user);
+    }
+
+    /**
+     * @return Builder<DomainNotification>
+     */
+    public static function visibleForUser(User $user): Builder
+    {
+        return UserNotificationPreferenceFilter::apply(
+            DomainNotification::query()->forUser($user),
+            $user,
         );
     }
 
