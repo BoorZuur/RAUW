@@ -70,13 +70,13 @@
 }
 
 .mode-achromatopsia {
-    --primary-bg: #f3e9e9;
-    --primary-bg-cards: #aaa9a5;
-    --primary-border: #fdf9f5;
-    --primary-text: #574442;
-    --secondary-text: #363833;
-    --primary-accent: #886963;
-    --secondary-accent: #93545b;
+    --primary-bg: #ffffff;
+    --primary-bg-cards: #f2f2f2;
+    --primary-border: #000000;
+    --primary-text: #000000;
+    --secondary-text: #333333;
+    --primary-accent: #000000;
+    --secondary-accent: #000000;
 }
 
 .mode-protanopia.dark {
@@ -110,13 +110,13 @@
 }
 
 .mode-achromatopsia.dark {
-    --primary-bg: #0d0d0d;
-    --primary-bg-cards: #363833;
-    --primary-border: #8b9184;
-    --primary-text: #ece0dc;
-    --secondary-text: #fdf9f5;
-    --primary-accent: #cda4aa;
-    --secondary-accent: #feeeeef;
+    --primary-bg: #000000;
+    --primary-bg-cards: #1a1a1a;
+    --primary-border: #ffffff;
+    --primary-text: #ffffff;
+    --secondary-text: #cccccc;
+    --primary-accent: #ffffff;
+    --secondary-accent: #ffffff;
 }
 
 body {
