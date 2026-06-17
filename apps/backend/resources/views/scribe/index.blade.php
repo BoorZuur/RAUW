@@ -2400,8 +2400,8 @@ access-control-allow-origin: http://localhost:5173
             &quot;name&quot;: &quot;BOA / Jeugd&quot;,
             &quot;is_active&quot;: true,
             &quot;categories_count&quot;: 22,
-            &quot;created_at&quot;: &quot;2026-06-17T08:50:56.000000Z&quot;,
-            &quot;updated_at&quot;: &quot;2026-06-17T08:50:56.000000Z&quot;
+            &quot;created_at&quot;: &quot;2026-06-17T12:51:35.000000Z&quot;,
+            &quot;updated_at&quot;: &quot;2026-06-17T12:51:35.000000Z&quot;
         },
         {
             &quot;id&quot;: 1,
@@ -2409,8 +2409,8 @@ access-control-allow-origin: http://localhost:5173
             &quot;name&quot;: &quot;Wijkbeheer&quot;,
             &quot;is_active&quot;: true,
             &quot;categories_count&quot;: 0,
-            &quot;created_at&quot;: &quot;2026-06-17T08:50:56.000000Z&quot;,
-            &quot;updated_at&quot;: &quot;2026-06-17T08:50:56.000000Z&quot;
+            &quot;created_at&quot;: &quot;2026-06-17T12:51:35.000000Z&quot;,
+            &quot;updated_at&quot;: &quot;2026-06-17T12:51:35.000000Z&quot;
         }
     ]
 }</code>
@@ -2561,8 +2561,8 @@ access-control-allow-origin: http://localhost:5173
     &quot;name&quot;: &quot;Wijkbeheer&quot;,
     &quot;is_active&quot;: true,
     &quot;categories_count&quot;: 0,
-    &quot;created_at&quot;: &quot;2026-06-17T08:50:56.000000Z&quot;,
-    &quot;updated_at&quot;: &quot;2026-06-17T08:50:56.000000Z&quot;
+    &quot;created_at&quot;: &quot;2026-06-17T12:51:35.000000Z&quot;,
+    &quot;updated_at&quot;: &quot;2026-06-17T12:51:35.000000Z&quot;
 }</code>
  </pre>
     </span>
@@ -2836,7 +2836,7 @@ in a single transaction so a failed attach never leaves an orphan row.</p>
         16
     ],
     \"priority\": 22,
-    \"is_active\": false
+    \"is_active\": true
 }"
 </code></pre></div>
 
@@ -2859,7 +2859,7 @@ let body = {
         16
     ],
     "priority": 22,
-    "is_active": false
+    "is_active": true
 };
 
 fetch(url, {
@@ -3038,7 +3038,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
             <code>false</code>
         </label>
     <br>
-<p>Example: <code>false</code></p>
+<p>Example: <code>true</code></p>
         </div>
         </form>
 
@@ -4012,7 +4012,7 @@ historical issue context is preserved.</p>
     --data "{
     \"code\": \"b\",
     \"name\": \"n\",
-    \"is_active\": true
+    \"is_active\": false
 }"
 </code></pre></div>
 
@@ -4031,7 +4031,7 @@ const headers = {
 let body = {
     "code": "b",
     "name": "n",
-    "is_active": true
+    "is_active": false
 };
 
 fetch(url, {
@@ -4185,7 +4185,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
             <code>false</code>
         </label>
     <br>
-<p>Example: <code>true</code></p>
+<p>Example: <code>false</code></p>
         </div>
         </form>
 
@@ -4366,7 +4366,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --header "Accept: application/json" \
     --data "{
     \"issue_id\": 16,
-    \"submitted_from\": \"2026-06-17T08:55:12\",
+    \"submitted_from\": \"2026-06-17T12:51:39\",
     \"submitted_to\": \"2052-07-10\"
 }"
 </code></pre></div>
@@ -4385,7 +4385,7 @@ const headers = {
 
 let body = {
     "issue_id": 16,
-    "submitted_from": "2026-06-17T08:55:12",
+    "submitted_from": "2026-06-17T12:51:39",
     "submitted_to": "2052-07-10"
 };
 
@@ -4518,10 +4518,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="submitted_from"                data-endpoint="GETapi-officers-me-feedback"
-               value="2026-06-17T08:55:12"
+               value="2026-06-17T12:51:39"
                data-component="body">
     <br>
-<p>Must be a valid date. Example: <code>2026-06-17T08:55:12</code></p>
+<p>Must be a valid date. Example: <code>2026-06-17T12:51:39</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>submitted_to</code></b>&nbsp;&nbsp;
@@ -4698,8 +4698,8 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"notify_status_changes\": true,
-    \"notify_district_news\": false
+    \"notify_status_changes\": false,
+    \"notify_district_news\": true
 }"
 </code></pre></div>
 
@@ -4716,8 +4716,8 @@ const headers = {
 };
 
 let body = {
-    "notify_status_changes": true,
-    "notify_district_news": false
+    "notify_status_changes": false,
+    "notify_district_news": true
 };
 
 fetch(url, {
@@ -4834,7 +4834,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
             <code>false</code>
         </label>
     <br>
-<p>Example: <code>true</code></p>
+<p>Example: <code>false</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>notify_district_news</code></b>&nbsp;&nbsp;
@@ -4856,7 +4856,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
             <code>false</code>
         </label>
     <br>
-<p>Example: <code>false</code></p>
+<p>Example: <code>true</code></p>
         </div>
         </form>
 
@@ -4881,9 +4881,9 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --data "{
     \"page\": 16,
     \"per_page\": 22,
-    \"is_read\": true,
-    \"type\": \"issue_hidden\",
-    \"since\": \"2026-06-17T08:55:13\"
+    \"is_read\": false,
+    \"type\": \"new_comment\",
+    \"since\": \"2026-06-17T12:51:39\"
 }"
 </code></pre></div>
 
@@ -4902,9 +4902,9 @@ const headers = {
 let body = {
     "page": 16,
     "per_page": 22,
-    "is_read": true,
-    "type": "issue_hidden",
-    "since": "2026-06-17T08:55:13"
+    "is_read": false,
+    "type": "new_comment",
+    "since": "2026-06-17T12:51:39"
 };
 
 fetch(url, {
@@ -5061,7 +5061,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
             <code>false</code>
         </label>
     <br>
-<p>Example: <code>true</code></p>
+<p>Example: <code>false</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>type</code></b>&nbsp;&nbsp;
@@ -5070,10 +5070,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="type"                data-endpoint="GETapi-notifications-unread-count"
-               value="issue_hidden"
+               value="new_comment"
                data-component="body">
     <br>
-<p>Example: <code>issue_hidden</code></p>
+<p>Example: <code>new_comment</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>status_change</code></li> <li><code>new_message</code></li> <li><code>new_issue</code></li> <li><code>chat_opened</code></li> <li><code>chat_closed</code></li> <li><code>new_comment</code></li> <li><code>resolution_posted</code></li> <li><code>feedback_received</code></li> <li><code>new_community_post</code></li> <li><code>issue_hidden</code></li></ul>
         </div>
@@ -5084,10 +5084,10 @@ Must be one of:
  &nbsp;
                 <input type="text" style="display: none"
                               name="since"                data-endpoint="GETapi-notifications-unread-count"
-               value="2026-06-17T08:55:13"
+               value="2026-06-17T12:51:39"
                data-component="body">
     <br>
-<p>Must be a valid date. Example: <code>2026-06-17T08:55:13</code></p>
+<p>Must be a valid date. Example: <code>2026-06-17T12:51:39</code></p>
         </div>
         </form>
 
@@ -5392,8 +5392,8 @@ You can check the Dev Tools console for debugging information.</code></pre>
     \"page\": 16,
     \"per_page\": 22,
     \"is_read\": false,
-    \"type\": \"new_message\",
-    \"since\": \"2026-06-17T08:55:13\"
+    \"type\": \"resolution_posted\",
+    \"since\": \"2026-06-17T12:51:39\"
 }"
 </code></pre></div>
 
@@ -5413,8 +5413,8 @@ let body = {
     "page": 16,
     "per_page": 22,
     "is_read": false,
-    "type": "new_message",
-    "since": "2026-06-17T08:55:13"
+    "type": "resolution_posted",
+    "since": "2026-06-17T12:51:39"
 };
 
 fetch(url, {
@@ -5580,10 +5580,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="type"                data-endpoint="GETapi-notifications"
-               value="new_message"
+               value="resolution_posted"
                data-component="body">
     <br>
-<p>Example: <code>new_message</code></p>
+<p>Example: <code>resolution_posted</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>status_change</code></li> <li><code>new_message</code></li> <li><code>new_issue</code></li> <li><code>chat_opened</code></li> <li><code>chat_closed</code></li> <li><code>new_comment</code></li> <li><code>resolution_posted</code></li> <li><code>feedback_received</code></li> <li><code>new_community_post</code></li> <li><code>issue_hidden</code></li></ul>
         </div>
@@ -5594,10 +5594,10 @@ Must be one of:
  &nbsp;
                 <input type="text" style="display: none"
                               name="since"                data-endpoint="GETapi-notifications"
-               value="2026-06-17T08:55:13"
+               value="2026-06-17T12:51:39"
                data-component="body">
     <br>
-<p>Must be a valid date. Example: <code>2026-06-17T08:55:13</code></p>
+<p>Must be a valid date. Example: <code>2026-06-17T12:51:39</code></p>
         </div>
         </form>
 
@@ -5620,7 +5620,7 @@ Must be one of:
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"is_read\": false
+    \"is_read\": true
 }"
 </code></pre></div>
 
@@ -5637,7 +5637,7 @@ const headers = {
 };
 
 let body = {
-    "is_read": false
+    "is_read": true
 };
 
 fetch(url, {
@@ -5767,7 +5767,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
             <code>false</code>
         </label>
     <br>
-<p>Must be accepted. Example: <code>false</code></p>
+<p>Must be accepted. Example: <code>true</code></p>
         </div>
         </form>
 
@@ -5792,9 +5792,9 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --data "{
     \"page\": 16,
     \"per_page\": 22,
-    \"is_read\": true,
-    \"type\": \"new_message\",
-    \"since\": \"2026-06-17T08:55:13\"
+    \"is_read\": false,
+    \"type\": \"chat_closed\",
+    \"since\": \"2026-06-17T12:51:39\"
 }"
 </code></pre></div>
 
@@ -5813,9 +5813,9 @@ const headers = {
 let body = {
     "page": 16,
     "per_page": 22,
-    "is_read": true,
-    "type": "new_message",
-    "since": "2026-06-17T08:55:13"
+    "is_read": false,
+    "type": "chat_closed",
+    "since": "2026-06-17T12:51:39"
 };
 
 fetch(url, {
@@ -5972,7 +5972,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
             <code>false</code>
         </label>
     <br>
-<p>Example: <code>true</code></p>
+<p>Example: <code>false</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>type</code></b>&nbsp;&nbsp;
@@ -5981,10 +5981,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="type"                data-endpoint="GETapi-officers-me-notifications-unread-count"
-               value="new_message"
+               value="chat_closed"
                data-component="body">
     <br>
-<p>Example: <code>new_message</code></p>
+<p>Example: <code>chat_closed</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>status_change</code></li> <li><code>new_message</code></li> <li><code>new_issue</code></li> <li><code>chat_opened</code></li> <li><code>chat_closed</code></li> <li><code>new_comment</code></li> <li><code>resolution_posted</code></li> <li><code>feedback_received</code></li> <li><code>new_community_post</code></li> <li><code>issue_hidden</code></li></ul>
         </div>
@@ -5995,10 +5995,10 @@ Must be one of:
  &nbsp;
                 <input type="text" style="display: none"
                               name="since"                data-endpoint="GETapi-officers-me-notifications-unread-count"
-               value="2026-06-17T08:55:13"
+               value="2026-06-17T12:51:39"
                data-component="body">
     <br>
-<p>Must be a valid date. Example: <code>2026-06-17T08:55:13</code></p>
+<p>Must be a valid date. Example: <code>2026-06-17T12:51:39</code></p>
         </div>
         </form>
 
@@ -6302,9 +6302,9 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --data "{
     \"page\": 16,
     \"per_page\": 22,
-    \"is_read\": false,
-    \"type\": \"resolution_posted\",
-    \"since\": \"2026-06-17T08:55:13\"
+    \"is_read\": true,
+    \"type\": \"issue_hidden\",
+    \"since\": \"2026-06-17T12:51:39\"
 }"
 </code></pre></div>
 
@@ -6323,9 +6323,9 @@ const headers = {
 let body = {
     "page": 16,
     "per_page": 22,
-    "is_read": false,
-    "type": "resolution_posted",
-    "since": "2026-06-17T08:55:13"
+    "is_read": true,
+    "type": "issue_hidden",
+    "since": "2026-06-17T12:51:39"
 };
 
 fetch(url, {
@@ -6482,7 +6482,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
             <code>false</code>
         </label>
     <br>
-<p>Example: <code>false</code></p>
+<p>Example: <code>true</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>type</code></b>&nbsp;&nbsp;
@@ -6491,10 +6491,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="type"                data-endpoint="GETapi-officers-me-notifications"
-               value="resolution_posted"
+               value="issue_hidden"
                data-component="body">
     <br>
-<p>Example: <code>resolution_posted</code></p>
+<p>Example: <code>issue_hidden</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>status_change</code></li> <li><code>new_message</code></li> <li><code>new_issue</code></li> <li><code>chat_opened</code></li> <li><code>chat_closed</code></li> <li><code>new_comment</code></li> <li><code>resolution_posted</code></li> <li><code>feedback_received</code></li> <li><code>new_community_post</code></li> <li><code>issue_hidden</code></li></ul>
         </div>
@@ -6505,10 +6505,10 @@ Must be one of:
  &nbsp;
                 <input type="text" style="display: none"
                               name="since"                data-endpoint="GETapi-officers-me-notifications"
-               value="2026-06-17T08:55:13"
+               value="2026-06-17T12:51:39"
                data-component="body">
     <br>
-<p>Must be a valid date. Example: <code>2026-06-17T08:55:13</code></p>
+<p>Must be a valid date. Example: <code>2026-06-17T12:51:39</code></p>
         </div>
         </form>
 
@@ -6856,7 +6856,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"is_satisfied\": true,
+    \"is_satisfied\": false,
     \"comment\": \"b\"
 }"
 </code></pre></div>
@@ -6874,7 +6874,7 @@ const headers = {
 };
 
 let body = {
-    "is_satisfied": true,
+    "is_satisfied": false,
     "comment": "b"
 };
 
@@ -7005,7 +7005,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
             <code>false</code>
         </label>
     <br>
-<p>Example: <code>true</code></p>
+<p>Example: <code>false</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>comment</code></b>&nbsp;&nbsp;
@@ -7577,7 +7577,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     \"district_id\": 16,
     \"title\": \"n\",
     \"content\": \"g\",
-    \"visibility\": \"hidden\"
+    \"visibility\": \"visible\"
 }"
 </code></pre></div>
 
@@ -7597,7 +7597,7 @@ let body = {
     "district_id": 16,
     "title": "n",
     "content": "g",
-    "visibility": "hidden"
+    "visibility": "visible"
 };
 
 fetch(url, {
@@ -7737,10 +7737,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="visibility"                data-endpoint="POSTapi-community-posts"
-               value="hidden"
+               value="visible"
                data-component="body">
     <br>
-<p>Example: <code>hidden</code></p>
+<p>Example: <code>visible</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>visible</code></li> <li><code>hidden</code></li></ul>
         </div>
@@ -8412,7 +8412,7 @@ Must be one of:
     --header "Authorization: Bearer {token}" \
     --header "Content-Type: multipart/form-data" \
     --header "Accept: application/json" \
-    --form "attachments[]=@C:\Users\marti\AppData\Local\Temp\php8605.tmp" </code></pre></div>
+    --form "attachments[]=@C:\Users\marti\AppData\Local\Temp\phpFEF3.tmp" </code></pre></div>
 
 
 <div class="javascript-example">
@@ -11067,7 +11067,7 @@ shape used elsewhere, while this upload endpoint contractually returns
     --header "Authorization: Bearer {token}" \
     --header "Content-Type: multipart/form-data" \
     --header "Accept: application/json" \
-    --form "files[]=@C:\Users\marti\AppData\Local\Temp\php8576.tmp" </code></pre></div>
+    --form "files[]=@C:\Users\marti\AppData\Local\Temp\phpFE65.tmp" </code></pre></div>
 
 
 <div class="javascript-example">
@@ -11753,7 +11753,8 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"user_id\": 16
+    \"user_id\": 16,
+    \"participant_id\": 16
 }"
 </code></pre></div>
 
@@ -11770,7 +11771,8 @@ const headers = {
 };
 
 let body = {
-    "user_id": 16
+    "user_id": 16,
+    "participant_id": 16
 };
 
 fetch(url, {
@@ -11883,14 +11885,26 @@ You can check the Dev Tools console for debugging information.</code></pre>
         <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>user_id</code></b>&nbsp;&nbsp;
 <small>integer</small>&nbsp;
- &nbsp;
+<i>optional</i> &nbsp;
  &nbsp;
                 <input type="number" style="display: none"
                step="any"               name="user_id"                data-endpoint="PATCHapi-issues--issue_id--chats-open"
                value="16"
                data-component="body">
     <br>
-<p>Must match an existing stored value. Example: <code>16</code></p>
+<p>This field is required when <code>participant_id</code> is not present. Must match an existing stored value. Example: <code>16</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>participant_id</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="participant_id"                data-endpoint="PATCHapi-issues--issue_id--chats-open"
+               value="16"
+               data-component="body">
+    <br>
+<p>This field is required when <code>user_id</code> is not present. Must match an existing stored value. Example: <code>16</code></p>
         </div>
         </form>
 
@@ -12266,7 +12280,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --header "Content-Type: multipart/form-data" \
     --header "Accept: application/json" \
     --form "content=b"\
-    --form "files[]=@C:\Users\marti\AppData\Local\Temp\php85A6.tmp" </code></pre></div>
+    --form "files[]=@C:\Users\marti\AppData\Local\Temp\phpFE85.tmp" </code></pre></div>
 
 
 <div class="javascript-example">
@@ -13495,7 +13509,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"visibility\": \"hidden\"
+    \"visibility\": \"visible\"
 }"
 </code></pre></div>
 
@@ -13512,7 +13526,7 @@ const headers = {
 };
 
 let body = {
-    "visibility": "hidden"
+    "visibility": "visible"
 };
 
 fetch(url, {
@@ -13641,10 +13655,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="visibility"                data-endpoint="PATCHapi-issues--issue_id--comments--comment_id--visibility"
-               value="hidden"
+               value="visible"
                data-component="body">
     <br>
-<p>Example: <code>hidden</code></p>
+<p>Example: <code>visible</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>visible</code></li> <li><code>hidden</code></li></ul>
         </div>
@@ -13673,7 +13687,7 @@ Must be one of:
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"is_anonymous\": false
+    \"is_anonymous\": true
 }"
 </code></pre></div>
 
@@ -13690,7 +13704,7 @@ const headers = {
 };
 
 let body = {
-    "is_anonymous": false
+    "is_anonymous": true
 };
 
 fetch(url, {
@@ -13820,7 +13834,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
             <code>false</code>
         </label>
     <br>
-<p>Example: <code>false</code></p>
+<p>Example: <code>true</code></p>
         </div>
         </form>
 
@@ -14203,18 +14217,18 @@ then <code>id</code>, and paginated with a safe default <code>per_page</code>.</
     \"department\": \"architecto\",
     \"category_id\": 16,
     \"status\": [
-        \"open\"
+        \"in_behandeling\"
     ],
     \"search\": \"n\",
-    \"date_from\": \"2022-07-11\",
+    \"date_from\": \"2022-07-12\",
     \"date_to\": \"2052-07-10\",
     \"assigned_officer_id\": 16,
-    \"unassigned\": \"1\",
-    \"mine\": \"1\",
+    \"unassigned\": \"true\",
+    \"mine\": \"true\",
     \"exclude_mine\": \"1\",
     \"participating\": \"1\",
     \"followed\": \"1\",
-    \"include_duplicates\": \"true\",
+    \"include_duplicates\": \"1\",
     \"visibility\": \"visible\",
     \"page\": 22,
     \"per_page\": 7
@@ -14240,18 +14254,18 @@ let body = {
     "department": "architecto",
     "category_id": 16,
     "status": [
-        "open"
+        "in_behandeling"
     ],
     "search": "n",
-    "date_from": "2022-07-11",
+    "date_from": "2022-07-12",
     "date_to": "2052-07-10",
     "assigned_officer_id": 16,
-    "unassigned": "1",
-    "mine": "1",
+    "unassigned": "true",
+    "mine": "true",
     "exclude_mine": "1",
     "participating": "1",
     "followed": "1",
-    "include_duplicates": "true",
+    "include_duplicates": "1",
     "visibility": "visible",
     "page": 22,
     "per_page": 7
@@ -14440,10 +14454,10 @@ Must be one of:
  &nbsp;
                 <input type="text" style="display: none"
                               name="date_from"                data-endpoint="GETapi-issues"
-               value="2022-07-11"
+               value="2022-07-12"
                data-component="body">
     <br>
-<p>Must be a valid date. Must be a date before or equal to <code>date_to</code>. Example: <code>2022-07-11</code></p>
+<p>Must be a valid date. Must be a date before or equal to <code>date_to</code>. Example: <code>2022-07-12</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>date_to</code></b>&nbsp;&nbsp;
@@ -14476,10 +14490,10 @@ Must be one of:
  &nbsp;
                 <input type="text" style="display: none"
                               name="unassigned"                data-endpoint="GETapi-issues"
-               value="1"
+               value="true"
                data-component="body">
     <br>
-<p>Example: <code>1</code></p>
+<p>Example: <code>true</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>1</code></li> <li><code>true</code></li> <li><code>1</code></li> <li><code>1</code></li></ul>
         </div>
@@ -14490,10 +14504,10 @@ Must be one of:
  &nbsp;
                 <input type="text" style="display: none"
                               name="mine"                data-endpoint="GETapi-issues"
-               value="1"
+               value="true"
                data-component="body">
     <br>
-<p>Example: <code>1</code></p>
+<p>Example: <code>true</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>1</code></li> <li><code>true</code></li> <li><code>1</code></li> <li><code>1</code></li></ul>
         </div>
@@ -14546,10 +14560,10 @@ Must be one of:
  &nbsp;
                 <input type="text" style="display: none"
                               name="include_duplicates"                data-endpoint="GETapi-issues"
-               value="true"
+               value="1"
                data-component="body">
     <br>
-<p>Example: <code>true</code></p>
+<p>Example: <code>1</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>1</code></li> <li><code>true</code></li> <li><code>1</code></li> <li><code>1</code></li></ul>
         </div>
@@ -16231,7 +16245,7 @@ actor cannot view return 404. Only the visibility field is updated.</p>
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"visibility\": \"hidden\"
+    \"visibility\": \"visible\"
 }"
 </code></pre></div>
 
@@ -16248,7 +16262,7 @@ const headers = {
 };
 
 let body = {
-    "visibility": "hidden"
+    "visibility": "visible"
 };
 
 fetch(url, {
@@ -16365,10 +16379,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="visibility"                data-endpoint="PATCHapi-issues--issue_id--visibility"
-               value="hidden"
+               value="visible"
                data-component="body">
     <br>
-<p>Example: <code>hidden</code></p>
+<p>Example: <code>visible</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>visible</code></li> <li><code>hidden</code></li></ul>
         </div>
@@ -19550,7 +19564,7 @@ first transition to opgelost.</p>
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"status\": \"gesloten\",
+    \"status\": \"in_behandeling\",
     \"note\": \"b\"
 }"
 </code></pre></div>
@@ -19568,7 +19582,7 @@ const headers = {
 };
 
 let body = {
-    "status": "gesloten",
+    "status": "in_behandeling",
     "note": "b"
 };
 
@@ -19686,10 +19700,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="status"                data-endpoint="PATCHapi-issues--issue_id--status"
-               value="gesloten"
+               value="in_behandeling"
                data-component="body">
     <br>
-<p>Example: <code>gesloten</code></p>
+<p>Example: <code>in_behandeling</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>open</code></li> <li><code>in_behandeling</code></li> <li><code>opgelost</code></li> <li><code>gesloten</code></li></ul>
         </div>
@@ -19882,7 +19896,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --header "Accept: application/json" \
     --form "title=b"\
     --form "content=n"\
-    --form "files[]=@C:\Users\marti\AppData\Local\Temp\php8524.tmp" </code></pre></div>
+    --form "files[]=@C:\Users\marti\AppData\Local\Temp\phpFE13.tmp" </code></pre></div>
 
 
 <div class="javascript-example">
@@ -20069,7 +20083,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --form "title=b"\
     --form "content=n"\
     --form "remove_attachment_ids[]=16"\
-    --form "files[]=@C:\Users\marti\AppData\Local\Temp\php8535.tmp" </code></pre></div>
+    --form "files[]=@C:\Users\marti\AppData\Local\Temp\phpFE23.tmp" </code></pre></div>
 
 
 <div class="javascript-example">
@@ -20790,7 +20804,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --header "Accept: application/json" \
     --form "title=b"\
     --form "content=n"\
-    --form "files[]=@C:\Users\marti\AppData\Local\Temp\php8555.tmp" </code></pre></div>
+    --form "files[]=@C:\Users\marti\AppData\Local\Temp\phpFE44.tmp" </code></pre></div>
 
 
 <div class="javascript-example">
@@ -20977,7 +20991,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --form "title=b"\
     --form "content=n"\
     --form "remove_attachment_ids[]=16"\
-    --form "files[]=@C:\Users\marti\AppData\Local\Temp\php8556.tmp" </code></pre></div>
+    --form "files[]=@C:\Users\marti\AppData\Local\Temp\phpFE45.tmp" </code></pre></div>
 
 
 <div class="javascript-example">

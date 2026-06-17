@@ -340,7 +340,7 @@ endpoints:
         name: visibility
         description: ''
         required: true
-        example: hidden
+        example: visible
         type: string
         enumValues:
           - visible
@@ -349,7 +349,7 @@ endpoints:
         nullable: false
         deprecated: false
     cleanBodyParameters:
-      visibility: hidden
+      visibility: visible
     fileParameters: []
     responses: []
     responseFields: []

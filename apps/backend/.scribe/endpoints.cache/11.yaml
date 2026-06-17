@@ -125,8 +125,19 @@ endpoints:
       user_id:
         custom: []
         name: user_id
-        description: 'Must match an existing stored value.'
-        required: true
+        description: 'This field is required when <code>participant_id</code> is not present. Must match an existing stored value.'
+        required: false
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      participant_id:
+        custom: []
+        name: participant_id
+        description: 'This field is required when <code>user_id</code> is not present. Must match an existing stored value.'
+        required: false
         example: 16
         type: integer
         enumValues: []
@@ -135,6 +146,7 @@ endpoints:
         deprecated: false
     cleanBodyParameters:
       user_id: 16
+      participant_id: 16
     fileParameters: []
     responses: []
     responseFields: []

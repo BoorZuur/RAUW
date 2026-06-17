@@ -83,7 +83,7 @@ endpoints:
         description: ''
         required: false
         example:
-          - open
+          - in_behandeling
         type: 'string[]'
         enumValues:
           - open
@@ -109,7 +109,7 @@ endpoints:
         name: date_from
         description: 'Must be a valid date. Must be a date before or equal to <code>date_to</code>.'
         required: false
-        example: '2022-07-11'
+        example: '2022-07-12'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -142,7 +142,7 @@ endpoints:
         name: unassigned
         description: ''
         required: false
-        example: '1'
+        example: 'true'
         type: string
         enumValues:
           - '1'
@@ -157,7 +157,7 @@ endpoints:
         name: mine
         description: ''
         required: false
-        example: '1'
+        example: 'true'
         type: string
         enumValues:
           - '1'
@@ -217,7 +217,7 @@ endpoints:
         name: include_duplicates
         description: ''
         required: false
-        example: 'true'
+        example: '1'
         type: string
         enumValues:
           - '1'
@@ -268,17 +268,17 @@ endpoints:
       department: architecto
       category_id: 16
       status:
-        - open
+        - in_behandeling
       search: 'n'
-      date_from: '2022-07-11'
+      date_from: '2022-07-12'
       date_to: '2052-07-10'
       assigned_officer_id: 16
-      unassigned: '1'
-      mine: '1'
+      unassigned: 'true'
+      mine: 'true'
       exclude_mine: '1'
       participating: '1'
       followed: '1'
-      include_duplicates: 'true'
+      include_duplicates: '1'
       visibility: visible
       page: 22
       per_page: 7
@@ -1174,7 +1174,7 @@ endpoints:
         name: visibility
         description: ''
         required: true
-        example: hidden
+        example: visible
         type: string
         enumValues:
           - visible
@@ -1183,7 +1183,7 @@ endpoints:
         nullable: false
         deprecated: false
     cleanBodyParameters:
-      visibility: hidden
+      visibility: visible
     fileParameters: []
     responses: []
     responseFields: []

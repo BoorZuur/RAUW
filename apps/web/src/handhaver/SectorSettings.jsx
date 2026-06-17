@@ -87,6 +87,19 @@ export default function SectorSettings() {
         );
     };
 
+    const visibleDistricts = allDistricts.filter(d => selectedHubId ? d.hub_id === selectedHubId : true);
+    const visibleDistrictIds = visibleDistricts.map(d => d.id);
+    const allVisibleSelected = visibleDistrictIds.length > 0 && visibleDistrictIds.every(id => selectedDistricts.includes(id));
+
+    const handleToggleAll = () => {
+        if (allVisibleSelected) {
+            setSelectedDistricts(prev => prev.filter(id => !visibleDistrictIds.includes(id)));
+        } else {
+            const newSelections = new Set([...selectedDistricts, ...visibleDistrictIds]);
+            setSelectedDistricts(Array.from(newSelections));
+        }
+    };
+
     const handleSave = async () => {
         setSaving(true);
         setMessage("");
@@ -196,16 +209,26 @@ export default function SectorSettings() {
 
                     <section
                         className="bg-primary-bg-cards border border-primary-border p-5 sm:p-6 rounded-2xl shadow-sm flex-1">
-                        <h2 className="font-bold font-headline text-primary-text mb-1">Alle Wijken Rotterdam</h2>
-                        <p className="text-secondary-text text-xs sm:text-sm mb-4">Klik op een wijk om deze toe te
-                            voegen of te verwijderen</p>
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+                            <div>
+                                <h2 className="font-bold font-headline text-primary-text mb-1">Alle Wijken Rotterdam</h2>
+                                <p className="text-secondary-text text-xs sm:text-sm">Klik op een wijk om deze toe te
+                                    voegen of te verwijderen</p>
+                            </div>
+                            <button
+                                onClick={handleToggleAll}
+                                disabled={visibleDistrictIds.length === 0}
+                                className="px-4 py-2 text-sm font-bold bg-primary-bg hover:bg-primary-border text-primary-text border border-primary-border rounded-lg transition-colors whitespace-nowrap cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {allVisibleSelected ? "Deselecteer Alles" : "Selecteer Alles"}
+                            </button>
+                        </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                             {loading ? (
                                 <p className="text-secondary-text text-sm font-body">Gegevens laden...</p>
                             ) : (
-                                allDistricts
-                                    .filter(d => selectedHubId ? d.hub_id === selectedHubId : true)
+                                visibleDistricts
                                     .map(district => (
                                         <button
                                             key={district.id}

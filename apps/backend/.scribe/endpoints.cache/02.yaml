@@ -92,7 +92,7 @@ endpoints:
         name: submitted_from
         description: 'Must be a valid date.'
         required: false
-        example: '2026-06-17T08:55:12'
+        example: '2026-06-17T12:51:39'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -111,7 +111,7 @@ endpoints:
         deprecated: false
     cleanBodyParameters:
       issue_id: 16
-      submitted_from: '2026-06-17T08:55:12'
+      submitted_from: '2026-06-17T12:51:39'
       submitted_to: '2052-07-10'
     fileParameters: []
     responses:
@@ -205,7 +205,7 @@ endpoints:
         name: notify_status_changes
         description: ''
         required: false
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -216,15 +216,15 @@ endpoints:
         name: notify_district_news
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanBodyParameters:
-      notify_status_changes: true
-      notify_district_news: false
+      notify_status_changes: false
+      notify_district_news: true
     fileParameters: []
     responses: []
     responseFields: []
@@ -286,7 +286,7 @@ endpoints:
         name: is_read
         description: ''
         required: false
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -297,7 +297,7 @@ endpoints:
         name: type
         description: ''
         required: false
-        example: issue_hidden
+        example: new_comment
         type: string
         enumValues:
           - status_change
@@ -318,7 +318,7 @@ endpoints:
         name: since
         description: 'Must be a valid date.'
         required: false
-        example: '2026-06-17T08:55:13'
+        example: '2026-06-17T12:51:39'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -327,9 +327,9 @@ endpoints:
     cleanBodyParameters:
       page: 16
       per_page: 22
-      is_read: true
-      type: issue_hidden
-      since: '2026-06-17T08:55:13'
+      is_read: false
+      type: new_comment
+      since: '2026-06-17T12:51:39'
     fileParameters: []
     responses:
       -
@@ -495,7 +495,7 @@ endpoints:
         name: type
         description: ''
         required: false
-        example: new_message
+        example: resolution_posted
         type: string
         enumValues:
           - status_change
@@ -516,7 +516,7 @@ endpoints:
         name: since
         description: 'Must be a valid date.'
         required: false
-        example: '2026-06-17T08:55:13'
+        example: '2026-06-17T12:51:39'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -526,8 +526,8 @@ endpoints:
       page: 16
       per_page: 22
       is_read: false
-      type: new_message
-      since: '2026-06-17T08:55:13'
+      type: resolution_posted
+      since: '2026-06-17T12:51:39'
     fileParameters: []
     responses:
       -
@@ -588,14 +588,14 @@ endpoints:
         name: is_read
         description: 'Must be accepted.'
         required: true
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanBodyParameters:
-      is_read: false
+      is_read: true
     fileParameters: []
     responses: []
     responseFields: []
@@ -657,7 +657,7 @@ endpoints:
         name: is_read
         description: ''
         required: false
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -668,7 +668,7 @@ endpoints:
         name: type
         description: ''
         required: false
-        example: new_message
+        example: chat_closed
         type: string
         enumValues:
           - status_change
@@ -689,7 +689,7 @@ endpoints:
         name: since
         description: 'Must be a valid date.'
         required: false
-        example: '2026-06-17T08:55:13'
+        example: '2026-06-17T12:51:39'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -698,9 +698,9 @@ endpoints:
     cleanBodyParameters:
       page: 16
       per_page: 22
-      is_read: true
-      type: new_message
-      since: '2026-06-17T08:55:13'
+      is_read: false
+      type: chat_closed
+      since: '2026-06-17T12:51:39'
     fileParameters: []
     responses:
       -
@@ -855,7 +855,7 @@ endpoints:
         name: is_read
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -866,7 +866,7 @@ endpoints:
         name: type
         description: ''
         required: false
-        example: resolution_posted
+        example: issue_hidden
         type: string
         enumValues:
           - status_change
@@ -887,7 +887,7 @@ endpoints:
         name: since
         description: 'Must be a valid date.'
         required: false
-        example: '2026-06-17T08:55:13'
+        example: '2026-06-17T12:51:39'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -896,9 +896,9 @@ endpoints:
     cleanBodyParameters:
       page: 16
       per_page: 22
-      is_read: false
-      type: resolution_posted
-      since: '2026-06-17T08:55:13'
+      is_read: true
+      type: issue_hidden
+      since: '2026-06-17T12:51:39'
     fileParameters: []
     responses:
       -
@@ -1074,7 +1074,7 @@ endpoints:
         name: is_satisfied
         description: ''
         required: true
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -1092,7 +1092,7 @@ endpoints:
         nullable: true
         deprecated: false
     cleanBodyParameters:
-      is_satisfied: true
+      is_satisfied: false
       comment: b
     fileParameters: []
     responses: []
@@ -1376,7 +1376,7 @@ endpoints:
         name: visibility
         description: ''
         required: true
-        example: hidden
+        example: visible
         type: string
         enumValues:
           - visible
@@ -1388,7 +1388,7 @@ endpoints:
       district_id: 16
       title: 'n'
       content: g
-      visibility: hidden
+      visibility: visible
     fileParameters: []
     responses: []
     responseFields: []

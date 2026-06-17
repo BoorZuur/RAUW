@@ -7,7 +7,7 @@ import IncidentMap from "../components/IncidentMap.jsx";
 import { useNavigate } from "react-router-dom";
 import { fetchParticipants } from "../services/issueParticipantService";
 import { openChat } from "../services/issueChatService";
-import "./Handhaver_styling.css"
+// import "./Handhaver_styling.css"
 import "../components/MapComponent.jsx"
 import NativeLeafletMap from "../components/MapComponent.jsx";
 import { Search, TriangleAlert, Siren } from 'lucide-react';
@@ -21,6 +21,7 @@ export default function CommandCenter() {
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("");
+    const [assignedToMe, setAssignedToMe] = useState(false);
     const [selectedIssue, setSelectedIssue] = useState(null);
     const [officer, setOfficer] = useState(null);
 
@@ -77,6 +78,7 @@ export default function CommandCenter() {
             if (debouncedSearch) params.append('search', debouncedSearch);
             if (statusFilter) params.append('status', statusFilter);
             if (categoryFilter) params.append('category_id', categoryFilter);
+            if (assignedToMe && officer) params.append('assigned_officer_id', officer.id);
 
             const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/issues?${params.toString()}`, {
                 headers: {'Authorization': `Bearer ${token}`}
@@ -93,7 +95,7 @@ export default function CommandCenter() {
 
     useEffect(() => {
         fetchIssues();
-    }, [debouncedSearch, statusFilter, categoryFilter]);
+    }, [debouncedSearch, statusFilter, categoryFilter, assignedToMe, officer]);
 
     const fetchIssueDetails = async (issueId) => {
         try {
@@ -137,12 +139,10 @@ export default function CommandCenter() {
             await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/issues/${issueId}/assign-self`, {}, {
                 headers: {'Authorization': `Bearer ${token}`}
             });
-            alert("Succesvol toegewezen!");
             fetchIssues();
             setSelectedIssue(null);
         } catch (error) {
             console.error("Error assigning:", error);
-            alert("Fout bij toewijzen.");
         }
     };
 
@@ -152,12 +152,10 @@ export default function CommandCenter() {
             await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/issues/${issueId}/unassign-self`, {}, {
                 headers: {'Authorization': `Bearer ${token}`}
             });
-            alert("Taak succesvol teruggegeven!");
             fetchIssues();
             setSelectedIssue(null);
         } catch (error) {
             console.error("Error unassigning:", error);
-            alert("Fout bij teruggeven taak.");
         }
     };
 
@@ -169,12 +167,10 @@ export default function CommandCenter() {
             }, {
                 headers: {'Authorization': `Bearer ${token}`}
             });
-            alert(`Status succesvol gewijzigd naar ${newStatus}!`);
             fetchIssues();
             setSelectedIssue(null);
         } catch (error) {
             console.error("Error updating status:", error);
-            alert("Fout bij wijzigen status.");
         }
     };
 
@@ -199,10 +195,8 @@ export default function CommandCenter() {
             setUpdateText("");
             setUpdateFiles(null);
             fetchIssueDetails(selectedIssue.id);
-            alert("Update toegevoegd!");
         } catch (error) {
             console.error("Error submitting update:", error);
-            alert("Fout bij toevoegen update.");
         } finally {
             setIsSubmitting(false);
         }
@@ -226,10 +220,10 @@ export default function CommandCenter() {
                 }
             });
             fetchIssueDetails(selectedIssue.id);
-            alert("Resolutie succesvol ingediend!");
+            // Optionally, also re-fetch the entire issues list so that the queue's status label updates to 'opgelost'
+            fetchIssues();
         } catch (error) {
             console.error("Error submitting resolution:", error);
-            alert("Fout bij indienen resolutie.");
         } finally {
             setIsSubmitting(false);
         }
@@ -310,6 +304,17 @@ export default function CommandCenter() {
                                     <option key={c.id} value={c.id}>{c.name}</option>
                                 ))}
                             </select>
+                            <button
+                                onClick={() => setAssignedToMe(!assignedToMe)}
+                                className={`flex items-center justify-center py-3 px-4 rounded-xl border text-sm font-semibold transition-colors whitespace-nowrap ${
+                                    assignedToMe 
+                                        ? 'bg-primary-accent border-primary-accent text-white' 
+                                        : 'bg-primary-bg-cards border-primary-border text-primary-text hover:bg-primary-border/50'
+                                }`}
+                                title="Toon alleen meldingen die aan mij zijn toegewezen"
+                            >
+                                Mijn Taken
+                            </button>
                         </div>
                     </section>
 
@@ -672,16 +677,6 @@ export default function CommandCenter() {
                                             >
                                                 Taak teruggeven
                                             </button>
-                                            {selectedIssue.status === 'in_behandeling' && (
-                                                <button
-                                                    onClick={() => handleChangeStatus(selectedIssue.id, 'opgelost')}
-                                                    disabled={!officerResolution}
-                                                    title={!officerResolution ? "Voeg eerst een resolutie toe" : ""}
-                                                    className={`font-bold py-2.5 px-6 rounded-lg transition-colors text-sm text-center order-2 ${!officerResolution ? 'bg-primary-border text-secondary-text opacity-40 cursor-not-allowed' : 'bg-secondary-accent text-white hover:opacity-90'}`}
-                                                >
-                                                    Markeer als Opgelost
-                                                </button>
-                                            )}
                                             {selectedIssue.status === 'opgelost' && (
                                                 <button
                                                     onClick={() => handleChangeStatus(selectedIssue.id, 'gesloten')}

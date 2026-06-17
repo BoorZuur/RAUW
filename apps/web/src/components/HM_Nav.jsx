@@ -151,7 +151,7 @@ export default function HM_Nav({ role = 'handhaver' }) {
                         )}
 
                         {/* Uitloggen */}
-                        <Link to="/handhaver_login" className="flex items-center justify-center gap-3 text-secondary-text hover:text-red-500 bg-primary-bg/50 border border-primary-border/40 py-3 rounded-xl transition-colors w-full">
+                        <Link to="/loginhandhaver" className="flex items-center justify-center gap-3 text-secondary-text hover:text-red-500 bg-primary-bg/50 border border-primary-border/40 py-3 rounded-xl transition-colors w-full">
                             <LogOut size={16} />
                             <span className="font-bold text-xs uppercase tracking-wider">Uitloggen</span>
                         </Link>
@@ -218,7 +218,7 @@ export default function HM_Nav({ role = 'handhaver' }) {
                         </div>
                     )}
 
-                    <Link to="/handhaver_login" className="flex items-center gap-3 text-secondary-text hover:text-red-500 transition-colors w-full px-2 py-1">
+                    <Link to="/loginhandhaver" className="flex items-center gap-3 text-secondary-text hover:text-red-500 transition-colors w-full px-2 py-1">
                         <LogOut size={18} />
                         <span className="font-semibold text-sm">Uitloggen</span>
                     </Link>
