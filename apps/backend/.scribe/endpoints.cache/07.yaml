@@ -22,13 +22,13 @@ endpoints:
         in assigned districts (including hidden); main managers see all issues
         city-wide. Duplicate child rows are excluded by default per actor
         (`IssueListScope`); users may use `participating=1` for owned children
-        with canonical participation, and officers/managers may use
-        `include_duplicates=1` to include children. A single Eloquent query
-        applies the optional `district_id`, `department`, `category_id`, `status`,
-        `assigned_officer_id`, `unassigned`, `mine`, `participating`,
-        `include_duplicates`, and `visibility` filters conditionally and
-        cumulatively (AND with visibility), so any subset (or all) of the
-        filters may be combined to narrow the result set.
+        with canonical participation, `followed=1` for followed canonical issues,
+        and officers/managers may use `include_duplicates=1` to include children.
+        A single Eloquent query applies the optional `district_id`, `department`,
+        `category_id`, `status`, `assigned_officer_id`, `unassigned`, `mine`,
+        `participating`, `followed`, `include_duplicates`, and `visibility`
+        filters conditionally and cumulatively (AND with visibility), so any
+        subset (or all) of the filters may be combined to narrow the result set.
         The `department` filter is resolved through the issue departments
         relationship with any-match semantics. Results are eager loaded (including
         `officer_resolution` with officer and attachments when a report exists;
@@ -50,8 +50,9 @@ endpoints:
         name: district_id
         description: 'Must match an existing stored value.'
         required: false
-        example: 16
-        type: integer
+        example:
+          - 16
+        type: 'integer[]'
         enumValues: []
         exampleWasSpecified: false
         nullable: false
@@ -83,13 +84,47 @@ endpoints:
         name: status
         description: ''
         required: false
-        example: in_behandeling
-        type: string
+        example:
+          - open
+        type: 'string[]'
         enumValues:
           - open
           - in_behandeling
           - opgelost
           - gesloten
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      search:
+        custom: []
+        name: search
+        description: 'Must not be greater than 255 characters.'
+        required: false
+        example: 'n'
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      date_from:
+        custom: []
+        name: date_from
+        description: 'Must be a valid date. Must be a date before or equal to <code>date_to</code>.'
+        required: false
+        example: '2022-07-11'
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      date_to:
+        custom: []
+        name: date_to
+        description: 'Must be a valid date. Must be a date after or equal to <code>date_from</code>.'
+        required: false
+        example: '2052-07-10'
+        type: string
+        enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
@@ -124,7 +159,22 @@ endpoints:
         name: mine
         description: ''
         required: false
-        example: 'true'
+        example: '1'
+        type: string
+        enumValues:
+          - '1'
+          - 'true'
+          - '1'
+          - '1'
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      exclude_mine:
+        custom: []
+        name: exclude_mine
+        description: ''
+        required: false
+        example: '1'
         type: string
         enumValues:
           - '1'
@@ -139,7 +189,22 @@ endpoints:
         name: participating
         description: ''
         required: false
-        example: 'true'
+        example: '1'
+        type: string
+        enumValues:
+          - '1'
+          - 'true'
+          - '1'
+          - '1'
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      followed:
+        custom: []
+        name: followed
+        description: ''
+        required: false
+        example: '1'
         type: string
         enumValues:
           - '1'
@@ -154,7 +219,7 @@ endpoints:
         name: include_duplicates
         description: ''
         required: false
-        example: '1'
+        example: 'true'
         type: string
         enumValues:
           - '1'
@@ -169,7 +234,7 @@ endpoints:
         name: visibility
         description: ''
         required: false
-        example: hidden
+        example: visible
         type: string
         enumValues:
           - visible
@@ -200,16 +265,23 @@ endpoints:
         nullable: false
         deprecated: false
     cleanBodyParameters:
-      district_id: 16
+      district_id:
+        - 16
       department: architecto
       category_id: 16
-      status: in_behandeling
+      status:
+        - open
+      search: 'n'
+      date_from: '2022-07-11'
+      date_to: '2052-07-10'
       assigned_officer_id: 16
       unassigned: '1'
-      mine: 'true'
-      participating: 'true'
-      include_duplicates: '1'
-      visibility: hidden
+      mine: '1'
+      exclude_mine: '1'
+      participating: '1'
+      followed: '1'
+      include_duplicates: 'true'
+      visibility: visible
       page: 22
       per_page: 7
     fileParameters: []
@@ -1172,14 +1244,14 @@ endpoints:
         name: leave_participation
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanBodyParameters:
-      leave_participation: false
+      leave_participation: true
     fileParameters: []
     responses: []
     responseFields: []

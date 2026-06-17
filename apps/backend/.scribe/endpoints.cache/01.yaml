@@ -35,7 +35,7 @@ endpoints:
       -
         custom: []
         status: 200
-        content: '{"data":[{"id":2,"code":"boa_jeugd","name":"BOA \/ Jeugd","is_active":true,"categories_count":22,"created_at":"2026-06-15T13:00:15.000000Z","updated_at":"2026-06-15T13:00:15.000000Z"},{"id":1,"code":"wijkbeheer","name":"Wijkbeheer","is_active":true,"categories_count":0,"created_at":"2026-06-15T13:00:15.000000Z","updated_at":"2026-06-15T13:00:15.000000Z"}]}'
+        content: '{"data":[{"id":2,"code":"boa_jeugd","name":"BOA \/ Jeugd","is_active":true,"categories_count":22,"created_at":"2026-06-17T08:50:56.000000Z","updated_at":"2026-06-17T08:50:56.000000Z"},{"id":1,"code":"wijkbeheer","name":"Wijkbeheer","is_active":true,"categories_count":0,"created_at":"2026-06-17T08:50:56.000000Z","updated_at":"2026-06-17T08:50:56.000000Z"}]}'
         headers:
           cache-control: 'no-cache, private'
           content-type: application/json
@@ -93,7 +93,7 @@ endpoints:
       -
         custom: []
         status: 200
-        content: '{"id":1,"code":"wijkbeheer","name":"Wijkbeheer","is_active":true,"categories_count":0,"created_at":"2026-06-15T13:00:15.000000Z","updated_at":"2026-06-15T13:00:15.000000Z"}'
+        content: '{"id":1,"code":"wijkbeheer","name":"Wijkbeheer","is_active":true,"categories_count":0,"created_at":"2026-06-17T08:50:56.000000Z","updated_at":"2026-06-17T08:50:56.000000Z"}'
         headers:
           cache-control: 'no-cache, private'
           content-type: application/json
@@ -245,7 +245,7 @@ endpoints:
         name: is_active
         description: ''
         required: false
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -257,7 +257,7 @@ endpoints:
       department_ids:
         - 16
       priority: 22
-      is_active: true
+      is_active: false
     fileParameters: []
     responses: []
     responseFields: []
@@ -554,7 +554,7 @@ endpoints:
         name: is_active
         description: ''
         required: false
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -563,7 +563,7 @@ endpoints:
     cleanBodyParameters:
       code: b
       name: 'n'
-      is_active: true
+      is_active: false
     fileParameters: []
     responses: []
     responseFields: []
@@ -735,7 +735,7 @@ endpoints:
         name: is_active
         description: ''
         required: false
-        example: false
+        example: true
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -744,7 +744,7 @@ endpoints:
     cleanBodyParameters:
       code: b
       name: 'n'
-      is_active: false
+      is_active: true
     fileParameters: []
     responses: []
     responseFields: []

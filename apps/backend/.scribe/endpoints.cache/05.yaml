@@ -58,7 +58,7 @@ endpoints:
         name: is_hub_active
         description: ''
         required: false
-        example: '1'
+        example: ''
         type: string
         enumValues:
           - '0'
@@ -97,7 +97,7 @@ endpoints:
     cleanBodyParameters:
       officer_id: 16
       hub_id: 16
-      is_hub_active: '1'
+      is_hub_active: ''
       page: 22
       per_page: 7
     fileParameters: []
@@ -180,7 +180,7 @@ endpoints:
         name: is_active
         description: ''
         required: false
-        example: ''
+        example: '1'
         type: string
         enumValues:
           - '0'
@@ -219,7 +219,7 @@ endpoints:
     cleanBodyParameters:
       district_id: 16
       department_id: 16
-      is_active: ''
+      is_active: '1'
       page: 22
       per_page: 7
     fileParameters: []

@@ -133,8 +133,20 @@ endpoints:
         exampleWasSpecified: false
         nullable: false
         deprecated: false
+      is_anonymous:
+        custom: []
+        name: is_anonymous
+        description: ''
+        required: false
+        example: true
+        type: boolean
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
     cleanBodyParameters:
       content: b
+      is_anonymous: true
     fileParameters: []
     responses: []
     responseFields: []
