@@ -57,6 +57,9 @@ class FindSimilarIssues
             ->where('district_id', $input['district_id'])
             ->whereIn('status', [IssueStatus::Open, IssueStatus::InProgress])
             ->whereNull('duplicate_of_id')
+            ->with(['attachments' => function ($attachmentQuery): void {
+                $attachmentQuery->orderBy('id')->limit(1);
+            }])
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->limit(self::CANDIDATE_LIMIT)

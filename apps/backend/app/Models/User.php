@@ -13,7 +13,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['username', 'email', 'password'])]
+#[Fillable(['username', 'email', 'password', 'notify_status_changes', 'notify_district_news'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -29,6 +29,8 @@ class User extends Authenticatable
         'is_active' => true,
         'flag_count' => 0,
         'is_under_review' => false,
+        'notify_status_changes' => true,
+        'notify_district_news' => true,
     ];
 
     /**
@@ -44,6 +46,8 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'flag_count' => 'integer',
             'is_under_review' => 'boolean',
+            'notify_status_changes' => 'boolean',
+            'notify_district_news' => 'boolean',
         ];
     }
 

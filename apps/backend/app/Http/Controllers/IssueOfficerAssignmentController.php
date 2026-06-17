@@ -11,10 +11,14 @@ use App\Models\Issue;
 use App\Models\IssueStatusHistory;
 use App\Models\Officer;
 use App\Support\IssueVisibilityQuery;
+use App\Support\Notifications\NotifyStatusChange;
 use App\Support\OfficerIssueConflict;
 use App\Support\OfficerIssueDistrictAccess;
 use App\Support\OfficerIssueRowLock;
 
+/**
+ * @group Officer Actions on Issues
+ */
 class IssueOfficerAssignmentController extends Controller
 {
     /**
@@ -40,7 +44,11 @@ class IssueOfficerAssignmentController extends Controller
      * status history row. Already assigned to the requesting officer is idempotent.
      * Assignment to a different officer returns 409 without takeover.
      */
-    public function store(AssignIssueToOfficerRequest $request, Issue $issue): IssueResource
+    public function store(
+        AssignIssueToOfficerRequest $request,
+        Issue $issue,
+        NotifyStatusChange $notifyStatusChange,
+    ): IssueResource
     {
         /** @var Officer $officer */
         $officer = $request->user();
@@ -57,7 +65,7 @@ class IssueOfficerAssignmentController extends Controller
             return new IssueResource($issue);
         }
 
-        OfficerIssueRowLock::withLockedIssue($issue, function (Issue $lockedIssue) use ($officer): void {
+        OfficerIssueRowLock::withLockedIssue($issue, function (Issue $lockedIssue) use ($officer, $notifyStatusChange): void {
             OfficerIssueRowLock::assertAssignable($lockedIssue);
             OfficerIssueRowLock::assertUnassignedOrSelf($officer, $lockedIssue);
 
@@ -78,6 +86,13 @@ class IssueOfficerAssignmentController extends Controller
                     'note' => null,
                     'changed_at' => now(),
                 ]);
+
+                $notifyStatusChange->notify(
+                    $lockedIssue,
+                    $officer,
+                    IssueStatus::Open,
+                    IssueStatus::InProgress,
+                );
             }
 
             $lockedIssue->update($updates);

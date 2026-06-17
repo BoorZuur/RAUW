@@ -12,6 +12,7 @@ use App\Enums\FlagReason;
 use App\Enums\FlagSource;
 use App\Enums\IssueStatus;
 use App\Enums\JoinedVia;
+use App\Enums\NotificationType;
 use App\Enums\Priority;
 use App\Enums\ReportPeriod;
 use App\Enums\Visibility;
@@ -94,7 +95,7 @@ class EnumCastingTest extends TestCase
         $notification = DomainNotification::create([
             'recipient_type' => ActorType::Manager,
             'issue_id' => $issue->id,
-            'type' => 'issue_updated',
+            'type' => NotificationType::StatusChange,
             'title' => 'Issue updated',
         ]);
 
@@ -131,6 +132,7 @@ class EnumCastingTest extends TestCase
         $this->assertSame(IssueStatus::Open, $history->refresh()->old_status);
         $this->assertSame(IssueStatus::Resolved, $history->new_status);
         $this->assertSame(ActorType::Manager, $notification->refresh()->recipient_type);
+        $this->assertSame(NotificationType::StatusChange, $notification->type);
         $this->assertSame(FlagSource::Keyword, $flag->refresh()->flag_source);
         $this->assertSame(FlagReason::BlockedKeyword, $flag->flag_reason);
         $this->assertSame(FlagAction::ContentHidden, $flag->action_taken);

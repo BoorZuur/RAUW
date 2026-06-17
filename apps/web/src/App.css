@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wdth,wght@106.2,440&family=Nunito:ital,wght@0,200..1000;1,200..1000&family=Shippori+Antique&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -8,19 +9,19 @@
     --color-primary-border: var(--primary-border);
     --color-primary-accent: var(--primary-accent);
     --color-secondary-accent: var(--secondary-accent);
-    --font-headline: "Roboto Flex", serif;
-    --font-body: "Literata", serif;
-    --font-label: "Work Sans", sans-serif;
+    --font-headline: "Fredoka", serif;
+    --font-body: "Nunito", serif;
+    --font-label: "Shippori Antique", sans-serif;
 }
 
 :root {
-    --primary-bg: #f8f6f2;
-    --primary-bg-cards: #edeae5;
-    --primary-border: #d4cfc8;
-    --primary-text: #2a2724;
-    --secondary-text: #615a53;
-    --primary-accent: #b8860b;
-    --secondary-accent: #2d4c38;
+    --primary-bg: #f2eae3;
+    --primary-bg-cards: #a9ad99;
+    --primary-border: #fdfaef;
+    --primary-text:  #584338;
+    --secondary-text: #36392d;
+    --primary-accent: #896958;
+    --secondary-accent: #92544f;
     color-scheme: light dark;
     font-synthesis: none;
     text-rendering: optimizeLegibility;
@@ -30,32 +31,30 @@
 
 .dark {
     --primary-bg: #0d0d0c;
-    --primary-bg-cards: #171614;
-    --primary-border: #3d3a33;
-    --primary-text: #e6e1da;
-    --secondary-text: #a8a39a;
-    --primary-accent: #d4af37;
-    --secondary-accent: #6ee7b7;
+    --primary-bg-cards: #36392d;
+    --primary-border: #8b9277;
+    --primary-text: #ece0d5;
+    --secondary-text: #fdfaef;
+    --primary-accent: #cda4a2;
+    --secondary-accent: #feeeeb;
 }
 
 .mode-protanopia {
-    --primary-bg: #f5f5f5;
-    --primary-bg-cards: #e8e8e8;
-    --primary-border: #595959;
-    --primary-text: #000000;
-    --secondary-text: #262626;
-    --primary-accent: #005fbc;
-    --secondary-accent: #1e3a2e;
+    --primary-bg: #ebebe3;
+    --primary-bg-cards: #a5a69b;
+    --primary-border: #fafae0;
+    --primary-text: #4c473a;
+    --secondary-text: #38382e;
+    --primary-accent: #766f5a;
+    --secondary-accent: #6a6452;
 }
 
 .mode-deuteranopia {
-    --primary-bg: #f5f5f5;
-    --primary-bg-cards: #e0e0e0;
-    --primary-border: #666666;
-    --primary-text: #000000;
-    --secondary-text: #212121;
-    --primary-accent: #007bbd;
-    --secondary-accent: #2d4c38;
+    --primary-bg: #f4f4eb;
+    --primary-bg-cards: #ffffff;
+    --primary-border: #aba998;
+    --primary-text: #363026;
+    --secondary-text: #595345;
 }
 
 .mode-tritanopia {
@@ -80,22 +79,22 @@
 
 .mode-protanopia.dark {
     --primary-bg: #0d0d0c;
-    --primary-bg-cards: #1a1a1a;
-    --primary-border: #4d4d4d;
-    --primary-text: #e6e1da;
-    --secondary-text: #b3b3b3;
-    --primary-accent: #4da6ff;
-    --secondary-accent: #4ade80;
+    --primary-bg-cards: #38382e;
+    --primary-border: #8f8f7a;
+    --primary-text: #deded5;
+    --secondary-text: #fafae0;
+    --primary-accent: #aeada3;
+    --secondary-accent: #f4f4eb;
 }
 
 .mode-deuteranopia.dark {
     --primary-bg: #0d0d0c;
-    --primary-bg-cards: #1a1a1a;
-    --primary-border: #4d4d4d;
-    --primary-text: #e6e1da;
-    --secondary-text: #b3b3b3;
-    --primary-accent: #3399ff;
-    --secondary-accent: #4ade80;
+    --primary-bg-cards: #1a1b16;
+    --primary-border: #3a372d;
+    --primary-text: #eae9e0;
+    --secondary-text: #aba998;
+    --primary-accent: #c5bcaf;
+    --secondary-accent: #f6f5eb;
 }
 
 .mode-tritanopia.dark {
@@ -125,7 +124,6 @@ body {
     margin: 0;
 }
 
-
 h1 {
     font-family: var(--font-headline), serif;
     font-size: 3rem;
@@ -135,7 +133,7 @@ h2 {
     font-family: var(--font-body), serif;
     font-size: 1.5rem;
 }
-p {
+p, div, label{
     font-family: var(--font-label), sans-serif;
     line-height: 1.6;
 }

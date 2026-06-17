@@ -18,6 +18,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 
+/**
+ * @group Issue Participants
+ */
 class IssueParticipantController extends Controller
 {
     /**

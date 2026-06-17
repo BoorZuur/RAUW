@@ -29,6 +29,7 @@ class StoreCommentRequest extends FormRequest
     {
         return [
             'content' => ['required', 'string', 'max:2000'],
+            'is_anonymous' => ['sometimes', 'boolean'],
         ];
     }
 }

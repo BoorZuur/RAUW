@@ -30,13 +30,16 @@ class IssueChatResource extends JsonResource
     {
         /** @var IssueChat $chat */
         $chat = $this->resource;
+        
+        $partner = $this->compactPartner($chat);
+        $isAnonymous = $partner['is_anonymous'] ?? false;
 
         return [
             'id' => $chat->id,
             'issue_id' => $chat->issue_id,
-            'user_id' => $chat->user_id,
+            'user_id' => $isAnonymous ? null : $chat->user_id,
             'status' => $chat->status->value,
-            'partner' => $this->compactPartner($chat),
+            'partner' => $partner,
             'opened_by_officer_id' => $chat->opened_by_officer_id,
             'closed_by_officer_id' => $chat->closed_by_officer_id,
             'created_at' => $chat->created_at,

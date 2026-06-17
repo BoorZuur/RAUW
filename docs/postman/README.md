@@ -2,10 +2,22 @@
 
 Use this Postman collection to test the backend-only authentication API against a local RAUW backend or another backend URL.
 
+## Related documentation
+
+| Document | Purpose |
+|----------|---------|
+| [API guides](../api/README.md) | Narrative API index and domain guides |
+| [API policies](../api-policy.md) | Auth tiers, errors, inactive accounts |
+| [OpenAPI](../openapi.yaml) | Canonical machine-readable API contract |
+| [Manual checklists](../api/manual-checklists.md) | Step-by-step verification scenarios |
+| [Issue chat](../api/issue-chat.md) | Issue Chat folder context and web `/chat` UI |
+| [Local development](../local-development.md) | Prerequisites, ports, seed accounts |
+| [Testing](../TESTING.md) | Automated tests and pre-PR checklist |
+
 ## Files
 
 - `rauw-backend.postman_collection.json` — importable Postman Collection v2.1 file.
-- `rauw-local.postman_environment.json` — local environment with `base_url` set to `http://127.0.0.1:8001`, an empty `access_token` variable, and default issue/filter variables for issue examples.
+- `rauw-local.postman_environment.json` — local environment with `base_url` set to `http://127.0.0.1:8001`, empty token variables (`access_token`, `officer_hub_active_token`, `officer_remote_token`), and default issue/filter variables for issue examples.
 
 ## Required Local Backend Setup
 
@@ -72,8 +84,9 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 |----------|-------------|-------|
 | `base_url` | `http://127.0.0.1:8001` | Change this to point at another backend without editing each request. |
 | `access_token` | blank | Filled automatically after **Auth / Login**, **Register User**, or **Register Officer**. Default token for users, officers, and general protected routes. |
+| `officer_access_token` | blank | Set by any officer login or registration. Use for **Officers / Me / Notifications** and other Tier B officer reads. |
 | `officer_hub_active_token` | blank | Filled by **Auth / Login Officer at Hub** when `hub_active: true`. |
-| `officer_remote_token` | blank | Filled by **Auth / Login Officer Remote** when `hub_active: false`. Used by **Officer Workflow Blocked (403 Smoke)** and **Officer Remote — List Community Posts (Tier B)**. |
+| `officer_remote_token` | blank | Filled by **Auth / Login Officer Remote** and hub login (same bearer). Used by **Officer Workflow Blocked (403 Smoke)** and **Start Shift**. |
 | `main_manager_access_token` | blank | Filled by **Auth / Login as Main Manager** (`demo.manager@example.com` locally). Required for **Managers** folder, **Officers / List Officer Sessions**, and department create/update/deactivate/delete. |
 | `manager_access_token` | blank | Set manually after logging in as an ordinary manager (`is_main_manager: false`). Use for officer district assignment and to verify category/district/department mutations return **403** for non-main managers. |
 | `inactive_access_token` | blank | Copy a token before deactivating an actor in the database; used by **Auth / Inactive Actor - List Issues (403 Smoke)**. |
@@ -128,7 +141,7 @@ Actor emails must be unique across users, officers, and managers. This prevents 
 20. Run **Auth / Logout** when finished.
 21. **Community news feed:** As a user, run **Auth / Update My Feed Districts**, then **Community Posts / List Community Posts**. As an officer with hub login, run **Community Posts / Create Community Post** (stores `community_post_id`), then attachment and visibility examples. As a user with feed districts set, run **Save Community Post** and **List Saved Community Posts** (`saved_only=1`).
 
-The collection stores the returned `access_token` automatically after a successful login, user registration, or officer registration. Manager creation intentionally does not update `access_token` because it returns only the created manager profile. If you disable collection scripts or the token is not stored, copy the `access_token` value from the auth response into the active Postman environment's `access_token` variable before calling protected endpoints.
+The collection stores the returned `access_token` automatically after a successful login, user registration, or officer registration. **Officer Tier C workflow requests use `officer_hub_active_token` and `officer_remote_token` instead**, so you can log in as a user or manager afterward without breaking officer workflow examples. Run **Auth / Login Officer at Hub** before Tier C officer writes; that request sets both `access_token` and `officer_hub_active_token`. Run **Auth / Login Officer Remote** (or **Register Officer**) for Tier B browse smoke tests via `officer_remote_token`. Manager creation intentionally does not update `access_token` because it returns only the created manager profile. If you disable collection scripts or the token is not stored, copy the `access_token` value from the auth response into the active Postman environment's `access_token` variable before calling protected endpoints.
 
 Issue examples also store `issue_id` after issue creation, `comment_id` after **Comments / Add Comment**, `feedback_id` after **Issues / Issue feedback / Submit Feedback**, `chat_id` / `chat_message_id` / `chat_attachment_id` after **Issue Chat** sends, and `attachment_id` / `attachment_download_url` after attachment upload. Attachment upload returns a `data: [...]` wrapper, and the collection stores these variables from `response.data[0]`. Attachment upload uses local, non-public development storage. Downloads and deletes require `Authorization: Bearer <token>` and use authenticated API routes.
 
@@ -891,7 +904,7 @@ Directed transitions only: `open` → `in_behandeling`; `in_behandeling` → `op
 Distinct from user satisfaction in `issue_resolutions`. One report per issue.
 
 - `GET {{base_url}}/api/issues/{issue}/officer-resolution` — any actor who can view the issue; **404** when none exists.
-- `POST {{base_url}}/api/issues/{issue}/officer-resolution` — multipart; current assignee only; **403** `hub_active_required`, `officer_not_in_district`, or `not_assigned_officer`; **409** `officer_resolution_exists` on duplicate; **422** `issue_closed` when status is `gesloten` (`opgelost` remains writable). Attachment cap and upload I/O run under row lock.
+- `POST {{base_url}}/api/issues/{issue}/officer-resolution` — multipart; current assignee only; **403** `hub_active_required`, `officer_not_in_district`, or `not_assigned_officer`; **409** `officer_resolution_exists` on duplicate; **422** `issue_closed` when status is `gesloten` (`opgelost` without an existing report remains writable). When status is `in_behandeling`, POST also transitions to `opgelost`, appends status history (`note: "Oplossing geplaatst"`), and sets `resolved_at` (no separate status-change notification); POST on `open` does not change status. Response is `OfficerIssueResolution` only. Attachment cap and upload I/O run under row lock.
 - `PATCH {{base_url}}/api/issues/{issue}/officer-resolution` — multipart; optional `remove_attachment_ids` and new `files` (max 3 total); `officer_id` updated to last editor; **403** `hub_active_required`, `officer_not_in_district`, or `not_assigned_officer`; **422** `issue_closed` when status is `gesloten`; **422** on `remove_attachment_ids` when ids do not belong to the resolution. Cap enforcement and upload I/O run under row lock.
 - `GET {{base_url}}/api/issues/{issue}/officer-resolution/attachments/{attachment}/download` — visibility-only auth (`IssueVisibilityQuery::canViewIssue`, Q8 / D15-A); Tier B. Users probing hidden issues they do not own receive **404**; other unauthorized actors receive **403**. Attachment must belong to the route resolution; missing backing file → **404**.
 

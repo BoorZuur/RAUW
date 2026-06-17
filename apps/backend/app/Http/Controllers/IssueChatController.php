@@ -20,6 +20,9 @@ use App\Support\OfficerIssueConflict;
 use App\Support\OfficerIssueDistrictAccess;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
+/**
+ * @group Issue Chats
+ */
 class IssueChatController extends Controller
 {
     /**
@@ -98,7 +101,17 @@ class IssueChatController extends Controller
 
         OfficerIssueDistrictAccess::assertOfficerInIssueDistrict($officer, $canonical);
 
-        $partnerUser = User::query()->findOrFail($request->validated('user_id'));
+        if ($request->has('chat_id')) {
+            $existingChat = IssueChat::query()->where('issue_id', $canonical->getKey())->findOrFail($request->validated('chat_id'));
+            $userId = $existingChat->user_id;
+        } elseif ($request->has('participant_id')) {
+            $participant = \App\Models\IssueParticipant::query()->findOrFail($request->validated('participant_id'));
+            $userId = $participant->user_id;
+        } else {
+            $userId = $request->validated('user_id');
+        }
+
+        $partnerUser = User::query()->findOrFail($userId);
 
         $chat = $openIssueChat->open($officer, $canonical, $partnerUser);
         $chat->load(self::CHAT_RELATIONS);

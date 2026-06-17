@@ -19,12 +19,14 @@ class OpenIssueChatRequest extends FormRequest
     }
 
     /**
-     * @return array<string, array<int, mixed>>
+     * @return array<string, array<int, string>>
      */
     public function rules(): array
     {
         return [
-            'user_id' => ['required', 'integer', 'exists:users,id'],
+            'user_id' => ['required_without_all:participant_id,chat_id', 'integer', 'exists:users,id'],
+            'participant_id' => ['required_without_all:user_id,chat_id', 'integer', 'exists:issue_participants,id'],
+            'chat_id' => ['required_without_all:user_id,participant_id', 'integer', 'exists:issue_chats,id'],
         ];
     }
 }

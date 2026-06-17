@@ -42,6 +42,15 @@ use App\Http\Controllers\OfficerDistrictController;
 use App\Http\Controllers\OfficerSessionController;
 use App\Http\Controllers\IssueFeedbackController;
 use App\Http\Controllers\OfficerMeFeedbackController;
+use App\Http\Controllers\NotificationBulkReadController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\NotificationMarkAllReadController;
+use App\Http\Controllers\NotificationUnreadCountController;
+use App\Http\Controllers\User\UserSettingsController;
+use App\Http\Controllers\OfficerMeNotificationBulkReadController;
+use App\Http\Controllers\OfficerMeNotificationController;
+use App\Http\Controllers\OfficerMeNotificationMarkAllReadController;
+use App\Http\Controllers\OfficerMeNotificationUnreadCountController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -99,6 +108,9 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active'])->prefi
     // validated `district_ids` array and the refreshed auth profile is returned.
     Route::patch('me/districts', ProfileDistrictController::class)->name('auth.me.districts.update');
 
+    // Self-service hub assignment updates. Only active officers may update their own hub.
+    Route::patch('me/hub', \App\Http\Controllers\Auth\ProfileHubController::class)->name('auth.me.hub.update');
+
     // Self-service feed districts update for users.
     Route::patch('me/feed-districts', [\App\Http\Controllers\Auth\UserFeedDistrictController::class, 'update'])->name('user-feed-districts.update');
 
@@ -115,7 +127,7 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active'])->prefi
 // non-main managers, and inactive managers all receive a 403. The endpoint is
 // rate-limited to mitigate abuse. No login token is issued for the created
 // manager, who must authenticate via `POST /api/auth/login`.
-Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'throttle:30,1'])->group(function (): void {
+Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'throttle:120,1'])->group(function (): void {
     // Main-manager-protected main manager listing. Authorization is narrowed
     // inside IndexMainManagerRequest to an authenticated, active main manager
     // only; users, officers, non-main managers, and inactive managers all
@@ -224,6 +236,22 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
 
     // Officer self-service reads (Tier B whitelist).
     Route::get('officers/me/feedback', [OfficerMeFeedbackController::class, 'index'])->name('officers.me.feedback.index');
+
+    // User notifications. Active users only; officers and managers receive 403.
+    Route::get('user/settings', [UserSettingsController::class, 'show'])->name('user.settings.show');
+    Route::patch('user/settings', [UserSettingsController::class, 'update'])->name('user.settings.update');
+    Route::get('notifications/unread-count', [NotificationUnreadCountController::class, 'show'])->name('notifications.unread-count');
+    Route::patch('notifications/bulk-read', [NotificationBulkReadController::class, 'update'])->name('notifications.bulk-read');
+    Route::post('notifications/mark-all-read', [NotificationMarkAllReadController::class, 'store'])->name('notifications.mark-all-read');
+    Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::patch('notifications/{notification}', [NotificationController::class, 'update'])->name('notifications.update');
+
+    // Officer self-service notifications (Tier B whitelist).
+    Route::get('officers/me/notifications/unread-count', [OfficerMeNotificationUnreadCountController::class, 'show'])->name('officers.me.notifications.unread-count');
+    Route::patch('officers/me/notifications/bulk-read', [OfficerMeNotificationBulkReadController::class, 'update'])->name('officers.me.notifications.bulk-read');
+    Route::post('officers/me/notifications/mark-all-read', [OfficerMeNotificationMarkAllReadController::class, 'store'])->name('officers.me.notifications.mark-all-read');
+    Route::get('officers/me/notifications', [OfficerMeNotificationController::class, 'index'])->name('officers.me.notifications.index');
+    Route::patch('officers/me/notifications/{notification}', [OfficerMeNotificationController::class, 'update'])->name('officers.me.notifications.update');
 
     // Main-manager-protected actor department assignment. Authorization is narrowed
     // inside the department assignment FormRequests to an authenticated, active

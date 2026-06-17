@@ -7,6 +7,9 @@ use App\Http\Resources\ManagerResource;
 use App\Models\Manager;
 use Illuminate\Http\JsonResponse;
 
+/**
+ * @group Managers
+ */
 class ManagerDepartmentController extends Controller
 {
     /**
