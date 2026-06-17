@@ -1,6 +1,4 @@
-RAUW Backend - Korte OWASP-, installatie- en deploymentnotities
-
-1) OWASP Top 10 (backend) — wat is gedaan
+OWASP Top 10 (backend)
 
 A01 Broken Access Control
 - Globale middleware blokkeert inactieve accounts op de meeste routes; gevoelige paden hebben een beperkte whitelist.
@@ -23,14 +21,14 @@ A04 Insecure Design
 A05 Security Misconfiguration
 - Expliciete CORS-configuratie met alleen toegestane frontend-origins (geen wildcard).
 - Sanctum token-expiratie via SANCTUM_TOKEN_EXPIRATION (standaard 7 dagen).
-- Logout verwijdert alle tokens van de actor, niet alleen het huidige device.
+- Logout verwijdert alleen het huidige bearer-token; end-shift of hub-herindeling door een manager kan alle tokens van een officer intrekken.
 
 A06 Vulnerable and Outdated Components
-- (Geen specifieke backend-maatregelen in deze scope.)
+-
 
 A07 Identification and Authentication Failures
 - Login weigert inactieve accounts met dezelfde generieke fout als ongeldige credentials.
-- Bearer tokens verlopen; logout invalideert alle sessies van de actor.
+- Bearer tokens verlopen; logout invalideert alleen het huidige token.
 - Rate limiting op gevoelige route-groepen (auth en beschermde API).
 
 A08 Software and Data Integrity Failures
@@ -43,9 +41,18 @@ A09 Security Logging and Monitoring Failures
 - API-fouten in productie geven generieke berichten; technische details horen in serverlogs.
 
 A10 Server-Side Request Forgery (SSRF)
-- (Geen relevante backend-endpoints die externe URLs ophalen op basis van client-input.)
+- 
 
-Niet opgenomen in dit overzicht: open-officer-login en tijdelijk breder opengestelde manager-acties.
+
+Side note:
+
+Doordat de manager kant van de applicatie is geschrapt is de BOA register blootgesteld en kan iedereen dus een BOA account aanmaken. In productie zou dit afgeschermd zijn achter een uitnodiging van een manger o.i.d.
+
+Hetzelfde geld voor het zelf toewijzen van hubs en afdelingen voor BOA's, dit zou normaal gesproken gedaan worden door een manager.
+
+
+
+
 
 2) Installatie-instructies (backend)
 1. Ga naar de backend-map:
@@ -84,6 +91,8 @@ Niet opgenomen in dit overzicht: open-officer-login en tijdelijk breder opengest
 6. Controleer operationele processen:
    - queue workers en scheduler actief (indien gebruikt)
 
+
+
 4) Belangrijke backend edge cases
 - Inactieve accounts: kunnen op kritieke routes geblokkeerd worden terwijl beperkte self-service of auth-afhandeling beschikbaar blijft.
 - Issue-zichtbaarheid: voor onbevoegde gebruikers wordt in sommige paden bewust 404 gebruikt in plaats van 403 om bestaan van records niet te lekken.
@@ -91,3 +100,20 @@ Niet opgenomen in dit overzicht: open-officer-login en tijdelijk breder opengest
 - Attachments: downloads en mutaties vallen onder autorisatieregels; bestanden zijn niet bedoeld als publiek toegankelijke assets.
 - Unieke en gevoelige velden: uniciteit en validatie worden op backend- en databaseniveau afgedwongen om race conditions en inconsistente data te beperken.
 - Mass assignment: systeemvelden blijven beschermd; alleen gecontroleerde velden mogen vanuit requests worden gezet.
+- Officer Tier B/C: officers mogen veel issue-routes lezen zonder actieve dienst (Tier B); workflow-schrijfacties vereisen een actieve gedeelde shift via hub_active_until (Tier C, 403 hub_active_required).
+- GPS-vertrouwen: login/start-shift-coördinaten zijn client-gerapporteerd; geen per-request geofence; login buiten hub-radius wist een bestaande actieve shift niet.
+- Logout: verwijdert alleen het huidige bearer-token; manager end-shift of hub-herindeling kan wél alle tokens van een officer intrekken.
+- Duplicate issues: duplicate children worden op canonical routes opgelost; mark-duplicate vereist voor officers district-toegang op zowel child als canonical; zelfde eigenaar merge/hard-delete, verschillende eigenaren hidden re-parent.
+- Issue-deelnemers: join/leave alleen op canonical issues; legacy owner-fallback wanneer participant_count = 0; duplicate-child route-ids geven 422.
+- Anonieme meldingen: anonymous_alias wordt server-side gegenereerd; user_id blijft behouden voor eigenaarschap en autorisatie.
+- Afdelingen op issues: worden afgeleid van categorie en nooit vanuit de client geaccepteerd bij create/update.
+- District-scoping: officers en gewone managers zien alleen issues in toegewezen wijken; main managers city-wide; lege district-toewijzing → lege lijsten; issue zonder district_id → geen toegang voor officer/manager.
+- Hub-districtgrenzen: bij gezet hub_id mogen self-service district_ids alleen actieve wijken binnen die hub bevatten (422 op district_ids.*).
+- Gebruikers feed-wijken: community posts en opgeslagen posts zijn beperkt tot geabonneerde actieve feed-districts; PATCH me/feed-districts is geblokkeerd voor inactieve accounts.
+- Attachment-id probing: attachment hoort niet bij issue in route → 404 (ook bij delete/download), zodat ids niet over issues heen uitproberen kan.
+- Officer workflow locks: assignee-checks, statusovergangen, assignability en resolution-limieten draaien op een vergrendelde issue-row (lockForUpdate); resolution-bijlagen hebben een cumulatief plafond binnen die transactie.
+- Issue chat: 1:1 per canonical issue + user; alleen toegewezen officer opent/sluit; managers uitgesloten; unassign sluit open chats; status gesloten sluit chats met systeembericht.
+- Feedback: alleen op gesloten issues; schrijven binnen 7 dagen na sluiten; bewerken/verwijderen binnen 24 uur na submitted_at; dubbele feedback per reviewer → 409.
+- Manager/officer route binding: verkeerd manager-type (main vs gewoon) of officer buiten manager-hub → 404 i.p.v. 403 om bestaan niet te lekken.
+- Zelf-toewijzing officer: 409 issue_already_assigned wanneer een andere officer al eigenaar is; idempotent wanneer al aan jezelf toegewezen; niet mogelijk bij opgelost/gesloten status.
+- Notificaties: notification_id moet bij de ingelogde actor horen, anders 404.
