@@ -4,9 +4,13 @@ import axios from 'axios';
 import ReportCard from "../components/H_SignalCard.jsx";
 import HM_Nav from "../components/HM_Nav.jsx";
 import IncidentMap from "../components/IncidentMap.jsx";
+import { useNavigate } from "react-router-dom";
+import { fetchParticipants } from "../services/issueParticipantService";
+import { openChat } from "../services/issueChatService";
 import "./Handhaver_styling.css"
 
 function CommandCenter() {
+    const navigate = useNavigate();
     const [issues, setIssues] = useState([]);
     const [loading, setLoading] = useState(true);
     const [categories, setCategories] = useState([]);
@@ -18,8 +22,10 @@ function CommandCenter() {
     const [officer, setOfficer] = useState(null);
 
     // Modal States
-    const [activeTab, setActiveTab] = useState('details'); // 'details', 'updates', 'resolution'
+    const [activeTab, setActiveTab] = useState('details'); // 'details', 'updates', 'resolution', 'communicatie'
     const [officerUpdates, setOfficerUpdates] = useState([]);
+    const [issueParticipants, setIssueParticipants] = useState([]);
+    const [loadingParticipants, setLoadingParticipants] = useState(false);
     const [officerResolution, setOfficerResolution] = useState(null);
     const [updateTitle, setUpdateTitle] = useState("");
     const [updateText, setUpdateText] = useState("");
@@ -111,6 +117,16 @@ function CommandCenter() {
         setResolutionFiles(null);
         fetchIssueDetails(issue.id);
     };
+
+    useEffect(() => {
+        if (activeTab === 'communicatie' && selectedIssue) {
+            setLoadingParticipants(true);
+            fetchParticipants(selectedIssue.id)
+                .then(data => setIssueParticipants(data))
+                .catch(err => console.error(err))
+                .finally(() => setLoadingParticipants(false));
+        }
+    }, [activeTab, selectedIssue]);
 
     const handleAssignSelf = async (issueId) => {
         try {
@@ -353,6 +369,12 @@ function CommandCenter() {
                                     >
                                         Resolutie
                                     </button>
+                                    <button 
+                                        onClick={() => setActiveTab('communicatie')}
+                                        className={`font-semibold pb-2 border-b-2 transition-colors ${activeTab === 'communicatie' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-stone-500 hover:text-stone-700'}`}
+                                    >
+                                        Communicatie
+                                    </button>
                                 </div>
                             </div>
                             
@@ -504,6 +526,59 @@ function CommandCenter() {
                                                 </svg>
                                                 <p>Nog geen resolutie beschikbaar.</p>
                                             </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {activeTab === 'communicatie' && (
+                                    <div className="space-y-6">
+                                        <h4 className="font-bold text-stone-900 mb-3">Gesprek Starten</h4>
+                                        {selectedIssue.assigned_officer_id !== officer?.id ? (
+                                            <div className="bg-orange-50 p-4 rounded-xl border border-orange-200 text-orange-800 text-sm">
+                                                Je kunt alleen een gesprek starten voor een melding die aan jou is toegewezen. Neem deze taak eerst aan.
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <p className="text-sm text-stone-500 mb-4">
+                                                    Kies een deelnemer uit de onderstaande lijst om een 1-op-1 gesprek te openen in de chat interface.
+                                                </p>
+                                                {loadingParticipants ? (
+                                                    <p className="text-sm text-stone-500">Deelnemers laden...</p>
+                                                ) : issueParticipants.length === 0 ? (
+                                                    <p className="text-sm text-stone-500">Geen deelnemers gevonden voor deze melding.</p>
+                                                ) : (
+                                                    <div className="divide-y divide-stone-200 border border-stone-200 rounded-xl overflow-hidden">
+                                                        {issueParticipants.map(p => (
+                                                            <div key={p.id} className="p-4 bg-white flex items-center justify-between hover:bg-stone-50 transition-colors">
+                                                                <div>
+                                                                    <p className="text-sm font-bold text-stone-900">
+                                                                        {p.user?.username || p.user?.display_name || `Deelnemer #${p.id}`}
+                                                                    </p>
+                                                                    {p.is_anonymous && <p className="text-xs text-stone-500">Anoniem</p>}
+                                                                </div>
+                                                                {p.user?.id ? (
+                                                                    <button 
+                                                                        onClick={async () => {
+                                                                            try {
+                                                                                await openChat(selectedIssue.id, p.user.id);
+                                                                                navigate('/handhaverchat', { state: { selectedIssueId: selectedIssue.id } });
+                                                                            } catch (error) {
+                                                                                console.error('Failed to open chat:', error);
+                                                                                alert('Kon gesprek niet starten.');
+                                                                            }
+                                                                        }}
+                                                                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition-colors"
+                                                                    >
+                                                                        Start Gesprek
+                                                                    </button>
+                                                                ) : (
+                                                                    <span className="text-xs text-stone-400 italic">Chat niet mogelijk (Anoniem)</span>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </>
                                         )}
                                     </div>
                                 )}
