@@ -24,7 +24,7 @@ class IssueParticipantRedactionTest extends TestCase
         return ['Authorization' => 'Bearer '.$actor->createToken('test')->plainTextToken];
     }
 
-    public function test_participant_sees_redacted_canonical_content(): void
+    public function test_participant_sees_full_canonical_content(): void
     {
         $owner = User::factory()->create();
         $participant = User::factory()->create();
@@ -50,13 +50,12 @@ class IssueParticipantRedactionTest extends TestCase
             ->getJson("/api/issues/{$canonical->id}");
 
         $response->assertOk()
-            ->assertJsonPath('title', null)
-            ->assertJsonPath('content', null)
-            ->assertJsonPath('address', null)
-            ->assertJsonPath('postal_code', null)
+            ->assertJsonPath('title', 'Canonical title')
+            ->assertJsonPath('content', 'Canonical content')
+            ->assertJsonPath('address', 'Secret street 1')
+            ->assertJsonPath('postal_code', '3011AA')
             ->assertJsonPath('status', IssueStatus::Open->value)
-            ->assertJsonPath('is_participant', true)
-            ->assertJsonPath('author.is_participant', true);
+            ->assertJsonPath('is_participant', true);
     }
 
     public function test_child_owner_sees_full_payload(): void

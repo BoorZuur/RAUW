@@ -5,8 +5,12 @@ namespace App\Http\Controllers;
 use App\Http\Requests\HubAssignments\UpdateManagerHubRequest;
 use App\Http\Resources\ManagerResource;
 use App\Models\Manager;
+use App\Support\ActorDistrictAccess;
 use Illuminate\Http\JsonResponse;
 
+/**
+ * @group Main Managers
+ */
 class MainManagerHubController extends Controller
 {
     /**
@@ -21,6 +25,7 @@ class MainManagerHubController extends Controller
     {
         $manager->update(['hub_id' => $request->integer('hub_id')]);
         $manager->districts()->sync([]);
+        ActorDistrictAccess::forget($manager);
 
         $manager->loadMissing(['departments', 'districts', 'hub']);
 

@@ -10,6 +10,9 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 
+/**
+ * @group Authentication
+ */
 class RegisterUserController extends Controller
 {
     /**
@@ -36,6 +39,8 @@ class RegisterUserController extends Controller
         ]);
 
         $token = $user->createToken('api-login')->plainTextToken;
+
+        $user->loadMissing('feedDistricts');
 
         return response()->json([
             'token_type' => 'Bearer',

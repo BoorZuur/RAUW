@@ -10,6 +10,8 @@ use App\Models\Manager;
 use App\Models\Officer;
 use App\Models\OfficerIssueResolution;
 use App\Models\User;
+use App\Support\Issues\IssueAnonymousDisplayName;
+use App\Support\Issues\IssueCommentAnonymity;
 use App\Support\Issues\IssueParticipantVisibility;
 use App\Support\IssueVisibilityQuery;
 use Illuminate\Http\Request;
@@ -71,10 +73,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *
  * Participant visibility
  * ----------------------
- * Participants viewing a canonical they joined (but do not own) receive status,
- * resolution, counters, and participation context while title, content,
- * location, author, and attachments are redacted. Officers and managers are never
- * redacted; owners always receive the full payload for issues they own.
+ * Participation context flags (`is_participant`, `canonical_issue_id`, etc.) are
+ * included for regular users. Issue content is visible to all viewers who may
+ * access the issue; officers and managers receive additional fields such as
+ * status history.
  *
  * @mixin Issue
  */
@@ -96,12 +98,11 @@ class IssueResource extends JsonResource
         /** @var Issue $issue */
         $issue = $this->resource;
         $visibility = IssueParticipantVisibility::for($issue, $request->user());
-        $redact = $visibility->shouldRedactCanonicalContent();
 
         return array_merge([
             'id' => $issue->id,
-            'title' => $redact ? null : $issue->title,
-            'content' => $redact ? null : $issue->content,
+            'title' => $issue->title,
+            'content' => $issue->content,
             'category_id' => $issue->category_id,
             'district_id' => $issue->district_id,
             'departments' => $this->compactDepartments($issue),
@@ -109,23 +110,21 @@ class IssueResource extends JsonResource
             'assigned_officer_id' => $issue->assigned_officer_id,
             'visibility' => $issue->visibility->value,
             'priority' => $issue->priority,
-            'postal_code' => $redact ? null : $issue->postal_code,
-            'address' => $redact ? null : $issue->address,
-            'latitude' => $redact ? null : $issue->latitude,
-            'longitude' => $redact ? null : $issue->longitude,
-            'is_anonymous' => $redact ? null : (bool) $issue->is_anonymous,
-            'author' => $redact
-                ? ['is_participant' => true]
-                : $this->compactAuthor($issue),
+            'postal_code' => $issue->postal_code,
+            'address' => $issue->address,
+            'latitude' => $issue->latitude,
+            'longitude' => $issue->longitude,
+            'is_anonymous' => (bool) $issue->is_anonymous,
+            'author' => $this->compactAuthor($issue),
             'participant_count' => (int) $issue->participant_count,
             'duplicate_count' => (int) $issue->duplicate_count,
             'category' => $this->compactCategory($issue),
             'district' => $this->compactDistrict($issue),
-            'attachments' => $redact ? null : $this->compactAttachments($issue),
+            'attachments' => $this->compactAttachments($issue),
             'created_at' => $issue->created_at,
             'updated_at' => $issue->updated_at,
             'resolved_at' => $issue->resolved_at,
-        ], $this->maybeDuplicateOfId($issue, $visibility), $visibility->contextFlags(), $this->maybeStatusHistory($issue, $request), $this->maybeOfficerResolution($issue, $request));
+        ], $this->maybeDuplicateOfId($issue, $visibility), $visibility->contextFlags(), $this->maybeDefaultCommentIsAnonymous($issue, $request), $this->maybeStatusHistory($issue, $request), $this->maybeOfficerResolution($issue, $request), $this->maybeFeedback($issue, $request));
     }
 
     /**
@@ -243,6 +242,24 @@ class IssueResource extends JsonResource
     }
 
     /**
+     * Include default comment anonymity toggle for authenticated users.
+     *
+     * @return array<string, mixed>
+     */
+    protected function maybeDefaultCommentIsAnonymous(Issue $issue, Request $request): array
+    {
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            return [];
+        }
+
+        return [
+            'default_comment_is_anonymous' => (new IssueCommentAnonymity)->defaultForUserOnIssue($actor, $issue),
+        ];
+    }
+
+    /**
      * Include status history only for officers and managers when eager loaded.
      *
      * @return array<string, mixed>
@@ -315,5 +332,41 @@ class IssueResource extends JsonResource
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * Include feedback for users (my_feedback) and managers (feedback array) when gesloten.
+     *
+     * @return array<string, mixed>
+     */
+    protected function maybeFeedback(Issue $issue, Request $request): array
+    {
+        if ($issue->status !== \App\Enums\IssueStatus::Closed) {
+            return [];
+        }
+
+        if (! $issue->relationLoaded('feedback')) {
+            return [];
+        }
+
+        $actor = $request->user();
+
+        if ($actor instanceof User) {
+            $myFeedback = $issue->getRelation('feedback')->first();
+            return [
+                'my_feedback' => $myFeedback ? (new IssueFeedbackResource($myFeedback))->resolve() : null,
+            ];
+        }
+
+        if ($actor instanceof Manager) {
+            $feedback = $issue->getRelation('feedback');
+            IssueAnonymousDisplayName::preloadForFeedbacks($feedback);
+
+            return [
+                'feedback' => IssueFeedbackResource::collection($feedback)->resolve(),
+            ];
+        }
+
+        return [];
     }
 }

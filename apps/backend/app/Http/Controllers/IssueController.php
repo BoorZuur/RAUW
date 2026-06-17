@@ -6,12 +6,14 @@ use App\Actions\Issues\CreateIssue;
 use App\Actions\Issues\CreateIssueAsDuplicate;
 use App\Actions\Issues\DeleteDuplicateChild;
 use App\Actions\Issues\ReparentOnCanonicalDelete;
+use App\Enums\Visibility;
 use App\Http\Requests\Issues\DeleteIssueRequest;
 use App\Http\Requests\Issues\IndexIssueRequest;
 use App\Http\Requests\Issues\ShowIssueRequest;
 use App\Http\Requests\Issues\StoreIssueRequest;
 use App\Http\Requests\Issues\UpdateIssueRequest;
 use App\Http\Requests\Issues\UpdateIssueVisibilityRequest;
+use App\Support\Notifications\NotifyIssueHidden;
 use App\Support\Issues\IssueListScope;
 use App\Support\IssueVisibilityQuery;
 use App\Http\Resources\IssueResource;
@@ -29,6 +31,9 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Str;
 
+/**
+ * @group Issues
+ */
 class IssueController extends Controller
 {
     /**
@@ -59,13 +64,13 @@ class IssueController extends Controller
      * in assigned districts (including hidden); main managers see all issues
      * city-wide. Duplicate child rows are excluded by default per actor
      * (`IssueListScope`); users may use `participating=1` for owned children
-     * with canonical participation, and officers/managers may use
-     * `include_duplicates=1` to include children. A single Eloquent query
-     * applies the optional `district_id`, `department`, `category_id`, `status`,
-     * `assigned_officer_id`, `unassigned`, `mine`, `participating`,
-     * `include_duplicates`, and `visibility` filters conditionally and
-     * cumulatively (AND with visibility), so any subset (or all) of the
-     * filters may be combined to narrow the result set.
+     * with canonical participation, `followed=1` for followed canonical issues,
+     * and officers/managers may use `include_duplicates=1` to include children.
+     * A single Eloquent query applies the optional `district_id`, `department`,
+     * `category_id`, `status`, `assigned_officer_id`, `unassigned`, `mine`,
+     * `participating`, `followed`, `include_duplicates`, and `visibility`
+     * filters conditionally and cumulatively (AND with visibility), so any
+     * subset (or all) of the filters may be combined to narrow the result set.
      * The `department` filter is resolved through the issue departments
      * relationship with any-match semantics. Results are eager loaded (including
      * `officer_resolution` with officer and attachments when a report exists;
@@ -83,8 +88,8 @@ class IssueController extends Controller
             $request,
         )
             ->when(
-                $request->filled('district_id'),
-                fn ($query) => $query->where('district_id', $request->integer('district_id')),
+                count($request->districtIds()) > 0,
+                fn ($query) => $query->whereIn('district_id', $request->districtIds()),
             )
             ->when(
                 $request->filled('department'),
@@ -98,8 +103,29 @@ class IssueController extends Controller
                 fn ($query) => $query->where('category_id', $request->integer('category_id')),
             )
             ->when(
-                $request->filled('status'),
-                fn ($query) => $query->where('status', $request->input('status')),
+                count($request->statuses()) > 0,
+                fn ($query) => $query->whereIn(
+                    'status',
+                    array_map(fn ($status) => $status->value, $request->statuses()),
+                ),
+            )
+            ->when(
+                $request->filled('search'),
+                function ($query) use ($request): void {
+                    $search = $request->input('search');
+                    $query->where(function ($q) use ($search): void {
+                        $q->where('title', 'like', '%'.$search.'%')
+                          ->orWhere('content', 'like', '%'.$search.'%');
+                    });
+                },
+            )
+            ->when(
+                $request->filled('date_from'),
+                fn ($query) => $query->where('created_at', '>=', $request->date('date_from')->startOfDay()),
+            )
+            ->when(
+                $request->filled('date_to'),
+                fn ($query) => $query->where('created_at', '<=', $request->date('date_to')->endOfDay()),
             )
             ->when(
                 $request->filled('assigned_officer_id'),
@@ -119,6 +145,15 @@ class IssueController extends Controller
                 },
             )
             ->when(
+                $request->wantsExcludeMine(),
+                function ($query) use ($request): void {
+                    /** @var User $actor */
+                    $actor = $request->user();
+
+                    $query->where('user_id', '!=', $actor->getKey());
+                },
+            )
+            ->when(
                 $request->filled('visibility'),
                 fn ($query) => $query->where('visibility', $request->enum('visibility')),
             )
@@ -126,6 +161,15 @@ class IssueController extends Controller
             ->orderByDesc('id')
             ->paginate($request->perPage())
             ->withQueryString();
+
+        if ($request->wantsFollowed() && $request->user() instanceof User) {
+            /** @var User $actor */
+            $actor = $request->user();
+
+            $issues->getCollection()->each(
+                fn (Issue $issue) => $issue->loadActorParticipant($actor),
+            );
+        }
 
         return IssueResource::collection($issues);
     }
@@ -196,6 +240,12 @@ class IssueController extends Controller
 
         if ($actor instanceof User) {
             $issue->loadActorParticipant($actor);
+
+            if ($issue->status === \App\Enums\IssueStatus::Closed) {
+                $issue->load(['feedback' => function ($query) use ($actor) {
+                    $query->where('reviewer_user_id', $actor->id)->with('reviewer');
+                }]);
+            }
         }
 
         if ($actor instanceof Officer || $actor instanceof Manager) {
@@ -204,6 +254,10 @@ class IssueController extends Controller
                     ->with('changedByOfficer')
                     ->orderByDesc('changed_at'),
             ]);
+
+            if ($actor instanceof Manager && $issue->status === \App\Enums\IssueStatus::Closed) {
+                $issue->load(['feedback' => fn ($query) => $query->with(['reviewer', 'issue'])]);
+            }
         }
 
         return new IssueResource($issue);
@@ -294,15 +348,25 @@ class IssueController extends Controller
      * IssueVisibilityQuery::canViewIssue(), matching show behavior: issues the
      * actor cannot view return 404. Only the visibility field is updated.
      */
-    public function updateVisibility(UpdateIssueVisibilityRequest $request, Issue $issue): IssueResource
-    {
+    public function updateVisibility(
+        UpdateIssueVisibilityRequest $request,
+        Issue $issue,
+        NotifyIssueHidden $notifyIssueHidden,
+    ): IssueResource {
         if (! IssueVisibilityQuery::canViewIssue($issue, $request->user())) {
             abort(404);
         }
 
+        $newVisibility = $request->enum('visibility', Visibility::class);
+        $wasHidden = $issue->visibility === Visibility::Hidden;
+
         $issue->update([
-            'visibility' => $request->enum('visibility'),
+            'visibility' => $newVisibility,
         ]);
+
+        if ($newVisibility === Visibility::Hidden && ! $wasHidden) {
+            $notifyIssueHidden->notify($issue, $request->user());
+        }
 
         $issue->refresh()->load(self::ISSUE_RELATIONS);
 

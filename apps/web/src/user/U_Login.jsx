@@ -5,6 +5,12 @@ import { Eye, EyeClosed, Lock, Mail } from "lucide-react";
 import RauwLogoImg from '../assets/LogoRAUW.png';
 import BgRotterdam2 from '../assets/AchtergrondRotterdam4.webp';
 
+// We definiëren de client voor algemeen gebruik
+const apiClient = axios.create({
+    baseURL: 'http://localhost:8001/api',
+    headers: { 'Accept': 'application/json' }
+});
+
 export default function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -15,13 +21,16 @@ export default function Login() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const response = await axios.post('http://localhost:8001/api/auth/login', { email, password });
+            const response = await apiClient.post('/auth/login', { email, password });
+
             if (response.data.access_token) {
                 localStorage.setItem('auth_token', response.data.access_token);
+                localStorage.setItem('user_type', 'user');
+                navigate('/feed');
             }
-            localStorage.setItem('user_type', 'user');
-            navigate('/account');
-        } catch (err) { setError('Inloggen mislukt.'); }
+        } catch (err) {
+            setError('Inloggen mislukt.');
+        }
     };
 
     const fields = [
@@ -93,7 +102,7 @@ export default function Login() {
                         </button>
                     </form>
 
-                    <p className="mt-6 text-sm text-center text-secondary-text">
+                    <p className="mt-6 p-4 text-sm text-center text-secondary-text">
                         Nog geen account?
                         <button onClick={() => navigate('/registreer')}
                                 className="text-primary-text font-bold hover:underline">

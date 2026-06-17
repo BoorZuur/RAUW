@@ -40,9 +40,13 @@
                   "",
                   "if (response.access_token) {",
                   "    pm.collectionVariables.set('access_token', response.access_token);",
+                  "    pm.collectionVariables.set('officer_remote_token', response.access_token);",
+                  "    pm.collectionVariables.set('officer_access_token', response.access_token);",
                   "",
                   "    if (pm.environment.name) {",
                   "        pm.environment.set('access_token', response.access_token);",
+                  "        pm.environment.set('officer_remote_token', response.access_token);",
+                  "        pm.environment.set('officer_access_token', response.access_token);",
                   "    }",
                   "}"
                 ]
@@ -397,10 +401,14 @@
                   "if (response.access_token) {",
                   "    pm.collectionVariables.set('access_token', response.access_token);",
                   "    pm.collectionVariables.set('officer_hub_active_token', response.access_token);",
+                  "    pm.collectionVariables.set('officer_access_token', response.access_token);",
+                  "    pm.collectionVariables.set('officer_remote_token', response.access_token);",
                   "",
                   "    if (pm.environment.name) {",
                   "        pm.environment.set('access_token', response.access_token);",
                   "        pm.environment.set('officer_hub_active_token', response.access_token);",
+                  "        pm.environment.set('officer_access_token', response.access_token);",
+                  "        pm.environment.set('officer_remote_token', response.access_token);",
                   "    }",
                   "}"
                 ]
@@ -441,7 +449,7 @@
                 "login"
               ]
             },
-            "description": "Log in as demo.officer@example.com at Cluster Centrum coords (hub_id 3). Hub-eligible login starts the shared shift: hub_active: true, hub_active_until ~10h ahead. Re-login at hub does not extend an existing shift. Sanctum hub-active ability is audit-only. Stores access_token and officer_hub_active_token."
+            "description": "Log in as demo.officer@example.com at Cluster Centrum coords (hub_id 3). Hub-eligible login starts the shared shift: hub_active: true, hub_active_until ~10h ahead. Re-login at hub does not extend an existing shift. Sanctum hub-active ability is audit-only. Stores access_token, officer_access_token, officer_hub_active_token, and officer_remote_token (same bearer value)."
           },
           "response": []
         },
@@ -474,10 +482,20 @@
                   "if (response.access_token) {",
                   "    pm.collectionVariables.set('access_token', response.access_token);",
                   "    pm.collectionVariables.set('officer_remote_token', response.access_token);",
+                  "    pm.collectionVariables.set('officer_access_token', response.access_token);",
+                  "",
+                  "    if (response.hub_active) {",
+                  "        pm.collectionVariables.set('officer_hub_active_token', response.access_token);",
+                  "    }",
                   "",
                   "    if (pm.environment.name) {",
                   "        pm.environment.set('access_token', response.access_token);",
                   "        pm.environment.set('officer_remote_token', response.access_token);",
+                  "        pm.environment.set('officer_access_token', response.access_token);",
+                  "",
+                  "        if (response.hub_active) {",
+                  "            pm.environment.set('officer_hub_active_token', response.access_token);",
+                  "        }",
                   "    }",
                   "}"
                 ]
@@ -540,7 +558,18 @@
                   "    pm.expect(response.hub_active).to.eql(true);",
                   "    pm.expect(response.hub_active_until).to.be.a('string').and.not.empty;",
                   "    pm.expect(response.profile.hub_active).to.eql(true);",
-                  "});"
+                  "});",
+                  "",
+                  "// Same bearer token; shared shift is now active for Tier C routes.",
+                  "const remote = pm.collectionVariables.get('officer_remote_token') || pm.environment.get('officer_remote_token') || pm.collectionVariables.get('officer_access_token') || pm.environment.get('officer_access_token');",
+                  "if (remote) {",
+                  "    pm.collectionVariables.set('officer_hub_active_token', remote);",
+                  "    pm.collectionVariables.set('officer_access_token', remote);",
+                  "    if (pm.environment.name) {",
+                  "        pm.environment.set('officer_hub_active_token', remote);",
+                  "        pm.environment.set('officer_access_token', remote);",
+                  "    }",
+                  "}"
                 ]
               }
             }
@@ -551,7 +580,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{officer_remote_token}}",
                   "type": "string"
                 }
               ]
@@ -589,7 +618,7 @@
                 "start-shift"
               ]
             },
-            "description": "Start the officer's shared shift at the assigned hub. Requires an authenticated officer with no active shift (422 shift_already_active if shift already active). Cluster Centrum coordinates locally. Remote coords return 403 outside_hub_radius; missing hub_id returns 403 hub_not_assigned. Does not issue a new token. Run Auth / Login as officer first (without hub-eligible login) or after manager end-shift."
+            "description": "Start the officer's shared shift at the assigned hub. Requires an authenticated officer with no active shift (422 shift_already_active if shift already active). Cluster Centrum coordinates locally. Remote coords return 403 outside_hub_radius; missing hub_id returns 403 hub_not_assigned. Does not issue a new token. Run **Auth / Login Officer Remote** first (uses officer_remote_token), or use any officer token after manager end-shift. On success, copies officer_remote_token to officer_hub_active_token."
           },
           "response": []
         },
@@ -647,6 +676,112 @@
               ]
             },
             "description": "Smoke test for shared-shift gate on Tier C workflow writes. Run Auth / Login Officer Remote when the officer has no active shared shift (fresh seed or after end-shift). Expects 403 hub_active_required on POST assign-self. Tier B browse (GET /api/issues, GET issue show, resolution show, downloads) still works without a shift. Profile, start-shift, and reference reads remain available."
+          },
+          "response": []
+        },
+        {
+          "name": "Officer Remote — List Community Posts (Tier B)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Community post list allowed without hub-active', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{officer_remote_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/community-posts?district_id={{district_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "community-posts"
+              ],
+              "query": [
+                {
+                  "key": "district_id",
+                  "value": "{{district_id}}"
+                }
+              ]
+            },
+            "description": "Tier B smoke test for community post browse without hub-active shift. Run Auth / Login Officer Remote first (no active shared shift). Expects 200 on GET /api/community-posts. Optional district_id narrows within the officer's assigned districts."
+          },
+          "response": []
+        },
+        {
+          "name": "Officer Remote — Download Community Post Attachment (Tier B)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Community post attachment download allowed without hub-active', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{officer_remote_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/community-posts/{{community_post_id}}/attachments/{{community_post_attachment_id}}/download",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "community-posts",
+                "{{community_post_id}}",
+                "attachments",
+                "{{community_post_attachment_id}}",
+                "download"
+              ]
+            },
+            "description": "Tier B smoke test for community post attachment download without hub-active shift. Run Auth / Login Officer Remote first. Requires community_post_id and community_post_attachment_id from a seeded or previously created post in the officer's district scope. Expects 200 when the attachment exists and is viewable."
           },
           "response": []
         },
@@ -733,6 +868,57 @@
               ]
             },
             "description": "Self-service identity PATCH for users, officers, and managers. Send only fields to change. Active: username, email, password; officers may also send badge_number. Inactive: username and password only (email and badge_number return 422). Privileged and assignment fields are rejected with 422. When password is present, confirm_password must match."
+          },
+          "response": []
+        },
+        {
+          "name": "Update My Feed Districts",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"district_ids\": [1]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/me/feed-districts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me",
+                "feed-districts"
+              ]
+            },
+            "description": "User-only self-service feed district subscriptions for the community news feed. Replaces the authenticated user's feedDistricts pivot and returns the refreshed auth profile with districts populated from feedDistricts. Officers and managers receive 403. district_ids must be present, may be empty, must reference active districts, and cannot contain duplicates."
           },
           "response": []
         },
@@ -1932,7 +2118,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{officer_hub_active_token}}",
                   "type": "string"
                 }
               ]
@@ -1974,6 +2160,280 @@
             "description": "Implemented officer self-service district assignment flow. Replace the authenticated officer's district assignments through district_officer. district_ids must be an array of active existing district IDs without duplicates; use an empty array to clear assignments. Returns the refreshed auth profile with districts and never modifies issues.district_id."
           },
           "response": []
+        },
+        {
+          "name": "Me",
+          "item": [
+            {
+              "name": "Notifications",
+              "item": [
+                {
+                  "name": "List Notifications",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test('Officer notification list succeeded', function () {",
+                          "    pm.response.to.have.status(200);",
+                          "});",
+                          "",
+                          "if (pm.response.code === 200) {",
+                          "    const body = pm.response.json();",
+                          "    const first = body.data && body.data[0];",
+                          "    if (first && first.id) {",
+                          "        pm.collectionVariables.set('notification_id', first.id);",
+                          "        if (pm.environment.name) {",
+                          "            pm.environment.set('notification_id', first.id);",
+                          "        }",
+                          "    }",
+                          "}"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{officer_access_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json",
+                        "type": "text"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/api/officers/me/notifications?page={{page}}&per_page={{per_page}}&is_read=&type=&since=",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "officers",
+                        "me",
+                        "notifications"
+                      ],
+                      "query": [
+                        {
+                          "key": "page",
+                          "value": "{{page}}"
+                        },
+                        {
+                          "key": "per_page",
+                          "value": "{{per_page}}"
+                        },
+                        {
+                          "key": "is_read",
+                          "value": ""
+                        },
+                        {
+                          "key": "type",
+                          "value": ""
+                        },
+                        {
+                          "key": "since",
+                          "value": ""
+                        }
+                      ]
+                    },
+                    "description": "Paginated officer notification inbox. Tier B — run **Auth / Login Officer at Hub** or **Login Officer Remote** first (uses officer_access_token). Optional filters is_read, type, since (ISO 8601). Sets notification_id from the first row when present."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get Unread Count",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{officer_access_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json",
+                        "type": "text"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/api/officers/me/notifications/unread-count",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "officers",
+                        "me",
+                        "notifications",
+                        "unread-count"
+                      ]
+                    },
+                    "description": "Lightweight unread count for the authenticated officer. Tier B."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Mark Notification Read",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{officer_access_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json",
+                        "type": "text"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"is_read\": true\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/api/officers/me/notifications/{{notification_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "officers",
+                        "me",
+                        "notifications",
+                        "{{notification_id}}"
+                      ]
+                    },
+                    "description": "Mark one officer notification read. Run List Notifications first to set notification_id. Foreign ids return 404 notification_not_found."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Bulk Mark Read",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{officer_access_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json",
+                        "type": "text"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"ids\": [{{notification_id}}]\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/api/officers/me/notifications/bulk-read",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "officers",
+                        "me",
+                        "notifications",
+                        "bulk-read"
+                      ]
+                    },
+                    "description": "Mark multiple officer notifications read by id. Foreign ids are skipped silently. Tier B."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Mark All Read",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{officer_access_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json",
+                        "type": "text"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/api/officers/me/notifications/mark-all-read",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "officers",
+                        "me",
+                        "notifications",
+                        "mark-all-read"
+                      ]
+                    },
+                    "description": "Mark every unread officer notification as read. Tier B."
+                  },
+                  "response": []
+                }
+              ],
+              "description": "Officer self-service notification inbox under /api/officers/me/notifications. All routes are Tier B (no hub-active shift required). Authenticate with officer_access_token from any officer login."
+            }
+          ]
         }
       ],
       "description": "Officer-focused request examples. List Officer Sessions requires main_manager_access_token. List officers is available to active officers and managers. Disable and enable officer require an active manager token (access_token after Login as a manager). The district self-service update entry is implemented for active officers."
@@ -2968,7 +3428,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{main_manager_access_token}}",
                   "type": "string"
                 }
               ]
@@ -3079,11 +3539,49 @@
             {
               "name": "Similar Check",
               "request": {
-                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
-                "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
-                "body": { "mode": "raw", "raw": "{\n  \"district_id\": {{district_id}},\n  \"category_id\": {{category_id}},\n  \"postal_code\": \"3012AB\",\n  \"address\": \"Coolsingel 1, Rotterdam\",\n  \"latitude\": 51.91712,\n  \"longitude\": 4.47834\n}", "options": { "raw": { "language": "json" } } },
-                "url": { "raw": "{{base_url}}/api/issues/similar-check", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "similar-check" ] },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"district_id\": {{district_id}},\n  \"category_id\": {{category_id}},\n  \"postal_code\": \"3012AB\",\n  \"address\": \"Coolsingel 1, Rotterdam\",\n  \"latitude\": 51.91712,\n  \"longitude\": 4.47834\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/issues/similar-check",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "similar-check"
+                  ]
+                },
                 "description": "Score similar open canonical issues before create. Active users only. Returns own_matches (actor-owned, linkable false) and matches (other users, linkable true), capped at five per bucket. Use a user token from Auth / Login (demo.user@example.com locally)."
               },
               "response": []
@@ -3111,11 +3609,48 @@
                 }
               ],
               "request": {
-                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
-                "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
-                "body": { "mode": "raw", "raw": "{\n  \"title\": \"Zelfde parkeerprobleem\",\n  \"content\": \"Ook bij mij staat er een auto op de stoep.\",\n  \"category_id\": {{category_id}},\n  \"district_id\": {{district_id}},\n  \"postal_code\": \"3012AB\",\n  \"duplicate_of_id\": {{canonical_issue_id}}\n}", "options": { "raw": { "language": "json" } } },
-                "url": { "raw": "{{base_url}}/api/issues", "host": [ "{{base_url}}" ], "path": [ "api", "issues" ] },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Zelfde parkeerprobleem\",\n  \"content\": \"Ook bij mij staat er een auto op de stoep.\",\n  \"category_id\": {{category_id}},\n  \"district_id\": {{district_id}},\n  \"postal_code\": \"3012AB\",\n  \"duplicate_of_id\": {{canonical_issue_id}}\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/issues",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues"
+                  ]
+                },
                 "description": "Create a hidden duplicate child linked to canonical_issue_id. Requires a user token and a canonical target the actor does not own (set canonical_issue_id from another user's open issue or a seeded canonical issue). Returns 201 with visibility hidden and duplicate_of_id set; increments canonical duplicate_count and adds duplicate participation when needed. Stores duplicate_child_issue_id."
               },
               "response": []
@@ -3134,10 +3669,36 @@
                 }
               ],
               "request": {
-                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
-                "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
-                "url": { "raw": "{{base_url}}/api/issues/{{canonical_issue_id}}/join", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{canonical_issue_id}}", "join" ] },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{canonical_issue_id}}/join",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{canonical_issue_id}}",
+                    "join"
+                  ]
+                },
                 "description": "Manually join a canonical issue as participant. Active users only. First join returns 201; repeat join is idempotent (200). Joining a duplicate child id returns 422 cannot_join_duplicate_child. Set canonical_issue_id to a visible canonical issue id."
               },
               "response": []
@@ -3145,10 +3706,36 @@
             {
               "name": "Leave Canonical Issue",
               "request": {
-                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "DELETE",
-                "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
-                "url": { "raw": "{{base_url}}/api/issues/{{canonical_issue_id}}/leave", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{canonical_issue_id}}", "leave" ] },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{canonical_issue_id}}/leave",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{canonical_issue_id}}",
+                    "leave"
+                  ]
+                },
                 "description": "Remove participation on the canonical issue. Active users only. Child route ids resolve to canonical. Returns 204 on success or 422 not_participant when not participating."
               },
               "response": []
@@ -3156,17 +3743,47 @@
             {
               "name": "List Participating Issues",
               "request": {
-                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "GET",
-                "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/api/issues?participating=1&page={{page}}&per_page={{per_page}}",
-                  "host": [ "{{base_url}}" ],
-                  "path": [ "api", "issues" ],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues"
+                  ],
                   "query": [
-                    { "key": "participating", "value": "1", "description": "Users only: owned duplicate children with active canonical participation" },
-                    { "key": "page", "value": "{{page}}" },
-                    { "key": "per_page", "value": "{{per_page}}" }
+                    {
+                      "key": "participating",
+                      "value": "1",
+                      "description": "Users only: owned duplicate children with active canonical participation"
+                    },
+                    {
+                      "key": "page",
+                      "value": "{{page}}"
+                    },
+                    {
+                      "key": "per_page",
+                      "value": "{{per_page}}"
+                    }
                   ]
                 },
                 "description": "List owned duplicate children where the user still participates on the canonical parent. Requires a user token; officers and managers receive 422. Mutually exclusive with mine=1."
@@ -3176,17 +3793,47 @@
             {
               "name": "List Issues - Include Duplicates",
               "request": {
-                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{officer_hub_active_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "GET",
-                "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/api/issues?include_duplicates=1&page={{page}}&per_page={{per_page}}",
-                  "host": [ "{{base_url}}" ],
-                  "path": [ "api", "issues" ],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues"
+                  ],
                   "query": [
-                    { "key": "include_duplicates", "value": "1", "description": "Officers and managers only: include duplicate child rows" },
-                    { "key": "page", "value": "{{page}}" },
-                    { "key": "per_page", "value": "{{per_page}}" }
+                    {
+                      "key": "include_duplicates",
+                      "value": "1",
+                      "description": "Officers and managers only: include duplicate child rows"
+                    },
+                    {
+                      "key": "page",
+                      "value": "{{page}}"
+                    },
+                    {
+                      "key": "per_page",
+                      "value": "{{per_page}}"
+                    }
                   ]
                 },
                 "description": "Officer/manager browse including duplicate children. Log in as demo.officer@example.com or a manager before running. Users receive 422 when include_duplicates is set."
@@ -3196,16 +3843,44 @@
             {
               "name": "List Duplicate Children",
               "request": {
-                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{officer_hub_active_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "GET",
-                "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/api/issues/{{canonical_issue_id}}/duplicates?page={{page}}&per_page={{per_page}}",
-                  "host": [ "{{base_url}}" ],
-                  "path": [ "api", "issues", "{{canonical_issue_id}}", "duplicates" ],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{canonical_issue_id}}",
+                    "duplicates"
+                  ],
                   "query": [
-                    { "key": "page", "value": "{{page}}" },
-                    { "key": "per_page", "value": "{{per_page}}" }
+                    {
+                      "key": "page",
+                      "value": "{{page}}"
+                    },
+                    {
+                      "key": "per_page",
+                      "value": "{{per_page}}"
+                    }
                   ]
                 },
                 "description": "Officer/manager-only paginated list of duplicate children for a canonical issue (oldest first, full Issue payloads). Child route ids return 422 issue_not_canonical. Users receive 403. Set canonical_issue_id to a canonical issue."
@@ -3215,35 +3890,100 @@
             {
               "name": "Mark Issue as Duplicate",
               "request": {
-                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{officer_hub_active_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
-                "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
-                "body": { "mode": "raw", "raw": "{\n  \"duplicate_of_id\": {{canonical_issue_id}}\n}", "options": { "raw": { "language": "json" } } },
-                "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/mark-duplicate", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "mark-duplicate" ] },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"duplicate_of_id\": {{canonical_issue_id}}\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{issue_id}}/mark-duplicate",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{issue_id}}",
+                    "mark-duplicate"
+                  ]
+                },
                 "description": "Officer/manager Tier C workflow: link an existing issue (issue_id path) to canonical duplicate_of_id. Different owners: 200 returns re-parented child Issue (hidden, duplicate_of_id set). Same owner: 200 returns canonical Issue (child hard-deleted). Officers need hub-active. Child must be linkable (open/in_behandeling, unassigned, no resolution, no duplicate children). Conflicts: 404 duplicate_target_not_found; 422 issue_not_linkable, issue_has_duplicates, issue_is_duplicate_child, cannot_duplicate_self, issue_not_matchable."
-              },
-              "response": []
-            },
-            {
-              "name": "Mark Issue as Duplicate",
-              "request": {
-                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
-                "method": "POST",
-                "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
-                "body": { "mode": "raw", "raw": "{\n  \"duplicate_of_id\": {{canonical_issue_id}}\n}", "options": { "raw": { "language": "json" } } },
-                "url": { "raw": "{{base_url}}/api/issues/{{issue_id}}/mark-duplicate", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{issue_id}}", "mark-duplicate" ] },
-                "description": "Officer/manager workflow: link route issue_id as duplicate of canonical_issue_id. Tier C: hub-active required for officers. Different owners: re-parent child (hidden, duplicate_of_id set) and return child Issue. Same owner: merge participants onto canonical, hard-delete child, return canonical Issue. Child must be linkable (open/in_behandeling, unassigned, no resolution). Log in as demo.officer@example.com with an active shift. Use two distinct open issues in the officer district for different-owner branch."
               },
               "response": []
             },
             {
               "name": "Delete Duplicate Child (Keep Participation)",
               "request": {
-                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "DELETE",
-                "header": [ { "key": "Accept", "value": "application/json", "type": "text" }, { "key": "Content-Type", "value": "application/json", "type": "text" } ],
-                "body": { "mode": "raw", "raw": "{\n  \"leave_participation\": false\n}", "options": { "raw": { "language": "json" } } },
-                "url": { "raw": "{{base_url}}/api/issues/{{duplicate_child_issue_id}}", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{duplicate_child_issue_id}}" ] },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"leave_participation\": false\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{duplicate_child_issue_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{duplicate_child_issue_id}}"
+                  ]
+                },
                 "description": "Hard delete an owned duplicate child while keeping canonical participation (default). Optional JSON body leave_participation false. Decrements canonical duplicate_count. Use duplicate_child_issue_id from Create Issue as Duplicate."
               },
               "response": []
@@ -3251,10 +3991,35 @@
             {
               "name": "Show Canonical as Participant",
               "request": {
-                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "GET",
-                "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
-                "url": { "raw": "{{base_url}}/api/issues/{{canonical_issue_id}}", "host": [ "{{base_url}}" ], "path": [ "api", "issues", "{{canonical_issue_id}}" ] },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{canonical_issue_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{canonical_issue_id}}"
+                  ]
+                },
                 "description": "Show a canonical issue as a participating user who does not own it. Expect redacted title/content/location/attachments and author { is_participant: true } while status and officer_resolution remain visible. Run after Join Canonical Issue with a user who is not the canonical owner."
               },
               "response": []
@@ -3379,7 +4144,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{officer_hub_active_token}}",
                   "type": "string"
                 }
               ]
@@ -3479,7 +4244,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{officer_hub_active_token}}",
                   "type": "string"
                 }
               ]
@@ -3529,7 +4294,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{officer_hub_active_token}}",
                   "type": "string"
                 }
               ]
@@ -3665,7 +4430,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{officer_hub_active_token}}",
                   "type": "string"
                 }
               ]
@@ -3905,7 +4670,7 @@
                   "bearer": [
                     {
                       "key": "token",
-                      "value": "{{access_token}}",
+                      "value": "{{officer_hub_active_token}}",
                       "type": "string"
                     }
                   ]
@@ -3972,16 +4737,45 @@
             {
               "name": "List Status History",
               "request": {
-                "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{access_token}}", "type": "string" } ] },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{officer_hub_active_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "GET",
-                "header": [ { "key": "Accept", "value": "application/json", "type": "text" } ],
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/api/issues/{{issue_id}}/status-history?page={{page}}&per_page={{per_page}}",
-                  "host": [ "{{base_url}}" ],
-                  "path": [ "api", "issues", "{{issue_id}}", "status-history" ],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{issue_id}}",
+                    "status-history"
+                  ],
                   "query": [
-                    { "key": "page", "value": "{{page}}" },
-                    { "key": "per_page", "value": "{{per_page}}", "description": "Default 20, max 100" }
+                    {
+                      "key": "page",
+                      "value": "{{page}}"
+                    },
+                    {
+                      "key": "per_page",
+                      "value": "{{per_page}}",
+                      "description": "Default 20, max 100"
+                    }
                   ]
                 },
                 "description": "Officer/manager-only paginated status history, newest first. Tier B (no hub-active required). Duplicate child route ids resolve to canonical parent. Users receive 403. per_page defaults to 20, capped at 100."
@@ -3996,7 +4790,7 @@
                   "bearer": [
                     {
                       "key": "token",
-                      "value": "{{access_token}}",
+                      "value": "{{officer_hub_active_token}}",
                       "type": "string"
                     }
                   ]
@@ -4033,7 +4827,7 @@
                   "bearer": [
                     {
                       "key": "token",
-                      "value": "{{access_token}}",
+                      "value": "{{officer_hub_active_token}}",
                       "type": "string"
                     }
                   ]
@@ -4195,7 +4989,7 @@
                   "bearer": [
                     {
                       "key": "token",
-                      "value": "{{access_token}}",
+                      "value": "{{officer_hub_active_token}}",
                       "type": "string"
                     }
                   ]
@@ -4249,7 +5043,7 @@
                   "bearer": [
                     {
                       "key": "token",
-                      "value": "{{access_token}}",
+                      "value": "{{officer_hub_active_token}}",
                       "type": "string"
                     }
                   ]
@@ -4295,7 +5089,7 @@
                     "officer-resolution"
                   ]
                 },
-                "description": "Create the officer field report (once per issue). Tier C: hub-active required. Multipart. Current assignee only. Returns 403 hub_active_required without an active shift, 403 officer_not_in_district when the issue district is outside the officer pivot, or 403 not_assigned_officer for non-assignees. Duplicate POST returns 409 officer_resolution_exists. Blocked when issue status is gesloten (422 issue_closed); opgelost remains writable. Up to 3 images, 5 MB each, content-sniffed after extension rules. Attachment cap enforcement and upload disk I/O run inside the lockForUpdate transaction."
+                "description": "Create the officer field report (once per issue). Tier C: hub-active required. Multipart. Current assignee only. Returns 403 hub_active_required without an active shift, 403 officer_not_in_district when the issue district is outside the officer pivot, or 403 not_assigned_officer for non-assignees. Duplicate POST returns 409 officer_resolution_exists. Blocked when issue status is gesloten (422 issue_closed); opgelost without an existing report remains writable. When status is in_behandeling, POST also transitions the issue to opgelost, appends status history (note: \"Oplossing geplaatst\"), and sets resolved_at; no separate status-change notification. POST on open does not change status. Response body is OfficerIssueResolution only. Up to 3 images, 5 MB each, content-sniffed after extension rules. Attachment cap enforcement and upload disk I/O run inside the lockForUpdate transaction."
               },
               "response": [
                 {
@@ -4478,7 +5272,7 @@
                   "bearer": [
                     {
                       "key": "token",
-                      "value": "{{access_token}}",
+                      "value": "{{officer_hub_active_token}}",
                       "type": "string"
                     }
                   ]
@@ -4679,7 +5473,7 @@
                   "bearer": [
                     {
                       "key": "token",
-                      "value": "{{access_token}}",
+                      "value": "{{officer_hub_active_token}}",
                       "type": "string"
                     }
                   ]
@@ -4719,7 +5513,7 @@
                   "bearer": [
                     {
                       "key": "token",
-                      "value": "{{access_token}}",
+                      "value": "{{officer_hub_active_token}}",
                       "type": "string"
                     }
                   ]
@@ -4777,7 +5571,7 @@
                   "bearer": [
                     {
                       "key": "token",
-                      "value": "{{access_token}}",
+                      "value": "{{officer_hub_active_token}}",
                       "type": "string"
                     }
                   ]
@@ -4881,7 +5675,7 @@
                   "bearer": [
                     {
                       "key": "token",
-                      "value": "{{access_token}}",
+                      "value": "{{officer_hub_active_token}}",
                       "type": "string"
                     }
                   ]
@@ -5017,7 +5811,7 @@
                   "bearer": [
                     {
                       "key": "token",
-                      "value": "{{access_token}}",
+                      "value": "{{officer_hub_active_token}}",
                       "type": "string"
                     }
                   ]
@@ -5068,7 +5862,7 @@
                   "bearer": [
                     {
                       "key": "token",
-                      "value": "{{access_token}}",
+                      "value": "{{officer_hub_active_token}}",
                       "type": "string"
                     }
                   ]
@@ -5171,6 +5965,268 @@
             }
           ],
           "description": "Officer issue workflow requests. Tier B browse (list/show, resolution show, officer-updates index/download) works without a shift; Tier C writes (assign-self, unassign-self, status, resolution POST/PATCH, officer-update POST/PATCH/DELETE) require hub-active. Log in with Auth / Login Officer at Hub before Tier C writes. Use issue_id in the officer's assigned district (demo: Cool / district_id 1). Run Assign Self before status, resolution, or officer-update writes."
+        },
+        {
+          "name": "Issue feedback",
+          "item": [
+            {
+              "name": "List Issue Feedback",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{issue_id}}/feedback",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{issue_id}}",
+                    "feedback"
+                  ]
+                },
+                "description": "List user satisfaction feedback on an issue. Unpaginated collection. Users see only their own row; officers see all rows when ever assigned or resolution author on the issue (Tier B — no hub-active shift required); managers see all rows on visible issues. Reviewer anonymity follows comment rules: owners see real id/username; other viewers see stable participant aliases."
+              },
+              "response": []
+            },
+            {
+              "name": "Submit Feedback",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Feedback created', function () { pm.response.to.have.status(201); });",
+                      "const response = pm.response.json();",
+                      "if (response.id) {",
+                      "    pm.collectionVariables.set('feedback_id', String(response.id));",
+                      "    if (pm.environment.name) { pm.environment.set('feedback_id', String(response.id)); }",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"is_satisfied\": true,\n  \"comment\": \"De melding is netjes opgelost.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{issue_id}}/feedback",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{issue_id}}",
+                    "feedback"
+                  ]
+                },
+                "description": "Submit satisfaction feedback as an active user who participates on a closed (gesloten) issue. One row per participant per issue. Requires issue status gesloten and submission within 7 days of last close. Officers receive 403 on this user-only route. Optional comment max 2000 characters. Stores feedback_id for update/delete examples."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Feedback",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"is_satisfied\": false,\n  \"comment\": \"Toch nog niet helemaal tevreden.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{issue_id}}/feedback/{{feedback_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{issue_id}}",
+                    "feedback",
+                    "{{feedback_id}}"
+                  ]
+                },
+                "description": "Update own feedback. Only the submitting user may PATCH. Requires gesloten issue, open 7-day submit window, and open 24-hour edit window from submitted_at. Wrong nested feedback id returns 404."
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Feedback",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{issue_id}}/feedback/{{feedback_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{issue_id}}",
+                    "feedback",
+                    "{{feedback_id}}"
+                  ]
+                },
+                "description": "Delete own feedback. Same ownership and window rules as PATCH. Returns 204 on success."
+              },
+              "response": []
+            },
+            {
+              "name": "List Officer Me Feedback",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{officer_hub_active_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/officers/me/feedback?issue_id={{issue_id}}&submitted_from=&submitted_to=&page={{page}}&per_page={{per_page}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "officers",
+                    "me",
+                    "feedback"
+                  ],
+                  "query": [
+                    {
+                      "key": "issue_id",
+                      "value": "{{issue_id}}",
+                      "description": "Optional filter to one issue"
+                    },
+                    {
+                      "key": "submitted_from",
+                      "value": "",
+                      "description": "Optional inclusive start date (YYYY-MM-DD)"
+                    },
+                    {
+                      "key": "submitted_to",
+                      "value": "",
+                      "description": "Optional inclusive end date (YYYY-MM-DD)"
+                    },
+                    {
+                      "key": "page",
+                      "value": "{{page}}"
+                    },
+                    {
+                      "key": "per_page",
+                      "value": "{{per_page}}"
+                    }
+                  ]
+                },
+                "description": "Paginated feedback list for issues the officer was ever assigned to or authored resolution for. Officers only; Tier B (no hub-active shift required). Optional filters issue_id, submitted_from, submitted_to. Log in with Auth / Login Officer at Hub or use officer_hub_active_token."
+              },
+              "response": []
+            }
+          ],
+          "description": "User satisfaction feedback on closed issues. Submit/update/delete are user-participant writes within 7-day submit and 24-hour edit windows. Issue feedback index and officers/me/feedback are Tier B reads for officers."
         }
       ],
       "description": "Authenticated issue CRUD and attachment examples. Issue creation requires district_id and no longer accepts client-supplied department or removed legacy locality fields. Departments are derived from the selected category, stored in department_issue, and exposed as a read-only departments array. List filters are composable: district_id, department (code), category_id, mine (users only), and visibility (officers/managers only). Department filtering uses any-match semantics; pagination is backend-driven. Show returns 404 when the issue is not visible to the actor (e.g. another user's hidden issue). Anonymous issues retain user_id ownership while exposing only a stable alias. Attachment deletion is owner-only for replacement workflows. Issue deletion is hard delete and attachments cascade with the issue."
@@ -5249,7 +6305,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{officer_hub_active_token}}",
                   "type": "string"
                 }
               ]
@@ -5300,7 +6356,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{officer_hub_active_token}}",
                   "type": "string"
                 }
               ]
@@ -5352,7 +6408,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{officer_hub_active_token}}",
                   "type": "string"
                 }
               ]
@@ -5390,7 +6446,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{access_token}}",
+                  "value": "{{officer_hub_active_token}}",
                   "type": "string"
                 }
               ]
@@ -5439,10 +6495,694 @@
       "description": "Comment management requests. Listing comments works for any active actor who can view the issue; POST/PATCH/DELETE writes require appropriate ownership, manager role, or active shift for officers."
     },
     {
-      "name": "Departments",
+      "name": "Issue Chat",
       "item": [
         {
-          "name": "List Departments",
+          "name": "List Chats",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{officer_hub_active_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/issues/{{issue_id}}/chats?page={{page}}&per_page={{per_page}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "issues",
+                "{{issue_id}}",
+                "chats"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{page}}"
+                },
+                {
+                  "key": "per_page",
+                  "value": "{{per_page}}"
+                }
+              ]
+            },
+            "description": "List 1:1 chats on the canonical issue. Assignee officers see all chats (Tier B, no hub-active required). Eligible users see only their own chat (200 with data: [] when none). Set officer_hub_active_token after Auth / Login Officer at Hub and issue_id after assign-self."
+          },
+          "response": []
+        },
+        {
+          "name": "Open Chat with Issue Owner",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response.id) {",
+                  "    pm.collectionVariables.set('chat_id', String(response.id));",
+                  "    if (pm.environment.name) { pm.environment.set('chat_id', String(response.id)); }",
+                  "}",
+                  "if (response.user_id) {",
+                  "    pm.collectionVariables.set('owner_user_id', String(response.user_id));",
+                  "    if (pm.environment.name) { pm.environment.set('owner_user_id', String(response.user_id)); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{officer_hub_active_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": {{owner_user_id}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/issues/{{issue_id}}/chats/open",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "issues",
+                "{{issue_id}}",
+                "chats",
+                "open"
+              ]
+            },
+            "description": "Open 1:1 chat with the issue owner. Tier C (hub-active). Set owner_user_id from the issue show response user_id or demo user id 1. Stores chat_id. 201 on first open; 200 when idempotent."
+          },
+          "response": []
+        },
+        {
+          "name": "Open Chat with Participant",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response.id) {",
+                  "    pm.collectionVariables.set('chat_id_2', String(response.id));",
+                  "    if (pm.environment.name) { pm.environment.set('chat_id_2', String(response.id)); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{officer_hub_active_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": {{participant_user_id}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/issues/{{issue_id}}/chats/open",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "issues",
+                "{{issue_id}}",
+                "chats",
+                "open"
+              ]
+            },
+            "description": "Open a second parallel chat with another eligible user (participant). Prerequisite: POST .../join as a second user, then set participant_user_id. Stores chat_id_2. Demonstrates multiple 1:1 chats on one issue."
+          },
+          "response": []
+        },
+        {
+          "name": "List Messages",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{officer_hub_active_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/issues/{{issue_id}}/chats/{{chat_id}}/messages?page={{page}}&per_page={{per_page}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "issues",
+                "{{issue_id}}",
+                "chats",
+                "{{chat_id}}",
+                "messages"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{page}}"
+                },
+                {
+                  "key": "per_page",
+                  "value": "{{per_page}}"
+                }
+              ]
+            },
+            "description": "List messages for a chat (open or closed). Tier B for officers. Chronological order."
+          },
+          "response": []
+        },
+        {
+          "name": "Send Message",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response.id) {",
+                  "    pm.collectionVariables.set('chat_message_id', String(response.id));",
+                  "    if (pm.environment.name) { pm.environment.set('chat_message_id', String(response.id)); }",
+                  "}",
+                  "const attachments = response.attachments || [];",
+                  "if (attachments.length > 0 && attachments[0].id) {",
+                  "    pm.collectionVariables.set('chat_attachment_id', String(attachments[0].id));",
+                  "    if (pm.environment.name) { pm.environment.set('chat_attachment_id', String(attachments[0].id)); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{officer_hub_active_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Bericht van de BOA in de chat.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/issues/{{issue_id}}/chats/{{chat_id}}/messages",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "issues",
+                "{{issue_id}}",
+                "chats",
+                "{{chat_id}}",
+                "messages"
+              ]
+            },
+            "description": "Send a text message in an open chat. Tier C for officers. Closed chat returns 422 chat_closed. Stores chat_message_id."
+          },
+          "response": []
+        },
+        {
+          "name": "Send Message with Attachment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response.id) {",
+                  "    pm.collectionVariables.set('chat_message_id', String(response.id));",
+                  "    if (pm.environment.name) { pm.environment.set('chat_message_id', String(response.id)); }",
+                  "}",
+                  "const attachments = response.attachments || [];",
+                  "if (attachments.length > 0 && attachments[0].id) {",
+                  "    pm.collectionVariables.set('chat_attachment_id', String(attachments[0].id));",
+                  "    if (pm.environment.name) { pm.environment.set('chat_attachment_id', String(attachments[0].id)); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{officer_hub_active_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "content",
+                  "value": "Zie bijlage",
+                  "type": "text",
+                  "disabled": true
+                },
+                {
+                  "key": "files[]",
+                  "type": "file",
+                  "src": [],
+                  "description": "Optional images: jpg/jpeg/png/gif/webp, up to 3 files, 5 MB each. content is optional when files are present."
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/issues/{{issue_id}}/chats/{{chat_id}}/messages",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "issues",
+                "{{issue_id}}",
+                "chats",
+                "{{chat_id}}",
+                "messages"
+              ]
+            },
+            "description": "Multipart send with optional text and/or files. Attachment-only messages are valid (disable content field, attach file). Stores chat_message_id and chat_attachment_id."
+          },
+          "response": []
+        },
+        {
+          "name": "Mark Messages Read",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/issues/{{issue_id}}/chats/{{chat_id}}/messages/mark-read",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "issues",
+                "{{issue_id}}",
+                "chats",
+                "{{chat_id}}",
+                "messages",
+                "mark-read"
+              ]
+            },
+            "description": "Mark the other party's unread messages as read in an open chat. Use a user token (issue owner). Returns { marked_read: N }. Closed chat returns 422 chat_closed."
+          },
+          "response": []
+        },
+        {
+          "name": "Download Chat Attachment",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{officer_hub_active_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/issues/{{issue_id}}/chats/{{chat_id}}/messages/{{chat_message_id}}/attachments/{{chat_attachment_id}}/download",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "issues",
+                "{{issue_id}}",
+                "chats",
+                "{{chat_id}}",
+                "messages",
+                "{{chat_message_id}}",
+                "attachments",
+                "{{chat_attachment_id}}",
+                "download"
+              ]
+            },
+            "description": "Download a chat message attachment. Chat participants only (403 not_chat_participant for outsiders). Users are not hub-gated; officers need Tier C hub-active token."
+          },
+          "response": []
+        },
+        {
+          "name": "Close Chat",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{officer_hub_active_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/issues/{{issue_id}}/chats/{{chat_id}}/close",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "issues",
+                "{{issue_id}}",
+                "chats",
+                "{{chat_id}}",
+                "close"
+              ]
+            },
+            "description": "Close a single chat (assignee officer, Tier C). Does not insert a system message. Idempotent when already closed."
+          },
+          "response": []
+        },
+        {
+          "name": "Reassignment Handoff",
+          "item": [
+            {
+              "name": "Assign Self Blocked (409)",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{officer_hub_active_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{issue_id}}/assign-self",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{issue_id}}",
+                    "assign-self"
+                  ]
+                },
+                "description": "Smoke test: second officer on an already-assigned issue receives 409 issue_already_assigned (no takeover). Use a different officer token than the current assignee."
+              },
+              "response": []
+            },
+            {
+              "name": "Unassign Self (closes chats)",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{officer_hub_active_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{issue_id}}/unassign-self",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{issue_id}}",
+                    "unassign-self"
+                  ]
+                },
+                "description": "Current assignee unassigns. Closes all open chats without system messages. Handoff step 1 before successor assign-self."
+              },
+              "response": []
+            },
+            {
+              "name": "Assign Self Successor",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{officer_hub_active_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{issue_id}}/assign-self",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{issue_id}}",
+                    "assign-self"
+                  ]
+                },
+                "description": "Handoff step 2: successor officer assign-self after prior unassign. Set officer_hub_active_token to the successor officer's hub-login token before running."
+              },
+              "response": []
+            },
+            {
+              "name": "Reopen Chat After Handoff",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{officer_hub_active_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"user_id\": {{owner_user_id}}\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/issues/{{issue_id}}/chats/open",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "issues",
+                    "{{issue_id}}",
+                    "chats",
+                    "open"
+                  ]
+                },
+                "description": "Handoff step 3: successor reopens the same chat (200, same chat_id). Prior message history remains readable via List Messages."
+              },
+              "response": []
+            }
+          ],
+          "description": "Officer reassignment without takeover: unassign-self then assign-self (409 preserved when skipping unassign). Open chats close on unassign without system messages."
+        }
+      ],
+      "description": "Private 1:1 issue chats (distinct from Comments). Recommended flow: Login Officer at Hub → Assign Self → set owner_user_id from issue → Open Chat with Issue Owner → optional parallel Open Chat with Participant (after join, set participant_user_id) → Send Message → Mark Messages Read as user → Download attachment → Close Chat. Tier B: list chats/messages. Tier C: open, close, send, mark-read (officers), attachment download (officers)."
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "List Notifications",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('User notification list succeeded', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const body = pm.response.json();",
+                  "    const first = body.data && body.data[0];",
+                  "    if (first && first.id) {",
+                  "        pm.collectionVariables.set('notification_id', first.id);",
+                  "        if (pm.environment.name) {",
+                  "            pm.environment.set('notification_id', first.id);",
+                  "        }",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
           "request": {
             "auth": {
               "type": "bearer",
@@ -5463,21 +7203,43 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/departments",
+              "raw": "{{base_url}}/api/notifications?page={{page}}&per_page={{per_page}}&is_read=&type=&since=",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
-                "departments"
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{page}}"
+                },
+                {
+                  "key": "per_page",
+                  "value": "{{per_page}}"
+                },
+                {
+                  "key": "is_read",
+                  "value": ""
+                },
+                {
+                  "key": "type",
+                  "value": ""
+                },
+                {
+                  "key": "since",
+                  "value": ""
+                }
               ]
             },
-            "description": "List departments from the departments table with category counts. Requires authentication in the protected API group."
+            "description": "Paginated user notification inbox. Active users only; officers and managers receive 403. Optional filters is_read, type, since (ISO 8601 for incremental polling). Sets notification_id from the first row when present."
           },
           "response": []
         },
         {
-          "name": "Show Department",
+          "name": "Get Unread Count",
           "request": {
             "auth": {
               "type": "bearer",
@@ -5488,6 +7250,761 @@
                   "type": "string"
                 }
               ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/notifications/unread-count",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "unread-count"
+              ]
+            },
+            "description": "Lightweight unread count for the authenticated user. Separate from list meta."
+          },
+          "response": []
+        },
+        {
+          "name": "Mark Notification Read",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"is_read\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/notifications/{{notification_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "{{notification_id}}"
+              ]
+            },
+            "description": "Mark one user notification read. Run List Notifications first to set notification_id. Idempotent when already read. Foreign ids return 404 notification_not_found."
+          },
+          "response": []
+        },
+        {
+          "name": "Bulk Mark Read",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ids\": [{{notification_id}}]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/notifications/bulk-read",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "bulk-read"
+              ]
+            },
+            "description": "Mark multiple user notifications read by id. Foreign ids are skipped silently."
+          },
+          "response": []
+        },
+        {
+          "name": "Mark All Read",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/notifications/mark-all-read",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "mark-all-read"
+              ]
+            },
+            "description": "Mark every unread user notification as read (not filter-scoped)."
+          },
+          "response": []
+        }
+      ],
+      "description": "User notification inbox under /api/notifications. Active users only. Poll with since for incremental fetch; use unread-count for badge counts."
+    },
+    {
+      "name": "Community Posts",
+      "item": [
+        {
+          "name": "List Community Posts",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/community-posts?district_id={{district_id}}&page={{page}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "community-posts"
+              ],
+              "query": [
+                {
+                  "key": "district_id",
+                  "value": "{{district_id}}"
+                },
+                {
+                  "key": "page",
+                  "value": "{{page}}"
+                }
+              ]
+            },
+            "description": "Paginated community news feed. Users see visible posts in subscribed feed districts; officers see assigned districts; managers browse city-wide. Optional district_id narrows within feed scope. Users may pass saved_only=1 to list saved posts only. Officers may call without hub-active shift (Tier B)."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Community Post",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const body = pm.response.json();",
+                  "    const postId = body.data ? body.data.id : body.id;",
+                  "    if (postId) {",
+                  "        pm.collectionVariables.set('community_post_id', postId);",
+                  "        if (pm.environment.name) {",
+                  "            pm.environment.set('community_post_id', postId);",
+                  "        }",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{officer_hub_active_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"district_id\": {{district_id}},\n  \"title\": \"Wijkupdate parkeerregels\",\n  \"content\": \"Vanaf volgende week gelden nieuwe parkeerregels in Cool.\",\n  \"visibility\": \"visible\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/community-posts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "community-posts"
+              ]
+            },
+            "description": "Create a community post as an active officer with hub-active shift (Tier C). Officer must be assigned to district_id. Stores community_post_id from the 201 response."
+          },
+          "response": []
+        },
+        {
+          "name": "Show Community Post",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/community-posts/{{community_post_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "community-posts",
+                "{{community_post_id}}"
+              ]
+            },
+            "description": "Show one community post when visible to the actor. Returns 404 outside feed/visibility scope. User responses include is_saved when applicable. Tier B for officers."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Community Post",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{officer_hub_active_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Bijgewerkte wijkupdate\",\n  \"content\": \"Aanvullende informatie over de parkeerregels.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/community-posts/{{community_post_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "community-posts",
+                "{{community_post_id}}"
+              ]
+            },
+            "description": "Partial update by the authoring officer only. Tier C (hub-active required)."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Community Post Visibility",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{officer_hub_active_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"visibility\": \"hidden\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/community-posts/{{community_post_id}}/visibility",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "community-posts",
+                "{{community_post_id}}",
+                "visibility"
+              ]
+            },
+            "description": "Set visibility to visible or hidden. Officers may update own posts; managers may moderate (ordinary managers only in assigned districts). Hiding detaches all user saves."
+          },
+          "response": []
+        },
+        {
+          "name": "Upload Community Post Attachments",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const attachments = pm.response.json();",
+                  "    if (Array.isArray(attachments) && attachments.length > 0) {",
+                  "        pm.collectionVariables.set('community_post_attachment_id', attachments[0].id);",
+                  "        if (pm.environment.name) {",
+                  "            pm.environment.set('community_post_attachment_id', attachments[0].id);",
+                  "        }",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{officer_hub_active_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "attachments[]",
+                  "type": "file",
+                  "src": [],
+                  "description": "Choose 1-5 files. Each file must be <= 5 MB."
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/community-posts/{{community_post_id}}/attachments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "community-posts",
+                "{{community_post_id}}",
+                "attachments"
+              ]
+            },
+            "description": "Upload attachments to a community post. Max 5 files per post, 5 MB each. Authoring officer or officers in the post district only. Tier C. 201 response is a flat JSON array (no data wrapper). Stores community_post_attachment_id from the first attachment."
+          },
+          "response": []
+        },
+        {
+          "name": "Download Community Post Attachment",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/community-posts/{{community_post_id}}/attachments/{{community_post_attachment_id}}/download",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "community-posts",
+                "{{community_post_id}}",
+                "attachments",
+                "{{community_post_attachment_id}}",
+                "download"
+              ]
+            },
+            "description": "Download a community post attachment when the actor can view the parent post. Tier B for officers."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Community Post Attachment",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{officer_hub_active_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/community-posts/{{community_post_id}}/attachments/{{community_post_attachment_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "community-posts",
+                "{{community_post_id}}",
+                "attachments",
+                "{{community_post_attachment_id}}"
+              ]
+            },
+            "description": "Hard delete one community post attachment. Authoring officer only for officers; managers may delete any attachment. Tier C for officers."
+          },
+          "response": []
+        },
+        {
+          "name": "Save Community Post",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/community-posts/{{community_post_id}}/save",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "community-posts",
+                "{{community_post_id}}",
+                "save"
+              ]
+            },
+            "description": "Save a visible community post in the user's feed districts. Users only. Returns 201 with empty body. Returns 404 when the post is hidden or outside feed districts."
+          },
+          "response": []
+        },
+        {
+          "name": "List Saved Community Posts",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/community-posts?saved_only=1&district_id={{district_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "community-posts"
+              ],
+              "query": [
+                {
+                  "key": "saved_only",
+                  "value": "1"
+                },
+                {
+                  "key": "district_id",
+                  "value": "{{district_id}}"
+                }
+              ]
+            },
+            "description": "Users only. Lists saved posts within feed scope using saved_only=1."
+          },
+          "response": []
+        },
+        {
+          "name": "Unsave Community Post",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/community-posts/{{community_post_id}}/save",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "community-posts",
+                "{{community_post_id}}",
+                "save"
+              ]
+            },
+            "description": "Remove a post from the user's saved list. Users only. Returns 204."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Community Post",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{officer_hub_active_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/community-posts/{{community_post_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "community-posts",
+                "{{community_post_id}}"
+              ]
+            },
+            "description": "Delete a community post. Managers may delete any post; officers may delete only posts they authored. Tier C for officers. Returns 204."
+          },
+          "response": []
+        }
+      ],
+      "description": "Community news feed CRUD, attachments, and saved posts. Users subscribe to feed districts via Auth / Update My Feed Districts. Officer writes require hub-active shift (Tier C); list/show and attachment download are Tier B browse reads."
+    },
+    {
+      "name": "Departments",
+      "item": [
+        {
+          "name": "List Departments",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/departments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "departments"
+              ]
+            },
+            "description": "Public read: list departments from the departments table with category counts. No Authorization header required — use this before officer registration to discover active department_ids. Unauthenticated and non–main-manager callers receive active departments only. Optional bearer token: authenticated active main managers see all departments including inactive. Rate-limited to 30 requests per minute. Write requests (create, update, delete) still require main_manager_access_token."
+          },
+          "response": []
+        },
+        {
+          "name": "Show Department",
+          "request": {
+            "auth": {
+              "type": "noauth"
             },
             "method": "GET",
             "header": [
@@ -5508,7 +8025,7 @@
                 "1"
               ]
             },
-            "description": "Show one department with category count. Requires authentication in the protected API group."
+            "description": "Public read: show one department with category count. No Authorization header required for active departments. Inactive departments return 404 for unauthenticated and non–main-manager callers; authenticated active main managers may retrieve inactive departments when a bearer token is sent. Rate-limited to 30 requests per minute. Write requests still require main_manager_access_token."
           },
           "response": []
         },
@@ -5798,7 +8315,7 @@
           "response": []
         }
       ],
-      "description": "Department CRUD requests. Department mutations require an authenticated active main manager (main_manager_access_token). Activation and deactivation use generic PATCH with is_active only; hard delete is guarded when managers/officers still reference the row. Managers use department_ids through the department_manager pivot and must have one or more departments; officers use department_ids through the department_officer pivot and must have one or more departments. Deleting a department is blocked while assigned to managers or officers; otherwise it removes category_department and department_issue pivot assignments automatically but does not delete categories or issues. Issue departments are derived from categories and exposed to clients as read-only departments arrays."
+      "description": "Department read and write requests. GET list and show are public (no token required); they return active departments only for unauthenticated and non–main-manager callers and are rate-limited to 30 requests per minute. Department mutations require an authenticated active main manager (main_manager_access_token). Activation and deactivation use generic PATCH with is_active only; hard delete is guarded when managers/officers still reference the row. Managers use department_ids through the department_manager pivot and must have one or more departments; officers use department_ids through the department_officer pivot and must have one or more departments. Deleting a department is blocked while assigned to managers or officers; otherwise it removes category_department and department_issue pivot assignments automatically but does not delete categories or issues. Issue departments are derived from categories and exposed to clients as read-only departments arrays."
     }
   ],
   "auth": {
@@ -5823,6 +8340,16 @@
     },
     {
       "key": "comment_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "feedback_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "notification_id",
       "value": "1",
       "type": "string"
     },
@@ -5912,8 +8439,43 @@
       "type": "string"
     },
     {
+      "key": "officer_access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
       "key": "officer_remote_token",
       "value": "",
+      "type": "string"
+    },
+    {
+      "key": "community_post_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "chat_id_2",
+      "value": "2",
+      "type": "string"
+    },
+    {
+      "key": "chat_message_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "chat_attachment_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "owner_user_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "participant_user_id",
+      "value": "2",
       "type": "string"
     }
   ]

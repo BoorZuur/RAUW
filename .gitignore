@@ -190,3 +190,4 @@ plans/
 .agents/skills/caveman/
 .agents/skills/caveman-commit/
 .agents/skills/caveman-review/
+.agent/workflows/

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Issues\CloseAllOpenIssueChats;
 use App\Enums\IssueStatus;
 use App\Http\Requests\Issues\UpdateIssueStatusRequest;
 use App\Http\Resources\IssueResource;
@@ -10,9 +11,13 @@ use App\Models\IssueStatusHistory;
 use App\Models\Officer;
 use App\Support\IssueStatusTransition;
 use App\Support\IssueVisibilityQuery;
+use App\Support\Notifications\NotifyStatusChange;
 use App\Support\OfficerIssueDistrictAccess;
 use App\Support\OfficerIssueRowLock;
 
+/**
+ * @group Officer Actions on Issues
+ */
 class IssueOfficerStatusController extends Controller
 {
     /**
@@ -39,8 +44,12 @@ class IssueOfficerStatusController extends Controller
      * status history row without coordinates and may set resolved_at on the
      * first transition to opgelost.
      */
-    public function update(UpdateIssueStatusRequest $request, Issue $issue): IssueResource
-    {
+    public function update(
+        UpdateIssueStatusRequest $request,
+        Issue $issue,
+        CloseAllOpenIssueChats $closeAllOpenIssueChats,
+        NotifyStatusChange $notifyStatusChange,
+    ): IssueResource {
         /** @var Officer $officer */
         $officer = $request->user();
 
@@ -54,7 +63,7 @@ class IssueOfficerStatusController extends Controller
         $newStatus = $request->enum('status', IssueStatus::class);
         $note = $request->validated('note');
 
-        OfficerIssueRowLock::withLockedIssue($issue, function (Issue $lockedIssue) use ($officer, $newStatus, $note): void {
+        OfficerIssueRowLock::withLockedIssue($issue, function (Issue $lockedIssue) use ($officer, $newStatus, $note, $closeAllOpenIssueChats, $notifyStatusChange): void {
             OfficerIssueRowLock::assertAssignee($officer, $lockedIssue);
             OfficerIssueRowLock::assertStatusTransition($lockedIssue, $newStatus);
 
@@ -77,6 +86,12 @@ class IssueOfficerStatusController extends Controller
                 'new_status' => $newStatus,
                 'note' => $note,
             ]);
+
+            $notifyStatusChange->notify($lockedIssue, $officer, $oldStatus, $newStatus);
+
+            if ($newStatus === IssueStatus::Closed) {
+                $closeAllOpenIssueChats->closeAll($lockedIssue, $officer, withSystemMessage: true);
+            }
         });
 
         $issue->refresh()->load(self::ISSUE_RELATIONS);

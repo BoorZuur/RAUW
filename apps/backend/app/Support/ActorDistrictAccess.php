@@ -25,21 +25,35 @@ class ActorDistrictAccess
     {
         $cacheKey = $actor::class.':'.$actor->getKey();
 
-        if (! array_key_exists($cacheKey, self::$assignedDistrictIdsCache)) {
-            if ($actor->relationLoaded('districts')) {
-                self::$assignedDistrictIdsCache[$cacheKey] = $actor->districts
-                    ->pluck('id')
-                    ->map(static fn ($id): int => (int) $id)
-                    ->all();
-            } else {
-                self::$assignedDistrictIdsCache[$cacheKey] = array_map(
-                    'intval',
-                    $actor->districts()->pluck('districts.id')->all()
-                );
-            }
+        return self::$assignedDistrictIdsCache[$cacheKey] ??= self::resolveAssignedDistrictIds($actor);
+    }
+
+    public static function forget(Officer|Manager $actor): void
+    {
+        unset(self::$assignedDistrictIdsCache[$actor::class.':'.$actor->getKey()]);
+    }
+
+    public static function flush(): void
+    {
+        self::$assignedDistrictIdsCache = [];
+    }
+
+    /**
+     * @return array<int>
+     */
+    private static function resolveAssignedDistrictIds(Officer|Manager $actor): array
+    {
+        if ($actor->relationLoaded('districts')) {
+            return $actor->districts
+                ->pluck('id')
+                ->map(static fn ($id): int => (int) $id)
+                ->all();
         }
 
-        return self::$assignedDistrictIdsCache[$cacheKey];
+        return array_map(
+            'intval',
+            $actor->districts()->pluck('districts.id')->all()
+        );
     }
 
     public static function isMainManager(Manager $actor): bool
@@ -104,6 +118,48 @@ class ActorDistrictAccess
             $message = $actor instanceof Officer
                 ? 'Officer is not assigned to this issue district.'
                 : 'Manager is not assigned to this issue district.';
+
+            throw new HttpResponseException(
+                response()->json([
+                    'message' => $message,
+                    'code' => 'actor_not_in_district',
+                ], Response::HTTP_FORBIDDEN)
+            );
+        }
+    }
+
+    /**
+     * Whether the actor may access the post's district.
+     *
+     * Main managers: always true. Officers and ordinary managers: post district
+     * must be in assigned districts; null district_id on the post → false.
+     */
+    public static function actorInPostDistrict(Officer|Manager $actor, \App\Models\CommunityPost $post): bool
+    {
+        if ($actor instanceof Manager && self::isMainManager($actor)) {
+            return true;
+        }
+
+        if ($post->district_id === null) {
+            return false;
+        }
+
+        return in_array((int) $post->district_id, self::assignedDistrictIds($actor), true);
+    }
+
+    /**
+     * Assert the actor is assigned to the post's district or abort 403.
+     */
+    public static function assertActorInPostDistrict(Officer|Manager $actor, \App\Models\CommunityPost $post): void
+    {
+        if ($actor instanceof Manager && self::isMainManager($actor)) {
+            return;
+        }
+
+        if (! self::actorInPostDistrict($actor, $post)) {
+            $message = $actor instanceof Officer
+                ? 'Officer is not assigned to this post district.'
+                : 'Manager is not assigned to this post district.';
 
             throw new HttpResponseException(
                 response()->json([

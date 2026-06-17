@@ -7,8 +7,16 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['issue_id', 'user_id', 'is_satisfied', 'comment', 'answered_at'])]
-class IssueResolution extends Model
+#[Fillable([
+    'issue_message_id',
+    'file_path',
+    'file_url',
+    'original_name',
+    'file_type',
+    'file_size',
+    'uploaded_at',
+])]
+class IssueMessageAttachment extends Model
 {
     use HasFactory;
 
@@ -22,18 +30,13 @@ class IssueResolution extends Model
     protected function casts(): array
     {
         return [
-            'is_satisfied' => 'boolean',
-            'answered_at' => 'datetime',
+            'file_size' => 'integer',
+            'uploaded_at' => 'datetime',
         ];
     }
 
-    public function issue(): BelongsTo
+    public function issueMessage(): BelongsTo
     {
-        return $this->belongsTo(Issue::class);
-    }
-
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(IssueMessage::class);
     }
 }

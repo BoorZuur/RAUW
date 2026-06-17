@@ -1,93 +1,153 @@
-import React from 'react';
-import {Link, useLocation} from 'react-router-dom'; // Toegevoegd voor de werking van de links
-import "./HM_styling.css"
+import React, { useState, useEffect } from 'react';
+import {Link, useLocation} from 'react-router-dom';
+import {navLinks} from '../config/navConfig.js';
+import axios from 'axios';
+import "./HM_styling.css";
 
-export default function HM_Nav(){
-    const location = useLocation(); // Slaat de huidige actieve route op
+export default function HM_Nav({role = 'handhaver'}) {
+    const location = useLocation();
+    const [isHubActive, setIsHubActive] = useState(false);
+    const [startingShift, setStartingShift] = useState(false);
+    const [shiftError, setShiftError] = useState("");
+
+    useEffect(() => {
+        if (role === 'handhaver') {
+            const checkShiftStatus = async () => {
+                try {
+                    const token = localStorage.getItem('auth_token');
+                    if (!token) return;
+                    
+                    const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/auth/me`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    const profile = res.data?.profile || res.data;
+                    setIsHubActive(profile.hub_active === true);
+                } catch (err) {
+                    console.error("Failed to fetch shift status", err);
+                }
+            };
+            checkShiftStatus();
+        }
+    }, [role]);
+
+    const handleStartShift = () => {
+        setStartingShift(true);
+        setShiftError("");
+        
+        if (!navigator.geolocation) {
+            setShiftError("Geolocatie wordt niet ondersteund");
+            setStartingShift(false);
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                try {
+                    const token = localStorage.getItem('auth_token');
+                    await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/start-shift`, {
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude
+                    }, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    setIsHubActive(true);
+                } catch (err) {
+                    console.error(err);
+                    setShiftError(err.response?.data?.message || "Kan shift niet starten");
+                    setTimeout(() => setShiftError(""), 5000);
+                } finally {
+                    setStartingShift(false);
+                }
+            },
+            (err) => {
+                console.error(err);
+                setShiftError("Locatietoegang geweigerd");
+                setStartingShift(false);
+                setTimeout(() => setShiftError(""), 5000);
+            }
+        );
+    };
+
+    // Filter de links zodat alleen de links voor de huidige rol getoond worden
+    const filteredLinks = navLinks.filter(link => link.roles.includes(role));
 
     return (
-        <>
-            <section className="sidebar">
-                <div className="logo-container">
-                    <div className="logo-icon">
-                        <svg viewBox="0 0 24 24" width="24" height="24">
-                            <path fill="currentColor"
-                                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm0-12c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"/>
-                        </svg>
-                    </div>
-                    <div className="logo-text">
-                        <h2>RAUW</h2>
-                        <p>BOA COMMAND</p>
-                    </div>
+        <section className="sidebar">
+            <div className="logo-container">
+                <div className="logo-icon">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <path fill="currentColor"
+                              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm0-12c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"/>
+                    </svg>
+                </div>
+                <div className="logo-text">
+                    <h2>RAUW</h2>
+                    <p>{role === 'manager' ? 'MANAGEMENT' : 'BOA COMMAND'}</p>
+                </div>
+            </div>
+            <nav className="nav-menu">
+                {filteredLinks.map((link) => {
+                    const isActive = location.pathname === link.to;
+                    return (
+                        <Link
+                            key={link.id}
+                            to={link.to}
+                            className={`nav-item ${isActive ? 'active' : ''}`}
+                        >
+                            <svg className="nav-icon" viewBox="0 0 24 24">
+                                <path fill="currentColor" d={link.iconPath}/>
+                            </svg>
+                            <span>{link.title}</span>
+                            {isActive && <span className="dot-indicator"></span>}
+                        </Link>
+                    );
+                })}
+            </nav>
+
+            <hr/>
+            <div className="sidebar-footer">
+                <div className="toggle-container">
+                    <span className="toggle-label">Dagmodus</span>
+                    <label className="switch">
+                        <input type="checkbox" id="mode-toggle"/>
+                        <span className="slider"></span>
+                    </label>
                 </div>
 
-                <nav className="nav-menu">
-                    {/* Command Center link */}
-                    <Link to="/meldingen"
-                          className={`nav-item ${location.pathname === '/meldingen' ? 'active' : ''}`}>
-                        <svg className="nav-icon" viewBox="0 0 24 24">
-                            <path fill="currentColor"
-                                  d="M4 13h6c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v8c0 .55.45 1 1 1zm0 8h6c.55 0 1-.45 1-1v-4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1zm10 0h6c.55 0 1-.45 1-1v-8c0-.55-.45-1-1-1h-6c-.55 0-1 .45-1 1v8c0 .55.45 1 1 1zM14 4v4c0 .55.45 1 1 1h6c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1h-6c-.55 0-1 .45-1 1z"/>
-                        </svg>
-                        <span>Command Center</span>
-                        {location.pathname === '/meldingen' && <span className="dot-indicator"></span>}
-                    </Link>
-
-                    {/* Dienstprofiel link */}
-                    <Link to="/dienstprofiel"
-                          className={`nav-item ${location.pathname === '/dienstprofiel' ? 'active' : ''}`}>
-                        <svg className="nav-icon" viewBox="0 0 24 24">
-                            <path fill="currentColor"
-                                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
-                        </svg>
-                        <span>Dienstprofiel</span>
-                        {location.pathname === '/dienstprofiel' && <span className="dot-indicator"></span>}
-                    </Link>
-
-                    {/* Sector Instellingen link */}
-                    <Link to="/sectorinstellingen"
-                          className={`nav-item ${location.pathname === '/sectorinstellingen' ? 'active' : ''}`}>
-                        <svg className="nav-icon" viewBox="0 0 24 24">
-                            <path fill="currentColor"
-                                  d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3-1.07-3-3.5s1.07-3.5 3-3.5 3 1.07 3 3.5-1.07 3.5-3 3.5z"/>
-                        </svg>
-                        <span>Sector Instellingen</span>
-                        {location.pathname === '/sectorinstellingen' && <span className="dot-indicator"></span>}
-                    </Link>
-
-                    {/* Rapporten link */}
-                    <Link to="/rapport"
-                          className={`nav-item ${location.pathname === '/rapport' ? 'active' : ''}`}>
-                        <svg className="nav-icon" viewBox="0 0 24 24">
-                            <path fill="currentColor"
-                                  d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 16H6c-.55 0-1-.45-1-1V6c0-.55.45-1 1-1h12c.55 0 1 .45 1 1v12c0 .55-.45 1-1 1zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
-                        </svg>
-                        <span>Rapporten</span>
-                        {location.pathname === '/rapport' && <span className="dot-indicator"></span>}
-                    </Link>
-                </nav>
-
-                <hr/>
-
-                <div className="sidebar-footer">
-                    <div className="toggle-container">
-                        <span className="toggle-label">Dagmodus</span>
-                        <label className="switch">
-                            <input type="checkbox" id="mode-toggle"/>
-                            <span className="slider"></span>
-                        </label>
+                {role === 'handhaver' && (
+                    <div className="px-3">
+                        {shiftError && <p className="text-red-500 text-xs mb-2 text-center">{shiftError}</p>}
+                        {isHubActive ? (
+                            <div className="flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-emerald-50 text-emerald-700 font-bold text-sm border border-emerald-200">
+                                <span className="relative flex h-3 w-3">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                                </span>
+                                Shift Actief
+                            </div>
+                        ) : (
+                            <button 
+                                onClick={handleStartShift} 
+                                disabled={startingShift}
+                                className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-colors disabled:opacity-50"
+                            >
+                                <svg viewBox="0 0 24 24" width="16" height="16">
+                                    <path fill="currentColor" d="M8 5v14l11-7z"/>
+                                </svg>
+                                {startingShift ? "Starten..." : "Start Shift"}
+                            </button>
+                        )}
                     </div>
+                )}
 
-                    {/* Uitloggen link */}
-                    <Link to="/handhaver_login" className="nav-item logout-btn">
-                        <svg className="nav-icon" viewBox="0 0 24 24">
-                            <path fill="currentColor"
-                                  d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
-                        </svg>
-                        <span>Uitloggen</span>
-                    </Link>
-                </div>
-            </section>
-        </>
-    )
+                <Link to="/handhaver_login" className="nav-item logout-btn">
+                    <svg className="nav-icon" viewBox="0 0 24 24">
+                        <path fill="currentColor"
+                              d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
+                    </svg>
+                    <span>Uitloggen</span>
+                </Link>
+            </div>
+        </section>
+    );
 }

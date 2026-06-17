@@ -1,35 +1,36 @@
 import React from 'react';
+import AttachmentImage from './AttachmentImage';
+import { getIssueDisplayTitle } from '../utils/issueParticipation';
 
 export default function StoryCard({ issue, onClick }) {
-    const imageUrl = issue.images?.[0]?.path;
-    const previewText = issue.content.length > 80 ? issue.content.substring(0, 80) + '...' : issue.content;
+    const { content, address, created_at, participant_count, followers, status, category, district, duplicate_count } = issue || {};
+    const attachments = Array.isArray(issue?.attachments) ? issue.attachments : [];
+    const displayTitle = getIssueDisplayTitle(issue);
+    const totalFollowers = typeof participant_count === 'number' ? participant_count : (Array.isArray(followers) ? followers.length : 0);
+    const statusDetails = { label: status || 'Open', className: 'bg-primary-accent text-white' };
 
     return (
-        <button
-            onClick={onClick}
-            className="w-full max-w-sm text-left bg-primary-bg-cards border-2 border-primary-border rounded-2xl shadow-sm hover:border-primary-accent transition-all cursor-pointer overflow-hidden flex flex-col focus:outline-none focus:ring-2 focus:ring-primary-accent"
-        >
-            <div className="relative w-full h-48 bg-primary-border flex-shrink-0">
-                {imageUrl ? (
-                    <img src={imageUrl} alt={issue.title} className="w-full h-full object-cover" />
+        <button onClick={onClick} className="w-full max-w-sm text-left bg-primary-bg-cards border border-primary-border rounded-2xl shadow-sm hover:border-primary-accent transition-all flex flex-col overflow-hidden">
+            <div className="relative w-full h-44 bg-primary-bg">
+                {attachments.length > 0 ? (
+                    <AttachmentImage attachment={attachments[0]} className="w-full h-full object-cover" />
                 ) : (
-                    <div className="w-full h-full flex items-center justify-center text-secondary-text text-[10px] uppercase font-black tracking-widest">Geen beeld</div>
-                )}
-
-                {issue.status === 'opgelost' && (
-                    <div className="absolute top-3 left-3 flex items-center gap-1 bg-secondary-accent text-white px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest shadow-sm">
-                        Opgelost
-                    </div>
+                    <div className="w-full h-full flex items-center justify-center text-xs uppercase font-label">Geen beeld</div>
                 )}
             </div>
-
-            <div className="p-5 flex flex-col gap-2 w-full">
-                <h4 className="font-headline font-black text-primary-text text-[16px] truncate">{issue.title}</h4>
-                <p className="font-body text-secondary-text text-sm line-clamp-2">{previewText}</p>
-                <div className="flex items-center gap-2 text-[9px] font-black text-secondary-text uppercase tracking-widest mt-2 border-t border-primary-border pt-3">
-                    <span className="truncate">{issue.address || 'Locatie onbekend'}</span>
-                    <span>•</span>
-                    <span>{new Date(issue.created_at).toLocaleDateString()}</span>
+            <div className="p-5 flex flex-col gap-3">
+                <div className="text-[10px] font-bold text-primary-accent uppercase tracking-wider">{category?.name || district?.name || 'Melding'}</div>
+                <div className="flex flex-wrap items-center gap-2">
+                    <h4 className="font-extrabold text-primary-text text-base line-clamp-1">{displayTitle}</h4>
+                    {duplicate_count > 0 ? (
+                        <span className="shrink-0 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-full bg-primary-border text-secondary-text">
+                            {duplicate_count} gekoppeld
+                        </span>
+                    ) : null}
+                </div>
+                <p className="text-secondary-text text-xs line-clamp-2 font-label">{content}</p>
+                <div className="border-t pt-3 mt-auto font-bold text-[11px] text-secondary-text font-label">
+                    {totalFollowers} volgers
                 </div>
             </div>
         </button>

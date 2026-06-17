@@ -16,7 +16,10 @@ use App\Http\Controllers\MainManagerHubController;
 use App\Http\Controllers\ManagerHubController;
 use App\Http\Controllers\OfficerHubController;
 use App\Http\Controllers\IssueAttachmentController;
+use App\Http\Controllers\IssueChatController;
+use App\Http\Controllers\IssueChatMessageController;
 use App\Http\Controllers\IssueCommentController;
+use App\Http\Controllers\IssueMessageAttachmentController;
 use App\Http\Controllers\IssueController;
 use App\Http\Controllers\IssueDuplicateController;
 use App\Http\Controllers\IssueParticipantController;
@@ -37,6 +40,17 @@ use App\Http\Controllers\OfficerEndShiftController;
 use App\Http\Controllers\OfficerDepartmentController;
 use App\Http\Controllers\OfficerDistrictController;
 use App\Http\Controllers\OfficerSessionController;
+use App\Http\Controllers\IssueFeedbackController;
+use App\Http\Controllers\OfficerMeFeedbackController;
+use App\Http\Controllers\NotificationBulkReadController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\NotificationMarkAllReadController;
+use App\Http\Controllers\NotificationUnreadCountController;
+use App\Http\Controllers\User\UserSettingsController;
+use App\Http\Controllers\OfficerMeNotificationBulkReadController;
+use App\Http\Controllers\OfficerMeNotificationController;
+use App\Http\Controllers\OfficerMeNotificationMarkAllReadController;
+use App\Http\Controllers\OfficerMeNotificationUnreadCountController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -66,6 +80,14 @@ Route::middleware('throttle:10,1')->prefix('auth')->group(function (): void {
     Route::post('register/user', RegisterUserController::class)->name('auth.register.user');
 });
 
+// Public department reads for registration and reference lookups. Active
+// departments only for unauthenticated callers; authenticated active main
+// managers see inactive rows as well (scoped in DepartmentController).
+Route::middleware('throttle:30,1')->group(function (): void {
+    Route::get('departments', [DepartmentController::class, 'index'])->name('departments.index');
+    Route::get('departments/{department}', [DepartmentController::class, 'show'])->name('departments.show');
+});
+
 // Authenticated auth endpoints. `auth:sanctum` resolves the bearer token
 // against the personal_access_tokens table and works for User, Officer,
 // and Manager tokenable models alike. `actor.active` runs after Sanctum so
@@ -86,6 +108,12 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active'])->prefi
     // validated `district_ids` array and the refreshed auth profile is returned.
     Route::patch('me/districts', ProfileDistrictController::class)->name('auth.me.districts.update');
 
+    // Self-service hub assignment updates. Only active officers may update their own hub.
+    Route::patch('me/hub', \App\Http\Controllers\Auth\ProfileHubController::class)->name('auth.me.hub.update');
+
+    // Self-service feed districts update for users.
+    Route::patch('me/feed-districts', [\App\Http\Controllers\Auth\UserFeedDistrictController::class, 'update'])->name('user-feed-districts.update');
+
     // Self-service identity updates. Active users, officers, and managers may
     // PATCH their own username, email, and password; officers may also update
     // badge_number. Department, district, and privileged fields are rejected
@@ -99,7 +127,7 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active'])->prefi
 // non-main managers, and inactive managers all receive a 403. The endpoint is
 // rate-limited to mitigate abuse. No login token is issued for the created
 // manager, who must authenticate via `POST /api/auth/login`.
-Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'throttle:30,1'])->group(function (): void {
+Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'throttle:120,1'])->group(function (): void {
     // Main-manager-protected main manager listing. Authorization is narrowed
     // inside IndexMainManagerRequest to an authenticated, active main manager
     // only; users, officers, non-main managers, and inactive managers all
@@ -206,6 +234,25 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     // officer's hub clears their district_officer pivot.
     Route::patch('officers/{officer}/hub', [OfficerHubController::class, 'update'])->name('officers.hub.update');
 
+    // Officer self-service reads (Tier B whitelist).
+    Route::get('officers/me/feedback', [OfficerMeFeedbackController::class, 'index'])->name('officers.me.feedback.index');
+
+    // User notifications. Active users only; officers and managers receive 403.
+    Route::get('user/settings', [UserSettingsController::class, 'show'])->name('user.settings.show');
+    Route::patch('user/settings', [UserSettingsController::class, 'update'])->name('user.settings.update');
+    Route::get('notifications/unread-count', [NotificationUnreadCountController::class, 'show'])->name('notifications.unread-count');
+    Route::patch('notifications/bulk-read', [NotificationBulkReadController::class, 'update'])->name('notifications.bulk-read');
+    Route::post('notifications/mark-all-read', [NotificationMarkAllReadController::class, 'store'])->name('notifications.mark-all-read');
+    Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::patch('notifications/{notification}', [NotificationController::class, 'update'])->name('notifications.update');
+
+    // Officer self-service notifications (Tier B whitelist).
+    Route::get('officers/me/notifications/unread-count', [OfficerMeNotificationUnreadCountController::class, 'show'])->name('officers.me.notifications.unread-count');
+    Route::patch('officers/me/notifications/bulk-read', [OfficerMeNotificationBulkReadController::class, 'update'])->name('officers.me.notifications.bulk-read');
+    Route::post('officers/me/notifications/mark-all-read', [OfficerMeNotificationMarkAllReadController::class, 'store'])->name('officers.me.notifications.mark-all-read');
+    Route::get('officers/me/notifications', [OfficerMeNotificationController::class, 'index'])->name('officers.me.notifications.index');
+    Route::patch('officers/me/notifications/{notification}', [OfficerMeNotificationController::class, 'update'])->name('officers.me.notifications.update');
+
     // Main-manager-protected actor department assignment. Authorization is narrowed
     // inside the department assignment FormRequests to an authenticated, active
     // main manager only; users, officers, non-main managers, and inactive managers
@@ -249,9 +296,7 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     // deletes the row and relies on the `category_department` pivot's
     // foreign-key cascade to remove category assignments automatically, leaving
     // the category records themselves intact.
-    Route::get('departments', [DepartmentController::class, 'index'])->name('departments.index');
     Route::post('departments', [DepartmentController::class, 'store'])->name('departments.store');
-    Route::get('departments/{department}', [DepartmentController::class, 'show'])->name('departments.show');
     Route::match(['put', 'patch'], 'departments/{department}', [DepartmentController::class, 'update'])->name('departments.update');
     Route::delete('departments/{department}', [DepartmentController::class, 'destroy'])->name('departments.destroy');
 
@@ -404,6 +449,17 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     Route::get('issues/{issue}/attachments/{attachment}/download', [IssueAttachmentController::class, 'download'])->name('issues.attachments.download');
     Route::delete('issues/{issue}/attachments/{attachment}', [IssueAttachmentController::class, 'destroy'])->name('issues.attachments.destroy');
 
+    // Issue chats. Index and message listing are Tier B (can browse without active shift);
+    // open, close, send, and mark-read are Tier C (require active shift). Duplicate child
+    // route ids resolve to the canonical parent via ResolveCanonicalIssue in controllers.
+    Route::get('issues/{issue}/chats', [IssueChatController::class, 'index'])->name('issues.chats.index');
+    Route::patch('issues/{issue}/chats/open', [IssueChatController::class, 'open'])->name('issues.chats.open');
+    Route::patch('issues/{issue}/chats/{chat}/close', [IssueChatController::class, 'close'])->name('issues.chats.close');
+    Route::get('issues/{issue}/chats/{chat}/messages', [IssueChatMessageController::class, 'index'])->name('issues.chats.messages.index');
+    Route::post('issues/{issue}/chats/{chat}/messages', [IssueChatMessageController::class, 'store'])->name('issues.chats.messages.store');
+    Route::post('issues/{issue}/chats/{chat}/messages/mark-read', [IssueChatMessageController::class, 'markRead'])->name('issues.chats.messages.mark-read');
+    Route::get('issues/{issue}/chats/{chat}/messages/{message}/attachments/{attachment}/download', [IssueMessageAttachmentController::class, 'download'])->name('issues.chats.messages.attachments.download');
+
     // Issue comments. Listing (Index) is Tier B (can browse without active shift);
     // store, update, destroy, and visibility update are Tier C (require active shift).
     Route::get('issues/{issue}/comments', [IssueCommentController::class, 'index'])->name('issues.comments.index');
@@ -411,4 +467,37 @@ Route::middleware(['auth:sanctum', 'actor.active', 'officer.hub-active', 'thrott
     Route::patch('issues/{issue}/comments/{comment}', [IssueCommentController::class, 'update'])->name('issues.comments.update');
     Route::delete('issues/{issue}/comments/{comment}', [IssueCommentController::class, 'destroy'])->name('issues.comments.destroy');
     Route::patch('issues/{issue}/comments/{comment}/visibility', [IssueCommentController::class, 'updateVisibility'])->name('issues.comments.visibility.update');
+
+    // Issue feedback. Listing (Index) is Tier B (can browse without active shift);
+    // store, update, and destroy are Tier C (require active shift for officers, though usually for users).
+    Route::get('issues/{issue}/feedback', [IssueFeedbackController::class, 'index'])->name('issues.feedback.index');
+    Route::post('issues/{issue}/feedback', [IssueFeedbackController::class, 'store'])->name('issues.feedback.store');
+    Route::patch('issues/{issue}/feedback/{feedback}', [IssueFeedbackController::class, 'update'])->name('issues.feedback.update');
+    Route::delete('issues/{issue}/feedback/{feedback}', [IssueFeedbackController::class, 'destroy'])->name('issues.feedback.destroy');
+    // Community Posts CRUD. Listing and reads are available to any authenticated actor
+    // and rely on CommunityPostFeedQuery / CommunityPostVisibilityQuery for scoping.
+    // Users require an active district subscription (feedDistricts) matching the post.
+    // Officers use their district_officer scope automatically. Managers browse city-wide.
+    // Writes (create/update/delete) are restricted to active officers with an active shared
+    // shift (Tier C). Ordinary managers can update visibility in their districts; main
+    // managers can update visibility city-wide.
+    Route::get('community-posts', [\App\Http\Controllers\CommunityPostController::class, 'index'])->name('community-posts.index');
+    Route::post('community-posts', [\App\Http\Controllers\CommunityPostController::class, 'store'])->name('community-posts.store');
+    Route::get('community-posts/{community_post}', [\App\Http\Controllers\CommunityPostController::class, 'show'])->name('community-posts.show');
+    Route::match(['put', 'patch'], 'community-posts/{community_post}', [\App\Http\Controllers\CommunityPostController::class, 'update'])->name('community-posts.update');
+    Route::delete('community-posts/{community_post}', [\App\Http\Controllers\CommunityPostController::class, 'destroy'])->name('community-posts.destroy');
+    Route::patch('community-posts/{community_post}/visibility', [\App\Http\Controllers\CommunityPostController::class, 'updateVisibility'])->name('community-posts.visibility.update');
+
+    // Community Post Attachments. Same rules as issue attachments (max 5 files, 5 MB each).
+    // Download uses visibility-only authorization (Tier B).
+    // Upload/Delete are Tier C (hub-active required) and restricted to the authoring officer
+    // or officers assigned to the post's district.
+    Route::post('community-posts/{community_post}/attachments', [\App\Http\Controllers\CommunityPostAttachmentController::class, 'store'])->name('community-posts.attachments.store');
+    Route::get('community-posts/{community_post}/attachments/{attachment}/download', [\App\Http\Controllers\CommunityPostAttachmentController::class, 'download'])->name('community-posts.attachments.download');
+    Route::delete('community-posts/{community_post}/attachments/{attachment}', [\App\Http\Controllers\CommunityPostAttachmentController::class, 'destroy'])->name('community-posts.attachments.destroy');
+
+    // Saved Community Posts (User only). Users can save visible posts in their feed districts.
+    // Indexing saved posts uses `GET /api/community-posts?saved_only=1`.
+    Route::post('community-posts/{community_post}/save', [\App\Http\Controllers\Auth\UserSavedCommunityPostController::class, 'store'])->name('community-posts.save');
+    Route::delete('community-posts/{community_post}/save', [\App\Http\Controllers\Auth\UserSavedCommunityPostController::class, 'destroy'])->name('community-posts.unsave');
 });

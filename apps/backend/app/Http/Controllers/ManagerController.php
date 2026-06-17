@@ -11,11 +11,15 @@ use App\Http\Requests\Managers\UpdateManagerRequest;
 use App\Http\Resources\ManagerResource;
 use App\Models\Manager;
 use App\Models\Officer;
+use App\Support\ActorDistrictAccess;
 use App\Support\OfficerHubScope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 
+/**
+ * @group Managers
+ */
 class ManagerController extends Controller
 {
     /**
@@ -92,6 +96,7 @@ class ManagerController extends Controller
         // Persist any optional district assignments through the pivot. Managers
         // may be created with no district assignments at all.
         $manager->districts()->sync($request->districtIds());
+        ActorDistrictAccess::forget($manager);
 
         // `is_active = true` and `is_main_manager = false` are applied by the
         // model's attribute defaults; no client input can override them.

@@ -2,6 +2,8 @@
 
 use App\Http\Middleware\EnsureActorIsActive;
 use App\Http\Middleware\EnsureOfficerHubActive;
+use App\Support\IssueChatConflict;
+use App\Support\IssueFeedbackIntegrity;
 use App\Support\Issues\IssueDuplicateConflict;
 use App\Support\OfficerIssueConflict;
 use App\Support\OfficerIssueResolutionIntegrity;
@@ -18,7 +20,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
-use Throwable;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -90,6 +91,17 @@ return Application::configure(basePath: dirname(__DIR__))
             ], $exception->status);
         });
 
+        $exceptions->render(function (IssueChatConflict $exception, Request $request) use ($expectsApiJson) {
+            if (config('app.debug') || ! $expectsApiJson($request)) {
+                return null;
+            }
+
+            return response()->json([
+                'message' => $exception->getMessage(),
+                'code' => $exception->code,
+            ], $exception->status);
+        });
+
         // Officer workflow conflicts (assignee, district, terminal assign, duplicate
         // resolution) are thrown as OfficerIssueConflict and rendered above. Only
         // integrity races on officer_issue_resolutions.issue_id are mapped here.
@@ -108,11 +120,32 @@ return Application::configure(basePath: dirname(__DIR__))
             ], Response::HTTP_CONFLICT);
         };
 
-        $exceptions->render(function (UniqueConstraintViolationException $exception, Request $request) use ($renderDuplicateOfficerResolution) {
-            return $renderDuplicateOfficerResolution($exception, $request);
+        $renderDuplicateIssueFeedback = static function (QueryException $exception, Request $request) use ($expectsApiJson) {
+            if (config('app.debug') || ! $expectsApiJson($request)) {
+                return null;
+            }
+
+            if (! IssueFeedbackIntegrity::isDuplicateReviewerViolation($exception)) {
+                return null;
+            }
+
+            return response()->json([
+                'message' => 'Feedback has already been submitted for this issue.',
+                'code' => 'feedback_already_submitted',
+            ], Response::HTTP_CONFLICT);
+        };
+
+        $exceptions->render(function (UniqueConstraintViolationException $exception, Request $request) use ($renderDuplicateOfficerResolution, $renderDuplicateIssueFeedback) {
+            $duplicateResolution = $renderDuplicateOfficerResolution($exception, $request);
+
+            if ($duplicateResolution !== null) {
+                return $duplicateResolution;
+            }
+
+            return $renderDuplicateIssueFeedback($exception, $request);
         });
 
-        $exceptions->render(function (QueryException $exception, Request $request) use ($expectsApiJson, $isIntegrityConstraint, $renderDuplicateOfficerResolution) {
+        $exceptions->render(function (QueryException $exception, Request $request) use ($expectsApiJson, $isIntegrityConstraint, $renderDuplicateOfficerResolution, $renderDuplicateIssueFeedback) {
             if (config('app.debug') || ! $expectsApiJson($request)) {
                 return null;
             }
@@ -123,6 +156,13 @@ return Application::configure(basePath: dirname(__DIR__))
 
             if ($duplicateResolution !== null) {
                 return $duplicateResolution;
+            }
+
+            // Map duplicate issue_feedback (issue_id, reviewer_user_id) to structured 409.
+            $duplicateFeedback = $renderDuplicateIssueFeedback($exception, $request);
+
+            if ($duplicateFeedback !== null) {
+                return $duplicateFeedback;
             }
 
             Log::error('Database query exception on API route.', [
@@ -151,6 +191,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 || $exception instanceof ModelNotFoundException
                 || $exception instanceof AuthorizationException
                 || $exception instanceof OfficerIssueConflict
+                || $exception instanceof IssueChatConflict
                 || $exception instanceof IssueDuplicateConflict
                 || $exception instanceof QueryException
                 || $exception instanceof HttpExceptionInterface

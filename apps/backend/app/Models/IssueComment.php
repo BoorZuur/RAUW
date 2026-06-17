@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'officer_id',
     'manager_id',
     'content',
+    'is_anonymous',
     'visibility',
 ])]
 class IssueComment extends Model
@@ -43,6 +44,7 @@ class IssueComment extends Model
         return [
             'author_type' => ActorType::class,
             'is_flagged' => 'boolean',
+            'is_anonymous' => 'boolean',
             'visibility' => Visibility::class,
         ];
     }

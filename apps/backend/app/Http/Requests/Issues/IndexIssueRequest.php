@@ -44,50 +44,135 @@ class IndexIssueRequest extends FormRequest
      * assigned districts; main managers: city-wide).
      * Filters are optional and composable: `district_id`, `department`,
      * `category_id`, `status`, `assigned_officer_id`, `unassigned`, `mine`,
-     * `participating`, `include_duplicates`, and `visibility` may be combined
-     * to narrow the scoped result set (AND semantics). The `mine` filter
-     * (`mine=1` or equivalent truthy query values) restricts active users to
-     * issues they own (`issues.user_id`), including owned duplicate children;
-     * officers and managers cannot use `mine` and receive 422. The
+     * `participating`, `followed`, `include_duplicates`, `exclude_mine`, and
+     * `visibility` may be combined to narrow the scoped result set (AND
+     * semantics). The `mine` filter (`mine=1` or equivalent truthy query
+     * values) restricts active users to issues they own (`issues.user_id`),
+     * including owned duplicate children; officers and managers cannot use
+     * `mine` and receive 422. The `exclude_mine` filter (`exclude_mine=1`)
+     * excludes issues owned by the authenticated user (including owned
+     * duplicate children); officers and managers cannot use `exclude_mine`
+     * and receive 422. `exclude_mine` is mutually exclusive with `mine`
+     * (422 when combined) but may be combined with `followed`. The
      * `participating` filter (`participating=1`) restricts active users to
      * owned duplicate children where they still participate on the canonical
-     * parent; officers and managers cannot use `participating` and receive 422.
-     * `mine` and `participating` are mutually exclusive (422 when both are set).
+     * parent; officers and managers cannot use `participating` and receive
+     * 422. The `followed` filter (`followed=1`) returns canonical issues the
+     * user participates on (excluding own reports); owned duplicate children
+     * appear under `mine=1` only; officers and managers cannot use
+     * `followed` and receive 422. `mine`, `participating`, and `followed` are
+     * pairwise mutually exclusive (422 when combined).
      * The `include_duplicates` filter (`include_duplicates=1`) includes
      * duplicate child rows for officers and managers; users cannot use it and
      * receive 422. Default browse excludes others' duplicate children for users
      * and duplicate children for officers/managers unless opted in. The
      * `visibility` filter (`visible` or `hidden`) narrows officer/manager lists
      * to one visibility value; when omitted they see all issues. Users cannot
-     * use `visibility` and receive 422. The `status` filter accepts any
-     * `IssueStatus` enum value and is available to all active actors. The
+     * use `visibility` and receive 422. The `district_id` and `status` filters
+     * accept a single value or an array (`district_id[]=1&district_id[]=2`);
+     * multiple values within each filter use OR semantics, and filters are
+     * combined with AND semantics across filter types. The `status` filter
+     * accepts any `IssueStatus` enum value and is available to all active
+     * actors. The
      * `assigned_officer_id` and `unassigned` filters are available to officers
      * and managers only; users receive 422. `assigned_officer_id` and
      * `unassigned` are mutually exclusive (422 when both are set). The
      * `department`
      * filter accepts a real department code and
      * is applied against the issue departments relationship with any-match
-     * semantics. Pagination is bounded so `per_page` can never exceed a safe
-     * maximum.
-     *
+     * semantics. The `search` filter matches issue title or content (partial,
+     * case-sensitive LIKE). The `date_from` and `date_to` filters bound
+     * `created_at` inclusively (start/end of day). Pagination is bounded so
+     * `per_page` can never exceed a safe maximum.
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('district_id') && ! is_array($this->input('district_id'))) {
+            $this->merge([
+                'district_id' => [$this->input('district_id')],
+            ]);
+        }
+
+        if ($this->has('status') && ! is_array($this->input('status'))) {
+            $this->merge([
+                'status' => [$this->input('status')],
+            ]);
+        }
+    }
+
+    /**
      * @return array<string, array<int, mixed>>
      */
     public function rules(): array
     {
         return [
-            'district_id' => ['sometimes', 'integer', Rule::exists('districts', 'id')],
+            'district_id' => ['sometimes', 'array'],
+            'district_id.*' => ['integer', Rule::exists('districts', 'id')],
             'department' => ['sometimes', 'string', Rule::exists('departments', 'code')],
             'category_id' => ['sometimes', 'integer', Rule::exists('categories', 'id')],
-            'status' => ['sometimes', Rule::enum(IssueStatus::class)],
+            'status' => ['sometimes', 'array'],
+            'status.*' => [Rule::enum(IssueStatus::class)],
+            'search' => ['sometimes', 'string', 'max:255'],
+            'date_from' => ['sometimes', 'date', 'before_or_equal:date_to'],
+            'date_to' => ['sometimes', 'date', 'after_or_equal:date_from'],
             'assigned_officer_id' => ['sometimes', 'integer', Rule::exists('officers', 'id')],
             'unassigned' => ['sometimes', Rule::in(['1', 'true', true, 1])],
             'mine' => ['sometimes', Rule::in(['1', 'true', true, 1])],
+            'exclude_mine' => ['sometimes', Rule::in(['1', 'true', true, 1])],
             'participating' => ['sometimes', Rule::in(['1', 'true', true, 1])],
+            'followed' => ['sometimes', Rule::in(['1', 'true', true, 1])],
             'include_duplicates' => ['sometimes', Rule::in(['1', 'true', true, 1])],
             'visibility' => ['sometimes', Rule::enum(Visibility::class)],
             'page' => ['sometimes', 'integer', 'min:1'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:'.self::MAX_PER_PAGE],
         ];
+    }
+
+    /**
+     * Normalized district ids from a single value or array input (empty = no filter).
+     *
+     * @return list<int>
+     */
+    public function districtIds(): array
+    {
+        if (! $this->filled('district_id')) {
+            return [];
+        }
+
+        $value = $this->input('district_id');
+
+        if (! is_array($value)) {
+            return [(int) $value];
+        }
+
+        return array_values(array_map(fn ($id) => (int) $id, $value));
+    }
+
+    /**
+     * Normalized status values from a single value or array input (empty = no filter).
+     *
+     * @return list<IssueStatus>
+     */
+    public function statuses(): array
+    {
+        if (! $this->filled('status')) {
+            return [];
+        }
+
+        $value = $this->input('status');
+
+        if (! is_array($value)) {
+            $status = IssueStatus::tryFrom((string) $value);
+
+            return $status !== null ? [$status] : [];
+        }
+
+        return array_values(array_filter(array_map(
+            fn ($status) => $status instanceof IssueStatus
+                ? $status
+                : IssueStatus::tryFrom((string) $status),
+            $value,
+        )));
     }
 
     /**
@@ -103,6 +188,18 @@ class IndexIssueRequest extends FormRequest
     }
 
     /**
+     * Whether the client requested to exclude issues owned by the authenticated user.
+     */
+    public function wantsExcludeMine(): bool
+    {
+        if (! $this->filled('exclude_mine')) {
+            return false;
+        }
+
+        return in_array($this->input('exclude_mine'), ['1', 'true', true, 1], true);
+    }
+
+    /**
      * Whether the client requested only owned duplicate children with active
      * canonical participation.
      */
@@ -113,6 +210,18 @@ class IndexIssueRequest extends FormRequest
         }
 
         return in_array($this->input('participating'), ['1', 'true', true, 1], true);
+    }
+
+    /**
+     * Whether the client requested followed canonical issues.
+     */
+    public function wantsFollowed(): bool
+    {
+        if (! $this->filled('followed')) {
+            return false;
+        }
+
+        return in_array($this->input('followed'), ['1', 'true', true, 1], true);
     }
 
     /**
@@ -140,10 +249,12 @@ class IndexIssueRequest extends FormRequest
     }
 
     /**
-     * Reject role-incompatible list filters: `mine` and `participating` for
-     * officers/managers; `visibility`, `assigned_officer_id`, `unassigned`, and
-     * `include_duplicates` for users; mutually exclusive `mine` and
-     * `participating`; and mutually exclusive assignee filters.
+     * Reject role-incompatible list filters: `mine`, `exclude_mine`,
+     * `participating`, and `followed` for officers/managers; `visibility`,
+     * `assigned_officer_id`, `unassigned`, and `include_duplicates` for users;
+     * pairwise mutually exclusive `mine`, `participating`, and `followed`;
+     * mutually exclusive `mine` and `exclude_mine`; and mutually exclusive
+     * assignee filters.
      */
     public function withValidator(Validator $validator): void
     {
@@ -158,10 +269,24 @@ class IndexIssueRequest extends FormRequest
                 );
             }
 
+            if ($this->wantsExcludeMine() && $isOfficerOrManager) {
+                $validator->errors()->add(
+                    'exclude_mine',
+                    'The exclude mine filter is only available to users.',
+                );
+            }
+
             if ($this->wantsParticipating() && $isOfficerOrManager) {
                 $validator->errors()->add(
                     'participating',
                     'The participating filter is only available to users.',
+                );
+            }
+
+            if ($this->wantsFollowed() && $isOfficerOrManager) {
+                $validator->errors()->add(
+                    'followed',
+                    'The followed filter is only available to users.',
                 );
             }
 
@@ -181,6 +306,42 @@ class IndexIssueRequest extends FormRequest
                 $validator->errors()->add(
                     'participating',
                     'The participating filter cannot be used together with the mine filter.',
+                );
+            }
+
+            if ($this->wantsFollowed() && $this->wantsMine()) {
+                $validator->errors()->add(
+                    'followed',
+                    'The followed filter cannot be used together with the mine filter.',
+                );
+
+                $validator->errors()->add(
+                    'mine',
+                    'The mine filter cannot be used together with the followed filter.',
+                );
+            }
+
+            if ($this->wantsMine() && $this->wantsExcludeMine()) {
+                $validator->errors()->add(
+                    'mine',
+                    'The mine filter cannot be used together with the exclude mine filter.',
+                );
+
+                $validator->errors()->add(
+                    'exclude_mine',
+                    'The exclude mine filter cannot be used together with the mine filter.',
+                );
+            }
+
+            if ($this->wantsFollowed() && $this->wantsParticipating()) {
+                $validator->errors()->add(
+                    'followed',
+                    'The followed filter cannot be used together with the participating filter.',
+                );
+
+                $validator->errors()->add(
+                    'participating',
+                    'The participating filter cannot be used together with the followed filter.',
                 );
             }
 
@@ -218,19 +379,23 @@ class IndexIssueRequest extends FormRequest
             }
 
             if (
-                $this->filled('district_id')
+                count($this->districtIds()) > 0
                 && (
                     $actor instanceof Officer
                     || ($actor instanceof Manager && ! ActorDistrictAccess::isMainManager($actor))
                 )
             ) {
-                $districtId = $this->integer('district_id');
+                $assignedDistrictIds = ActorDistrictAccess::assignedDistrictIds($actor);
 
-                if (! in_array($districtId, ActorDistrictAccess::assignedDistrictIds($actor), true)) {
-                    $validator->errors()->add(
-                        'district_id',
-                        'The selected district is not assigned to you.',
-                    );
+                foreach ($this->districtIds() as $districtId) {
+                    if (! in_array($districtId, $assignedDistrictIds, true)) {
+                        $validator->errors()->add(
+                            'district_id',
+                            'The selected district is not assigned to you.',
+                        );
+
+                        break;
+                    }
                 }
             }
         });

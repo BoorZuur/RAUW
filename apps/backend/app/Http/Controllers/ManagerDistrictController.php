@@ -5,8 +5,12 @@ namespace App\Http\Controllers;
 use App\Http\Requests\DistrictAssignments\UpdateManagerDistrictsRequest;
 use App\Http\Resources\ManagerResource;
 use App\Models\Manager;
+use App\Support\ActorDistrictAccess;
 use Illuminate\Http\JsonResponse;
 
+/**
+ * @group Managers
+ */
 class ManagerDistrictController extends Controller
 {
     /**
@@ -25,6 +29,7 @@ class ManagerDistrictController extends Controller
     public function update(UpdateManagerDistrictsRequest $request, Manager $manager): JsonResponse
     {
         $manager->districts()->sync($request->districtIds());
+        ActorDistrictAccess::forget($manager);
 
         $manager->loadMissing('departments', 'districts', 'hub');
 

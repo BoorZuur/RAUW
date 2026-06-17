@@ -325,3 +325,93 @@ body{
 .btn-arrow:hover {
     opacity: 0.85;
 }
+/* ==========================================================================
+   1. STRUCTURAL LAYOUT SYSTEM (SIDEBAR CLEARANCE)
+   ========================================================================== */
+
+.dashboard-layout {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+}
+
+/* Main content area layout configuration */
+.main-content.profile-container {
+    flex: 1;
+    min-width: 0;
+    margin-left: 260px;
+    padding: 2.5rem;
+    box-sizing: border-box;
+
+    /* Layout structural behavior */
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+}
+
+/* ==========================================================================
+   2. HIGH VISIBILITY TEXT FIXES (FOR OUT-OF-BOX TEXT)
+   ========================================================================== */
+
+/* Structural Headers (e.g., "Dienststatistieken", "Recente Activiteit") */
+.section-title {
+    font-family: var(--font-headline), serif;
+    color: #1a1a1a !important;
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin: 0 0 1rem 0;
+    text-align: left;
+}
+
+/* Loose Profile Header details */
+.profile-user-card {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    text-align: left;
+    padding-bottom: 1rem;
+}
+
+.profile-avatar-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-user-info h2 {
+    font-family: var(--font-body), serif;
+    color: #1a1a1a !important;
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin: 0 0 0.25rem 0;
+}
+
+.profile-email {
+    color: #4a4a4a !important;
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+}
+
+.profile-role-badge {
+    display: inline-block;
+    color: #555555 !important;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.timeline-empty-state p {
+    color: #4a4a4a !important;
+    font-size: 1rem;
+    text-align: left;
+    margin: 0;
+}
+
+/* ==========================================================================
+   3. METRICS GRID SYSTEM
+   ========================================================================== */
+.profile-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+    gap: 1.25rem;
+    width: 100%;
+}

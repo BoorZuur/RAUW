@@ -2,18 +2,22 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\IssueStatus;
 use App\Http\Requests\Issues\ShowOfficerIssueResolutionRequest;
 use App\Http\Requests\Issues\StoreOfficerIssueResolutionRequest;
 use App\Http\Requests\Issues\UpdateOfficerIssueResolutionRequest;
 use App\Http\Resources\OfficerIssueResolutionResource;
 use App\Models\Issue;
+use App\Models\IssueStatusHistory;
 use App\Models\Officer;
 use App\Models\OfficerIssueResolution;
+use App\Support\IssueStatusTransition;
 use App\Support\IssueVisibilityQuery;
 use App\Support\OfficerIssueConflict;
 use App\Support\OfficerIssueDistrictAccess;
 use App\Support\OfficerIssueResolutionAttachments;
 use App\Support\OfficerIssueRowLock;
+use App\Support\Notifications\NotifyResolutionPosted;
 use App\Support\UploadedFileValidator;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
@@ -24,6 +28,9 @@ use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
+/**
+ * @group Officer Actions on Issues
+ */
 class OfficerIssueResolutionController extends Controller
 {
     private const DISK = 'local';
@@ -60,8 +67,11 @@ class OfficerIssueResolutionController extends Controller
     /**
      * Create the officer resolution report for an issue (once per issue).
      */
-    public function store(StoreOfficerIssueResolutionRequest $request, Issue $issue): JsonResponse
-    {
+    public function store(
+        StoreOfficerIssueResolutionRequest $request,
+        Issue $issue,
+        NotifyResolutionPosted $notifyResolutionPosted,
+    ): JsonResponse {
         /** @var Officer $officer */
         $officer = $request->user();
 
@@ -81,6 +91,7 @@ class OfficerIssueResolutionController extends Controller
                 $validated,
                 $files,
                 &$pathsWrittenDuringRequest,
+                $notifyResolutionPosted,
             ) {
                 OfficerIssueRowLock::assertAssignee($officer, $lockedIssue, self::RESOLUTION_ASSIGNEE_MESSAGE);
                 OfficerIssueRowLock::assertResolutionWritable($lockedIssue);
@@ -95,6 +106,31 @@ class OfficerIssueResolutionController extends Controller
                 if ($files !== []) {
                     $pathsWrittenDuringRequest = self::attachUploadedFiles($resolution, $files);
                 }
+
+                if ($lockedIssue->status === IssueStatus::InProgress) {
+                    $oldStatus = $lockedIssue->status;
+                    $newStatus = IssueStatus::Resolved;
+
+                    IssueStatusHistory::query()->create([
+                        'issue_id' => $lockedIssue->getKey(),
+                        'changed_by_officer_id' => $officer->getKey(),
+                        'old_status' => $oldStatus,
+                        'new_status' => $newStatus,
+                        'note' => 'Oplossing geplaatst',
+                        'changed_at' => now(),
+                    ]);
+
+                    $lockedIssue->update([
+                        'status' => $newStatus,
+                        'resolved_at' => IssueStatusTransition::resolvedAtForTransition(
+                            $oldStatus,
+                            $newStatus,
+                            $lockedIssue->resolved_at,
+                        ),
+                    ]);
+                }
+
+                $notifyResolutionPosted->notify($lockedIssue, $officer);
 
                 return $resolution;
             });
@@ -118,8 +154,11 @@ class OfficerIssueResolutionController extends Controller
     /**
      * Update the officer resolution report and manage image attachments.
      */
-    public function update(UpdateOfficerIssueResolutionRequest $request, Issue $issue): OfficerIssueResolutionResource
-    {
+    public function update(
+        UpdateOfficerIssueResolutionRequest $request,
+        Issue $issue,
+        NotifyResolutionPosted $notifyResolutionPosted,
+    ): OfficerIssueResolutionResource {
         /** @var Officer $officer */
         $officer = $request->user();
 
@@ -143,6 +182,7 @@ class OfficerIssueResolutionController extends Controller
                 $files,
                 &$pathsToDelete,
                 &$pathsWrittenDuringRequest,
+                $notifyResolutionPosted,
             ): void {
                 OfficerIssueRowLock::assertAssignee($officer, $lockedIssue, self::RESOLUTION_ASSIGNEE_MESSAGE);
                 OfficerIssueRowLock::assertResolutionWritable($lockedIssue);
@@ -178,6 +218,8 @@ class OfficerIssueResolutionController extends Controller
                 if ($files !== []) {
                     $pathsWrittenDuringRequest = self::attachUploadedFiles($resolution, $files);
                 }
+
+                $notifyResolutionPosted->notify($lockedIssue, $officer);
             });
         } catch (Throwable $exception) {
             self::deleteDiskFiles($pathsWrittenDuringRequest);

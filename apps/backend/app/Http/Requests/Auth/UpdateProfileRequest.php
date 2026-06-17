@@ -82,7 +82,7 @@ class UpdateProfileRequest extends FormRequest
 
     private function isActorActive(): bool
     {
-        return (bool) $this->user()->is_active;
+        return $this->user() ? (bool) $this->user()->is_active : false;
     }
 
     /**
@@ -107,6 +107,10 @@ class UpdateProfileRequest extends FormRequest
     {
         $actor = $this->user();
 
+        if (!$actor) {
+            return 'users';
+        }
+
         return match (true) {
             $actor instanceof User => 'users',
             $actor instanceof Officer => 'officers',
@@ -120,6 +124,6 @@ class UpdateProfileRequest extends FormRequest
      */
     private function actorId(): int
     {
-        return (int) $this->user()->getKey();
+        return $this->user() ? (int) $this->user()->getKey() : 0;
     }
 }

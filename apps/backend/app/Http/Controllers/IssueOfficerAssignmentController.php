@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Issues\CloseAllOpenIssueChats;
 use App\Enums\IssueStatus;
 use App\Http\Requests\Issues\AssignIssueToOfficerRequest;
 use App\Http\Requests\Issues\UnassignIssueFromOfficerRequest;
@@ -10,10 +11,14 @@ use App\Models\Issue;
 use App\Models\IssueStatusHistory;
 use App\Models\Officer;
 use App\Support\IssueVisibilityQuery;
+use App\Support\Notifications\NotifyStatusChange;
 use App\Support\OfficerIssueConflict;
 use App\Support\OfficerIssueDistrictAccess;
 use App\Support\OfficerIssueRowLock;
 
+/**
+ * @group Officer Actions on Issues
+ */
 class IssueOfficerAssignmentController extends Controller
 {
     /**
@@ -39,7 +44,11 @@ class IssueOfficerAssignmentController extends Controller
      * status history row. Already assigned to the requesting officer is idempotent.
      * Assignment to a different officer returns 409 without takeover.
      */
-    public function store(AssignIssueToOfficerRequest $request, Issue $issue): IssueResource
+    public function store(
+        AssignIssueToOfficerRequest $request,
+        Issue $issue,
+        NotifyStatusChange $notifyStatusChange,
+    ): IssueResource
     {
         /** @var Officer $officer */
         $officer = $request->user();
@@ -56,7 +65,7 @@ class IssueOfficerAssignmentController extends Controller
             return new IssueResource($issue);
         }
 
-        OfficerIssueRowLock::withLockedIssue($issue, function (Issue $lockedIssue) use ($officer): void {
+        OfficerIssueRowLock::withLockedIssue($issue, function (Issue $lockedIssue) use ($officer, $notifyStatusChange): void {
             OfficerIssueRowLock::assertAssignable($lockedIssue);
             OfficerIssueRowLock::assertUnassignedOrSelf($officer, $lockedIssue);
 
@@ -77,9 +86,23 @@ class IssueOfficerAssignmentController extends Controller
                     'note' => null,
                     'changed_at' => now(),
                 ]);
+
+                $notifyStatusChange->notify(
+                    $lockedIssue,
+                    $officer,
+                    IssueStatus::Open,
+                    IssueStatus::InProgress,
+                );
             }
 
             $lockedIssue->update($updates);
+
+            \App\Models\IssueOfficerAssignmentHistory::query()->firstOrCreate([
+                'issue_id' => $lockedIssue->getKey(),
+                'officer_id' => $officer->getKey(),
+            ], [
+                'assigned_at' => now(),
+            ]);
         });
 
         $issue->refresh()->load(self::ISSUE_RELATIONS);
@@ -93,8 +116,11 @@ class IssueOfficerAssignmentController extends Controller
      * Status is unchanged; only assigned_officer_id is cleared. Already
      * unassigned issues are idempotent. Non-assignees receive 403.
      */
-    public function destroy(UnassignIssueFromOfficerRequest $request, Issue $issue): IssueResource
-    {
+    public function destroy(
+        UnassignIssueFromOfficerRequest $request,
+        Issue $issue,
+        CloseAllOpenIssueChats $closeAllOpenIssueChats,
+    ): IssueResource {
         /** @var Officer $officer */
         $officer = $request->user();
 
@@ -110,7 +136,7 @@ class IssueOfficerAssignmentController extends Controller
             return new IssueResource($issue);
         }
 
-        OfficerIssueRowLock::withLockedIssue($issue, function (Issue $lockedIssue) use ($officer): void {
+        OfficerIssueRowLock::withLockedIssue($issue, function (Issue $lockedIssue) use ($officer, $closeAllOpenIssueChats): void {
             if ($lockedIssue->assigned_officer_id === null) {
                 return;
             }
@@ -120,6 +146,8 @@ class IssueOfficerAssignmentController extends Controller
                     'Only the assigned officer may unassign from this issue.',
                 );
             }
+
+            $closeAllOpenIssueChats->closeAll($lockedIssue, $officer, withSystemMessage: false);
 
             $lockedIssue->update(['assigned_officer_id' => null]);
         });

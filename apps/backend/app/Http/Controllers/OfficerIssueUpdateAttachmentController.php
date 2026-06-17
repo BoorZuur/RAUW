@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
+/**
+ * @group Officer Actions on Issues
+ */
 class OfficerIssueUpdateAttachmentController extends Controller
 {
     private const DISK = 'local';
