@@ -200,3 +200,20 @@ export async function deleteIssue(issueId, { leaveParticipation } = {}) {
 
     await apiClient.delete(`/issues/${issueId}`, config);
 }
+
+export async function getOfficerUpdates(issueId) {
+    const response = await apiClient.get(`/issues/${issueId}/officer-updates`);
+    return unwrapList(response);
+}
+
+export async function getOfficerResolution(issueId) {
+    try {
+        const response = await apiClient.get(`/issues/${issueId}/officer-resolution`);
+        return unwrapData(response);
+    } catch (err) {
+        if (err.response && err.response.status === 404) {
+            return null;
+        }
+        throw err;
+    }
+}

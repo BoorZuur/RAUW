@@ -8,6 +8,8 @@ import { fetchIssueComments, updateIssueComment, deleteIssueComment } from '../s
 import { useIssueCommentPolling } from '../hooks/useIssueCommentPolling';
 import FollowIssueButton from '../components/FollowIssueButton';
 import { getIssueDisplayTitle, getIssueDisplayContent } from '../utils/issueParticipation';
+import { getOfficerUpdates, getOfficerResolution } from '../services/issueService';
+import AuthAttachment from '../components/AuthAttachment';
 
 function resolveDefaultAnonymous(issue) {
     if (typeof issue?.default_comment_is_anonymous === 'boolean') {
@@ -31,6 +33,11 @@ export default function StoryDetailModal({ issue, onClose, onAddComment, current
     const [editDraft, setEditDraft] = useState('');
     const [deleteCommentTarget, setDeleteCommentTarget] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    const [activeTab, setActiveTab] = useState('details');
+    const [officerUpdates, setOfficerUpdates] = useState([]);
+    const [officerResolution, setOfficerResolution] = useState(null);
+    const [isLoadingProgress, setIsLoadingProgress] = useState(false);
 
     const commentsContainerRef = useRef(null);
     const wasNearBottomRef = useRef(true);
@@ -59,6 +66,26 @@ export default function StoryDetailModal({ issue, onClose, onAddComment, current
         return () => {
             cancelled = true;
         };
+    }, [issue?.id]);
+
+    useEffect(() => {
+        if (!issue?.id) return;
+        let cancelled = false;
+        
+        setIsLoadingProgress(true);
+        Promise.all([
+            getOfficerUpdates(issue.id).catch(() => []),
+            getOfficerResolution(issue.id).catch(() => null)
+        ]).then(([updates, resolution]) => {
+            if (!cancelled) {
+                setOfficerUpdates(updates);
+                setOfficerResolution(resolution);
+            }
+        }).finally(() => {
+            if (!cancelled) setIsLoadingProgress(false);
+        });
+        
+        return () => { cancelled = true; };
     }, [issue?.id]);
 
     const handlePollComments = useCallback((serverComments) => {
@@ -273,32 +300,102 @@ export default function StoryDetailModal({ issue, onClose, onAddComment, current
                     </div>
 
                     <div className="flex-1 p-6 sm:p-8 bg-stone-950 overflow-y-auto custom-scrollbar flex flex-col justify-start">
-                        <div className="flex flex-wrap items-center gap-2 mb-4">
-                            <span className="text-[10px] sm:text-[11px] font-label font-black uppercase tracking-widest text-primary-accent bg-primary-accent/10 border border-primary-accent/30 px-2.5 py-1 rounded-md">
-                                {address || 'Rotterdam'}
-                            </span>
-                            <span className={`px-2.5 py-1 rounded-md text-[10px] sm:text-[11px] font-label font-black uppercase tracking-wider shadow-xs ${statusDetails.className}`}>
-                                {statusDetails.label}
-                            </span>
-                            {category ? (
-                                <span className="bg-stone-800 text-stone-200 border border-stone-700 px-2.5 py-1 rounded-md text-[10px] sm:text-[11px] font-label font-bold uppercase tracking-wider">
-                                    {category.name || category}
-                                </span>
-                            ) : null}
+                        <div className="flex gap-4 border-b border-primary-border mb-6">
+                            <button
+                                onClick={() => setActiveTab('details')}
+                                className={`pb-2 text-sm font-bold uppercase tracking-wider transition-colors ${activeTab === 'details' ? 'border-b-2 border-primary-accent text-primary-text' : 'border-b-2 border-transparent text-secondary-text hover:text-primary-text'}`}
+                            >
+                                Details
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('voortgang')}
+                                className={`pb-2 text-sm font-bold uppercase tracking-wider transition-colors ${activeTab === 'voortgang' ? 'border-b-2 border-primary-accent text-primary-text' : 'border-b-2 border-transparent text-secondary-text hover:text-primary-text'}`}
+                            >
+                                Voortgang {officerUpdates.length > 0 && `(${officerUpdates.length})`}
+                            </button>
                         </div>
-                        <h2 className="font-headline font-black text-xl sm:text-3xl tracking-tight leading-tight text-white mb-4">
-                            {displayTitle}
-                        </h2>
-                        <div className="mb-4">
-                            <FollowIssueButton
-                                issue={issue}
-                                currentUserId={currentUserId}
-                                onParticipationChange={onParticipationChange}
-                            />
-                        </div>
-                        <p className="font-label text-sm text-stone-200/95 leading-relaxed max-w-2xl antialiased">
-                            {displayContent}
-                        </p>
+                        {activeTab === 'details' ? (
+                            <>
+                                <div className="flex flex-wrap items-center gap-2 mb-4">
+                                    <span className="text-[10px] sm:text-[11px] font-label font-black uppercase tracking-widest text-primary-accent bg-primary-accent/10 border border-primary-accent/30 px-2.5 py-1 rounded-md">
+                                        {address || 'Rotterdam'}
+                                    </span>
+                                    <span className={`px-2.5 py-1 rounded-md text-[10px] sm:text-[11px] font-label font-black uppercase tracking-wider shadow-xs ${statusDetails.className}`}>
+                                        {statusDetails.label}
+                                    </span>
+                                    {category ? (
+                                        <span className="bg-stone-800 text-stone-200 border border-stone-700 px-2.5 py-1 rounded-md text-[10px] sm:text-[11px] font-label font-bold uppercase tracking-wider">
+                                            {category.name || category}
+                                        </span>
+                                    ) : null}
+                                </div>
+                                <h2 className="font-headline font-black text-xl sm:text-3xl tracking-tight leading-tight text-white mb-4">
+                                    {displayTitle}
+                                </h2>
+                                <div className="mb-4">
+                                    <FollowIssueButton
+                                        issue={issue}
+                                        currentUserId={currentUserId}
+                                        onParticipationChange={onParticipationChange}
+                                    />
+                                </div>
+                                <p className="font-label text-sm text-stone-200/95 leading-relaxed max-w-2xl antialiased">
+                                    {displayContent}
+                                </p>
+                            </>
+                        ) : (
+                            <div className="space-y-6">
+                                {isLoadingProgress ? (
+                                    <div className="text-secondary-text text-sm">Voortgang laden...</div>
+                                ) : (
+                                    <>
+                                        {officerResolution && (
+                                            <div className="bg-primary-bg-cards p-5 rounded-2xl border border-primary-accent/30 shadow-md">
+                                                <h3 className="font-bold text-primary-accent text-lg mb-2">Resolutie</h3>
+                                                <h4 className="font-bold text-white mb-2">{officerResolution.title}</h4>
+                                                <p className="text-stone-200 text-sm whitespace-pre-wrap">{officerResolution.content}</p>
+                                                {officerResolution.attachments?.length > 0 && (
+                                                    <div className="mt-4 pt-4 border-t border-primary-border flex flex-col gap-2">
+                                                        {officerResolution.attachments.map(att => (
+                                                            <AuthAttachment key={att.id} attachment={att} />
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                <div className="text-[10px] text-secondary-text mt-3">
+                                                    Door {officerResolution.officer?.username || 'Handhaver'} • {new Date(officerResolution.created_at).toLocaleString('nl-NL')}
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        <div className="space-y-4">
+                                            {officerUpdates.length > 0 ? officerUpdates.map((update, idx) => (
+                                                <div key={update.id} className="relative flex items-center gap-4">
+                                                    <div className="flex items-center justify-center w-8 h-8 rounded-full border border-primary-border bg-primary-bg text-secondary-text shadow shrink-0">
+                                                        <span className="text-xs font-bold">{idx + 1}</span>
+                                                    </div>
+                                                    <div className="flex-1 bg-primary-bg p-4 rounded-xl border border-primary-border shadow-sm">
+                                                        <div className="flex justify-between items-center mb-1">
+                                                            <span className="font-bold text-white text-sm">{update.title}</span>
+                                                            <span className="text-[10px] text-secondary-text">{new Date(update.created_at).toLocaleDateString('nl-NL')}</span>
+                                                        </div>
+                                                        <p className="text-stone-300 text-xs whitespace-pre-wrap">{update.content}</p>
+                                                        {update.attachments?.length > 0 && (
+                                                            <div className="mt-2 flex flex-col gap-2">
+                                                                {update.attachments.map(att => (
+                                                                    <AuthAttachment key={att.id} attachment={att} />
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )) : (
+                                                !officerResolution && <div className="text-secondary-text text-sm italic py-4">Nog geen voortgangs-updates beschikbaar.</div>
+                                            )}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
 
